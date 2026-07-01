@@ -1,0 +1,342 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  GUEST
+  CLIENT
+  MANAGER
+  ADMIN
+}
+
+enum RequestSource {
+  WEBSITE
+  CLIENT_DASHBOARD
+  TELEGRAM
+  MANAGER
+}
+
+enum RequestStatus {
+  NEW
+  IN_PROGRESS
+  OFFER_PREPARING
+  WAITING_APPROVAL
+  ORDERED
+  IN_DELIVERY
+  COMPLETED
+  CANCELLED
+}
+
+enum NotificationChannel {
+  EMAIL
+  TELEGRAM
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum OCRProvider {
+  TESSERACT
+  GOOGLE_VISION
+  AWS_TEXTRACT
+  AZURE_VISION
+  OTHER
+}
+
+model User {
+  id               String                 @id @default(cuid())
+  name             String?
+  email            String?                @unique
+  emailVerified    DateTime?
+  image            String?
+  phone            String?                @unique
+  passwordHash     String?
+  role             UserRole               @default(CLIENT)
+  accounts         Account[]
+  sessions         Session[]
+  clientProfile    ClientProfile?
+  managerProfile   ManagerProfile?
+  assignedRequests Request[]              @relation("AssignedManager")
+  statusChanges    RequestStatusHistory[] @relation("StatusChangedBy")
+  comments         RequestComment[]       @relation("RequestCommentAuthor")
+  notifications    Notification[]
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model ClientProfile {
+  id          String     @id @default(cuid())
+  userId      String     @unique
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName String?
+  contactName String?
+  phone       String?
+  email       String?
+  requests    Request[]
+  vehicles    Vehicle[]
+  documents   Document[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model ManagerProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Request {
+  id                String                 @id @default(cuid())
+  requestNumber     String                 @unique
+  publicStatusToken String                 @unique
+  source            RequestSource
+  status            RequestStatus          @default(NEW)
+  clientId          String?
+  client            ClientProfile?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  guestName         String?
+  guestPhone        String?
+  guestEmail        String?
+  companyName       String?
+  categoryId        String?
+  category          Category?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  subcategoryId     String?
+  subcategory       Subcategory?           @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  manufacturerId    String?
+  manufacturer      Manufacturer?          @relation(fields: [manufacturerId], references: [id], onDelete: SetNull)
+  vehicleId         String?
+  vehicle           Vehicle?               @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  equipmentType     String?
+  model             String?
+  vinOrSerial       String?
+  description       String
+  assignedManagerId String?
+  assignedManager   User?                  @relation("AssignedManager", fields: [assignedManagerId], references: [id], onDelete: SetNull)
+  files             RequestFile[]
+  documents         Document[]
+  statusHistory     RequestStatusHistory[]
+  ocrResults        OCRResult[]
+  notifications     Notification[]
+  comments          RequestComment[]
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+  @@index([source])
+  @@index([assignedManagerId])
+  @@index([categoryId])
+  @@index([subcategoryId])
+  @@index([manufacturerId])
+  @@index([vehicleId])
+}
+
+model RequestFile {
+  id         String      @id @default(cuid())
+  requestId  String
+  request    Request     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  fileName   String
+  storageKey String
+  fileUrl    String?
+  mimeType   String
+  size       Int
+  ocrResults OCRResult[]
+  createdAt  DateTime    @default(now())
+
+  @@index([requestId])
+}
+
+model RequestStatusHistory {
+  id              String         @id @default(cuid())
+  requestId       String
+  request         Request        @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  oldStatus       RequestStatus?
+  newStatus       RequestStatus
+  changedByUserId String?
+  changedByUser   User?          @relation("StatusChangedBy", fields: [changedByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime       @default(now())
+
+  @@index([requestId])
+  @@index([changedByUserId])
+}
+
+model RequestComment {
+  id        String   @id @default(cuid())
+  requestId String
+  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  authorId  String?
+  author    User?    @relation("RequestCommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  message   String
+  internal  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([requestId])
+  @@index([authorId])
+}
+
+model Vehicle {
+  id          String        @id @default(cuid())
+  clientId    String
+  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  type        String
+  manufacturer String
+  model       String
+  year        Int?
+  vinOrSerial String?
+  comment     String?
+  requests    Request[]
+  documents   Document[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([clientId])
+}
+
+model Document {
+  id         String         @id @default(cuid())
+  clientId   String?
+  client     ClientProfile? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  requestId  String?
+  request    Request?       @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  vehicleId  String?
+  vehicle    Vehicle?       @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  fileName   String
+  storageKey String
+  fileUrl    String?
+  mimeType   String
+  size       Int
+  createdAt  DateTime       @default(now())
+
+  @@index([clientId])
+  @@index([requestId])
+  @@index([vehicleId])
+}
+
+model Category {
+  id            String         @id @default(cuid())
+  name          String
+  slug          String         @unique
+  description   String?
+  subcategories Subcategory[]
+  manufacturers Manufacturer[]
+  requests      Request[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Subcategory {
+  id            String         @id @default(cuid())
+  categoryId    String
+  category      Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name          String
+  slug          String
+  description   String?
+  manufacturers Manufacturer[]
+  requests      Request[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@unique([categoryId, slug])
+  @@index([categoryId])
+}
+
+model Manufacturer {
+  id            String       @id @default(cuid())
+  categoryId    String?
+  category      Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  subcategoryId String?
+  subcategory   Subcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  name          String
+  slug          String
+  requests      Request[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([categoryId, subcategoryId, slug])
+  @@index([categoryId])
+  @@index([subcategoryId])
+}
+
+model OCRResult {
+  id                   String      @id @default(cuid())
+  requestId            String
+  request              Request     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  fileId               String?
+  file                 RequestFile? @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  rawText              String
+  possibleSerialNumber String?
+  possiblePartNumber   String?
+  possibleModelNumber  String?
+  correctedText        String?
+  confidence           Float?
+  provider             OCRProvider
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  @@index([requestId])
+  @@index([fileId])
+}
+
+model Notification {
+  id        String              @id @default(cuid())
+  requestId String?
+  request   Request?            @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  userId    String?
+  user      User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  channel   NotificationChannel
+  status    NotificationStatus  @default(PENDING)
+  message   String
+  sentAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  @@index([requestId])
+  @@index([userId])
+  @@index([status])
+}
