@@ -1,6 +1,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
+import { catalogCategories } from '@/lib/catalog/catalog-data';
+
 const processSteps = [
   {
     title: 'Залишив запит',
@@ -152,6 +154,38 @@ export default function HomePage() {
                 <p className="text-sm font-bold text-foreground">{audience}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-card px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.4fr] lg:items-start">
+            <div>
+              <p className="text-sm font-bold uppercase text-accent">Напрями підбору</p>
+              <h2 className="mt-2 text-3xl font-bold text-foreground">Категорії допомагають швидше описати потребу</h2>
+              <p className="mt-4 text-sm leading-6 text-muted">
+                Це не товарний каталог. Оберіть напрям, а менеджер уточнить деталі й підбере рішення.
+              </p>
+              <Link
+                href="/categories"
+                className="mt-6 inline-flex rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-[#DFA600]"
+              >
+                Переглянути всі категорії
+              </Link>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {catalogCategories.slice(0, 4).map((category) => (
+                <Link
+                  key={category.id}
+                  href={`/categories/${category.slug}`}
+                  className="rounded-lg border border-border bg-surface-muted p-5 transition hover:border-accent hover:bg-card"
+                >
+                  <p className="text-sm font-bold text-foreground">{category.name}</p>
+                  <p className="mt-2 text-xs leading-5 text-muted">{category.subcategories.slice(0, 3).join(', ')}</p>
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </section>
