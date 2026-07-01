@@ -1,0 +1,281 @@
+'use client';
+
+import Link from 'next/link';
+import { useMemo, useState } from 'react';
+
+import type { CatalogCategory } from '@/lib/catalog/catalog-data';
+import { ALLOWED_UPLOAD_EXTENSIONS } from '@/lib/files/upload-policy';
+
+type RequestFormProps = {
+  categories: CatalogCategory[];
+  initialCategory?: string;
+  initialMode?: string;
+  maxSizeMb: number;
+};
+
+type SubmitState =
+  | { status: 'idle' }
+  | { status: 'submitting' }
+  | { status: 'success'; requestNumber: string; publicStatusUrl: string }
+  | { status: 'error'; message: string; errors?: string[] };
+
+export function RequestForm({ categories, initialCategory, initialMode, maxSizeMb }: RequestFormProps) {
+  const initialCategoryExists = categories.some((category) => category.slug === initialCategory);
+  const [formType, setFormType] = useState<'quick' | 'detailed'>(initialMode === 'file' ? 'detailed' : 'quick');
+  const [selectedCategory, setSelectedCategory] = useState(initialCategoryExists ? (initialCategory ?? '') : '');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
+
+  const selectedCategoryData = useMemo(
+    () => categories.find((category) => category.slug === selectedCategory),
+    [categories, selectedCategory]
+  );
+  const manufacturers = selectedCategoryData?.manufacturers ?? [];
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitState({ status: 'submitting' });
+
+    const formData = new FormData(event.currentTarget);
+    formData.set('formType', formType);
+
+    try {
+      const response = await fetch('/api/requests', {
+        method: 'POST',
+        body: formData
+      });
+      const payload = (await response.json()) as {
+        requestNumber?: string;
+        publicStatusUrl?: string;
+        message?: string;
+        errors?: string[];
+        status?: string;
+      };
+
+      if (!response.ok) {
+        setSubmitState({
+          status: 'error',
+          message: payload.message ?? 'Не вдалося створити заявку.',
+          errors: payload.errors
+        });
+        return;
+      }
+
+      setSubmitState({
+        status: 'success',
+        requestNumber: payload.requestNumber ?? '',
+        publicStatusUrl: payload.publicStatusUrl ?? '/'
+      });
+      event.currentTarget.reset();
+      setSelectedFiles([]);
+    } catch (error) {
+      setSubmitState({
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Не вдалося відправити заявку.'
+      });
+    }
+  }
+
+  if (submitState.status === 'success') {
+    return (
+      <div className="rounded-lg border border-border bg-card p-6 shadow-card">
+        <p className="text-sm font-bold uppercase text-success">Заявку створено</p>
+        <h2 className="mt-2 text-3xl font-bold text-foreground">Номер заявки: {submitState.requestNumber}</h2>
+        <p className="mt-4 text-sm leading-6 text-muted">
+          Менеджер Kairos Parts зв&apos;яжеться з вами для уточнення деталей. Збережіть посилання на статус заявки.
+        </p>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <Link
+            href={submitState.publicStatusUrl}
+            className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-[#DFA600]"
+          >
+            Переглянути статус
+          </Link>
+          <button
+            type="button"
+            onClick={() => setSubmitState({ status: 'idle' })}
+            className="rounded-md border border-border px-5 py-3 text-sm font-semibold text-foreground transition hover:border-accent hover:bg-surface-muted"
+          >
+            Створити ще одну заявку
+          </button>
+          <Link
+            href="/"
+            className="rounded-md border border-border px-5 py-3 text-center text-sm font-semibold text-foreground transition hover:border-accent hover:bg-surface-muted"
+          >
+            Перейти на головну
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-card p-6 shadow-card">
+      <div className="grid gap-2 rounded-lg bg-surface-muted p-1 sm:grid-cols-2">
+        {(['quick', 'detailed'] as const).map((type) => (
+          <button
+            key={type}
+            type="button"
+            onClick={() => setFormType(type)}
+            className={`rounded-md px-4 py-3 text-sm font-bold transition ${
+              formType === type ? 'bg-primary text-white shadow-card' : 'text-muted hover:bg-card hover:text-foreground'
+            }`}
+          >
+            {type === 'quick' ? 'Швидка заявка' : 'Детальна заявка'}
+          </button>
+        ))}
+      </div>
+
+      {initialMode === 'file' ? (
+        <div className="mt-5 rounded-lg border border-accent/40 bg-[#FFFBEB] p-4 text-sm leading-6 text-foreground">
+          Ви перейшли в режим завантаження файлу або фото. Додайте файл у блоці нижче та коротко опишіть потребу.
+        </div>
+      ) : null}
+
+      <input type="hidden" name="formType" value={formType} />
+
+      <div className="mt-6 grid gap-5 md:grid-cols-2">
+        <label className="grid gap-2 text-sm font-semibold text-foreground">
+          Імʼя або назва компанії *
+          <input
+            name="contactName"
+            required
+            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+            placeholder="ТОВ Агро-Тех або Іваненко Іван"
+          />
+        </label>
+        <label className="grid gap-2 text-sm font-semibold text-foreground">
+          Телефон *
+          <input
+            name="phone"
+            required
+            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+            placeholder="+38 (067) 123 45 67"
+          />
+        </label>
+        <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
+          Email
+          <input
+            name="email"
+            type="email"
+            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+            placeholder="name@company.ua"
+          />
+        </label>
+      </div>
+
+      {formType === 'detailed' ? (
+        <div className="mt-6 grid gap-5 md:grid-cols-2">
+          <label className="grid gap-2 text-sm font-semibold text-foreground">
+            Тип техніки
+            <input name="equipmentType" className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
+          </label>
+          <label className="grid gap-2 text-sm font-semibold text-foreground">
+            Категорія
+            <select
+              name="category"
+              value={selectedCategory}
+              onChange={(event) => setSelectedCategory(event.target.value)}
+              className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+            >
+              <option value="">Не обрано</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.slug}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-2 text-sm font-semibold text-foreground">
+            Виробник
+            <select name="manufacturer" className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25">
+              <option value="">Не обрано</option>
+              {manufacturers.map((manufacturer) => (
+                <option key={manufacturer} value={manufacturer}>
+                  {manufacturer}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-2 text-sm font-semibold text-foreground">
+            Модель
+            <input name="model" className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
+          </label>
+          <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
+            VIN / серійний номер
+            <input name="vinOrSerial" className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
+          </label>
+        </div>
+      ) : (
+        <input type="hidden" name="category" value={selectedCategory} />
+      )}
+
+      <label className="mt-6 grid gap-2 text-sm font-semibold text-foreground">
+        Опис потреби *
+        <textarea
+          name="description"
+          required
+          className="min-h-32 rounded-md border border-border bg-white px-3 py-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+          placeholder="Опишіть, яку запчастину потрібно підібрати, для якої техніки, що відомо про вузол або проблему."
+        />
+      </label>
+
+      {formType === 'detailed' ? (
+        <label className="mt-6 grid gap-2 text-sm font-semibold text-foreground">
+          Коментар
+          <textarea
+            name="comment"
+            className="min-h-24 rounded-md border border-border bg-white px-3 py-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+            placeholder="Додаткові побажання, терміновість, аналоги, умови доставки."
+          />
+        </label>
+      ) : null}
+
+      <div className="mt-6 rounded-lg border border-dashed border-border bg-surface-muted p-5">
+        <label className="grid gap-3 text-sm font-semibold text-foreground">
+          Файл або фото
+          <input
+            name="files"
+            type="file"
+            multiple
+            accept={ALLOWED_UPLOAD_EXTENSIONS.join(',')}
+            onChange={(event) => setSelectedFiles(Array.from(event.target.files ?? []))}
+            className="block w-full rounded-md border border-border bg-white px-3 py-2 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-bold file:text-foreground"
+          />
+        </label>
+        <p className="mt-3 text-xs leading-5 text-muted">
+          Дозволені формати: JPG, PNG, PDF, XLS, XLSX, CSV, DOC, DOCX. Максимальний розмір одного файлу: {maxSizeMb} MB.
+        </p>
+        {selectedFiles.length > 0 ? (
+          <div className="mt-4 grid gap-2">
+            {selectedFiles.map((file) => (
+              <div key={`${file.name}-${file.size}`} className="rounded-md border border-border bg-card px-3 py-2 text-xs text-muted">
+                {file.name} — {(file.size / 1024 / 1024).toFixed(2)} MB
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {submitState.status === 'error' ? (
+        <div className="mt-5 rounded-lg border border-danger/30 bg-[#FEF3F2] p-4 text-sm leading-6 text-danger">
+          <p className="font-bold">{submitState.message}</p>
+          {submitState.errors?.length ? (
+            <ul className="mt-2 list-inside list-disc">
+              {submitState.errors.map((error) => (
+                <li key={error}>{error}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+
+      <button
+        type="submit"
+        disabled={submitState.status === 'submitting'}
+        className="mt-6 w-full rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-[#DFA600] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+      >
+        {submitState.status === 'submitting' ? 'Створюємо заявку...' : 'Створити заявку'}
+      </button>
+    </form>
+  );
+}

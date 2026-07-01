@@ -9,4 +9,5 @@ coverage
 *.log
 tsconfig.tsbuildinfo
 dev-server.log
+uploads
 dev-server.log
