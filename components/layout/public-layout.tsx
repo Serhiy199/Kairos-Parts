@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 import { PublicMobileMenu } from './public-mobile-menu';
@@ -12,12 +13,19 @@ const navItems = [
 
 export function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="public-brand-type min-h-screen bg-background">
       <header className="sticky top-0 z-40 bg-primary text-white shadow-panel">
         <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-          <Link href="/" className="flex shrink-0 items-center gap-3 font-bold">
-            <span className="grid size-9 place-items-center rounded-md border border-accent text-accent">KP</span>
-            <span>Kairos Parts</span>
+          <Link href="/" className="flex shrink-0 items-center" aria-label="Kairos Parts">
+            <Image
+              src="/images/kairos-logo.png"
+              alt="Kairos Parts"
+              width={206}
+              height={48}
+              priority
+              sizes="206px"
+              className="h-12 w-auto rounded-md object-contain"
+            />
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-sidebar-text md:flex">
             {navItems.map((item) => (
@@ -41,7 +49,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
             </Link>
             <Link
               href="/request"
-              className="rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-[#DFA600]"
+              className="brand-action rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-[#DFA600]"
             >
               Створити заявку
             </Link>
@@ -53,9 +61,15 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-border bg-card">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr] lg:px-8">
           <div>
-            <div className="flex items-center gap-3 font-bold text-foreground">
-              <span className="grid size-9 place-items-center rounded-md border border-accent bg-primary text-accent">KP</span>
-              <span>Kairos Parts</span>
+            <div className="inline-flex">
+              <Image
+                src="/images/kairos-logo.png"
+                alt="Kairos Parts"
+                width={206}
+                height={48}
+                sizes="206px"
+                className="h-12 w-auto object-contain"
+              />
             </div>
             <p className="mt-4 max-w-md text-sm leading-6 text-muted">
               Єдина точка контакту для підбору та постачання запчастин для аграрної, вантажної,

@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 type NavItem = {
@@ -18,9 +19,16 @@ export function DashboardShell({ children, title, subtitle, navItems, homeHref }
     <div className="min-h-screen bg-background lg:flex">
       <aside className="bg-dark-sidebar text-sidebar-text lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex min-h-16 items-center justify-between px-4 lg:min-h-20">
-          <Link href={homeHref} className="flex items-center gap-3 font-bold text-white">
-            <span className="grid size-9 place-items-center rounded-md border border-accent text-accent">KP</span>
-            <span>Kairos Parts</span>
+          <Link href={homeHref} className="flex items-center" aria-label="Kairos Parts">
+            <Image
+              src="/images/kairos-logo.png"
+              alt="Kairos Parts"
+              width={206}
+              height={48}
+              priority
+              sizes="206px"
+              className="h-12 w-auto rounded-md object-contain"
+            />
           </Link>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-3 text-sm lg:flex-1 lg:flex-col lg:overflow-visible lg:pb-0">

@@ -38,6 +38,11 @@ const config: Config = {
       boxShadow: {
         card: '0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.06)',
         panel: '0 12px 32px rgba(7, 17, 31, 0.12)'
+      },
+      fontFamily: {
+        ui: ['var(--font-ui)', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['var(--font-brand)', 'var(--font-display)', 'var(--font-ui)', 'ui-sans-serif', 'system-ui'],
+        brand: ['var(--font-brand)', 'var(--font-display)', 'var(--font-ui)', 'ui-sans-serif', 'system-ui']
       }
     }
   },

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
 import type { CatalogCategory } from '@/lib/catalog/catalog-data';
-import { ALLOWED_UPLOAD_EXTENSIONS } from '@/lib/files/upload-policy';
+import { ALLOWED_UPLOAD_EXTENSIONS, ALLOWED_UPLOAD_MIME_TYPES } from '@/lib/files/upload-policy';
 
 type RequestFormProps = {
   categories: CatalogCategory[];
@@ -31,8 +31,62 @@ export function RequestForm({ categories, initialCategory, initialMode, maxSizeM
     [categories, selectedCategory]
   );
   const manufacturers = selectedCategoryData?.manufacturers ?? [];
+
+  function validateFiles(files: File[]) {
+    const maxSizeBytes = maxSizeMb * 1024 * 1024;
+    const errors: string[] = [];
+
+    for (const file of files) {
+      const lowerName = file.name.toLowerCase();
+      const hasAllowedExtension = ALLOWED_UPLOAD_EXTENSIONS.some((extension) => lowerName.endsWith(extension));
+      const hasAllowedMimeType = ALLOWED_UPLOAD_MIME_TYPES.includes(file.type as (typeof ALLOWED_UPLOAD_MIME_TYPES)[number]) || file.type === '';
+
+      if (!hasAllowedExtension || !hasAllowedMimeType) {
+        errors.push(`Файл "${file.name}" має непідтримуваний формат.`);
+      }
+
+      if (file.size > maxSizeBytes) {
+        errors.push(`Файл "${file.name}" перевищує ${maxSizeMb} MB.`);
+      }
+    }
+
+    return errors;
+  }
+
+  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    const errors = validateFiles(files);
+
+    setSelectedFiles(files);
+
+    if (errors.length > 0) {
+      setSubmitState({
+        status: 'error',
+        message: 'Перевірте файли перед відправкою.',
+        errors
+      });
+      return;
+    }
+
+    if (submitState.status === 'error') {
+      setSubmitState({ status: 'idle' });
+    }
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    const fileErrors = validateFiles(selectedFiles);
+
+    if (fileErrors.length > 0) {
+      setSubmitState({
+        status: 'error',
+        message: 'Перевірте файли перед відправкою.',
+        errors: fileErrors
+      });
+      return;
+    }
+
     setSubmitState({ status: 'submitting' });
 
     const formData = new FormData(event.currentTarget);
@@ -238,7 +292,7 @@ export function RequestForm({ categories, initialCategory, initialMode, maxSizeM
             type="file"
             multiple
             accept={ALLOWED_UPLOAD_EXTENSIONS.join(',')}
-            onChange={(event) => setSelectedFiles(Array.from(event.target.files ?? []))}
+            onChange={handleFileChange}
             className="block w-full rounded-md border border-border bg-white px-3 py-2 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-bold file:text-foreground"
           />
         </label>

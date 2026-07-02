@@ -44,8 +44,8 @@ body {
   background: var(--color-background);
   color: var(--color-foreground);
   font-family:
+    var(--font-ui),
     Inter,
-    Manrope,
     ui-sans-serif,
     system-ui,
     -apple-system,
@@ -64,4 +64,15 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+.public-brand-type :where(h1, h2, .brand-action) {
+  font-family:
+    var(--font-brand),
+    var(--font-display),
+    var(--font-ui),
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.01em;
 }

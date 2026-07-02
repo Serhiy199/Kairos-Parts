@@ -49,7 +49,7 @@ export function PublicMobileMenu({ navItems }: { navItems: NavItem[] }) {
             <Link
               href="/request"
               onClick={() => setIsOpen(false)}
-              className="mt-2 rounded-md bg-accent px-3 py-2 text-center font-bold text-foreground transition hover:bg-[#DFA600]"
+              className="brand-action mt-2 rounded-md bg-accent px-3 py-2 text-center font-bold text-foreground transition hover:bg-[#DFA600]"
             >
               Створити заявку
             </Link>
