@@ -1,5 +1,6 @@
 import { UserRole } from '@prisma/client';
 
+import { hashPassword } from '@/lib/auth/password';
 import { prisma } from '@/lib/prisma';
 
 const seedUsers = [
@@ -25,6 +26,8 @@ async function main() {
     throw new Error('Seed is disabled. Set ALLOW_DEV_SEED=true only for a local development database.');
   }
 
+  const clientPasswordHash = await hashPassword('ClientPass123!');
+
   for (const user of seedUsers) {
     await prisma.user.upsert({
       where: { email: user.email },
@@ -36,7 +39,7 @@ async function main() {
         email: user.email,
         name: user.name,
         role: user.role,
-        passwordHash: null
+        passwordHash: user.role === UserRole.CLIENT ? clientPasswordHash : null
       }
     });
   }

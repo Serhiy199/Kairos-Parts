@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
 import { saveRequestFileLocal } from '@/lib/files/local-storage';
+import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 import { generatePublicStatusToken, generateRequestNumber } from '@/lib/requests/identifiers';
 import { parseRequestFormData } from '@/lib/requests/validation';
@@ -22,10 +23,6 @@ export function GET() {
 }
 
 export const runtime = 'nodejs';
-
-function hasDatabaseUrl() {
-  return Boolean(process.env.DATABASE_URL && process.env.DATABASE_URL.trim().length > 0);
-}
 
 function buildDescription(description: string, comment?: string) {
   if (!comment) {
@@ -84,7 +81,7 @@ export async function POST(request: Request) {
       data: {
         requestNumber,
         publicStatusToken,
-        source: 'WEBSITE',
+        source: clientProfile && parsed.data.source === 'client' ? 'CLIENT_DASHBOARD' : 'WEBSITE',
         status: 'NEW',
         clientId: clientProfile?.id,
         guestName: clientProfile ? null : parsed.data.contactName,

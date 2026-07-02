@@ -9,7 +9,14 @@ import { ALLOWED_UPLOAD_EXTENSIONS, ALLOWED_UPLOAD_MIME_TYPES } from '@/lib/file
 type RequestFormProps = {
   categories: CatalogCategory[];
   initialCategory?: string;
+  initialContact?: {
+    contactName?: string;
+    companyName?: string;
+    phone?: string;
+    email?: string;
+  };
   initialMode?: string;
+  initialSource?: 'client';
   maxSizeMb: number;
 };
 
@@ -19,7 +26,7 @@ type SubmitState =
   | { status: 'success'; requestNumber: string; publicStatusUrl: string }
   | { status: 'error'; message: string; errors?: string[] };
 
-export function RequestForm({ categories, initialCategory, initialMode, maxSizeMb }: RequestFormProps) {
+export function RequestForm({ categories, initialCategory, initialContact, initialMode, initialSource, maxSizeMb }: RequestFormProps) {
   const initialCategoryExists = categories.some((category) => category.slug === initialCategory);
   const [formType, setFormType] = useState<'quick' | 'detailed'>(initialMode === 'file' ? 'detailed' : 'quick');
   const [selectedCategory, setSelectedCategory] = useState(initialCategoryExists ? (initialCategory ?? '') : '');
@@ -186,6 +193,7 @@ export function RequestForm({ categories, initialCategory, initialMode, maxSizeM
       ) : null}
 
       <input type="hidden" name="formType" value={formType} />
+      {initialSource ? <input type="hidden" name="source" value={initialSource} /> : null}
 
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         <label className="grid gap-2 text-sm font-semibold text-foreground">
@@ -193,6 +201,7 @@ export function RequestForm({ categories, initialCategory, initialMode, maxSizeM
           <input
             name="contactName"
             required
+            defaultValue={initialContact?.contactName}
             className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
             placeholder="ТОВ Агро-Тех або Іваненко Іван"
           />
@@ -202,15 +211,28 @@ export function RequestForm({ categories, initialCategory, initialMode, maxSizeM
           <input
             name="phone"
             required
+            defaultValue={initialContact?.phone}
             className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
             placeholder="+38 (067) 123 45 67"
           />
         </label>
+        {initialContact ? (
+          <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
+            Назва компанії
+            <input
+              name="companyName"
+              defaultValue={initialContact.companyName}
+              className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+              placeholder="ТОВ Агро-Тех"
+            />
+          </label>
+        ) : null}
         <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
           Email
           <input
             name="email"
             type="email"
+            defaultValue={initialContact?.email}
             className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
             placeholder="name@company.ua"
           />

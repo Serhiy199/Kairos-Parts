@@ -1,4 +1,6 @@
+import { auth } from '@/auth';
 import { catalogCategories, getCategoryBySlug } from '@/lib/catalog/catalog-data';
+import { getClientProfileForSession } from '@/lib/client/access';
 import { getUploadMaxSizeMb } from '@/lib/files/upload-policy';
 
 import { RequestForm } from './request-form';
@@ -6,11 +8,22 @@ import { RequestForm } from './request-form';
 export default async function RequestPage({
   searchParams
 }: {
-  searchParams: Promise<{ category?: string; mode?: string }>;
+  searchParams: Promise<{ category?: string; mode?: string; source?: string }>;
 }) {
   const params = await searchParams;
+  const session = await auth();
+  const clientProfile = session?.user?.role === 'CLIENT' ? await getClientProfileForSession(session.user.id) : null;
   const initialCategory = params.category && getCategoryBySlug(params.category) ? params.category : undefined;
   const maxSizeMb = getUploadMaxSizeMb();
+  const initialContact = clientProfile
+    ? {
+        contactName: clientProfile.contactName ?? clientProfile.user.name ?? '',
+        companyName: clientProfile.companyName ?? '',
+        phone: clientProfile.phone ?? clientProfile.user.phone ?? '',
+        email: clientProfile.email ?? clientProfile.user.email ?? ''
+      }
+    : undefined;
+  const initialSource = session?.user?.role === 'CLIENT' && params.source === 'client' ? 'client' : undefined;
 
   return (
     <>
@@ -29,7 +42,14 @@ export default async function RequestPage({
 
       <section className="bg-background px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_0.45fr] lg:items-start">
-          <RequestForm categories={[...catalogCategories]} initialCategory={initialCategory} initialMode={params.mode} maxSizeMb={maxSizeMb} />
+          <RequestForm
+            categories={[...catalogCategories]}
+            initialCategory={initialCategory}
+            initialContact={initialContact}
+            initialMode={params.mode}
+            initialSource={initialSource}
+            maxSizeMb={maxSizeMb}
+          />
           <aside className="rounded-lg border border-border bg-card p-6 shadow-card">
             <p className="text-sm font-bold uppercase text-accent">Що підготувати</p>
             <div className="mt-5 grid gap-4 text-sm leading-6 text-muted">
