@@ -11,3 +11,7 @@ tsconfig.tsbuildinfo
 dev-server.log
 uploads
 dev-server.log
+
+.vercel
+.env*.local
+.codex
