@@ -1,6 +1,13 @@
 import { contractNotImplemented } from '@/lib/api/not-implemented';
+import { crmAccessError, getAdminApiSession } from '@/lib/admin/access';
 
-export function POST() {
+export async function POST() {
+  const access = await getAdminApiSession();
+
+  if (!access.ok) {
+    return crmAccessError(access);
+  }
+
   return contractNotImplemented({
     module: 'catalog',
     method: 'POST',

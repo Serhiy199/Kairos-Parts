@@ -1,8 +1,11 @@
 import Link from 'next/link';
 
 import { catalogCategories } from '@/lib/catalog/catalog-data';
+import { requireAdminSession } from '@/lib/admin/access';
 
-export default function AdminCategoriesPage() {
+export default async function AdminCategoriesPage() {
+  await requireAdminSession();
+
   return (
     <section className="mx-auto max-w-7xl">
       <div className="rounded-lg border border-border bg-card p-6 shadow-card">

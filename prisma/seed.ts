@@ -27,6 +27,7 @@ async function main() {
   }
 
   const clientPasswordHash = await hashPassword('ClientPass123!');
+  const staffPasswordHash = await hashPassword('StaffPass123!');
 
   for (const user of seedUsers) {
     await prisma.user.upsert({
@@ -39,7 +40,7 @@ async function main() {
         email: user.email,
         name: user.name,
         role: user.role,
-        passwordHash: user.role === UserRole.CLIENT ? clientPasswordHash : null
+        passwordHash: user.role === UserRole.CLIENT ? clientPasswordHash : staffPasswordHash
       }
     });
   }

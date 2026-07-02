@@ -38,7 +38,7 @@ export const authConfig = {
           }
         });
 
-        if (!user?.passwordHash || user.role !== 'CLIENT') {
+        if (!user?.passwordHash || !['CLIENT', 'MANAGER', 'ADMIN'].includes(user.role)) {
           return null;
         }
 

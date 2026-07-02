@@ -1,4 +1,5 @@
 import { DashboardShell } from '@/components/layout/dashboard-shell';
+import { requireCrmSession } from '@/lib/admin/access';
 
 const adminNavItems = [
   { href: '/admin', label: 'Панель' },
@@ -9,9 +10,12 @@ const adminNavItems = [
   { href: '/admin/settings', label: 'Налаштування' }
 ];
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const session = await requireCrmSession();
+  const navItems = session.user.role === 'ADMIN' ? adminNavItems : adminNavItems.filter((item) => !['/admin/categories', '/admin/manufacturers', '/admin/settings'].includes(item.href));
+
   return (
-    <DashboardShell title="CRM менеджера" subtitle="Admin / CRM" navItems={adminNavItems} homeHref="/admin">
+    <DashboardShell title="CRM менеджера" subtitle={session.user.role === 'ADMIN' ? 'Admin / CRM' : 'Manager / CRM'} navItems={navItems} homeHref="/admin">
       {children}
     </DashboardShell>
   );

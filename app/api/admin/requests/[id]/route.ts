@@ -1,12 +1,40 @@
-import { contractNotImplemented } from '@/lib/api/not-implemented';
+import { crmAccessError, getCrmApiSession } from '@/lib/admin/access';
+import { prisma } from '@/lib/prisma';
 
-export function GET() {
-  return contractNotImplemented({
-    module: 'admin-crm',
-    method: 'GET',
-    path: '/api/admin/requests/[id]',
-    auth: 'manager-or-admin',
-    summary: 'Read full CRM request detail including files, documents, vehicle, OCR results, comments, and history.',
-    response: 'RequestDetail with CRM relations'
+export const runtime = 'nodejs';
+
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const access = await getCrmApiSession();
+
+  if (!access.ok) {
+    return crmAccessError(access);
+  }
+
+  const { id } = await params;
+  const request = await prisma.request.findUnique({
+    where: { id },
+    include: {
+      client: true,
+      category: true,
+      subcategory: true,
+      manufacturer: true,
+      vehicle: true,
+      assignedManager: { select: { id: true, name: true, email: true, role: true } },
+      files: true,
+      documents: true,
+      comments: {
+        where: { internal: true },
+        include: { author: { select: { id: true, name: true, email: true, role: true } } }
+      },
+      statusHistory: {
+        include: { changedByUser: { select: { id: true, name: true, email: true, role: true } } }
+      }
+    }
   });
+
+  if (!request) {
+    return Response.json({ status: 'not_found' }, { status: 404 });
+  }
+
+  return Response.json({ request });
 }

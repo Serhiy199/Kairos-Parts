@@ -1,5 +1,8 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 type NavItem = {
   href: string;
@@ -15,6 +18,8 @@ type DashboardShellProps = {
 };
 
 export function DashboardShell({ children, title, subtitle, navItems, homeHref }: DashboardShellProps) {
+  const pathname = usePathname();
+
   return (
     <div className="min-h-screen bg-background lg:flex">
       <aside className="bg-dark-sidebar text-sidebar-text lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
@@ -32,15 +37,21 @@ export function DashboardShell({ children, title, subtitle, navItems, homeHref }
           </Link>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-3 text-sm lg:flex-1 lg:flex-col lg:overflow-visible lg:pb-0">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="whitespace-nowrap rounded-md px-3 py-2 transition hover:bg-white/10 hover:text-white lg:whitespace-normal"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const isActive = pathname === item.href || (item.href !== homeHref && pathname.startsWith(`${item.href}/`));
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`whitespace-nowrap rounded-md px-3 py-2 transition lg:whitespace-normal ${
+                  isActive ? 'bg-accent text-foreground' : 'hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
       </aside>
       <div className="min-w-0 flex-1 lg:pl-64">

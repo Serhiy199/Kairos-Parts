@@ -1,6 +1,8 @@
 import { getAllManufacturers } from '@/lib/catalog/catalog-data';
+import { requireAdminSession } from '@/lib/admin/access';
 
-export default function AdminManufacturersPage() {
+export default async function AdminManufacturersPage() {
+  await requireAdminSession();
   const manufacturers = getAllManufacturers();
 
   return (
