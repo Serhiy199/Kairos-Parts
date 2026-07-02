@@ -16,6 +16,16 @@ type RequestFormProps = {
     email?: string;
   };
   initialMode?: string;
+  initialRequest?: {
+    vehicleId?: string;
+    category?: string;
+    equipmentType?: string;
+    manufacturer?: string;
+    model?: string;
+    vinOrSerial?: string;
+    description?: string;
+    comment?: string;
+  };
   initialSource?: 'client';
   maxSizeMb: number;
 };
@@ -26,10 +36,11 @@ type SubmitState =
   | { status: 'success'; requestNumber: string; publicStatusUrl: string }
   | { status: 'error'; message: string; errors?: string[] };
 
-export function RequestForm({ categories, initialCategory, initialContact, initialMode, initialSource, maxSizeMb }: RequestFormProps) {
-  const initialCategoryExists = categories.some((category) => category.slug === initialCategory);
-  const [formType, setFormType] = useState<'quick' | 'detailed'>(initialMode === 'file' ? 'detailed' : 'quick');
-  const [selectedCategory, setSelectedCategory] = useState(initialCategoryExists ? (initialCategory ?? '') : '');
+export function RequestForm({ categories, initialCategory, initialContact, initialMode, initialRequest, initialSource, maxSizeMb }: RequestFormProps) {
+  const requestCategory = initialRequest?.category || initialCategory;
+  const initialCategoryExists = categories.some((category) => category.slug === requestCategory);
+  const [formType, setFormType] = useState<'quick' | 'detailed'>(initialMode === 'file' || initialRequest ? 'detailed' : 'quick');
+  const [selectedCategory, setSelectedCategory] = useState(initialCategoryExists ? (requestCategory ?? '') : '');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
 
@@ -194,6 +205,7 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
 
       <input type="hidden" name="formType" value={formType} />
       {initialSource ? <input type="hidden" name="source" value={initialSource} /> : null}
+      {initialRequest?.vehicleId ? <input type="hidden" name="vehicleId" value={initialRequest.vehicleId} /> : null}
 
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         <label className="grid gap-2 text-sm font-semibold text-foreground">
@@ -243,7 +255,7 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
         <div className="mt-6 grid gap-5 md:grid-cols-2">
           <label className="grid gap-2 text-sm font-semibold text-foreground">
             Тип техніки
-            <input name="equipmentType" className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
+            <input name="equipmentType" defaultValue={initialRequest?.equipmentType} className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
           </label>
           <label className="grid gap-2 text-sm font-semibold text-foreground">
             Категорія
@@ -263,8 +275,11 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
           </label>
           <label className="grid gap-2 text-sm font-semibold text-foreground">
             Виробник
-            <select name="manufacturer" className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25">
+            <select name="manufacturer" defaultValue={initialRequest?.manufacturer ?? ''} className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25">
               <option value="">Не обрано</option>
+              {initialRequest?.manufacturer && !manufacturers.includes(initialRequest.manufacturer) ? (
+                <option value={initialRequest.manufacturer}>{initialRequest.manufacturer}</option>
+              ) : null}
               {manufacturers.map((manufacturer) => (
                 <option key={manufacturer} value={manufacturer}>
                   {manufacturer}
@@ -274,11 +289,11 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
           </label>
           <label className="grid gap-2 text-sm font-semibold text-foreground">
             Модель
-            <input name="model" className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
+            <input name="model" defaultValue={initialRequest?.model} className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
           </label>
           <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
             VIN / серійний номер
-            <input name="vinOrSerial" className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
+            <input name="vinOrSerial" defaultValue={initialRequest?.vinOrSerial} className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
           </label>
         </div>
       ) : (
@@ -290,6 +305,7 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
         <textarea
           name="description"
           required
+          defaultValue={initialRequest?.description}
           className="min-h-32 rounded-md border border-border bg-white px-3 py-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
           placeholder="Опишіть, яку запчастину потрібно підібрати, для якої техніки, що відомо про вузол або проблему."
         />
@@ -300,6 +316,7 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
           Коментар
           <textarea
             name="comment"
+            defaultValue={initialRequest?.comment}
             className="min-h-24 rounded-md border border-border bg-white px-3 py-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
             placeholder="Додаткові побажання, терміновість, аналоги, умови доставки."
           />

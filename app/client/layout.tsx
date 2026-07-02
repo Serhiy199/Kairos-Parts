@@ -4,6 +4,8 @@ import { requireClientSession } from '@/lib/client/access';
 const clientNavItems = [
   { href: '/client', label: 'Панель керування' },
   { href: '/client/requests', label: 'Мої заявки' },
+  { href: '/client/vehicles', label: 'Мій парк техніки' },
+  { href: '/client/documents', label: 'Документи' },
   { href: '/client/profile', label: 'Профіль' }
 ];
 

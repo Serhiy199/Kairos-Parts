@@ -28,24 +28,35 @@ async function getClientProfileId() {
   return profile?.id ? { status: 'ok' as const, clientId: profile.id } : { status: 'profile_not_found' as const };
 }
 
-export async function GET() {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const result = await getClientProfileId();
+  const { id } = await params;
 
   if (result.status !== 'ok') {
     const statusCode = result.status === 'unauthorized' ? 401 : result.status === 'forbidden' ? 403 : result.status === 'profile_not_found' ? 404 : 503;
     return Response.json({ status: result.status }, { status: statusCode });
   }
 
-  const vehicles = await prisma.vehicle.findMany({
-    where: { clientId: result.clientId },
-    orderBy: { createdAt: 'desc' }
+  const vehicle = await prisma.vehicle.findFirst({
+    where: { id, clientId: result.clientId },
+    include: {
+      requests: {
+        select: { id: true, requestNumber: true, status: true, createdAt: true }
+      },
+      documents: true
+    }
   });
 
-  return Response.json({ items: vehicles });
+  if (!vehicle) {
+    return Response.json({ status: 'not_found' }, { status: 404 });
+  }
+
+  return Response.json({ vehicle });
 }
 
-export async function POST(request: Request) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const result = await getClientProfileId();
+  const { id } = await params;
 
   if (result.status !== 'ok') {
     const statusCode = result.status === 'unauthorized' ? 401 : result.status === 'forbidden' ? 403 : result.status === 'profile_not_found' ? 404 : 503;
@@ -63,9 +74,18 @@ export async function POST(request: Request) {
     return Response.json({ status: 'validation_error', errors: ['type, manufacturer and model are required.'] }, { status: 400 });
   }
 
-  const vehicle = await prisma.vehicle.create({
+  const vehicle = await prisma.vehicle.findFirst({
+    where: { id, clientId: result.clientId },
+    select: { id: true }
+  });
+
+  if (!vehicle) {
+    return Response.json({ status: 'not_found' }, { status: 404 });
+  }
+
+  const updatedVehicle = await prisma.vehicle.update({
+    where: { id: vehicle.id },
     data: {
-      clientId: result.clientId,
       type,
       manufacturer,
       model,
@@ -75,5 +95,5 @@ export async function POST(request: Request) {
     }
   });
 
-  return Response.json({ vehicle }, { status: 201 });
+  return Response.json({ vehicle: updatedVehicle });
 }

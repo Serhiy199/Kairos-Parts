@@ -64,6 +64,10 @@ export default async function ClientRequestsPage() {
                   <Link href={`/client/requests/${request.id}`} className="font-bold text-foreground transition hover:text-accent">
                     Деталі
                   </Link>
+                  <span className="mx-2 text-border">|</span>
+                  <Link href={`/request?source=client&repeatRequestId=${request.id}`} className="font-bold text-foreground transition hover:text-accent">
+                    Повторити
+                  </Link>
                 </td>
               </tr>
             ))}

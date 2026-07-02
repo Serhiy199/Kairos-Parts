@@ -1,6 +1,4 @@
-import Link from 'next/link';
-
-import { loginClient } from '../actions';
+import { LoginForm } from './login-form';
 
 const errorMessages: Record<string, string> = {
   validation: 'Вкажіть email і пароль.',
@@ -32,25 +30,7 @@ export default async function LoginPage({
             {errorMessage}
           </div>
         ) : null}
-        <form action={loginClient} className="mt-6 grid gap-4">
-          <label className="grid gap-2 text-sm font-semibold text-foreground">
-            Email
-            <input name="email" type="email" required className="h-11 rounded-md border border-border px-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
-          </label>
-          <label className="grid gap-2 text-sm font-semibold text-foreground">
-            Пароль
-            <input name="password" type="password" required className="h-11 rounded-md border border-border px-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
-          </label>
-          <button type="submit" className="rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-[#DFA600]">
-            Увійти
-          </button>
-        </form>
-        <p className="mt-5 text-sm text-muted">
-          Ще немає акаунта?{' '}
-          <Link href="/register" className="font-bold text-foreground transition hover:text-accent">
-            Зареєструватися
-          </Link>
-        </p>
+        <LoginForm />
       </div>
     </div>
   );

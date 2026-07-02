@@ -18,10 +18,14 @@ export default async function ClientProfilePage() {
   }
 
   const rows = [
+    ['Тип клієнта', profile.clientType === 'BUSINESS' ? 'ФОП / Юр особа' : 'Фіз особа'],
     ['Контактна особа', profile.contactName ?? profile.user.name ?? '—'],
+    ['Імʼя', profile.firstName ?? '—'],
+    ['Прізвище', profile.lastName ?? '—'],
     ['Email', profile.email ?? profile.user.email ?? '—'],
     ['Телефон', profile.phone ?? profile.user.phone ?? '—'],
     ['Назва компанії', profile.companyName ?? '—'],
+    ['ЄДРПОУ / ІПН', profile.taxId ?? '—'],
     ['Дата створення профілю', profile.createdAt.toLocaleDateString('uk-UA')]
   ];
 

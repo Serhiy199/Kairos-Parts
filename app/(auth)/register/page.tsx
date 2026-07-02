@@ -1,6 +1,4 @@
-import Link from 'next/link';
-
-import { registerClient } from '../actions';
+import { RegisterForm } from './register-form';
 
 const errorMessages: Record<string, string> = {
   validation: 'Перевірте обовʼязкові поля. Пароль має містити щонайменше 8 символів і збігатися з підтвердженням.',
@@ -27,41 +25,7 @@ export default async function RegisterPage({
             {errorMessage}
           </div>
         ) : null}
-        <form action={registerClient} className="mt-6 grid gap-4 md:grid-cols-2">
-          <label className="grid gap-2 text-sm font-semibold text-foreground">
-            Імʼя / контактна особа *
-            <input name="contactName" required className="h-11 rounded-md border border-border px-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
-          </label>
-          <label className="grid gap-2 text-sm font-semibold text-foreground">
-            Назва компанії
-            <input name="companyName" className="h-11 rounded-md border border-border px-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
-          </label>
-          <label className="grid gap-2 text-sm font-semibold text-foreground">
-            Email *
-            <input name="email" type="email" required className="h-11 rounded-md border border-border px-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
-          </label>
-          <label className="grid gap-2 text-sm font-semibold text-foreground">
-            Телефон *
-            <input name="phone" required className="h-11 rounded-md border border-border px-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
-          </label>
-          <label className="grid gap-2 text-sm font-semibold text-foreground">
-            Пароль *
-            <input name="password" type="password" required minLength={8} className="h-11 rounded-md border border-border px-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
-          </label>
-          <label className="grid gap-2 text-sm font-semibold text-foreground">
-            Підтвердження пароля *
-            <input name="confirmPassword" type="password" required minLength={8} className="h-11 rounded-md border border-border px-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
-          </label>
-          <button type="submit" className="rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-[#DFA600] md:col-span-2">
-            Зареєструватися
-          </button>
-        </form>
-        <p className="mt-5 text-sm text-muted">
-          Уже маєте акаунт?{' '}
-          <Link href="/login" className="font-bold text-foreground transition hover:text-accent">
-            Увійти
-          </Link>
-        </p>
+        <RegisterForm />
       </div>
     </div>
   );

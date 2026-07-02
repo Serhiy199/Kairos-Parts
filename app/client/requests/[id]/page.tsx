@@ -61,6 +61,11 @@ export default async function ClientRequestDetailPage({ params }: { params: Prom
             Public status URL
           </Link>
         </div>
+        <div className="mt-5">
+          <Link href={`/request?source=client&repeatRequestId=${request.id}`} className="inline-flex rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-[#DFA600]">
+            Повторити заявку
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

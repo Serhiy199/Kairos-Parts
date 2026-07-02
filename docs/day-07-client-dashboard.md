@@ -5,6 +5,7 @@
 Day 7 додав базовий особистий кабінет клієнта без Day 8 функціональності:
 
 - реєстрацію CLIENT через `/register`;
+- реєстрацію CLIENT за типом акаунта: `ФОП / Юр особа` або `Фіз особа`;
 - логін CLIENT через `/login`;
 - password hashing через Node.js `crypto.scrypt`;
 - role-based protection для `/client/*`;
@@ -23,14 +24,54 @@ Day 7 додав базовий особистий кабінет клієнта
 - `ClientProfile`;
 - `passwordHash`, а не plain text password.
 
-Поля:
+На сторінці є перемикач типу акаунта у вигляді двох tab-кнопок:
 
-- ім'я / контактна особа;
-- email;
+- `ФОП / Юр особа`;
+- `Фіз особа`.
+
+### ФОП / Юр особа
+
+Обов'язкові поля:
+
+- назва компанії / ФОП;
+- ЄДРПОУ / ІПН;
+- контактна особа;
 - телефон;
+- email;
 - пароль;
-- підтвердження пароля;
-- назва компанії optional.
+- підтвердження пароля.
+
+У `ClientProfile` зберігається:
+
+- `clientType = BUSINESS`;
+- `companyName`;
+- `taxId`;
+- `contactName`;
+- `phone`;
+- `email`.
+
+### Фіз особа
+
+Обов'язкові поля:
+
+- ім'я;
+- телефон;
+- email;
+- пароль;
+- підтвердження пароля.
+
+Необов'язкове поле:
+
+- прізвище.
+
+У `ClientProfile` зберігається:
+
+- `clientType = INDIVIDUAL`;
+- `firstName`;
+- `lastName`, якщо вказане;
+- `contactName`, сформований з імені та прізвища;
+- `phone`;
+- `email`.
 
 Email verification, SMS verification, OAuth і forgot/reset password не реалізовувались.
 
@@ -47,6 +88,8 @@ Email verification, SMS verification, OAuth і forgot/reset password не реа
 - після успішного входу перенаправляє на `/client`.
 
 Manager/Admin login UI не реалізовано на Day 7.
+
+UI входу має перемикач `ФОП / Юр особа` / `Фіз особа`, але на Day 7 він змінює тільки label/placeholder поля логіну. Фактичний backend login працює через email + password. Вхід через телефон, ЄДРПОУ або ІПН винесено як майбутнє покращення.
 
 ## Password hashing
 

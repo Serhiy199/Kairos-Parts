@@ -4,6 +4,7 @@ import { getUploadMaxSizeBytes, isAllowedUpload } from '@/lib/files/upload-polic
 export type ParsedRequestInput = {
   formType: 'quick' | 'detailed';
   source?: 'client';
+  vehicleId?: string;
   contactName: string;
   companyName?: string;
   phone: string;
@@ -33,6 +34,7 @@ export function parseRequestFormData(formData: FormData): { data?: ParsedRequest
   const errors: string[] = [];
   const formType = readString(formData, 'formType') === 'detailed' ? 'detailed' : 'quick';
   const source = readString(formData, 'source') === 'client' ? 'client' : undefined;
+  const vehicleId = readString(formData, 'vehicleId');
   const companyName = readString(formData, 'companyName');
   const contactName = readString(formData, 'contactName') || companyName;
   const phone = readString(formData, 'phone');
@@ -82,6 +84,7 @@ export function parseRequestFormData(formData: FormData): { data?: ParsedRequest
     data: {
       formType,
       source,
+      vehicleId: vehicleId || undefined,
       contactName,
       companyName: companyName || undefined,
       phone,

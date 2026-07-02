@@ -13,19 +13,40 @@ function readString(formData: FormData, key: string) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 export async function registerClient(formData: FormData) {
   if (!hasDatabaseUrl()) {
     redirect('/register?error=database');
   }
 
-  const contactName = readString(formData, 'contactName');
+  const accountType = readString(formData, 'accountType') === 'INDIVIDUAL' ? 'INDIVIDUAL' : 'BUSINESS';
+  const companyName = readString(formData, 'companyName');
+  const taxId = readString(formData, 'taxId');
+  const firstName = readString(formData, 'firstName');
+  const lastName = readString(formData, 'lastName');
+  const contactName = accountType === 'BUSINESS' ? readString(formData, 'contactName') : [firstName, lastName].filter(Boolean).join(' ');
   const email = readString(formData, 'email').toLowerCase();
   const phone = readString(formData, 'phone');
-  const companyName = readString(formData, 'companyName');
   const password = readString(formData, 'password');
   const confirmPassword = readString(formData, 'confirmPassword');
 
-  if (!contactName || !email || !phone || !password || password !== confirmPassword || password.length < 8) {
+  const hasBusinessFields = accountType === 'BUSINESS' ? Boolean(companyName && taxId && contactName) : true;
+  const hasIndividualFields = accountType === 'INDIVIDUAL' ? Boolean(firstName) : true;
+
+  if (
+    !hasBusinessFields ||
+    !hasIndividualFields ||
+    !contactName ||
+    !email ||
+    !isValidEmail(email) ||
+    !phone ||
+    !password ||
+    password !== confirmPassword ||
+    password.length < 8
+  ) {
     redirect('/register?error=validation');
   }
 
@@ -50,8 +71,12 @@ export async function registerClient(formData: FormData) {
       role: 'CLIENT',
       clientProfile: {
         create: {
+          clientType: accountType,
           contactName,
-          companyName: companyName || null,
+          companyName: accountType === 'BUSINESS' ? companyName : null,
+          taxId: accountType === 'BUSINESS' ? taxId : null,
+          firstName: accountType === 'INDIVIDUAL' ? firstName : null,
+          lastName: accountType === 'INDIVIDUAL' ? lastName || null : null,
           phone,
           email
         }

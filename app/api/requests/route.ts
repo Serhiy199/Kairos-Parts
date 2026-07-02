@@ -76,6 +76,15 @@ export async function POST(request: Request) {
   try {
     const requestNumber = generateRequestNumber();
     const publicStatusToken = generatePublicStatusToken();
+    const vehicle = parsed.data.vehicleId
+      ? await prisma.vehicle.findFirst({
+          where: {
+            id: parsed.data.vehicleId,
+            ...(clientProfile ? { clientId: clientProfile.id } : { id: '__not_allowed_for_guest__' })
+          },
+          select: { id: true }
+        })
+      : null;
 
     const createdRequest = await prisma.request.create({
       data: {
@@ -90,6 +99,7 @@ export async function POST(request: Request) {
         companyName: parsed.data.companyName ?? parsed.data.contactName,
         categoryId: category?.id,
         manufacturerId: manufacturer?.id,
+        vehicleId: vehicle?.id,
         equipmentType: parsed.data.equipmentType,
         model: parsed.data.model,
         vinOrSerial: parsed.data.vinOrSerial,
