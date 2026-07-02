@@ -9,7 +9,7 @@ const errorMessages: Record<string, string> = {
 export default async function LoginPage({
   searchParams
 }: {
-  searchParams: Promise<{ error?: string; registered?: string }>;
+  searchParams: Promise<{ error?: string; registered?: string; next?: string }>;
 }) {
   const params = await searchParams;
   const errorMessage = params.error ? errorMessages[params.error] ?? 'Не вдалося увійти.' : null;
@@ -30,7 +30,7 @@ export default async function LoginPage({
             {errorMessage}
           </div>
         ) : null}
-        <LoginForm />
+        <LoginForm nextPath={params.next} />
       </div>
     </div>
   );

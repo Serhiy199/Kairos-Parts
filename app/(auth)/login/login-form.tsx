@@ -7,7 +7,7 @@ import { loginClient } from '../actions';
 
 type AccountType = 'BUSINESS' | 'INDIVIDUAL';
 
-export function LoginForm() {
+export function LoginForm({ nextPath }: { nextPath?: string }) {
   const [accountType, setAccountType] = useState<AccountType>('BUSINESS');
 
   return (
@@ -30,6 +30,7 @@ export function LoginForm() {
       </div>
 
       <form action={loginClient} className="mt-6 grid gap-4">
+        {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
         <label className="grid gap-2 text-sm font-semibold text-foreground">
           {accountType === 'BUSINESS' ? 'Email / ЄДРПОУ / телефон' : 'Email / телефон'}
           <input

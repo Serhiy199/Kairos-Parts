@@ -4,6 +4,7 @@ import { AuthError } from 'next-auth';
 import { redirect } from 'next/navigation';
 
 import { signIn } from '@/auth';
+import { canAccessPath, defaultRedirectForRole } from '@/lib/auth/permissions';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { hashPassword } from '@/lib/auth/password';
 import { prisma } from '@/lib/prisma';
@@ -90,16 +91,26 @@ export async function registerClient(formData: FormData) {
 export async function loginClient(formData: FormData) {
   const email = readString(formData, 'email').toLowerCase();
   const password = readString(formData, 'password');
+  const nextPath = readString(formData, 'next');
 
   if (!email || !password) {
     redirect('/login?error=validation');
   }
 
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { role: true }
+  });
+  const redirectTo =
+    user?.role && nextPath.startsWith('/') && !nextPath.startsWith('//') && canAccessPath(nextPath, user.role)
+      ? nextPath
+      : defaultRedirectForRole(user?.role);
+
   try {
     await signIn('credentials', {
       email,
       password,
-      redirectTo: '/client'
+      redirect: false
     });
   } catch (error) {
     if (error instanceof AuthError) {
@@ -108,4 +119,6 @@ export async function loginClient(formData: FormData) {
 
     throw error;
   }
+
+  redirect(redirectTo);
 }
