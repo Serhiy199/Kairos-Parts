@@ -1,4 +1,4 @@
-import Image from 'next/image';
+﻿import Image from 'next/image';
 import Link from 'next/link';
 
 import { PublicMobileMenu } from './public-mobile-menu';
@@ -49,7 +49,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
             </Link>
             <Link
               href="/request"
-              className="brand-action rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-[#DFA600]"
+              className="brand-action rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent-hover"
             >
               Створити заявку
             </Link>

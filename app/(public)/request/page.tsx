@@ -1,4 +1,4 @@
-import { auth } from '@/auth';
+﻿import { auth } from '@/auth';
 import { catalogCategories, getCategoryBySlug } from '@/lib/catalog/catalog-data';
 import { getClientProfileForSession } from '@/lib/client/access';
 import { getUploadMaxSizeMb } from '@/lib/files/upload-policy';
@@ -70,7 +70,7 @@ export default async function RequestPage({
               <p>4. Фото, PDF, Excel або DOC список, якщо є.</p>
             </div>
             {initialCategory ? (
-              <div className="mt-6 rounded-md border border-accent/40 bg-[#FFFBEB] p-4 text-sm text-foreground">
+              <div className="mt-6 rounded-md border border-accent/40 bg-[#F7F1E8] p-4 text-sm text-foreground">
                 Категорію вже підставлено з посилання: {getCategoryBySlug(initialCategory)?.name}
               </div>
             ) : null}

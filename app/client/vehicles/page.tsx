@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { getClientProfileForSession, requireClientSession } from '@/lib/client/access';
@@ -41,7 +41,7 @@ export default async function ClientVehiclesPage({
             Додавайте техніку один раз, щоб у заявках автоматично підставлялись тип, виробник, модель і VIN.
           </p>
         </div>
-        <Link href="/client/vehicles/new" className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-[#DFA600]">
+        <Link href="/client/vehicles/new" className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover">
           Додати техніку
         </Link>
       </div>
@@ -53,7 +53,7 @@ export default async function ClientVehiclesPage({
         <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center shadow-card">
           <h3 className="text-xl font-bold text-foreground">Техніки ще немає</h3>
           <p className="mt-2 text-sm text-muted">Додайте першу одиницю техніки, щоб пришвидшити наступні заявки.</p>
-          <Link href="/client/vehicles/new" className="mt-5 inline-flex rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-[#DFA600]">
+          <Link href="/client/vehicles/new" className="mt-5 inline-flex rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
             Додати техніку
           </Link>
         </div>
@@ -81,7 +81,7 @@ export default async function ClientVehiclesPage({
                 <Link href={`/client/vehicles/${vehicle.id}`} className="rounded-md border border-border px-4 py-2 text-center text-sm font-semibold text-foreground transition hover:border-accent hover:bg-surface-muted">
                   Детальніше
                 </Link>
-                <Link href={`/request?source=client&vehicleId=${vehicle.id}`} className="rounded-md bg-accent px-4 py-2 text-center text-sm font-bold text-foreground transition hover:bg-[#DFA600]">
+                <Link href={`/request?source=client&vehicleId=${vehicle.id}`} className="rounded-md bg-accent px-4 py-2 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover">
                   Створити заявку по цій техніці
                 </Link>
               </div>

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
@@ -64,7 +64,7 @@ export default async function ClientVehicleDetailPage({
           </h2>
           <p className="mt-2 text-sm text-muted">{vehicle.type}</p>
         </div>
-        <Link href={`/request?source=client&vehicleId=${vehicle.id}`} className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-[#DFA600]">
+        <Link href={`/request?source=client&vehicleId=${vehicle.id}`} className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover">
           Створити заявку по цій техніці
         </Link>
       </div>

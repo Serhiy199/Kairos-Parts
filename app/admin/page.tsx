@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
@@ -71,7 +71,7 @@ export default async function AdminDashboardPage() {
             <p className="text-sm font-bold uppercase text-accent">Останні заявки</p>
             <h2 className="mt-2 text-2xl font-bold text-foreground">CRM потік</h2>
           </div>
-          <Link href="/admin/requests" className="rounded-md bg-accent px-4 py-2 text-center text-sm font-bold text-foreground transition hover:bg-[#DFA600]">
+          <Link href="/admin/requests" className="rounded-md bg-accent px-4 py-2 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover">
             Всі заявки
           </Link>
         </div>

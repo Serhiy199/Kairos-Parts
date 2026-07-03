@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+﻿import type { Prisma } from '@prisma/client';
 import Link from 'next/link';
 
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
@@ -125,7 +125,7 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
           </select>
           <input name="dateFrom" type="date" defaultValue={inputValue(params.dateFrom)} className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent" />
           <input name="dateTo" type="date" defaultValue={inputValue(params.dateTo)} className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent" />
-          <button className="h-11 rounded-md bg-accent px-4 text-sm font-bold text-foreground transition hover:bg-[#DFA600]">Фільтрувати</button>
+          <button className="h-11 rounded-md bg-accent px-4 text-sm font-bold text-foreground transition hover:bg-accent-hover">Фільтрувати</button>
           <Link href="/admin/requests" className="flex h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-semibold text-foreground transition hover:border-accent">Скинути</Link>
         </form>
       </section>

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
@@ -41,7 +41,7 @@ export default async function ClientDashboardPage() {
           <h2 className="mt-2 text-2xl font-bold text-foreground">{profile.contactName ?? profile.user.name ?? 'Клієнт Kairos Parts'}</h2>
           <p className="mt-2 text-sm text-muted">{profile.companyName ?? 'Профіль клієнта'}</p>
         </div>
-        <Link href="/request?source=client" className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-[#DFA600]">
+        <Link href="/request?source=client" className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover">
           Створити нову заявку
         </Link>
       </div>

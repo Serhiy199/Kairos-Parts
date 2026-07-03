@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Exo_2, Inter, Orbitron } from 'next/font/google';
+import { Exo_2, Inter, Oxanium } from 'next/font/google';
 import './globals.css';
 
 const inter = Inter({
@@ -8,8 +8,8 @@ const inter = Inter({
   display: 'swap'
 });
 
-const orbitron = Orbitron({
-  subsets: ['latin'],
+const oxanium = Oxanium({
+  subsets: ['latin', 'latin-ext'],
   variable: '--font-brand',
   display: 'swap'
 });
@@ -31,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="uk" className={`${inter.variable} ${orbitron.variable} ${exo2.variable}`}>
+    <html lang="uk" className={`${inter.variable} ${oxanium.variable} ${exo2.variable}`}>
       <body className="font-ui">{children}</body>
     </html>
   );

@@ -1,4 +1,4 @@
-import Image from 'next/image';
+﻿import Image from 'next/image';
 import Link from 'next/link';
 
 import { catalogCategories } from '@/lib/catalog/catalog-data';
@@ -48,49 +48,68 @@ const channels = [
   { title: 'Через менеджера', text: 'Для складних або термінових заявок.', href: '/contacts' }
 ];
 
+const heroProcessSteps = ['Заявка', 'Підбір', 'Узгодження', 'Доставка'];
+
+const heroStats = [
+  { value: '10 000+', label: 'позицій під замовлення' },
+  { value: '200+', label: 'перевірених постачальників' },
+  { value: '1 менеджер', label: 'супроводжує заявку' }
+];
+
 export default function HomePage() {
   return (
     <>
-      <section className="relative overflow-hidden bg-primary text-white">
+      <section className="relative isolate overflow-hidden bg-primary text-white">
         <Image
           src="/images/kairos-hero-industrial.png"
           alt=""
           fill
           priority
           sizes="100vw"
-          className="object-cover opacity-55"
+          className="object-cover opacity-70"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,17,31,0.98)_0%,rgba(7,17,31,0.88)_44%,rgba(7,17,31,0.55)_100%)]" />
-        <div className="relative mx-auto grid min-h-[calc(100vh-64px)] max-w-7xl content-center gap-10 px-4 py-16 sm:px-6 lg:px-8">
-          <div className="max-w-4xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">Kairos Parts для B2B техніки</p>
-            <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
-              Підберемо та доставимо необхідні запчастини за одним запитом
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,5,5,0.92)_0%,rgba(5,5,5,0.76)_42%,rgba(5,5,5,0.34)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.34)_0%,rgba(5,5,5,0)_32%,rgba(245,246,247,0)_78%,#F5F6F7_100%)]" />
+        <div className="absolute bottom-24 left-8 hidden h-44 w-44 rounded-full bg-accent/20 blur-3xl lg:block" />
+        <div className="relative mx-auto grid min-h-[calc(100vh-64px)] max-w-7xl content-center gap-12 px-4 pb-24 pt-16 sm:px-6 lg:min-h-[760px] lg:px-8 lg:pb-28 lg:pt-20">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm">Kairos Parts для B2B техніки</p>
+            <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.04] sm:text-5xl lg:text-6xl xl:text-7xl">
+              Підберемо запчастини для вашої техніки за одним запитом
             </h1>
-            <p className="mt-5 text-lg font-semibold text-white">Для аграрної, вантажної, комерційної та спеціальної техніки</p>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-sidebar-text">
-              Kairos Parts допомагає клієнтам не витрачати час на десятки постачальників, а залишити один
-              запит і отримати підібране рішення через єдину точку контакту.
+            <p className="mt-5 max-w-2xl text-lg font-semibold leading-8 text-white/85">
+              Для аграрної, вантажної, комерційної та спеціальної техніки.
             </p>
-            <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:flex">
-              <Link href="/request" className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-[#DFA600]">
+            <p className="mt-3 max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
+              Надішліть заявку, список або фото — команда Kairos Parts підбере рішення через єдину точку контакту.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link href="/request" className="rounded-lg bg-accent px-6 py-3.5 text-center text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover">
                 Створити заявку
               </Link>
-              <Link href="/request" className="rounded-md border border-white/20 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/10">
-                Надіслати список
-              </Link>
-              <Link href="/request" className="rounded-md border border-white/20 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/10">
-                Завантажити фото
-              </Link>
-              <Link href="#telegram" className="rounded-md border border-accent/60 px-5 py-3 text-center text-sm font-semibold text-accent transition hover:bg-accent/10">
-                Створити заявку в Telegram
+              <Link href="/request?mode=file" className="rounded-lg border border-white/25 bg-white/5 px-6 py-3.5 text-center text-sm font-semibold text-white transition hover:border-accent/70 hover:bg-white/10">
+                Надіслати список або фото
               </Link>
             </div>
+            <Link href="#telegram" className="mt-4 inline-flex w-fit items-center gap-2 rounded-full border border-accent/30 bg-primary/35 px-4 py-2 text-sm font-semibold text-accent transition hover:border-accent/70 hover:bg-accent/10">
+              Створити заявку через Telegram
+              <span aria-hidden="true">→</span>
+            </Link>
+            <div className="mt-8 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/70">
+              {heroProcessSteps.map((step, index) => (
+                <div key={step} className="flex items-center gap-2">
+                  <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5">{step}</span>
+                  {index < heroProcessSteps.length - 1 ? <span className="text-accent/80">→</span> : null}
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {['10 000+ позицій під замовлення', '200+ постачальників', 'Один менеджер на заявку'].map((item) => (
-              <div key={item} className="rounded-lg border border-white/10 bg-white/95 p-4 text-foreground shadow-panel">
-                <p className="text-sm font-bold">{item}</p>
+          <div className="grid gap-3 sm:grid-cols-3 lg:max-w-4xl">
+            {heroStats.map((stat) => (
+              <div key={stat.value} className="rounded-xl border border-white/10 bg-secondary/75 p-5 shadow-panel backdrop-blur-md">
+                <div className="mb-4 h-0.5 w-12 rounded-full bg-accent" />
+                <p className="text-2xl font-bold leading-none text-accent sm:text-3xl">{stat.value}</p>
+                <p className="mt-3 text-sm leading-5 text-technical-white/80">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -169,7 +188,7 @@ export default function HomePage() {
               </p>
               <Link
                 href="/categories"
-                className="mt-6 inline-flex rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-[#DFA600]"
+                className="mt-6 inline-flex rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover"
               >
                 Переглянути всі категорії
               </Link>

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 
 import { catalogCategories } from '@/lib/catalog/catalog-data';
 
@@ -51,7 +51,7 @@ export default function CategoriesPage() {
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href={`/request?category=${category.slug}`}
-                  className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-[#DFA600]"
+                  className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover"
                 >
                   Створити заявку
                 </Link>

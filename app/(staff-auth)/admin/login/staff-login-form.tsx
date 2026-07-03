@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { loginStaff } from '@/app/(auth)/actions';
 
@@ -24,7 +24,7 @@ export function StaffLoginForm({ nextPath }: { nextPath?: string }) {
           className="h-11 rounded-md border border-border px-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
         />
       </label>
-      <button type="submit" className="rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-[#DFA600]">
+      <button type="submit" className="rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
         Увійти до CRM
       </button>
     </form>

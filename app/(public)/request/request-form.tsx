@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
@@ -158,7 +158,7 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link
             href={submitState.publicStatusUrl}
-            className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-[#DFA600]"
+            className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover"
           >
             Переглянути статус
           </Link>
@@ -198,7 +198,7 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
       </div>
 
       {initialMode === 'file' ? (
-        <div className="mt-5 rounded-lg border border-accent/40 bg-[#FFFBEB] p-4 text-sm leading-6 text-foreground">
+        <div className="mt-5 rounded-lg border border-accent/40 bg-[#F7F1E8] p-4 text-sm leading-6 text-foreground">
           Ви перейшли в режим завантаження файлу або фото. Додайте файл у блоці нижче та коротко опишіть потребу.
         </div>
       ) : null}
@@ -365,7 +365,7 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
       <button
         type="submit"
         disabled={submitState.status === 'submitting'}
-        className="mt-6 w-full rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-[#DFA600] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+        className="mt-6 w-full rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
         {submitState.status === 'submitting' ? 'Створюємо заявку...' : 'Створити заявку'}
       </button>

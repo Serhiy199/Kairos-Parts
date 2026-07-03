@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
@@ -62,7 +62,7 @@ export default async function ClientRequestDetailPage({ params }: { params: Prom
           </Link>
         </div>
         <div className="mt-5">
-          <Link href={`/request?source=client&repeatRequestId=${request.id}`} className="inline-flex rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-[#DFA600]">
+          <Link href={`/request?source=client&repeatRequestId=${request.id}`} className="inline-flex rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
             Повторити заявку
           </Link>
         </div>

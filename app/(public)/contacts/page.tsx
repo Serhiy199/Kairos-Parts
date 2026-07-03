@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 
 const contacts = [
   { title: 'Телефон', value: '+38 (000) 000 00 00', note: 'Placeholder для майбутнього робочого номера' },
@@ -43,7 +43,7 @@ export default function ContactsPage() {
             </div>
             <Link
               href="/request"
-              className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-[#DFA600]"
+              className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover"
             >
               Створити заявку
             </Link>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useState } from 'react';
@@ -79,7 +79,7 @@ export function RegisterForm() {
           Підтвердження пароля *
           <input name="confirmPassword" type="password" required minLength={8} className={inputClass} />
         </label>
-        <button type="submit" className="rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-[#DFA600] md:col-span-2">
+        <button type="submit" className="rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover md:col-span-2">
           Зареєструватися
         </button>
       </form>

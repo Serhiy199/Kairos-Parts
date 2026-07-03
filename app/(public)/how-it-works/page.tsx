@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 
 const steps = [
   'Клієнт залишає заявку.',
@@ -57,7 +57,7 @@ export default function HowItWorksPage() {
             </p>
             <Link
               href="/request"
-              className="mt-6 inline-flex rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-[#DFA600]"
+              className="mt-6 inline-flex rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover"
             >
               Створити заявку
             </Link>

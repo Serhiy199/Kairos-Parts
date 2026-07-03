@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { assignAdminRequestManager, addAdminRequestComment, updateAdminRequestStatus } from '@/app/admin/actions';
@@ -201,7 +201,7 @@ export default async function AdminRequestDetailPage({
             <form action={addAdminRequestComment} className="mt-4 grid gap-3">
               <input type="hidden" name="requestId" value={request.id} />
               <textarea name="message" required rows={4} placeholder="Додати внутрішній коментар для CRM" className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25" />
-              <button className="w-fit rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-[#DFA600]">Додати коментар</button>
+              <button className="w-fit rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">Додати коментар</button>
             </form>
             <div className="mt-6 grid gap-3">
               {request.comments.length === 0 ? <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted">Внутрішніх коментарів ще немає.</p> : request.comments.map((comment) => (
@@ -225,7 +225,7 @@ export default async function AdminRequestDetailPage({
                   {REQUEST_STATUSES.map((status) => <option key={status} value={status}>{REQUEST_STATUS_LABELS[status]}</option>)}
                 </select>
               </label>
-              <button className="rounded-md bg-accent px-4 py-3 text-sm font-bold text-foreground transition hover:bg-[#DFA600]">Оновити статус</button>
+              <button className="rounded-md bg-accent px-4 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">Оновити статус</button>
             </form>
 
             <form action={assignAdminRequestManager} className="mt-6 grid gap-3">
