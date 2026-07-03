@@ -6,6 +6,8 @@ import { redirect } from 'next/navigation';
 
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { notifyRequestStatusChange } from '@/lib/notifications/status-change';
+import { runOcrForRequestFile, updateOcrCorrection } from '@/lib/ocr/service';
 import { prisma } from '@/lib/prisma';
 
 function readString(formData: FormData, key: string) {
@@ -28,7 +30,7 @@ export async function updateAdminRequestStatus(formData: FormData) {
 
   const request = await prisma.request.findUnique({
     where: { id: requestId },
-    select: { id: true, status: true }
+    select: { id: true, status: true, publicStatusToken: true }
   });
 
   if (!request) {
@@ -52,9 +54,16 @@ export async function updateAdminRequestStatus(formData: FormData) {
     })
   ]);
 
+  try {
+    await notifyRequestStatusChange(request.id, nextStatus);
+  } catch {
+    // Status updates must not fail because a notification channel is unavailable.
+  }
+
   revalidatePath('/admin');
   revalidatePath('/admin/requests');
   revalidatePath(`/admin/requests/${request.id}`);
+  revalidatePath(`/request/status/${request.publicStatusToken}`);
   redirectBack(request.id, 'status-updated');
 }
 
@@ -113,4 +122,39 @@ export async function addAdminRequestComment(formData: FormData) {
 
   revalidatePath(`/admin/requests/${requestId}`);
   redirectBack(requestId, 'comment-added');
+}
+
+export async function runAdminRequestOcr(formData: FormData) {
+  await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+  const fileId = readString(formData, 'fileId');
+
+  if (!hasDatabaseUrl() || !requestId || !fileId) {
+    redirectBack(requestId, 'ocr-error');
+  }
+
+  try {
+    await runOcrForRequestFile({ requestId, fileId });
+  } catch {
+    redirectBack(requestId, 'ocr-error');
+  }
+
+  revalidatePath(`/admin/requests/${requestId}`);
+  redirectBack(requestId, 'ocr-created');
+}
+
+export async function updateAdminOcrCorrection(formData: FormData) {
+  await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+  const ocrResultId = readString(formData, 'ocrResultId');
+  const correctedText = readString(formData, 'correctedText');
+
+  if (!hasDatabaseUrl() || !requestId || !ocrResultId) {
+    redirectBack(requestId, 'ocr-correction-error');
+  }
+
+  await updateOcrCorrection({ ocrResultId, correctedText });
+
+  revalidatePath(`/admin/requests/${requestId}`);
+  redirectBack(requestId, 'ocr-corrected');
 }

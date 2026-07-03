@@ -1,7 +1,13 @@
 ﻿import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { assignAdminRequestManager, addAdminRequestComment, updateAdminRequestStatus } from '@/app/admin/actions';
+import {
+  assignAdminRequestManager,
+  addAdminRequestComment,
+  runAdminRequestOcr,
+  updateAdminOcrCorrection,
+  updateAdminRequestStatus
+} from '@/app/admin/actions';
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
 import { requireCrmSession } from '@/lib/admin/access';
@@ -23,6 +29,10 @@ function resultMessage(result?: string) {
     'comment-added': 'Внутрішній коментар додано.',
     'admin-only': 'Призначати менеджера може тільки ADMIN.',
     'status-error': 'Не вдалося оновити статус.',
+    'ocr-created': 'OCR виконано. Перевірте результат нижче.',
+    'ocr-corrected': 'OCR-текст оновлено.',
+    'ocr-error': 'Не вдалося запустити OCR.',
+    'ocr-correction-error': 'Не вдалося зберегти OCR-корекцію.',
     'assign-error': 'Не вдалося призначити менеджера.',
     'comment-error': 'Коментар не може бути порожнім.',
     'manager-not-found': 'Менеджера не знайдено.'
@@ -63,6 +73,14 @@ export default async function AdminRequestDetailPage({
         assignedManager: { select: { id: true, name: true, email: true, role: true } },
         files: { orderBy: { createdAt: 'desc' } },
         documents: { orderBy: { createdAt: 'desc' } },
+        ocrResults: {
+          orderBy: { createdAt: 'desc' },
+          include: { file: { select: { id: true, fileName: true, mimeType: true } } }
+        },
+        notifications: {
+          orderBy: { createdAt: 'desc' },
+          take: 8
+        },
         comments: {
           where: { internal: true },
           orderBy: { createdAt: 'desc' },
@@ -168,6 +186,86 @@ export default async function AdminRequestDetailPage({
             <p className="mt-4 text-xs text-muted">Private storage paths не показуються. Якщо безпечне public URL не налаштоване, CRM бачить тільки metadata.</p>
           </section>
 
+          <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-bold uppercase text-accent">OCR-підказки</p>
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  OCR допомагає менеджеру побачити текст або номери з фото. Результат є підказкою і потребує перевірки.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-md border border-border bg-surface-muted p-4">
+              <h3 className="font-bold text-foreground">Запустити OCR для фото</h3>
+              <div className="mt-3 grid gap-2">
+                {request.files.filter((file) => file.mimeType.startsWith('image/')).length === 0 ? (
+                  <p className="text-sm text-muted">Фото для OCR немає.</p>
+                ) : (
+                  request.files.filter((file) => file.mimeType.startsWith('image/')).map((file) => (
+                    <form key={file.id} action={runAdminRequestOcr} className="flex flex-col gap-3 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <input type="hidden" name="requestId" value={request.id} />
+                      <input type="hidden" name="fileId" value={file.id} />
+                      <div>
+                        <p className="text-sm font-bold text-foreground">{file.fileName}</p>
+                        <p className="mt-1 text-xs text-muted">{file.mimeType} · {formatSize(file.size)}</p>
+                      </div>
+                      <button className="rounded-md border border-accent px-4 py-2 text-sm font-bold text-[#8A5B24] transition hover:bg-accent/10">
+                        Запустити OCR
+                      </button>
+                    </form>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4">
+              {request.ocrResults.length === 0 ? (
+                <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted">OCR ще не виконано.</p>
+              ) : (
+                request.ocrResults.map((result) => (
+                  <article key={result.id} className="rounded-md border border-border p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-sm font-bold text-foreground">{result.file?.fileName ?? 'Без файлу'}</p>
+                        <p className="mt-1 text-xs text-muted">
+                          {result.provider} · {result.confidence !== null ? `confidence ${result.confidence.toFixed(1)}` : 'confidence —'} · {result.createdAt.toLocaleString('uk-UA')}
+                        </p>
+                      </div>
+                      {result.correctedText ? <span className="rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success">Виправлено</span> : null}
+                    </div>
+                    <div className="mt-4 rounded-md bg-surface-muted p-3">
+                      <p className="text-xs font-bold uppercase text-muted">Розпізнаний текст</p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">{result.rawText}</p>
+                    </div>
+                    {result.possiblePartNumber || result.possibleSerialNumber ? (
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <Info label="Ймовірний артикул" value={result.possiblePartNumber ?? '—'} />
+                        <Info label="Ймовірний серійний номер" value={result.possibleSerialNumber ?? '—'} />
+                      </div>
+                    ) : null}
+                    <form action={updateAdminOcrCorrection} className="mt-4 grid gap-3">
+                      <input type="hidden" name="requestId" value={request.id} />
+                      <input type="hidden" name="ocrResultId" value={result.id} />
+                      <label className="grid gap-2 text-sm font-semibold text-foreground">
+                        Виправлений OCR-текст
+                        <textarea
+                          name="correctedText"
+                          rows={4}
+                          defaultValue={result.correctedText ?? result.rawText}
+                          className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+                        />
+                      </label>
+                      <button className="w-fit rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">
+                        Зберегти виправлення
+                      </button>
+                    </form>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+
           {request.client ? (
             <section className="rounded-lg border border-border bg-card p-6 shadow-card">
               <p className="text-sm font-bold uppercase text-accent">Клієнтська база</p>
@@ -226,6 +324,9 @@ export default async function AdminRequestDetailPage({
                 </select>
               </label>
               <button className="rounded-md bg-accent px-4 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">Оновити статус</button>
+              <p className="text-xs leading-5 text-muted">
+                Після зміни статусу система створить notification record і спробує повідомити клієнта через доступний канал.
+              </p>
             </form>
 
             <form action={assignAdminRequestManager} className="mt-6 grid gap-3">
@@ -259,6 +360,19 @@ export default async function AdminRequestDetailPage({
                 <div key={item.id} className="rounded-md border border-border p-3 text-sm">
                   <StatusBadge status={item.newStatus} />
                   <p className="mt-2 text-xs text-muted">{item.changedByUser?.name ?? item.changedByUser?.email ?? 'Система'} · {item.createdAt.toLocaleString('uk-UA')}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+            <p className="text-sm font-bold uppercase text-accent">Повідомлення</p>
+            <div className="mt-4 grid gap-3">
+              {request.notifications.length === 0 ? <p className="text-sm text-muted">Повідомлень ще немає.</p> : request.notifications.map((notification) => (
+                <div key={notification.id} className="rounded-md border border-border p-3 text-sm">
+                  <p className="font-bold text-foreground">{notification.channel} · {notification.status}</p>
+                  <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-xs leading-5 text-muted">{notification.message}</p>
+                  <p className="mt-2 text-xs text-muted">{notification.createdAt.toLocaleString('uk-UA')}</p>
                 </div>
               ))}
             </div>

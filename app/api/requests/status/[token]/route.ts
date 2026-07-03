@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma';
+import { REQUEST_SOURCE_LABELS } from '@/lib/requests/sources';
+import { REQUEST_STATUS_DESCRIPTIONS, REQUEST_STATUS_LABELS } from '@/lib/requests/statuses';
 
 export const runtime = 'nodejs';
 
@@ -24,9 +26,20 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     select: {
       requestNumber: true,
       status: true,
+      source: true,
       createdAt: true,
       updatedAt: true,
-      description: true
+      description: true,
+      equipmentType: true,
+      companyName: true,
+      statusHistory: {
+        orderBy: { createdAt: 'asc' },
+        select: {
+          oldStatus: true,
+          newStatus: true,
+          createdAt: true
+        }
+      }
     }
   });
 
@@ -37,8 +50,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   return Response.json({
     requestNumber: request.requestNumber,
     status: request.status,
+    statusLabel: REQUEST_STATUS_LABELS[request.status],
+    statusDescription: REQUEST_STATUS_DESCRIPTIONS[request.status],
+    source: request.source,
+    sourceLabel: REQUEST_SOURCE_LABELS[request.source],
     createdAt: request.createdAt,
     updatedAt: request.updatedAt,
-    description: request.description
+    description: request.description,
+    equipmentType: request.equipmentType,
+    companyName: request.companyName,
+    timeline: request.statusHistory
   });
 }
