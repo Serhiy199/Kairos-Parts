@@ -3,7 +3,7 @@
 const contacts = [
   { title: 'Телефон', value: '+38 (000) 000 00 00', note: 'Placeholder для майбутнього робочого номера' },
   { title: 'Email', value: 'hello@kairos-parts.example', note: 'Placeholder для вхідних B2B-звернень' },
-  { title: 'Telegram', value: '@kairos_parts_bot', note: 'Placeholder, bot flow не реалізований на Day 4' },
+  { title: 'Telegram', value: '@kairos_parts_bot', note: 'Бот приймає заявки після підтвердження номера телефону' },
   { title: 'Графік роботи', value: 'Пн-Пт, 09:00-18:00', note: 'Placeholder для операційного графіка' }
 ];
 

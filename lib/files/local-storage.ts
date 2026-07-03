@@ -31,3 +31,28 @@ export async function saveRequestFileLocal(requestId: string, file: File): Promi
     size: file.size
   };
 }
+
+export async function saveRequestFileBufferLocal(
+  requestId: string,
+  input: {
+    fileName: string;
+    buffer: Buffer;
+    mimeType?: string;
+  }
+): Promise<SavedUpload> {
+  const uploadRoot = path.join(process.cwd(), 'uploads', 'request-files', requestId);
+  await mkdir(uploadRoot, { recursive: true });
+
+  const safeName = `${Date.now()}-${sanitizeFileName(input.fileName)}`;
+  const storageKey = path.join('request-files', requestId, safeName).replace(/\\/g, '/');
+  const targetPath = path.join(uploadRoot, safeName);
+
+  await writeFile(targetPath, input.buffer);
+
+  return {
+    fileName: input.fileName,
+    storageKey,
+    mimeType: input.mimeType || 'application/octet-stream',
+    size: input.buffer.byteLength
+  };
+}

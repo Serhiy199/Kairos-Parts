@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
@@ -203,6 +203,24 @@ model RequestFile {
   @@index([requestId])
 }
 
+model TelegramDraftRequest {
+  id             String   @id @default(cuid())
+  telegramUserId String   @unique
+  chatId         String
+  step           String
+  phone          String?
+  contactName    String?
+  companyName    String?
+  equipmentType  String?
+  description    String?
+  fileMetadata   Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([chatId])
+  @@index([step])
+}
+
 model RequestStatusHistory {
   id              String         @id @default(cuid())
   requestId       String
@@ -232,19 +250,19 @@ model RequestComment {
 }
 
 model Vehicle {
-  id          String        @id @default(cuid())
-  clientId    String
-  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  type        String
+  id           String        @id @default(cuid())
+  clientId     String
+  client       ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  type         String
   manufacturer String
-  model       String
-  year        Int?
-  vinOrSerial String?
-  comment     String?
-  requests    Request[]
-  documents   Document[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  model        String
+  year         Int?
+  vinOrSerial  String?
+  comment      String?
+  requests     Request[]
+  documents    Document[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@index([clientId])
 }
@@ -315,9 +333,9 @@ model Manufacturer {
 }
 
 model OCRResult {
-  id                   String      @id @default(cuid())
+  id                   String       @id @default(cuid())
   requestId            String
-  request              Request     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  request              Request      @relation(fields: [requestId], references: [id], onDelete: Cascade)
   fileId               String?
   file                 RequestFile? @relation(fields: [fileId], references: [id], onDelete: SetNull)
   rawText              String
@@ -327,8 +345,8 @@ model OCRResult {
   correctedText        String?
   confidence           Float?
   provider             OCRProvider
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @updatedAt
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
 
   @@index([requestId])
   @@index([fileId])

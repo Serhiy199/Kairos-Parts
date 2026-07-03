@@ -3,6 +3,8 @@ import Link from 'next/link';
 
 import { catalogCategories } from '@/lib/catalog/catalog-data';
 
+const telegramBotUrl = 'https://t.me/kairos_parts_bot';
+
 const processSteps = [
   {
     title: 'Залишив заявку',
@@ -50,7 +52,7 @@ const audiences = [
 
 const channels = [
   { title: 'Форма на сайті', text: 'Структурований запит для менеджера.', href: '/request' },
-  { title: 'Telegram', text: 'Швидкий старт заявки у месенджері.', href: '#telegram' },
+  { title: 'Telegram', text: 'Швидкий старт заявки у месенджері.', href: telegramBotUrl },
   { title: 'Завантаження фото', text: 'Фото шильдика, вузла або пошкодженої деталі.', href: '/request' },
   { title: 'Excel / PDF / DOC', text: 'Списки позицій для планових закупівель.', href: '/request' },
   { title: 'Через менеджера', text: 'Для складних або термінових заявок.', href: '/contacts' }
@@ -147,7 +149,7 @@ export default function HomePage() {
               <Link href="/request" className="rounded-lg bg-accent px-6 py-3.5 text-center text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover">
                 Створити заявку
               </Link>
-              <Link href="#telegram" className="rounded-lg border border-accent/40 bg-primary/35 px-6 py-3.5 text-center text-sm font-semibold text-accent transition hover:border-accent/80 hover:bg-accent/10">
+              <Link href={telegramBotUrl} className="rounded-lg border border-accent/40 bg-primary/35 px-6 py-3.5 text-center text-sm font-semibold text-accent transition hover:border-accent/80 hover:bg-accent/10">
                 Надіслати заявку в Telegram →
               </Link>
             </div>
@@ -307,8 +309,7 @@ export default function HomePage() {
               <p className="text-sm font-bold uppercase text-accent">Способи створення заявки</p>
               <h2 className="mt-2 text-3xl font-bold">Оберіть зручний канал, менеджер підхопить процес</h2>
               <p className="mt-4 text-sm leading-6 text-sidebar-text">
-                На Day 4 це презентаційний блок. Реальна форма, Telegram bot flow та завантаження файлів будуть
-                реалізовані наступними етапами.
+                Telegram-бот приймає заявку, підтверджує номер телефону, збирає опис потреби та передає заявку менеджеру.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

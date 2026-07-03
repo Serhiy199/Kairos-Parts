@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
+const telegramBotUrl = 'https://t.me/kairos_parts_bot';
+
 type NavItem = {
   href: string;
   label: string;
@@ -40,7 +42,7 @@ export function PublicMobileMenu({ navItems }: { navItems: NavItem[] }) {
               </Link>
             ))}
             <Link
-              href="/#telegram"
+              href={telegramBotUrl}
               onClick={() => setIsOpen(false)}
               className="rounded-md px-3 py-2 font-semibold text-accent transition hover:bg-white/10"
             >
