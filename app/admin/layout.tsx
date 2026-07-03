@@ -15,7 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const navItems = session.user.role === 'ADMIN' ? adminNavItems : adminNavItems.filter((item) => !['/admin/categories', '/admin/manufacturers', '/admin/settings'].includes(item.href));
 
   return (
-    <DashboardShell title="CRM менеджера" subtitle={session.user.role === 'ADMIN' ? 'Admin / CRM' : 'Manager / CRM'} navItems={navItems} homeHref="/admin">
+    <DashboardShell title="CRM менеджера" subtitle={session.user.role === 'ADMIN' ? 'Admin / CRM' : 'Manager / CRM'} navItems={navItems} homeHref="/admin" logoutTarget="staff">
       {children}
     </DashboardShell>
   );

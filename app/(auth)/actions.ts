@@ -3,7 +3,7 @@
 import { AuthError } from 'next-auth';
 import { redirect } from 'next/navigation';
 
-import { signIn } from '@/auth';
+import { signIn, signOut } from '@/auth';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { hashPassword } from '@/lib/auth/password';
 import { prisma } from '@/lib/prisma';
@@ -159,4 +159,12 @@ export async function loginStaff(formData: FormData) {
   }
 
   redirect((nextPath === '/admin' || nextPath.startsWith('/admin/')) && nextPath !== '/admin/login' ? nextPath : '/admin');
+}
+
+export async function logoutClient() {
+  await signOut({ redirectTo: '/login' });
+}
+
+export async function logoutStaff() {
+  await signOut({ redirectTo: '/admin/login' });
 }

@@ -18,6 +18,7 @@ export default async function ClientLayout({ children }: { children: React.React
       subtitle="Client dashboard"
       navItems={clientNavItems}
       homeHref="/client"
+      logoutTarget="client"
     >
       {children}
     </DashboardShell>

@@ -4,10 +4,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { logoutClient, logoutStaff } from '@/app/(auth)/actions';
+
 type NavItem = {
   href: string;
   label: string;
 };
+
+type LogoutTarget = 'client' | 'staff';
 
 type DashboardShellProps = {
   children: React.ReactNode;
@@ -15,10 +19,12 @@ type DashboardShellProps = {
   subtitle: string;
   navItems: NavItem[];
   homeHref: string;
+  logoutTarget: LogoutTarget;
 };
 
-export function DashboardShell({ children, title, subtitle, navItems, homeHref }: DashboardShellProps) {
+export function DashboardShell({ children, title, subtitle, navItems, homeHref, logoutTarget }: DashboardShellProps) {
   const pathname = usePathname();
+  const logoutAction = logoutTarget === 'staff' ? logoutStaff : logoutClient;
 
   return (
     <div className="min-h-screen bg-background lg:flex">
@@ -36,23 +42,33 @@ export function DashboardShell({ children, title, subtitle, navItems, homeHref }
             />
           </Link>
         </div>
-        <nav className="flex gap-1 overflow-x-auto px-3 pb-3 text-sm lg:flex-1 lg:flex-col lg:overflow-visible lg:pb-0">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== homeHref && pathname.startsWith(`${item.href}/`));
+        <div className="flex gap-1 overflow-x-auto px-3 pb-3 text-sm lg:flex-1 lg:flex-col lg:overflow-visible lg:pb-4">
+          <nav className="flex gap-1 lg:flex-1 lg:flex-col">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href || (item.href !== homeHref && pathname.startsWith(`${item.href}/`));
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`whitespace-nowrap rounded-md px-3 py-2 transition lg:whitespace-normal ${
-                  isActive ? 'bg-accent text-foreground' : 'hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`whitespace-nowrap rounded-md px-3 py-2 transition lg:whitespace-normal ${
+                    isActive ? 'bg-accent text-foreground' : 'hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+          <form action={logoutAction} className="lg:border-t lg:border-white/10 lg:pt-3">
+            <button
+              type="submit"
+              className="w-full whitespace-nowrap rounded-md border border-white/15 px-3 py-2 text-left text-sm font-semibold text-sidebar-text transition hover:border-white/25 hover:bg-white/10 hover:text-white lg:whitespace-normal"
+            >
+              Вийти
+            </button>
+          </form>
+        </div>
       </aside>
       <div className="min-w-0 flex-1 lg:pl-64">
         <header className="border-b border-border bg-card">
