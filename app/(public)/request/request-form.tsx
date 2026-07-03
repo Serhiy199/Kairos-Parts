@@ -325,17 +325,20 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
 
       <div className="mt-6 rounded-lg border border-dashed border-border bg-surface-muted p-5">
         <label className="grid gap-3 text-sm font-semibold text-foreground">
-          Файл або фото
+          Додайте фото, список або документ
           <input
             name="files"
             type="file"
             multiple
             accept={ALLOWED_UPLOAD_EXTENSIONS.join(',')}
             onChange={handleFileChange}
-            className="block w-full rounded-md border border-border bg-white px-3 py-2 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-bold file:text-foreground"
+            className="block w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-muted file:mr-4 file:rounded-md file:border file:border-accent file:bg-white file:px-4 file:py-2 file:text-sm file:font-bold file:text-[#8A5B24] file:transition hover:file:bg-accent/10"
           />
         </label>
-        <p className="mt-3 text-xs leading-5 text-muted">
+        <p className="mt-3 text-sm leading-6 text-foreground">
+          Можна прикріпити фото деталі, список позицій, PDF, Excel або документ із артикулами.
+        </p>
+        <p className="mt-1 text-xs leading-5 text-muted">
           Дозволені формати: JPG, PNG, PDF, XLS, XLSX, CSV, DOC, DOCX. Максимальний розмір одного файлу: {maxSizeMb} MB.
         </p>
         {selectedFiles.length > 0 ? (

@@ -5,16 +5,24 @@ import { catalogCategories } from '@/lib/catalog/catalog-data';
 
 const processSteps = [
   {
-    title: 'Залишив запит',
-    text: 'Клієнт описує потребу, додає фото, список або дані техніки.'
+    title: 'Залишив заявку',
+    text: 'Опишіть потребу, додайте фото, список, артикул або дані техніки.',
+    icon: 'file'
   },
   {
     title: 'Менеджер підібрав',
-    text: 'Команда аналізує запит, перевіряє сумісність і підбирає запчастини або аналоги.'
+    text: 'Перевіряємо сумісність, наявність, аналоги та можливі варіанти постачання.',
+    icon: 'search'
   },
   {
-    title: 'Отримав усе однією посилкою',
-    text: 'Kairos Parts консолідує постачання й супроводжує заявку до отримання.'
+    title: 'Узгодили рішення',
+    text: 'Погоджуємо позиції, строки, ціну та формат поставки перед замовленням.',
+    icon: 'check'
+  },
+  {
+    title: 'Отримали запчастини',
+    text: 'Kairos Parts супроводжує заявку до доставки або передачі клієнту.',
+    icon: 'truck'
   }
 ];
 
@@ -50,11 +58,64 @@ const channels = [
 
 const heroProcessSteps = ['Заявка', 'Підбір', 'Узгодження', 'Доставка'];
 
-const heroStats = [
-  { value: '10 000+', label: 'позицій під замовлення' },
-  { value: '200+', label: 'перевірених постачальників' },
-  { value: '1 менеджер', label: 'супроводжує заявку' }
+const trustStats = [
+  {
+    value: '10 000+',
+    label: 'позицій під замовлення'
+  },
+  {
+    value: '200+',
+    label: 'перевірених постачальників'
+  },
+  {
+    value: '1 менеджер',
+    label: 'супроводжує заявку'
+  },
+  {
+    value: '4 етапи',
+    label: 'від заявки до доставки'
+  }
 ];
+
+function ProcessIcon({ icon }: { icon: string }) {
+  if (icon === 'search') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-3.5-3.5" />
+      </svg>
+    );
+  }
+
+  if (icon === 'check') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" />
+        <path d="m8 12 2.5 2.5L16 9" />
+      </svg>
+    );
+  }
+
+  if (icon === 'truck') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 7h11v9H3z" />
+        <path d="M14 10h4l3 3v3h-7z" />
+        <circle cx="7" cy="18" r="2" />
+        <circle cx="18" cy="18" r="2" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 3h7l4 4v14H7z" />
+      <path d="M14 3v5h5" />
+      <path d="M10 12h5" />
+      <path d="M10 16h7" />
+    </svg>
+  );
+}
 
 export default function HomePage() {
   return (
@@ -70,31 +131,26 @@ export default function HomePage() {
         />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,5,5,0.92)_0%,rgba(5,5,5,0.76)_42%,rgba(5,5,5,0.34)_100%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.34)_0%,rgba(5,5,5,0)_32%,rgba(245,246,247,0)_78%,#F5F6F7_100%)]" />
-        <div className="absolute bottom-24 left-8 hidden h-44 w-44 rounded-full bg-accent/20 blur-3xl lg:block" />
-        <div className="relative mx-auto grid min-h-[calc(100vh-64px)] max-w-7xl content-center gap-12 px-4 pb-24 pt-16 sm:px-6 lg:min-h-[760px] lg:px-8 lg:pb-28 lg:pt-20">
+        <div className="relative mx-auto grid min-h-[calc(100vh-64px)] max-w-7xl content-center px-4 pb-20 pt-16 sm:px-6 lg:min-h-[680px] lg:px-8 lg:pb-24 lg:pt-20">
           <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm">Kairos Parts для B2B техніки</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm">KAIROS PARTS ДЛЯ B2B ТЕХНІКИ</p>
             <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.04] sm:text-5xl lg:text-6xl xl:text-7xl">
               Підберемо запчастини для вашої техніки за одним запитом
             </h1>
             <p className="mt-5 max-w-2xl text-lg font-semibold leading-8 text-white/85">
-              Для аграрної, вантажної, комерційної та спеціальної техніки.
+              Для аграрної, вантажної та спеціальної техніки.
             </p>
             <p className="mt-3 max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
-              Надішліть заявку, список або фото — команда Kairos Parts підбере рішення через єдину точку контакту.
+              Надішліть заявку, список або фото — команда Kairos Parts підбере сумісні запчастини та запропонує рішення.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link href="/request" className="rounded-lg bg-accent px-6 py-3.5 text-center text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover">
                 Створити заявку
               </Link>
-              <Link href="/request?mode=file" className="rounded-lg border border-white/25 bg-white/5 px-6 py-3.5 text-center text-sm font-semibold text-white transition hover:border-accent/70 hover:bg-white/10">
-                Надіслати список або фото
+              <Link href="#telegram" className="rounded-lg border border-accent/40 bg-primary/35 px-6 py-3.5 text-center text-sm font-semibold text-accent transition hover:border-accent/80 hover:bg-accent/10">
+                Надіслати заявку в Telegram →
               </Link>
             </div>
-            <Link href="#telegram" className="mt-4 inline-flex w-fit items-center gap-2 rounded-full border border-accent/30 bg-primary/35 px-4 py-2 text-sm font-semibold text-accent transition hover:border-accent/70 hover:bg-accent/10">
-              Створити заявку через Telegram
-              <span aria-hidden="true">→</span>
-            </Link>
             <div className="mt-8 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/70">
               {heroProcessSteps.map((step, index) => (
                 <div key={step} className="flex items-center gap-2">
@@ -104,37 +160,72 @@ export default function HomePage() {
               ))}
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3 lg:max-w-4xl">
-            {heroStats.map((stat) => (
-              <div key={stat.value} className="rounded-xl border border-white/10 bg-secondary/75 p-5 shadow-panel backdrop-blur-md">
-                <div className="mb-4 h-0.5 w-12 rounded-full bg-accent" />
-                <p className="text-2xl font-bold leading-none text-accent sm:text-3xl">{stat.value}</p>
-                <p className="mt-3 text-sm leading-5 text-technical-white/80">{stat.label}</p>
+        </div>
+      </section>
+
+      <section className="relative overflow-hidden bg-background px-4 py-12 sm:px-6 lg:px-8">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(76,79,84,0.65)_1px,transparent_1px),linear-gradient(90deg,rgba(76,79,84,0.65)_1px,transparent_1px)] [background-size:28px_28px]" />
+        <div className="relative mx-auto max-w-7xl">
+          <div className="grid gap-5 lg:grid-cols-[0.86fr_1.14fr] lg:items-end">
+            <div>
+              <div className="mb-4 h-0.5 w-14 rounded-full bg-accent" />
+              <h2 className="max-w-2xl text-2xl font-bold text-foreground sm:text-3xl">
+                Асортимент, постачальники й супровід — в одному процесі
+              </h2>
+            </div>
+            <p className="max-w-3xl text-sm leading-6 text-muted sm:text-base sm:leading-7">
+              Kairos Parts допомагає швидко знаходити запчастини для аграрної, вантажної та спеціальної техніки через одну заявку.
+            </p>
+          </div>
+          <div className="mt-7 overflow-hidden rounded-xl border border-[rgba(125,128,133,0.25)] bg-card shadow-card">
+            <div className="h-1 bg-gradient-to-r from-accent via-[#B37A2E] to-transparent" />
+            <div className="grid grid-cols-2 divide-x divide-y divide-border/80 lg:grid-cols-4 lg:divide-y-0">
+            {trustStats.map((stat) => (
+              <div key={stat.value} className="min-h-32 p-5 sm:p-6">
+                <p className="text-3xl font-bold leading-none text-accent sm:text-4xl">{stat.value}</p>
+                <p className="mt-3 max-w-44 text-sm font-bold leading-5 text-foreground">{stat.label}</p>
               </div>
             ))}
+            </div>
           </div>
         </div>
       </section>
 
-      <section id="how-it-works" className="bg-background px-4 py-16 sm:px-6 lg:px-8">
+      <section id="how-it-works" className="bg-[#F7F7F5] px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="max-w-2xl">
+          <div className="max-w-3xl">
             <p className="text-sm font-bold uppercase text-accent">Як це працює</p>
-            <h2 className="mt-2 text-3xl font-bold text-foreground">Три кроки замість десятків дзвінків постачальникам</h2>
+            <h2 className="mt-2 text-3xl font-bold text-foreground">Заявка, підбір, узгодження та доставка в одному процесі</h2>
+            <p className="mt-4 text-sm leading-6 text-muted sm:text-base sm:leading-7">
+              Менеджер веде заявку поетапно: від первинного опису потреби до погодження рішення та супроводу постачання.
+            </p>
           </div>
-          <div className="mt-8 grid gap-4 lg:grid-cols-3">
+          <div className="relative mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="pointer-events-none absolute left-8 right-8 top-6 hidden h-px bg-gradient-to-r from-transparent via-accent/35 to-transparent lg:block" />
             {processSteps.map((step, index) => (
-              <div key={step.title} className="relative rounded-lg border border-border bg-card p-6 shadow-card">
-                <div className="flex size-11 items-center justify-center rounded-md bg-primary text-sm font-bold text-accent">
-                  {index + 1}
+              <div key={step.title} className="relative rounded-lg border border-border bg-card p-6 shadow-card transition hover:border-accent/45 hover:shadow-panel">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex size-12 items-center justify-center rounded-md border border-accent/25 bg-primary text-accent shadow-card">
+                    <ProcessIcon icon={step.icon} />
+                  </div>
+                  <span className="font-display text-sm font-bold tracking-[0.16em] text-accent/80">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
                 </div>
                 <h3 className="mt-5 text-xl font-bold text-foreground">{step.title}</h3>
                 <p className="mt-3 text-sm leading-6 text-muted">{step.text}</p>
-                <div className="mt-6 h-1 rounded-full bg-border">
-                  <div className="h-1 rounded-full bg-accent" style={{ width: `${(index + 1) * 33}%` }} />
-                </div>
+                <div className="mt-6 h-1 w-14 rounded-full bg-accent" />
               </div>
             ))}
+          </div>
+          <div className="mt-8 flex flex-col gap-4 border-t border-border pt-8 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xl font-bold text-foreground">Готові передати заявку на підбір?</p>
+            <Link
+              href="/request"
+              className="inline-flex justify-center rounded-lg bg-accent px-6 py-3.5 text-sm font-bold text-primary shadow-card transition hover:bg-accent-hover"
+            >
+              Створити заявку
+            </Link>
           </div>
         </div>
       </section>
