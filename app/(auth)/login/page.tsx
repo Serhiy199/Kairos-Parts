@@ -3,7 +3,8 @@ import { LoginForm } from './login-form';
 const errorMessages: Record<string, string> = {
   validation: 'Вкажіть email і пароль.',
   credentials: 'Email або пароль неправильні, або користувач не має доступу до входу.',
-  database: 'DATABASE_URL не налаштований.'
+  database: 'DATABASE_URL не налаштований.',
+  'staff-login': 'Для менеджера або адміністратора використовуйте службовий вхід.'
 };
 
 export default async function LoginPage({

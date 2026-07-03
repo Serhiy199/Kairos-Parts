@@ -9,7 +9,7 @@ export const PUBLIC_ROUTES = [
   '/request/status/[token]'
 ] as const;
 
-export const AUTH_ROUTES = ['/login', '/register', '/forgot-password'] as const;
+export const AUTH_ROUTES = ['/login', '/admin/login', '/register', '/forgot-password'] as const;
 
 export const CLIENT_ROUTES = [
   '/client',

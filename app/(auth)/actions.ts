@@ -4,7 +4,6 @@ import { AuthError } from 'next-auth';
 import { redirect } from 'next/navigation';
 
 import { signIn } from '@/auth';
-import { canAccessPath, defaultRedirectForRole } from '@/lib/auth/permissions';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { hashPassword } from '@/lib/auth/password';
 import { prisma } from '@/lib/prisma';
@@ -101,10 +100,10 @@ export async function loginClient(formData: FormData) {
     where: { email },
     select: { role: true }
   });
-  const redirectTo =
-    user?.role && nextPath.startsWith('/') && !nextPath.startsWith('//') && canAccessPath(nextPath, user.role)
-      ? nextPath
-      : defaultRedirectForRole(user?.role);
+
+  if (user?.role === 'MANAGER' || user?.role === 'ADMIN') {
+    redirect('/login?error=staff-login');
+  }
 
   try {
     await signIn('credentials', {
@@ -120,5 +119,44 @@ export async function loginClient(formData: FormData) {
     throw error;
   }
 
-  redirect(redirectTo);
+  redirect(nextPath === '/client' || nextPath.startsWith('/client/') ? nextPath : '/client');
+}
+
+export async function loginStaff(formData: FormData) {
+  const email = readString(formData, 'email').toLowerCase();
+  const password = readString(formData, 'password');
+  const nextPath = readString(formData, 'next');
+
+  if (!email || !password) {
+    redirect('/admin/login?error=validation');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { role: true }
+  });
+
+  if (user?.role === 'CLIENT') {
+    redirect('/admin/login?error=client-login');
+  }
+
+  if (user?.role !== 'MANAGER' && user?.role !== 'ADMIN') {
+    redirect('/admin/login?error=credentials');
+  }
+
+  try {
+    await signIn('credentials', {
+      email,
+      password,
+      redirect: false
+    });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      redirect('/admin/login?error=credentials');
+    }
+
+    throw error;
+  }
+
+  redirect((nextPath === '/admin' || nextPath.startsWith('/admin/')) && nextPath !== '/admin/login' ? nextPath : '/admin');
 }

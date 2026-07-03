@@ -8,6 +8,7 @@ export const PUBLIC_ROUTE_PREFIXES = [
   '/contacts',
   '/request',
   '/login',
+  '/admin/login',
   '/register',
   '/forgot-password'
 ] as const;
@@ -27,6 +28,10 @@ export function isPublicPath(pathname: string) {
 }
 
 export function requiredRolesForPath(pathname: string): UserRole[] | null {
+  if (isPublicPath(pathname)) {
+    return null;
+  }
+
   if (ADMIN_ONLY_ROUTE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
     return ['ADMIN'];
   }
