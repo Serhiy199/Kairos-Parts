@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
+import { ActionIcon } from '@/components/ui/action-icons';
+
 const telegramBotUrl = 'https://t.me/kairos_parts_bot';
 
 type NavItem = {
@@ -42,17 +44,27 @@ export function PublicMobileMenu({ navItems }: { navItems: NavItem[] }) {
               </Link>
             ))}
             <Link
+              href="/login"
+              onClick={() => setIsOpen(false)}
+              className="inline-flex items-center gap-2 rounded-md px-3 py-2 font-semibold text-white transition hover:bg-white/10"
+            >
+              <ActionIcon name="login" />
+              Увійти
+            </Link>
+            <Link
               href={telegramBotUrl}
               onClick={() => setIsOpen(false)}
-              className="rounded-md px-3 py-2 font-semibold text-accent transition hover:bg-white/10"
+              className="inline-flex items-center gap-2 rounded-md px-3 py-2 font-semibold text-accent transition hover:bg-white/10"
             >
+              <ActionIcon name="telegram" />
               Заявка в Telegram
             </Link>
             <Link
               href="/request"
               onClick={() => setIsOpen(false)}
-              className="brand-action mt-2 rounded-md bg-accent px-3 py-2 text-center font-bold text-foreground transition hover:bg-accent-hover"
+              className="brand-action mt-2 inline-flex items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 text-center font-bold text-foreground transition hover:bg-accent-hover"
             >
+              <ActionIcon name="plus" />
               Створити заявку
             </Link>
           </nav>

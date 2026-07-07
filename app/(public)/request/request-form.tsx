@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
+import { ActionIcon } from '@/components/ui/action-icons';
 import type { CatalogCategory } from '@/lib/catalog/catalog-data';
 import { ALLOWED_UPLOAD_EXTENSIONS, ALLOWED_UPLOAD_MIME_TYPES } from '@/lib/files/upload-policy';
 
@@ -158,15 +159,17 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link
             href={submitState.publicStatusUrl}
-            className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover"
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover"
           >
+            <ActionIcon name="search" />
             Переглянути статус
           </Link>
           <button
             type="button"
             onClick={() => setSubmitState({ status: 'idle' })}
-            className="rounded-md border border-border px-5 py-3 text-sm font-semibold text-foreground transition hover:border-accent hover:bg-surface-muted"
+            className="inline-flex items-center justify-center gap-2 rounded-md border border-border px-5 py-3 text-sm font-semibold text-foreground transition hover:border-accent hover:bg-surface-muted"
           >
+            <ActionIcon name="plus" />
             Створити ще одну заявку
           </button>
           <Link
@@ -368,8 +371,9 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
       <button
         type="submit"
         disabled={submitState.status === 'submitting'}
-        className="mt-6 w-full rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+        className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
+        <ActionIcon name={submitState.status === 'submitting' ? 'refresh' : 'send'} />
         {submitState.status === 'submitting' ? 'Створюємо заявку...' : 'Створити заявку'}
       </button>
     </form>

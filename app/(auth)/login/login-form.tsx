@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
+import { ActionIcon } from '@/components/ui/action-icons';
+
 import { loginClient } from '../actions';
 
 type AccountType = 'BUSINESS' | 'INDIVIDUAL';
@@ -45,7 +47,8 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
           Пароль
           <input name="password" type="password" required className="h-11 rounded-md border border-border px-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
         </label>
-        <button type="submit" className="rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+        <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+          <ActionIcon name="login" />
           Увійти
         </button>
       </form>

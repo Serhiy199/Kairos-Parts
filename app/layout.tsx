@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Exo_2, Inter, Oxanium } from 'next/font/google';
+import { UkrainianValidation } from '@/components/ui/ukrainian-validation';
 import './globals.css';
 
 const inter = Inter({
@@ -32,7 +33,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="uk" className={`${inter.variable} ${oxanium.variable} ${exo2.variable}`}>
-      <body className="font-ui">{children}</body>
+      <body className="font-ui">
+        <UkrainianValidation />
+        {children}
+      </body>
     </html>
   );
 }

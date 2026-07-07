@@ -91,3 +91,362 @@ select {
     sans-serif;
   letter-spacing: 0.01em;
 }
+
+.benefits-section-bg {
+  background-image:
+    url("/images/benefits/benefits-bg.png"),
+    url("/images/kairos-hero-industrial.png");
+  background-position:
+    center right,
+    center;
+  background-size:
+    cover,
+    cover;
+}
+
+.audience-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid rgba(200, 150, 66, 0.7);
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.72), transparent 30%),
+    linear-gradient(100deg, #f4f2eb 0%, #d8d3c9 42%, #a8a39a 100%);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -1px 0 rgba(94, 70, 35, 0.3);
+  color: #101010;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.audience-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.08) 0,
+      rgba(255, 255, 255, 0.08) 1px,
+      rgba(0, 0, 0, 0.03) 2px,
+      transparent 4px
+    );
+  opacity: 0.55;
+  mix-blend-mode: overlay;
+}
+
+.audience-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 46px;
+  z-index: 0;
+  width: 88px;
+  height: 100%;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      115deg,
+      transparent 0%,
+      transparent 44%,
+      rgba(255, 255, 255, 0.34) 45%,
+      rgba(255, 255, 255, 0.16) 100%
+    );
+}
+
+.audience-card__label,
+.audience-card__icon {
+  position: relative;
+  z-index: 1;
+}
+
+.audience-card__label {
+  padding: 14px 10px 14px 18px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.audience-card__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  min-height: 52px;
+  border-left: 1px solid rgba(255, 255, 255, 0.45);
+  background: linear-gradient(180deg, rgba(5, 5, 5, 0.88), rgba(16, 16, 16, 0.72));
+  color: #c89642;
+  box-shadow: inset 1px 0 0 rgba(200, 150, 66, 0.3);
+}
+
+.audience-card__icon svg {
+  width: 24px;
+  height: 24px;
+  filter:
+    drop-shadow(0 1px 0 rgba(255, 255, 255, 0.2))
+    drop-shadow(0 4px 7px rgba(0, 0, 0, 0.38));
+}
+
+.audience-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(216, 177, 94, 0.95);
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px 0 rgba(94, 70, 35, 0.34);
+}
+
+.benefit-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 22px;
+  min-height: 150px;
+  padding: 24px 28px;
+  border: 1px solid rgba(200, 150, 66, 0.9);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 36% 18%, rgba(255, 255, 255, 0.64), transparent 35%),
+    linear-gradient(135deg, #8f8b83 0%, #ddd9cf 43%, #9f9a91 100%);
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.42),
+    0 3px 8px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -1px 0 rgba(94, 70, 35, 0.4);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.benefit-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.07) 0,
+      rgba(255, 255, 255, 0.07) 1px,
+      rgba(0, 0, 0, 0.03) 2px,
+      transparent 4px
+    );
+  opacity: 0.55;
+  mix-blend-mode: overlay;
+}
+
+.benefit-card::after {
+  content: "";
+  position: absolute;
+  right: -34px;
+  bottom: -42px;
+  z-index: 0;
+  width: 150px;
+  height: 150px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.34), rgba(120, 120, 120, 0.16));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 0 18px rgba(0, 0, 0, 0.12);
+}
+
+.benefit-card__diagonal {
+  position: absolute;
+  top: 0;
+  right: 50px;
+  z-index: 0;
+  width: 120px;
+  height: 100%;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      135deg,
+      transparent 0%,
+      transparent 48%,
+      rgba(255, 255, 255, 0.24) 49%,
+      rgba(255, 255, 255, 0.14) 100%
+    );
+}
+
+.benefit-card__icon-wrap,
+.benefit-card__content {
+  position: relative;
+  z-index: 1;
+}
+
+.benefit-card__icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.benefit-card__icon-wrap svg {
+  width: 66px;
+  height: 66px;
+  color: #8a5b24;
+  stroke-width: 1.8;
+  filter:
+    drop-shadow(0 2px 0 rgba(255, 255, 255, 0.48))
+    drop-shadow(0 7px 8px rgba(55, 36, 12, 0.34));
+}
+
+.benefit-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.benefit-card__number {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #d8b15e 0%, #b37a2e 100%);
+  color: #1a1308;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow:
+    0 4px 8px rgba(99, 62, 18, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.benefit-card__title {
+  margin: 0;
+  color: #101010;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.18;
+  letter-spacing: 0;
+}
+
+.benefit-card__description,
+.benefit-card__list {
+  margin-top: 14px;
+  color: #151515;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.benefit-card__description {
+  max-width: 330px;
+  margin-bottom: 0;
+}
+
+.benefit-card__list {
+  max-width: 340px;
+  margin-bottom: 0;
+  padding-left: 18px;
+}
+
+.benefit-card__list li + li {
+  margin-top: 2px;
+}
+
+.benefit-card__divider {
+  width: 72px;
+  height: 1px;
+  margin-top: 14px;
+  background: linear-gradient(90deg, #c89642, rgba(179, 122, 46, 0));
+}
+
+.benefit-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(216, 177, 94, 0.96);
+  box-shadow:
+    0 22px 42px rgba(0, 0, 0, 0.48),
+    0 4px 10px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -1px 0 rgba(94, 70, 35, 0.42);
+}
+
+.benefit-card:hover .benefit-card__icon-wrap svg {
+  filter:
+    drop-shadow(0 2px 0 rgba(255, 255, 255, 0.52))
+    drop-shadow(0 8px 10px rgba(55, 36, 12, 0.42));
+}
+
+@media (max-width: 640px) {
+  .benefits-section-bg {
+    background-position:
+      center,
+      center;
+  }
+
+  .audience-card {
+    min-height: 50px;
+  }
+
+  .audience-card__label {
+    padding-left: 16px;
+    font-size: 13px;
+  }
+
+  .audience-card__icon {
+    width: 44px;
+    min-height: 50px;
+  }
+
+  .benefit-card {
+    grid-template-columns: 58px minmax(0, 1fr);
+    column-gap: 16px;
+    min-height: auto;
+    padding: 22px;
+  }
+
+  .benefit-card::after {
+    right: -42px;
+    bottom: -44px;
+    width: 120px;
+    height: 120px;
+  }
+
+  .benefit-card__diagonal {
+    right: 24px;
+    width: 92px;
+  }
+
+  .benefit-card__icon-wrap svg {
+    width: 52px;
+    height: 52px;
+  }
+
+  .benefit-card__number {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    font-size: 13px;
+  }
+
+  .benefit-card__title {
+    font-size: 16px;
+  }
+
+  .benefit-card__description,
+  .benefit-card__list {
+    font-size: 13px;
+  }
+}

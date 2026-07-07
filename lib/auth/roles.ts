@@ -13,5 +13,15 @@ export const ROLE_CAPABILITIES: Record<UserRole, string[]> = {
   GUEST: ['public:read', 'request:create:guest', 'request-status:read:token'],
   CLIENT: ['client-dashboard:read', 'request:create:client', 'request:read:own', 'vehicle:manage:own', 'document:read:own'],
   MANAGER: ['crm:read', 'request:read:assigned', 'request:update-status', 'request:assign', 'request-comment:create', 'ocr:review'],
-  ADMIN: ['crm:read:all', 'manager:manage', 'catalog:manage', 'request:update-status', 'analytics:read', 'settings:manage']
+  ADMIN: [
+    'crm:read:all',
+    'manager:manage',
+    'catalog:manage',
+    'request:update-status',
+    'request:assign',
+    'request-comment:create',
+    'ocr:review',
+    'analytics:read',
+    'settings:manage'
+  ]
 };

@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
+import { ActionIcon } from '@/components/ui/action-icons';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
@@ -105,7 +106,7 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
           {session.user.role === 'ADMIN' ? 'Адміністратор бачить повний потік заявок.' : 'Менеджер бачить CRM потік заявок. Обмеження тільки призначеними менеджеру заявками ще не ввімкнено.'}
         </p>
 
-        <form className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+        <form action="/admin/requests" method="get" className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
           <input name="q" defaultValue={inputValue(params.q)} placeholder="Пошук: №, телефон, клієнт, VIN" className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25 xl:col-span-2" />
           <select name="status" defaultValue={inputValue(params.status)} className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent">
             <option value="">Всі статуси</option>
@@ -125,8 +126,14 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
           </select>
           <input name="dateFrom" type="date" defaultValue={inputValue(params.dateFrom)} className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent" />
           <input name="dateTo" type="date" defaultValue={inputValue(params.dateTo)} className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent" />
-          <button className="h-11 rounded-md bg-accent px-4 text-sm font-bold text-foreground transition hover:bg-accent-hover">Фільтрувати</button>
-          <Link href="/admin/requests" className="flex h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-semibold text-foreground transition hover:border-accent">Скинути</Link>
+          <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-accent px-4 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+            <ActionIcon name="filter" />
+            Фільтрувати
+          </button>
+          <Link href="/admin/requests" replace className="flex h-11 items-center justify-center gap-2 rounded-md border border-border px-4 text-sm font-semibold text-foreground transition hover:border-accent">
+            <ActionIcon name="reset" />
+            Скинути
+          </Link>
         </form>
       </section>
 

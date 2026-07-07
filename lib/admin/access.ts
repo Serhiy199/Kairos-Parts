@@ -10,7 +10,7 @@ export async function requireCrmSession() {
   const session = await auth();
 
   if (!session?.user?.id) {
-    redirect('/login?next=/admin');
+    redirect('/admin/login?next=/admin');
   }
 
   if (!session.user.role || !CRM_ROLES.includes(session.user.role)) {

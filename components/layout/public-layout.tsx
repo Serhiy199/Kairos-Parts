@@ -1,6 +1,8 @@
 ﻿import Image from 'next/image';
 import Link from 'next/link';
 
+import { ActionIcon } from '@/components/ui/action-icons';
+
 import { PublicMobileMenu } from './public-mobile-menu';
 
 const telegramBotUrl = 'https://t.me/kairos_parts_bot';
@@ -9,7 +11,7 @@ const navItems = [
   { href: '/about', label: 'Про нас' },
   { href: '/how-it-works', label: 'Як це працює' },
   { href: '/categories', label: 'Категорії' },
-  { href: '/#advantages', label: 'Переваги' },
+  { href: '/#benefits', label: 'Переваги' },
   { href: '/contacts', label: 'Контакти' }
 ];
 
@@ -39,20 +41,23 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
           <div className="hidden items-center gap-2 md:flex">
             <Link
               href={telegramBotUrl}
-              className="rounded-md border border-accent/50 px-4 py-2 text-sm font-semibold text-accent transition hover:bg-accent/10"
+              className="inline-flex items-center gap-2 rounded-md border border-accent/50 px-4 py-2 text-sm font-semibold text-accent transition hover:bg-accent/10"
             >
+              <ActionIcon name="telegram" />
               Telegram
             </Link>
             <Link
               href="/login"
-              className="hidden rounded-md border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 sm:inline-flex"
+              className="hidden items-center gap-2 rounded-md border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 sm:inline-flex"
             >
+              <ActionIcon name="login" />
               Увійти
             </Link>
             <Link
               href="/request"
-              className="brand-action rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent-hover"
+              className="brand-action inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent-hover"
             >
+              <ActionIcon name="plus" />
               Створити заявку
             </Link>
           </div>

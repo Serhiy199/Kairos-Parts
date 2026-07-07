@@ -24,23 +24,23 @@ export const REQUEST_STATUS_ORDER: Record<RequestStatus, number> = {
 
 export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   NEW: 'Нова заявка',
-  IN_PROGRESS: 'В роботі',
-  OFFER_PREPARING: 'Формується пропозиція',
+  IN_PROGRESS: 'Підбір у роботі',
+  OFFER_PREPARING: 'Формується рішення',
   WAITING_APPROVAL: 'Очікує погодження',
-  ORDERED: 'Замовлено',
+  ORDERED: 'Замовлено у постачальника',
   IN_DELIVERY: 'В дорозі',
-  COMPLETED: 'Завершено',
+  COMPLETED: 'Виконано',
   CANCELLED: 'Скасовано'
 };
 
 export const REQUEST_STATUS_DESCRIPTIONS: Record<RequestStatus, string> = {
   NEW: 'Заявку отримано. Менеджер перевірить дані та звʼяжеться для уточнення.',
-  IN_PROGRESS: 'Менеджер уже працює із заявкою та перевіряє потребу.',
-  OFFER_PREPARING: 'Формується пропозиція з доступними позиціями, аналогами або варіантами постачання.',
-  WAITING_APPROVAL: 'Пропозиція очікує погодження клієнта.',
+  IN_PROGRESS: 'Менеджер підбирає запчастини, перевіряє сумісність і доступність.',
+  OFFER_PREPARING: 'Формується практичне рішення: позиції, аналоги, строки та варіанти постачання.',
+  WAITING_APPROVAL: 'Підібране рішення очікує погодження клієнта.',
   ORDERED: 'Погоджені позиції замовлено у постачальника.',
-  IN_DELIVERY: 'Запчастини в дорозі або готуються до передачі клієнту.',
-  COMPLETED: 'Заявку завершено.',
+  IN_DELIVERY: 'Запчастини в дорозі або готуються до видачі клієнту.',
+  COMPLETED: 'Заявку виконано.',
   CANCELLED: 'Заявку скасовано.'
 };
 

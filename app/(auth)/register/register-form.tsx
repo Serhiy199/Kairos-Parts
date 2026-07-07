@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
+import { ActionIcon } from '@/components/ui/action-icons';
+
 import { registerClient } from '../actions';
 
 type AccountType = 'BUSINESS' | 'INDIVIDUAL';
@@ -79,7 +81,8 @@ export function RegisterForm() {
           Підтвердження пароля *
           <input name="confirmPassword" type="password" required minLength={8} className={inputClass} />
         </label>
-        <button type="submit" className="rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover md:col-span-2">
+        <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover md:col-span-2">
+          <ActionIcon name="plus" />
           Зареєструватися
         </button>
       </form>
@@ -87,7 +90,10 @@ export function RegisterForm() {
       <p className="mt-5 text-sm text-muted">
         Вже маєте акаунт?{' '}
         <Link href="/login" className="font-bold text-foreground transition hover:text-accent">
+          <span className="inline-flex items-center gap-1.5">
+            <ActionIcon name="login" />
           Увійти
+          </span>
         </Link>
       </p>
     </>

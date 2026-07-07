@@ -10,6 +10,7 @@ import {
 } from '@/app/admin/actions';
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
+import { ActionIcon } from '@/components/ui/action-icons';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
@@ -210,7 +211,8 @@ export default async function AdminRequestDetailPage({
                         <p className="text-sm font-bold text-foreground">{file.fileName}</p>
                         <p className="mt-1 text-xs text-muted">{file.mimeType} · {formatSize(file.size)}</p>
                       </div>
-                      <button className="rounded-md border border-accent px-4 py-2 text-sm font-bold text-[#8A5B24] transition hover:bg-accent/10">
+                      <button className="inline-flex items-center justify-center gap-2 rounded-md border border-accent px-4 py-2 text-sm font-bold text-[#8A5B24] transition hover:bg-accent/10">
+                        <ActionIcon name="search" />
                         Запустити OCR
                       </button>
                     </form>
@@ -256,7 +258,8 @@ export default async function AdminRequestDetailPage({
                           className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
                         />
                       </label>
-                      <button className="w-fit rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">
+                      <button className="inline-flex w-fit items-center justify-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">
+                        <ActionIcon name="save" />
                         Зберегти виправлення
                       </button>
                     </form>
@@ -299,7 +302,10 @@ export default async function AdminRequestDetailPage({
             <form action={addAdminRequestComment} className="mt-4 grid gap-3">
               <input type="hidden" name="requestId" value={request.id} />
               <textarea name="message" required rows={4} placeholder="Додати внутрішній коментар для CRM" className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25" />
-              <button className="w-fit rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">Додати коментар</button>
+              <button className="inline-flex w-fit items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+                <ActionIcon name="comment" />
+                Додати коментар
+              </button>
             </form>
             <div className="mt-6 grid gap-3">
               {request.comments.length === 0 ? <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted">Внутрішніх коментарів ще немає.</p> : request.comments.map((comment) => (
@@ -323,7 +329,10 @@ export default async function AdminRequestDetailPage({
                   {REQUEST_STATUSES.map((status) => <option key={status} value={status}>{REQUEST_STATUS_LABELS[status]}</option>)}
                 </select>
               </label>
-              <button className="rounded-md bg-accent px-4 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">Оновити статус</button>
+              <button className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+                <ActionIcon name="check" />
+                Оновити статус
+              </button>
               <p className="text-xs leading-5 text-muted">
                 Після зміни статусу система створить notification record і спробує повідомити клієнта через доступний канал.
               </p>
@@ -339,7 +348,10 @@ export default async function AdminRequestDetailPage({
                 </select>
               </label>
               {session.user.role === 'ADMIN' ? (
-                <button className="rounded-md border border-border px-4 py-3 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">Призначити</button>
+                <button className="inline-flex items-center justify-center gap-2 rounded-md border border-border px-4 py-3 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">
+                  <ActionIcon name="save" />
+                  Призначити
+                </button>
               ) : (
                 <p className="text-xs leading-5 text-muted">MANAGER бачить відповідального, але призначення на Day 9 доступне тільки ADMIN.</p>
               )}

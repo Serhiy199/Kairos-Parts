@@ -1,4 +1,6 @@
-﻿type VehicleFormProps = {
+﻿import { ActionIcon } from '@/components/ui/action-icons';
+
+type VehicleFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   submitLabel: string;
   vehicle?: {
@@ -51,7 +53,8 @@ export function VehicleForm({ action, submitLabel, vehicle }: VehicleFormProps) 
       <p className="rounded-md border border-dashed border-border bg-surface-muted p-4 text-xs leading-5 text-muted md:col-span-2">
         Фото або документи до техніки буде винесено в окремий storage flow. На Day 8 документи показуються як файли заявок і записи Document.
       </p>
-      <button type="submit" className="rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover md:col-span-2">
+      <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover md:col-span-2">
+        <ActionIcon name="save" />
         {submitLabel}
       </button>
     </form>

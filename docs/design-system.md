@@ -355,6 +355,23 @@ theme: {
 - Не використовувати hover як єдиний спосіб доступу до дії.
 - Форми заявок на mobile мають іти кроками, не довгим полотном без групування.
 
+## Homepage Benefits Section
+
+- Benefits section на публічній головній сторінці перероблена за client reference: dark photo background, cinematic overlay, compact header, 6 metallic cards у форматі 3×2 на desktop.
+- Target background asset: `/images/benefits/benefits-bg.png`: muted premium logistics warehouse/truck image, без тексту, логотипів і яскравих кольорових деталей.
+- Section keeps a technical fallback to `/images/kairos-hero-industrial.png`, but the primary visual direction is the approved benefits background image with a strong graphite overlay.
+- Background/overlay має бути full-bleed на всю ширину viewport; max-width застосовується тільки до внутрішнього content wrapper.
+- Такий темний стиль має бути scoped тільки до brand/promo sections. Основні форми, кабінети, CRM, таблиці та довгі текстові секції залишаються світлими й читабельними.
+- Cards: controlled `.benefit-card` styles with brushed titanium/silver surface, 16px radius, gold/bronze border, inner highlight, dark shadow, large custom bronze/gold line icon зліва, small volumetric gold number badge біля title, dark readable text. Decorative diagonal/corner elements must stay subtle and never cover content.
+- Desktop layout: 3 columns × 2 rows. Tablet: 2 columns × 3 rows. Mobile: 1 column із сильнішим dark overlay і без horizontal scroll.
+- CTA після benefits має бути компактним і другорядним до самої секції: primary gold action для створення заявки, secondary dark/gold action для Telegram.
+
+## Homepage Audience Section
+
+- Audience section `Для кого` має бути темним premium industrial блоком після benefits, не світлим SaaS-list.
+- Audience cards use controlled `.audience-card` styles: compact horizontal brushed-metal pills, gold/bronze border, dark right icon panel, subtle diagonal highlight, black readable title.
+- Desktop layout: 3 columns × 2 rows. Tablet: 2 columns × 3 rows. Mobile: 1 column, без horizontal scroll і без дрібного тексту.
+
 ## Що Не Потрібно Робити
 
 - Не копіювати референс 1-в-1: адаптувати стиль під реальну платформу заявок.

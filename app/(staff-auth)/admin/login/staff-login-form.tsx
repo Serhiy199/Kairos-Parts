@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { loginStaff } from '@/app/(auth)/actions';
+import { ActionIcon } from '@/components/ui/action-icons';
 
 export function StaffLoginForm({ nextPath }: { nextPath?: string }) {
   return (
@@ -24,7 +25,8 @@ export function StaffLoginForm({ nextPath }: { nextPath?: string }) {
           className="h-11 rounded-md border border-border px-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
         />
       </label>
-      <button type="submit" className="rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+      <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+        <ActionIcon name="login" />
         Увійти до CRM
       </button>
     </form>
