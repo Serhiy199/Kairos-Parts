@@ -5,8 +5,6 @@ import { useState } from 'react';
 
 import { ActionIcon } from '@/components/ui/action-icons';
 
-const telegramBotUrl = 'https://t.me/kairos_parts_bot';
-
 type NavItem = {
   href: string;
   label: string;
@@ -50,14 +48,6 @@ export function PublicMobileMenu({ navItems }: { navItems: NavItem[] }) {
             >
               <ActionIcon name="login" />
               Увійти
-            </Link>
-            <Link
-              href={telegramBotUrl}
-              onClick={() => setIsOpen(false)}
-              className="inline-flex items-center gap-2 rounded-md px-3 py-2 font-semibold text-accent transition hover:bg-white/10"
-            >
-              <ActionIcon name="telegram" />
-              Заявка в Telegram
             </Link>
             <Link
               href="/request"

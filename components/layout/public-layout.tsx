@@ -40,13 +40,6 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
           </nav>
           <div className="hidden items-center gap-2 md:flex">
             <Link
-              href={telegramBotUrl}
-              className="inline-flex items-center gap-2 rounded-md border border-accent/50 px-4 py-2 text-sm font-semibold text-accent transition hover:bg-accent/10"
-            >
-              <ActionIcon name="telegram" />
-              Telegram
-            </Link>
-            <Link
               href="/login"
               className="hidden items-center gap-2 rounded-md border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 sm:inline-flex"
             >
@@ -96,9 +89,18 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
           <div>
             <p className="text-sm font-bold text-foreground">Контакти</p>
             <div className="mt-3 grid gap-2 text-sm text-muted">
-              <span>Телефон: +38 (000) 000 00 00</span>
-              <span>Email: hello@kairos-parts.example</span>
-              <span>Telegram: @kairos_parts_bot</span>
+              <a href="tel:+380000000000" className="inline-flex items-center gap-2 transition hover:text-foreground">
+                <ActionIcon name="phone" className="size-4 text-accent" />
+                <span>Телефон: +38 (000) 000 00 00</span>
+              </a>
+              <a href="mailto:hello@kairos-parts.example" className="inline-flex items-center gap-2 transition hover:text-foreground">
+                <ActionIcon name="mail" className="size-4 text-accent" />
+                <span>Email: hello@kairos-parts.example</span>
+              </a>
+              <a href={telegramBotUrl} className="inline-flex items-center gap-2 transition hover:text-foreground">
+                <ActionIcon name="telegram" className="size-4 text-accent" />
+                <span>Telegram: @kairos_parts_bot</span>
+              </a>
             </div>
           </div>
         </div>
