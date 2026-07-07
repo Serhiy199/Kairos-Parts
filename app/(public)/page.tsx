@@ -1,5 +1,9 @@
 ﻿import Image from 'next/image';
 import Link from 'next/link';
+import { FaClipboardList, FaTractor } from 'react-icons/fa';
+import { FaArrowsRotate, FaHandshakeAngle } from 'react-icons/fa6';
+import { GoGear } from 'react-icons/go';
+import { LuBoxes, LuSearchCheck } from 'react-icons/lu';
 
 import { ActionIcon } from '@/components/ui/action-icons';
 import { catalogCategories } from '@/lib/catalog/catalog-data';
@@ -183,6 +187,10 @@ function TrustIcon({ icon }: { icon: string }) {
     );
   }
 
+  if (icon === 'gear') {
+    return <GoGear aria-hidden="true" className="size-14 sm:size-16" />;
+  }
+
   return (
     <svg {...baseProps}>
       <circle cx="12" cy="12" r="3.5" />
@@ -201,47 +209,19 @@ function TrustIcon({ icon }: { icon: string }) {
 function BenefitIcon({ icon }: { icon: string }) {
   if (icon === 'package') {
     return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-12 sm:size-16" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 17h18" />
-        <path d="M5 17V9h6v8" />
-        <path d="M13 17V7h6v10" />
-        <path d="M5 9 8 6l3 3" />
-        <path d="M13 7 16 4l3 3" />
-        <path d="M8 6v11" />
-        <path d="M16 4v13" />
-        <path d="M4 20h16" />
-      </svg>
+      <LuBoxes aria-hidden="true" className="size-12 sm:size-16" />
     );
   }
 
   if (icon === 'search') {
     return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-12 sm:size-16" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="9.5" cy="10" r="5.2" />
-        <path d="m13.4 13.8 5.1 5.1" />
-        <path d="M7.2 10h4.6" />
-        <path d="M9.5 7.7v4.6" />
-        <circle cx="17" cy="6.8" r="2.6" />
-        <path d="M17 4.2v1" />
-        <path d="M17 8.4v1" />
-        <path d="M14.4 6.8h1" />
-        <path d="M18.6 6.8h1" />
-      </svg>
+      <LuSearchCheck aria-hidden="true" className="size-12 sm:size-16" />
     );
   }
 
   if (icon === 'handshake') {
     return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-12 sm:size-16" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round">
-        <path d="m3 10 4-4 4 4" />
-        <path d="m21 10-4-4-4 4" />
-        <path d="M7 10h2.5l2-2a2.7 2.7 0 0 1 3.8 0L17 9.7" />
-        <path d="m8 13 4.2 4.2a3 3 0 0 0 4.2 0l1.5-1.5a2.5 2.5 0 0 0 0-3.5L16 10.4" />
-        <path d="M10 15.2 12.2 13" />
-        <path d="M12.7 17.1 15 14.8" />
-        <path d="M5 8.5 8.5 12" />
-        <path d="M19 8.5 15.5 12" />
-      </svg>
+      <FaHandshakeAngle aria-hidden="true" className="size-12 sm:size-16" />
     );
   }
 
@@ -258,13 +238,7 @@ function BenefitIcon({ icon }: { icon: string }) {
 
   if (icon === 'clipboard') {
     return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-12 sm:size-16" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M8 4h8l1 2h3v15H4V6h3z" />
-        <path d="M9 4h6" />
-        <path d="m8 12 2 2 5-5" />
-        <path d="M8 17h8" />
-        <path d="M8 20h5" />
-      </svg>
+      <FaClipboardList aria-hidden="true" className="size-12 sm:size-16" />
     );
   }
 
@@ -282,29 +256,13 @@ function BenefitIcon({ icon }: { icon: string }) {
 
   if (icon === 'tractor') {
     return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-12 sm:size-16" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M6 13V7h6l3 6" />
-        <path d="M4 13h12.5" />
-        <path d="M12 7h4.5l2 3" />
-        <path d="M16 13h3" />
-        <circle cx="7" cy="17" r="4" />
-        <circle cx="18.5" cy="18" r="2.5" />
-        <path d="M7 15.2v3.6" />
-        <path d="M5.2 17h3.6" />
-      </svg>
+      <FaTractor aria-hidden="true" className="size-12 sm:size-16" />
     );
   }
 
   if (icon === 'refresh') {
     return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-12 sm:size-16" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 7v5h-5" />
-        <path d="M4 17v-5h5" />
-        <path d="M18.5 12a6.6 6.6 0 0 0-11-4.9L4 10.4" />
-        <path d="M5.5 12a6.6 6.6 0 0 0 11 4.9L20 13.6" />
-        <path d="m9 10 3-1.6 3 1.6-3 1.6z" />
-        <path d="M9 10v3.7l3 1.7 3-1.7V10" />
-      </svg>
+      <FaArrowsRotate aria-hidden="true" className="size-12 sm:size-16" />
     );
   }
 
@@ -408,7 +366,7 @@ export default function HomePage() {
           className="object-cover opacity-70"
         />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,5,5,0.92)_0%,rgba(5,5,5,0.76)_42%,rgba(5,5,5,0.34)_100%)]" />
-        <div className="relative mx-auto grid min-h-[calc(100vh-64px)] max-w-7xl content-center px-4 pb-20 pt-16 sm:px-6 lg:min-h-[680px] lg:px-8 lg:pb-24 lg:pt-20">
+        <div className="kp-container relative grid min-h-[calc(100vh-64px)] content-center pb-20 pt-16 lg:min-h-[680px] lg:pb-24 lg:pt-20">
           <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm">Kairos Parts — сервіс для B2B-клієнтів аграрної та транспортної галузі.</p>
             <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.04] sm:text-5xl lg:text-6xl xl:text-7xl">
@@ -434,8 +392,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="how-it-works" className="bg-[#F7F7F5] px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
+      <section id="how-it-works" className="bg-[#F7F7F5] py-16">
+        <div className="kp-container">
           <div className="max-w-3xl">
             <p className="text-sm font-bold uppercase text-accent">Як це працює</p>
             <h2 className="mt-2 text-3xl font-bold text-foreground">Заявка, підбір, узгодження та доставка в одному процесі</h2>
@@ -446,18 +404,26 @@ export default function HomePage() {
           <div className="relative mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="pointer-events-none absolute left-8 right-8 top-6 hidden h-px bg-gradient-to-r from-transparent via-accent/35 to-transparent lg:block" />
             {processSteps.map((step, index) => (
-              <div key={step.title} className="relative rounded-lg border border-border bg-card p-6 shadow-card transition hover:border-accent/45 hover:shadow-panel">
+              <div key={step.title} className="relative flex min-h-[232px] flex-col rounded-lg border border-border bg-card p-6 shadow-card transition hover:border-accent/45 hover:shadow-panel">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex size-12 items-center justify-center rounded-md border border-accent/25 bg-primary text-accent shadow-card">
                     <ProcessIcon icon={step.icon} />
                   </div>
                   <span className="font-display text-sm font-bold tracking-[0.16em] text-accent/80">
-                    {String(index + 1).padStart(2, '0')}
+                    Крок {index + 1}
                   </span>
                 </div>
-                <h3 className="mt-5 text-xl font-bold text-foreground">{step.title}</h3>
-                <p className="mt-3 text-sm leading-6 text-muted">{step.text}</p>
-                <div className="mt-6 h-1 w-14 rounded-full bg-accent" />
+                <div className="flex flex-1 flex-col">
+                  <h3 className="mt-5 text-xl font-bold text-foreground">{step.title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-muted">{step.text}</p>
+                </div>
+                <div className="mt-6 h-1.5 w-full rounded-full bg-border/80">
+                  <div
+                    className="h-full rounded-full bg-accent"
+                    style={{ width: `${(index + 1) * 25}%` }}
+                    aria-hidden="true"
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -470,7 +436,7 @@ export default function HomePage() {
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.34)_0%,rgba(5,5,5,0)_32%,rgba(5,5,5,0.18)_78%,rgba(5,5,5,0.42)_100%)]" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_36%,rgba(200,150,66,0.1),transparent_34%)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(232,232,232,0.75)_1px,transparent_1px),linear-gradient(90deg,rgba(232,232,232,0.75)_1px,transparent_1px)] [background-size:42px_42px]" />
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="kp-container relative z-10">
           <div className="max-w-[980px]">
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent">Переваги</p>
             <h2 className="mt-2 text-[28px] font-bold leading-[1.08] text-white sm:text-[34px] lg:text-[38px] xl:whitespace-nowrap">
@@ -501,48 +467,23 @@ export default function HomePage() {
                   ) : (
                     <p className="benefit-card__description">{advantage.text}</p>
                   )}
-                  <div className="benefit-card__divider" />
                 </div>
               </article>
             ))}
           </div>
 
-          <div className="mt-6 flex flex-col gap-3 border-t border-white/18 bg-black/15 px-0 pt-4 backdrop-blur-[2px] lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-lg font-bold text-white">Готові передати заявку на підбір?</p>
-              <p className="mt-1 text-sm leading-6 text-technical-white/70">Опишіть потребу на сайті або почніть швидкий діалог у Telegram.</p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/request"
-                className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover"
-              >
-                <ActionIcon name="plus" />
-                Створити заявку
-              </Link>
-              <Link
-                href={telegramBotUrl}
-                className="inline-flex items-center justify-center gap-2 rounded-md border border-accent/45 bg-black/25 px-5 py-3 text-center text-sm font-semibold text-accent transition hover:border-accent hover:bg-accent/10"
-              >
-                <ActionIcon name="telegram" />
-                Надіслати заявку в Telegram
-              </Link>
-            </div>
-          </div>
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-background px-4 py-14 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden bg-background py-14">
         <div className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(76,79,84,0.65)_1px,transparent_1px),linear-gradient(90deg,rgba(76,79,84,0.65)_1px,transparent_1px)] [background-size:28px_28px]" />
-        <div className="relative mx-auto max-w-7xl">
-          <div className="grid gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
-            <div>
-              <div className="mb-4 h-0.5 w-14 rounded-full bg-accent" />
-              <h2 className="max-w-xl text-3xl font-bold leading-tight text-foreground sm:text-4xl">
-                Асортимент, постачальники й супровід — в одному процесі
-              </h2>
-            </div>
-            <p className="max-w-2xl text-base font-medium leading-7 text-foreground/80 sm:text-lg sm:leading-8">
+        <div className="kp-container relative">
+          <div className="max-w-3xl">
+            <p className="text-sm font-bold uppercase text-accent">Сервіс</p>
+            <h2 className="mt-2 max-w-2xl text-3xl font-bold leading-tight text-foreground sm:text-4xl">
+              Асортимент, постачальники й супровід — в одному процесі
+            </h2>
+            <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-foreground/80 sm:text-lg sm:leading-8">
               Kairos Parts допомагає швидко знаходити запчастини для аграрної, вантажної та спеціальної техніки через одну заявку.
             </p>
           </div>
@@ -562,10 +503,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-[#080808] px-4 py-10 text-white sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden bg-[#080808] py-10 text-white">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_72%_14%,rgba(200,150,66,0.12),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.04),transparent_38%)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(232,232,232,0.8)_1px,transparent_1px),linear-gradient(90deg,rgba(232,232,232,0.8)_1px,transparent_1px)] [background-size:36px_36px]" />
-        <div className="relative mx-auto max-w-7xl">
+        <div className="kp-container relative">
           <div className="max-w-[640px]">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">Для кого</p>
             <h2 className="mt-2 text-[24px] font-bold leading-[1.14] text-white sm:text-[30px] lg:text-[34px]">Для компаній, де техніка має працювати, а не чекати</h2>
@@ -583,8 +524,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-card px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
+      <section className="bg-card py-16">
+        <div className="kp-container">
           <div className="grid gap-8 lg:grid-cols-[0.9fr_1.4fr] lg:items-start">
             <div>
               <p className="text-sm font-bold uppercase text-accent">Напрями підбору</p>
@@ -616,8 +557,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="telegram" className="bg-primary px-4 py-16 text-white sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
+      <section id="telegram" className="bg-primary py-16 text-white">
+        <div className="kp-container">
           <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
             <div>
               <p className="text-sm font-bold uppercase text-accent">Способи створення заявки</p>

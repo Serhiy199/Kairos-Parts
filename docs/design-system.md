@@ -185,6 +185,8 @@ theme: {
 - Hero може використовувати індустріальне фото техніки з темним overlay.
 - CTA-кнопки Premium Gold, hover Rich Gold; другорядні кнопки темні або outline.
 - Публічні секції мають бути світлими, з білими картками для процесу, переваг, каналів зв'язку та прикладів заявок.
+- Внутрішній контент header, hero, секцій головної та footer вирівнюється через єдиний `.kp-container`: `width: 100%`, `max-width: 1280px`, `margin-inline: auto`, padding `16px` mobile, `20px` tablet, `24px` desktop, `1320px` max-width від `1440px`.
+- Full-width backgrounds залишаються на `section`; `.kp-container` застосовується тільки до внутрішнього контенту, щоб усі блоки стояли на одній вертикальній сітці.
 
 ### Client Dashboard Layout
 

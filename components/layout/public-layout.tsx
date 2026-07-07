@@ -19,7 +19,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="public-brand-type min-h-screen bg-background">
       <header className="sticky top-0 z-40 bg-primary text-white shadow-panel">
-        <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+        <div className="kp-container flex min-h-16 items-center justify-between gap-4 py-3">
           <Link href="/" className="flex shrink-0 items-center" aria-label="Kairos Parts">
             <Image
               src="/images/kairos-logo.png"
@@ -59,7 +59,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
       </header>
       <main>{children}</main>
       <footer className="border-t border-border bg-card">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr] lg:px-8">
+        <div className="kp-container grid gap-8 py-10 md:grid-cols-[1.5fr_1fr_1fr]">
           <div>
             <div className="inline-flex">
               <Image
@@ -104,8 +104,10 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </div>
-        <div className="border-t border-border px-4 py-4 text-center text-xs text-muted">
-          © 2026 Kairos Parts. MVP public website foundation.
+        <div className="border-t border-border">
+          <div className="kp-container py-4 text-center text-xs text-muted">
+            © 2026 Kairos Parts. MVP public website foundation.
+          </div>
         </div>
       </footer>
     </div>
