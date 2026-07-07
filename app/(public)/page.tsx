@@ -79,24 +79,26 @@ const channels = [
   { title: 'Через менеджера', text: 'Для складних або термінових заявок.', href: '/contacts' }
 ];
 
-const heroProcessSteps = ['Заявка', 'Підбір', 'Узгодження', 'Доставка'];
-
 const trustStats = [
   {
-    value: '10 000+',
-    label: 'позицій під замовлення'
+    title: 'Економимо ваш час',
+    text: 'Одна заявка — десятки перевірених постачальників',
+    icon: 'search'
   },
   {
-    value: '200+',
-    label: 'перевірених постачальників'
+    title: 'Перевірені постачальники',
+    text: 'Працюємо лише з надійними партнерами',
+    icon: 'shield'
   },
   {
-    value: '1 менеджер',
-    label: 'супроводжує заявку'
+    title: 'Персональний супровід',
+    text: 'Менеджер з вами на кожному етапі',
+    icon: 'clipboard'
   },
   {
-    value: '4 етапи',
-    label: 'від заявки до доставки'
+    title: 'Рішення для техніки',
+    text: 'Агро, вантажна та спеціальна техніка',
+    icon: 'gear'
   }
 ];
 
@@ -136,6 +138,62 @@ function ProcessIcon({ icon }: { icon: string }) {
       <path d="M14 3v5h5" />
       <path d="M10 12h5" />
       <path d="M10 16h7" />
+    </svg>
+  );
+}
+
+function TrustIcon({ icon }: { icon: string }) {
+  const baseProps = {
+    'aria-hidden': true,
+    viewBox: '0 0 24 24',
+    className: 'size-14 sm:size-16',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.7,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const
+  };
+
+  if (icon === 'search') {
+    return (
+      <svg {...baseProps}>
+        <circle cx="10" cy="10" r="6" />
+        <path d="m14.5 14.5 5 5" />
+      </svg>
+    );
+  }
+
+  if (icon === 'shield') {
+    return (
+      <svg {...baseProps}>
+        <path d="M12 3 19 6v5c0 4.8-3 8.4-7 10-4-1.6-7-5.2-7-10V6z" />
+        <path d="m9 12 2 2 4-5" />
+      </svg>
+    );
+  }
+
+  if (icon === 'clipboard') {
+    return (
+      <svg {...baseProps}>
+        <path d="M8 4h8l1 2h3v15H4V6h3z" />
+        <path d="M9 4h6" />
+        <path d="m8 12 2 2 4-4" />
+        <path d="M8 17h8" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...baseProps}>
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M12 2v3" />
+      <path d="M12 19v3" />
+      <path d="m4.9 4.9 2.1 2.1" />
+      <path d="m17 17 2.1 2.1" />
+      <path d="M2 12h3" />
+      <path d="M19 12h3" />
+      <path d="m4.9 19.1 2.1-2.1" />
+      <path d="m17 7 2.1-2.1" />
     </svg>
   );
 }
@@ -350,10 +408,9 @@ export default function HomePage() {
           className="object-cover opacity-70"
         />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,5,5,0.92)_0%,rgba(5,5,5,0.76)_42%,rgba(5,5,5,0.34)_100%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.34)_0%,rgba(5,5,5,0)_32%,rgba(245,246,247,0)_78%,#F5F6F7_100%)]" />
         <div className="relative mx-auto grid min-h-[calc(100vh-64px)] max-w-7xl content-center px-4 pb-20 pt-16 sm:px-6 lg:min-h-[680px] lg:px-8 lg:pb-24 lg:pt-20">
           <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm">KAIROS PARTS ДЛЯ B2B ТЕХНІКИ</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm">Kairos Parts — сервіс для B2B-клієнтів аграрної та транспортної галузі.</p>
             <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.04] sm:text-5xl lg:text-6xl xl:text-7xl">
               Підберемо запчастини для вашої техніки за одним запитом
             </h1>
@@ -372,42 +429,6 @@ export default function HomePage() {
                 <ActionIcon name="telegram" />
                 Надіслати заявку в Telegram
               </Link>
-            </div>
-            <div className="mt-8 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/70">
-              {heroProcessSteps.map((step, index) => (
-                <div key={step} className="flex items-center gap-2">
-                  <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5">{step}</span>
-                  {index < heroProcessSteps.length - 1 ? <span className="text-accent/80">→</span> : null}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="relative overflow-hidden bg-background px-4 py-12 sm:px-6 lg:px-8">
-        <div className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(76,79,84,0.65)_1px,transparent_1px),linear-gradient(90deg,rgba(76,79,84,0.65)_1px,transparent_1px)] [background-size:28px_28px]" />
-        <div className="relative mx-auto max-w-7xl">
-          <div className="grid gap-5 lg:grid-cols-[0.86fr_1.14fr] lg:items-end">
-            <div>
-              <div className="mb-4 h-0.5 w-14 rounded-full bg-accent" />
-              <h2 className="max-w-2xl text-2xl font-bold text-foreground sm:text-3xl">
-                Асортимент, постачальники й супровід — в одному процесі
-              </h2>
-            </div>
-            <p className="max-w-3xl text-sm leading-6 text-muted sm:text-base sm:leading-7">
-              Kairos Parts допомагає швидко знаходити запчастини для аграрної, вантажної та спеціальної техніки через одну заявку.
-            </p>
-          </div>
-          <div className="mt-7 overflow-hidden rounded-xl border border-[rgba(125,128,133,0.25)] bg-card shadow-card">
-            <div className="h-1 bg-gradient-to-r from-accent via-[#B37A2E] to-transparent" />
-            <div className="grid grid-cols-2 divide-x divide-y divide-border/80 lg:grid-cols-4 lg:divide-y-0">
-            {trustStats.map((stat) => (
-              <div key={stat.value} className="min-h-32 p-5 sm:p-6">
-                <p className="text-3xl font-bold leading-none text-accent sm:text-4xl">{stat.value}</p>
-                <p className="mt-3 max-w-44 text-sm font-bold leading-5 text-foreground">{stat.label}</p>
-              </div>
-            ))}
             </div>
           </div>
         </div>
@@ -506,6 +527,36 @@ export default function HomePage() {
                 <ActionIcon name="telegram" />
                 Надіслати заявку в Telegram
               </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="relative overflow-hidden bg-background px-4 py-14 sm:px-6 lg:px-8">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(76,79,84,0.65)_1px,transparent_1px),linear-gradient(90deg,rgba(76,79,84,0.65)_1px,transparent_1px)] [background-size:28px_28px]" />
+        <div className="relative mx-auto max-w-7xl">
+          <div className="grid gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
+            <div>
+              <div className="mb-4 h-0.5 w-14 rounded-full bg-accent" />
+              <h2 className="max-w-xl text-3xl font-bold leading-tight text-foreground sm:text-4xl">
+                Асортимент, постачальники й супровід — в одному процесі
+              </h2>
+            </div>
+            <p className="max-w-2xl text-base font-medium leading-7 text-foreground/80 sm:text-lg sm:leading-8">
+              Kairos Parts допомагає швидко знаходити запчастини для аграрної, вантажної та спеціальної техніки через одну заявку.
+            </p>
+          </div>
+          <div className="mt-10 overflow-hidden rounded-xl border border-[rgba(125,128,133,0.24)] bg-card shadow-card">
+            <div className="grid divide-y divide-border/80 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
+              {trustStats.map((stat) => (
+                <div key={stat.title} className="min-h-72 px-8 py-10 sm:px-10 lg:px-12">
+                  <div className="text-accent">
+                    <TrustIcon icon={stat.icon} />
+                  </div>
+                  <h3 className="mt-9 max-w-52 text-xl font-bold leading-tight text-foreground">{stat.title}</h3>
+                  <p className="mt-5 max-w-56 text-base font-medium leading-7 text-muted">{stat.text}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
