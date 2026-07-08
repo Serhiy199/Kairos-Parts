@@ -87,6 +87,7 @@ model User {
   sessions         Session[]
   clientProfile    ClientProfile?
   managerProfile   ManagerProfile?
+  companyMemberships CompanyMember[]
   assignedRequests Request[]              @relation("AssignedManager")
   statusChanges    RequestStatusHistory[] @relation("StatusChangedBy")
   comments         RequestComment[]       @relation("RequestCommentAuthor")
@@ -153,6 +154,39 @@ model ClientProfile {
   updatedAt   DateTime   @updatedAt
 }
 
+model Company {
+  id           String          @id @default(cuid())
+  name         String
+  edrpou       String?
+  phone        String?
+  email        String?
+  legalAddress String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  members      CompanyMember[]
+  requests     Request[]
+  vehicles     Vehicle[]
+  documents    Document[]
+
+  @@unique([name, edrpou])
+  @@index([edrpou])
+}
+
+model CompanyMember {
+  id               String   @id @default(cuid())
+  companyId        String
+  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isPrimaryContact Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([companyId, userId])
+  @@unique([userId])
+  @@index([companyId])
+}
+
 model ManagerProfile {
   id          String   @id @default(cuid())
   userId      String   @unique
@@ -170,6 +204,8 @@ model Request {
   status            RequestStatus          @default(NEW)
   clientId          String?
   client            ClientProfile?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  companyId         String?
+  company           Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull)
   guestName         String?
   guestPhone        String?
   guestEmail        String?
@@ -201,6 +237,7 @@ model Request {
   updatedAt         DateTime               @updatedAt
 
   @@index([clientId])
+  @@index([companyId])
   @@index([status])
   @@index([source])
   @@index([assignedManagerId])
@@ -379,6 +416,8 @@ model Vehicle {
   id           String        @id @default(cuid())
   clientId     String
   client       ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  companyId    String?
+  company      Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
   type         String
   manufacturer String
   model        String
@@ -392,12 +431,15 @@ model Vehicle {
   updatedAt    DateTime      @updatedAt
 
   @@index([clientId])
+  @@index([companyId])
 }
 
 model Document {
   id         String         @id @default(cuid())
   clientId   String?
   client     ClientProfile? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  companyId  String?
+  company    Company?       @relation(fields: [companyId], references: [id], onDelete: SetNull)
   requestId  String?
   request    Request?       @relation(fields: [requestId], references: [id], onDelete: SetNull)
   vehicleId  String?
@@ -410,6 +452,7 @@ model Document {
   createdAt  DateTime       @default(now())
 
   @@index([clientId])
+  @@index([companyId])
   @@index([requestId])
   @@index([vehicleId])
 }

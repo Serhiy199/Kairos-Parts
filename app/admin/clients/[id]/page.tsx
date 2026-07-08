@@ -24,7 +24,17 @@ export default async function AdminClientDetailPage({ params }: { params: Promis
   const client = await prisma.clientProfile.findUnique({
     where: { id },
     include: {
-      user: { select: { name: true, email: true, phone: true } },
+      user: {
+        select: {
+          name: true,
+          email: true,
+          phone: true,
+          companyMemberships: {
+            include: { company: true },
+            take: 1
+          }
+        }
+      },
       vehicles: {
         orderBy: { createdAt: 'desc' },
         include: {
@@ -59,6 +69,7 @@ export default async function AdminClientDetailPage({ params }: { params: Promis
   }
 
   const contactName = client.contactName ?? ([client.firstName, client.lastName].filter(Boolean).join(' ') || client.user.name || 'Клієнт');
+  const companyMembership = client.user.companyMemberships[0];
 
   return (
     <div className="grid gap-6">
@@ -72,6 +83,15 @@ export default async function AdminClientDetailPage({ params }: { params: Promis
           <Info label="Email" value={client.email ?? client.user.email ?? '—'} />
           <Info label="Тип" value={client.clientType === 'BUSINESS' ? 'ФОП / Юр особа' : 'Фіз особа'} />
         </div>
+        {companyMembership ? (
+          <div className="mt-5 rounded-md border border-accent/30 bg-[#FFF7E0] p-4 text-sm text-[#8A5B24]">
+            <p className="font-bold text-foreground">Company account: {companyMembership.company.name}</p>
+            <p className="mt-1">ЄДРПОУ: {companyMembership.company.edrpou ?? '—'} · {companyMembership.company.email ?? 'email —'} · {companyMembership.company.phone ?? 'телефон —'}</p>
+            <Link href={`/admin/companies/${companyMembership.company.id}`} className="mt-3 inline-flex font-bold text-foreground transition hover:text-accent">
+              Відкрити компанію
+            </Link>
+          </div>
+        ) : null}
       </section>
 
       <section className="rounded-lg border border-border bg-card p-6 shadow-card">

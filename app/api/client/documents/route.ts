@@ -1,5 +1,5 @@
 import { auth } from '@/auth';
-import { getClientProfileForSession } from '@/lib/client/access';
+import { documentAccessWhere, getClientAccessContext, requestAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 
@@ -20,17 +20,15 @@ export async function GET() {
     return Response.json({ status: 'database_not_configured' }, { status: 503 });
   }
 
-  const profile = await getClientProfileForSession(session.user.id);
+  const access = await getClientAccessContext(session.user.id);
 
-  if (!profile) {
+  if (!access) {
     return Response.json({ status: 'profile_not_found' }, { status: 404 });
   }
 
   const [documents, requestFiles] = await Promise.all([
     prisma.document.findMany({
-      where: {
-        OR: [{ clientId: profile.id }, { request: { clientId: profile.id } }, { vehicle: { clientId: profile.id } }]
-      },
+      where: documentAccessWhere(access),
       orderBy: { createdAt: 'desc' },
       include: {
         request: { select: { id: true, requestNumber: true } },
@@ -38,7 +36,7 @@ export async function GET() {
       }
     }),
     prisma.requestFile.findMany({
-      where: { request: { clientId: profile.id } },
+      where: { request: requestAccessWhere(access) },
       orderBy: { createdAt: 'desc' },
       include: { request: { select: { id: true, requestNumber: true } } }
     })

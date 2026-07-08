@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { getClientProfileForSession, requireClientSession } from '@/lib/client/access';
+import { getClientAccessContext, requireClientSession } from '@/lib/client/access';
 import { approveClientCommercialOffer, rejectClientCommercialOffer } from '@/lib/commercial-offers/service';
 import { parseClientOfferComment } from '@/lib/commercial-offers/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
@@ -26,13 +26,13 @@ export async function approveClientCommercialOfferAction(formData: FormData) {
     redirectBack(requestId, 'offer-error');
   }
 
-  const profile = await getClientProfileForSession(session.user.id);
+  const access = await getClientAccessContext(session.user.id);
 
-  if (!profile) {
+  if (!access) {
     redirect('/login');
   }
 
-  const result = await approveClientCommercialOffer(offerId, profile.id);
+  const result = await approveClientCommercialOffer(offerId, access);
 
   if (!result.ok) {
     redirectBack(requestId, result.status);
@@ -52,13 +52,13 @@ export async function rejectClientCommercialOfferAction(formData: FormData) {
     redirectBack(requestId, 'offer-error');
   }
 
-  const profile = await getClientProfileForSession(session.user.id);
+  const access = await getClientAccessContext(session.user.id);
 
-  if (!profile) {
+  if (!access) {
     redirect('/login');
   }
 
-  const result = await rejectClientCommercialOffer(offerId, profile.id, parseClientOfferComment(formData));
+  const result = await rejectClientCommercialOffer(offerId, access, parseClientOfferComment(formData));
 
   if (!result.ok) {
     redirectBack(requestId, result.status);

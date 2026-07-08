@@ -11,7 +11,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ of
   }
 
   const { offerId } = await params;
-  const result = await approveClientCommercialOffer(offerId, access.profile.id);
+  const result = await approveClientCommercialOffer(offerId, access.access);
 
   if (!result.ok) {
     return Response.json({ status: result.status }, { status: 400 });

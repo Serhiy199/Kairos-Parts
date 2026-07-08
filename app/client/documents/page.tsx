@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
-import { getClientProfileForSession, requireClientSession } from '@/lib/client/access';
+import { documentAccessWhere, getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 import { REQUEST_DOCUMENT_TYPE_LABELS } from '@/lib/request-documents/validation';
@@ -19,17 +19,16 @@ export default async function ClientDocumentsPage() {
     return <ClientDbBlocker />;
   }
 
-  const profile = await getClientProfileForSession(session.user.id);
+  const access = await getClientAccessContext(session.user.id);
 
-  if (!profile) {
+  if (!access) {
     return <ClientDbBlocker />;
   }
 
+  const requestWhere = requestAccessWhere(access);
   const [documents, requestFiles, requestDocuments] = await Promise.all([
     prisma.document.findMany({
-      where: {
-        OR: [{ clientId: profile.id }, { request: { clientId: profile.id } }, { vehicle: { clientId: profile.id } }]
-      },
+      where: documentAccessWhere(access),
       orderBy: { createdAt: 'desc' },
       include: {
         request: { select: { id: true, requestNumber: true } },
@@ -37,12 +36,12 @@ export default async function ClientDocumentsPage() {
       }
     }),
     prisma.requestFile.findMany({
-      where: { request: { clientId: profile.id } },
+      where: { request: requestWhere },
       orderBy: { createdAt: 'desc' },
       include: { request: { select: { id: true, requestNumber: true } } }
     }),
     prisma.requestDocument.findMany({
-      where: { visibleToClient: true, request: { clientId: profile.id } },
+      where: { visibleToClient: true, request: requestWhere },
       orderBy: { createdAt: 'desc' },
       include: { request: { select: { id: true, requestNumber: true } } }
     })

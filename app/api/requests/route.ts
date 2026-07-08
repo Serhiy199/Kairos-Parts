@@ -1,4 +1,5 @@
 import { auth } from '@/auth';
+import { getClientAccessContext, vehicleAccessWhere } from '@/lib/client/access';
 import { saveRequestFileLocal } from '@/lib/files/local-storage';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
@@ -52,12 +53,7 @@ export async function POST(request: Request) {
   }
 
   const session = await auth();
-  const clientProfile =
-    session?.user?.role === 'CLIENT'
-      ? await prisma.clientProfile.findUnique({
-          where: { userId: session.user.id }
-        })
-      : null;
+  const clientAccess = session?.user?.role === 'CLIENT' ? await getClientAccessContext(session.user.id) : null;
 
   const category = parsed.data.categorySlug
     ? await prisma.category.findUnique({
@@ -80,7 +76,7 @@ export async function POST(request: Request) {
       ? await prisma.vehicle.findFirst({
           where: {
             id: parsed.data.vehicleId,
-            ...(clientProfile ? { clientId: clientProfile.id } : { id: '__not_allowed_for_guest__' })
+            ...(clientAccess ? vehicleAccessWhere(clientAccess) : { id: '__not_allowed_for_guest__' })
           },
           select: { id: true }
         })
@@ -90,12 +86,13 @@ export async function POST(request: Request) {
       data: {
         requestNumber,
         publicStatusToken,
-        source: clientProfile && parsed.data.source === 'client' ? 'CLIENT_DASHBOARD' : 'WEBSITE',
+        source: clientAccess && parsed.data.source === 'client' ? 'CLIENT_DASHBOARD' : 'WEBSITE',
         status: 'NEW',
-        clientId: clientProfile?.id,
-        guestName: clientProfile ? null : parsed.data.contactName,
-        guestPhone: clientProfile ? null : parsed.data.phone,
-        guestEmail: clientProfile ? null : parsed.data.email,
+        clientId: clientAccess?.clientProfileId,
+        companyId: clientAccess?.companyId,
+        guestName: clientAccess ? null : parsed.data.contactName,
+        guestPhone: clientAccess ? null : parsed.data.phone,
+        guestEmail: clientAccess ? null : parsed.data.email,
         companyName: parsed.data.companyName ?? parsed.data.contactName,
         categoryId: category?.id,
         manufacturerId: manufacturer?.id,

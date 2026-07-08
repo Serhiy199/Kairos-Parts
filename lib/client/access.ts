@@ -1,8 +1,17 @@
 import { redirect } from 'next/navigation';
+import type { Prisma } from '@prisma/client';
 
 import { auth } from '@/auth';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+
+export type ClientAccessContext = {
+  userId: string;
+  clientProfileId: string;
+  companyId: string | null;
+  companyName: string | null;
+  mode: 'PERSONAL' | 'COMPANY';
+};
 
 export async function requireClientSession() {
   const session = await auth();
@@ -29,6 +38,90 @@ export async function getClientProfileForSession(userId: string) {
   });
 }
 
+export async function getClientAccessContext(userId: string): Promise<ClientAccessContext | null> {
+  if (!hasDatabaseUrl()) {
+    return null;
+  }
+
+  const profile = await prisma.clientProfile.findUnique({
+    where: { userId },
+    include: {
+      user: {
+        include: {
+          companyMemberships: {
+            take: 1,
+            orderBy: { createdAt: 'asc' },
+            include: { company: { select: { id: true, name: true } } }
+          }
+        }
+      }
+    }
+  });
+
+  if (!profile) {
+    return null;
+  }
+
+  const membership = profile.user.companyMemberships[0];
+
+  return {
+    userId,
+    clientProfileId: profile.id,
+    companyId: membership?.companyId ?? null,
+    companyName: membership?.company.name ?? null,
+    mode: membership ? 'COMPANY' : 'PERSONAL'
+  };
+}
+
+export function requestAccessWhere(context: ClientAccessContext): Prisma.RequestWhereInput {
+  if (context.companyId) {
+    return {
+      OR: [
+        { companyId: context.companyId },
+        { clientId: context.clientProfileId, companyId: null }
+      ]
+    };
+  }
+
+  return { clientId: context.clientProfileId };
+}
+
+export function vehicleAccessWhere(context: ClientAccessContext): Prisma.VehicleWhereInput {
+  if (context.companyId) {
+    return {
+      OR: [
+        { companyId: context.companyId },
+        { clientId: context.clientProfileId, companyId: null }
+      ]
+    };
+  }
+
+  return { clientId: context.clientProfileId };
+}
+
+export function documentAccessWhere(context: ClientAccessContext): Prisma.DocumentWhereInput {
+  if (context.companyId) {
+    return {
+      OR: [
+        { companyId: context.companyId },
+        { clientId: context.clientProfileId, companyId: null },
+        { request: { companyId: context.companyId } },
+        { request: { clientId: context.clientProfileId, companyId: null } },
+        { vehicle: { companyId: context.companyId } },
+        { vehicle: { clientId: context.clientProfileId, companyId: null } }
+      ]
+    };
+  }
+
+  return {
+    OR: [
+      { clientId: context.clientProfileId },
+      { request: { clientId: context.clientProfileId } },
+      { vehicle: { clientId: context.clientProfileId } }
+    ]
+  };
+}
+
 export async function getClientApiSession() {
   const session = await auth();
 
@@ -50,7 +143,13 @@ export async function getClientApiSession() {
     return { ok: false as const, status: 'client_profile_not_found' as const, statusCode: 404 };
   }
 
-  return { ok: true as const, session, profile };
+  const access = await getClientAccessContext(session.user.id);
+
+  if (!access) {
+    return { ok: false as const, status: 'client_profile_not_found' as const, statusCode: 404 };
+  }
+
+  return { ok: true as const, session, profile, access };
 }
 
 export function clientAccessError(result: { status: string; statusCode: number }) {

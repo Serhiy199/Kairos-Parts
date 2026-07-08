@@ -112,6 +112,14 @@ export default async function AdminRequestDetailPage({
             documents: { orderBy: { createdAt: 'desc' } }
           }
         },
+        company: {
+          include: {
+            members: {
+              orderBy: [{ isPrimaryContact: 'desc' }, { createdAt: 'asc' }],
+              include: { user: { include: { clientProfile: true } } }
+            }
+          }
+        },
         category: true,
         subcategory: true,
         manufacturer: true,
@@ -164,7 +172,7 @@ export default async function AdminRequestDetailPage({
   const message = resultMessage(query.result);
   const publicStatusUrl = `/request/status/${request.publicStatusToken}`;
   const contactName = request.client?.contactName ?? request.guestName ?? 'Гість';
-  const companyName = request.client?.companyName ?? request.companyName ?? '—';
+  const companyName = request.company?.name ?? request.client?.companyName ?? request.companyName ?? '—';
   const phone = request.client?.phone ?? request.guestPhone ?? '—';
   const email = request.client?.email ?? request.guestEmail ?? '—';
 
@@ -203,6 +211,15 @@ export default async function AdminRequestDetailPage({
               <Info label="Телефон" value={phone} />
               <Info label="Email" value={email} />
             </div>
+            {request.company ? (
+              <div className="mt-5 rounded-md border border-accent/30 bg-[#FFF7E0] p-4 text-sm text-[#8A5B24]">
+                <p className="font-bold text-foreground">Company account: {request.company.name}</p>
+                <p className="mt-1">ЄДРПОУ: {request.company.edrpou ?? '—'} · {request.company.email ?? 'email —'} · {request.company.phone ?? 'телефон —'}</p>
+                <Link href={`/admin/companies/${request.company.id}`} className="mt-3 inline-flex font-bold text-foreground transition hover:text-accent">
+                  Відкрити компанію
+                </Link>
+              </div>
+            ) : null}
           </section>
 
           <section className="rounded-lg border border-border bg-card p-6 shadow-card">

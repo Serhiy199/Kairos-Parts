@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { approveClientCommercialOfferAction, rejectClientCommercialOfferAction } from '@/app/client/actions';
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
-import { getClientProfileForSession, requireClientSession } from '@/lib/client/access';
+import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
 import { CLIENT_VISIBLE_OFFER_STATUSES, COMMERCIAL_OFFER_STATUS_LABELS } from '@/lib/commercial-offers/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
@@ -46,17 +46,18 @@ export default async function ClientRequestDetailPage({
     return <ClientDbBlocker />;
   }
 
-  const profile = await getClientProfileForSession(session.user.id);
+  const access = await getClientAccessContext(session.user.id);
 
-  if (!profile) {
+  if (!access) {
     return <ClientDbBlocker />;
   }
 
   const request = await prisma.request.findFirst({
-    where: { id, clientId: profile.id },
+    where: { id, AND: [requestAccessWhere(access)] },
     include: {
       category: true,
       manufacturer: true,
+      company: { select: { name: true } },
       items: {
         where: { visibleToClient: true },
         orderBy: { createdAt: 'desc' }

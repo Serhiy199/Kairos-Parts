@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { notFound, redirect } from 'next/navigation';
 
-import { getClientProfileForSession, requireClientSession } from '@/lib/client/access';
+import { getClientAccessContext, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 
@@ -22,24 +22,24 @@ function readYear(formData: FormData) {
   return Number.isInteger(parsed) && parsed > 1900 && parsed < 2200 ? parsed : null;
 }
 
-async function getClientProfileId() {
+async function getClientAccess() {
   const session = await requireClientSession();
 
   if (!hasDatabaseUrl()) {
     redirect('/client/vehicles?error=database');
   }
 
-  const profile = await getClientProfileForSession(session.user.id);
+  const access = await getClientAccessContext(session.user.id);
 
-  if (!profile) {
+  if (!access) {
     redirect('/client/vehicles?error=profile');
   }
 
-  return profile.id;
+  return access;
 }
 
 export async function createVehicle(formData: FormData) {
-  const clientId = await getClientProfileId();
+  const access = await getClientAccess();
   const type = readString(formData, 'type');
   const manufacturer = readString(formData, 'manufacturer');
   const model = readString(formData, 'model');
@@ -50,7 +50,8 @@ export async function createVehicle(formData: FormData) {
 
   await prisma.vehicle.create({
     data: {
-      clientId,
+      clientId: access.clientProfileId,
+      companyId: access.companyId,
       type,
       manufacturer,
       model,
@@ -65,7 +66,7 @@ export async function createVehicle(formData: FormData) {
 }
 
 export async function updateVehicle(formData: FormData) {
-  const clientId = await getClientProfileId();
+  const access = await getClientAccess();
   const vehicleId = readString(formData, 'vehicleId');
   const type = readString(formData, 'type');
   const manufacturer = readString(formData, 'manufacturer');
@@ -76,7 +77,7 @@ export async function updateVehicle(formData: FormData) {
   }
 
   const vehicle = await prisma.vehicle.findFirst({
-    where: { id: vehicleId, clientId },
+    where: { id: vehicleId, AND: [vehicleAccessWhere(access)] },
     select: { id: true }
   });
 

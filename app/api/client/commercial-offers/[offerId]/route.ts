@@ -1,4 +1,4 @@
-import { clientAccessError, getClientApiSession } from '@/lib/client/access';
+import { clientAccessError, getClientApiSession, requestAccessWhere } from '@/lib/client/access';
 import { CLIENT_VISIBLE_OFFER_STATUSES } from '@/lib/commercial-offers/validation';
 import { prisma } from '@/lib/prisma';
 
@@ -16,7 +16,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ off
     where: {
       id: offerId,
       status: { in: CLIENT_VISIBLE_OFFER_STATUSES },
-      request: { clientId: access.profile.id }
+      request: requestAccessWhere(access.access)
     },
     include: {
       request: { select: { id: true, requestNumber: true } },

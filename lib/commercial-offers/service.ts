@@ -1,5 +1,7 @@
 import { CommercialOfferStatus, Prisma } from '@prisma/client';
 
+import type { ClientAccessContext } from '@/lib/client/access';
+import { requestAccessWhere } from '@/lib/client/access';
 import { prisma } from '@/lib/prisma';
 
 const editableStatuses: CommercialOfferStatus[] = ['DRAFT'];
@@ -234,12 +236,12 @@ export async function deleteDraftCommercialOffer(offerId: string) {
   return { ok: true as const };
 }
 
-export async function approveClientCommercialOffer(offerId: string, clientProfileId: string) {
+export async function approveClientCommercialOffer(offerId: string, access: ClientAccessContext) {
   const offer = await prisma.commercialOffer.findFirst({
     where: {
       id: offerId,
       status: 'SENT',
-      request: { clientId: clientProfileId }
+      request: requestAccessWhere(access)
     },
     select: { id: true }
   });
@@ -260,12 +262,12 @@ export async function approveClientCommercialOffer(offerId: string, clientProfil
   return { ok: true as const, offer: updated };
 }
 
-export async function rejectClientCommercialOffer(offerId: string, clientProfileId: string, clientComment: string | null) {
+export async function rejectClientCommercialOffer(offerId: string, access: ClientAccessContext, clientComment: string | null) {
   const offer = await prisma.commercialOffer.findFirst({
     where: {
       id: offerId,
       status: 'SENT',
-      request: { clientId: clientProfileId }
+      request: requestAccessWhere(access)
     },
     select: { id: true }
   });

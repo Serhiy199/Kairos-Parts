@@ -2,7 +2,7 @@
 
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
-import { getClientProfileForSession, requireClientSession } from '@/lib/client/access';
+import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 
@@ -15,21 +15,22 @@ export default async function ClientDashboardPage() {
     return <ClientDbBlocker />;
   }
 
-  const profile = await getClientProfileForSession(session.user.id);
+  const access = await getClientAccessContext(session.user.id);
 
-  if (!profile) {
+  if (!access) {
     return <ClientDbBlocker />;
   }
 
+  const requestWhere = requestAccessWhere(access);
   const [totalRequests, activeRequests, completedRequests, recentRequests] = await Promise.all([
-    prisma.request.count({ where: { clientId: profile.id } }),
-    prisma.request.count({ where: { clientId: profile.id, status: { notIn: ['COMPLETED', 'CANCELLED'] } } }),
-    prisma.request.count({ where: { clientId: profile.id, status: 'COMPLETED' } }),
+    prisma.request.count({ where: requestWhere }),
+    prisma.request.count({ where: { AND: [requestWhere, { status: { notIn: ['COMPLETED', 'CANCELLED'] } }] } }),
+    prisma.request.count({ where: { AND: [requestWhere, { status: 'COMPLETED' }] } }),
     prisma.request.findMany({
-      where: { clientId: profile.id },
+      where: requestWhere,
       orderBy: { createdAt: 'desc' },
       take: 5,
-      include: { category: true }
+      include: { category: true, company: { select: { name: true } } }
     })
   ]);
 
@@ -38,8 +39,8 @@ export default async function ClientDashboardPage() {
       <div className="flex flex-col justify-between gap-4 rounded-lg border border-border bg-card p-6 shadow-card md:flex-row md:items-center">
         <div>
           <p className="text-sm font-bold uppercase text-accent">Вітаємо</p>
-          <h2 className="mt-2 text-2xl font-bold text-foreground">{profile.contactName ?? profile.user.name ?? 'Клієнт Kairos Parts'}</h2>
-          <p className="mt-2 text-sm text-muted">{profile.companyName ?? 'Профіль клієнта'}</p>
+          <h2 className="mt-2 text-2xl font-bold text-foreground">{access.companyName ?? session.user.name ?? 'Клієнт Kairos Parts'}</h2>
+          <p className="mt-2 text-sm text-muted">{access.mode === 'COMPANY' ? 'Спільний кабінет компанії' : 'Персональний кабінет клієнта'}</p>
         </div>
         <Link href="/request?source=client" className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover">
           Створити нову заявку

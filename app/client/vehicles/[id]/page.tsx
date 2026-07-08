@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
-import { getClientProfileForSession, requireClientSession } from '@/lib/client/access';
+import { getClientAccessContext, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 
@@ -27,15 +27,16 @@ export default async function ClientVehicleDetailPage({
     return <ClientDbBlocker />;
   }
 
-  const profile = await getClientProfileForSession(session.user.id);
+  const access = await getClientAccessContext(session.user.id);
 
-  if (!profile) {
+  if (!access) {
     return <ClientDbBlocker />;
   }
 
   const vehicle = await prisma.vehicle.findFirst({
-    where: { id, clientId: profile.id },
+    where: { id, AND: [vehicleAccessWhere(access)] },
     include: {
+      company: { select: { name: true } },
       requests: {
         orderBy: { createdAt: 'desc' },
         take: 8,

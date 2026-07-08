@@ -13,7 +13,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ off
   const { offerId } = await params;
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const clientComment = typeof body.clientComment === 'string' && body.clientComment.trim() ? body.clientComment.trim() : null;
-  const result = await rejectClientCommercialOffer(offerId, access.profile.id, clientComment);
+  const result = await rejectClientCommercialOffer(offerId, access.access, clientComment);
 
   if (!result.ok) {
     return Response.json({ status: result.status }, { status: 400 });

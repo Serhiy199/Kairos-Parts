@@ -1,5 +1,5 @@
 import { auth } from '@/auth';
-import { getClientProfileForSession } from '@/lib/client/access';
+import { getClientAccessContext, requestAccessWhere } from '@/lib/client/access';
 import { contentDispositionFileName, isSafeStorageKey, readLocalUpload } from '@/lib/files/secure-local-file';
 import { prisma } from '@/lib/prisma';
 
@@ -12,9 +12,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ doc
     return Response.json({ status: 'unauthorized' }, { status: 401 });
   }
 
-  const profile = await getClientProfileForSession(session.user.id);
+  const access = await getClientAccessContext(session.user.id);
 
-  if (!profile) {
+  if (!access) {
     return Response.json({ status: 'forbidden' }, { status: 403 });
   }
 
@@ -23,7 +23,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ doc
     where: {
       id: documentId,
       visibleToClient: true,
-      request: { clientId: profile.id }
+      request: requestAccessWhere(access)
     },
     select: {
       fileName: true,

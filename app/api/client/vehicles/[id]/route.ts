@@ -1,5 +1,5 @@
 import { auth } from '@/auth';
-import { getClientProfileForSession } from '@/lib/client/access';
+import { getClientAccessContext, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 
@@ -9,7 +9,7 @@ function readString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-async function getClientProfileId() {
+async function getClientAccess() {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -24,12 +24,12 @@ async function getClientProfileId() {
     return { status: 'database_not_configured' as const };
   }
 
-  const profile = await getClientProfileForSession(session.user.id);
-  return profile?.id ? { status: 'ok' as const, clientId: profile.id } : { status: 'profile_not_found' as const };
+  const access = await getClientAccessContext(session.user.id);
+  return access ? { status: 'ok' as const, access } : { status: 'profile_not_found' as const };
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const result = await getClientProfileId();
+  const result = await getClientAccess();
   const { id } = await params;
 
   if (result.status !== 'ok') {
@@ -38,7 +38,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
 
   const vehicle = await prisma.vehicle.findFirst({
-    where: { id, clientId: result.clientId },
+    where: { id, AND: [vehicleAccessWhere(result.access)] },
     include: {
       requests: {
         select: { id: true, requestNumber: true, status: true, createdAt: true }
@@ -55,7 +55,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const result = await getClientProfileId();
+  const result = await getClientAccess();
   const { id } = await params;
 
   if (result.status !== 'ok') {
@@ -75,7 +75,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const vehicle = await prisma.vehicle.findFirst({
-    where: { id, clientId: result.clientId },
+    where: { id, AND: [vehicleAccessWhere(result.access)] },
     select: { id: true }
   });
 

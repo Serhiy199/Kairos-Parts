@@ -1,5 +1,5 @@
 import { auth } from '@/auth';
-import { getClientProfileForSession } from '@/lib/client/access';
+import { getClientAccessContext, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 
@@ -9,7 +9,7 @@ function readString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-async function getClientProfileId() {
+async function getClientAccess() {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -24,12 +24,12 @@ async function getClientProfileId() {
     return { status: 'database_not_configured' as const };
   }
 
-  const profile = await getClientProfileForSession(session.user.id);
-  return profile?.id ? { status: 'ok' as const, clientId: profile.id } : { status: 'profile_not_found' as const };
+  const access = await getClientAccessContext(session.user.id);
+  return access ? { status: 'ok' as const, access } : { status: 'profile_not_found' as const };
 }
 
 export async function GET() {
-  const result = await getClientProfileId();
+  const result = await getClientAccess();
 
   if (result.status !== 'ok') {
     const statusCode = result.status === 'unauthorized' ? 401 : result.status === 'forbidden' ? 403 : result.status === 'profile_not_found' ? 404 : 503;
@@ -37,7 +37,7 @@ export async function GET() {
   }
 
   const vehicles = await prisma.vehicle.findMany({
-    where: { clientId: result.clientId },
+    where: vehicleAccessWhere(result.access),
     orderBy: { createdAt: 'desc' }
   });
 
@@ -45,7 +45,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const result = await getClientProfileId();
+  const result = await getClientAccess();
 
   if (result.status !== 'ok') {
     const statusCode = result.status === 'unauthorized' ? 401 : result.status === 'forbidden' ? 403 : result.status === 'profile_not_found' ? 404 : 503;
@@ -65,7 +65,8 @@ export async function POST(request: Request) {
 
   const vehicle = await prisma.vehicle.create({
     data: {
-      clientId: result.clientId,
+      clientId: result.access.clientProfileId,
+      companyId: result.access.companyId,
       type,
       manufacturer,
       model,

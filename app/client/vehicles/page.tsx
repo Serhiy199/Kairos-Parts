@@ -1,7 +1,7 @@
 ﻿import Link from 'next/link';
 
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
-import { getClientProfileForSession, requireClientSession } from '@/lib/client/access';
+import { getClientAccessContext, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 
@@ -19,16 +19,16 @@ export default async function ClientVehiclesPage({
     return <ClientDbBlocker />;
   }
 
-  const profile = await getClientProfileForSession(session.user.id);
+  const access = await getClientAccessContext(session.user.id);
 
-  if (!profile) {
+  if (!access) {
     return <ClientDbBlocker />;
   }
 
   const vehicles = await prisma.vehicle.findMany({
-    where: { clientId: profile.id },
+    where: vehicleAccessWhere(access),
     orderBy: { createdAt: 'desc' },
-    include: { requests: { select: { id: true } } }
+    include: { requests: { select: { id: true } }, company: { select: { name: true } } }
   });
 
   return (
@@ -37,6 +37,7 @@ export default async function ClientVehiclesPage({
         <div>
           <p className="text-sm font-bold uppercase text-accent">Мій парк техніки</p>
           <h2 className="mt-2 text-2xl font-bold text-foreground">Техніка для швидких заявок</h2>
+          {access.companyName ? <p className="mt-2 text-sm font-semibold text-foreground">Компанія: {access.companyName}</p> : null}
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
             Додавайте техніку один раз, щоб у заявках автоматично підставлялись тип, виробник, модель і VIN.
           </p>

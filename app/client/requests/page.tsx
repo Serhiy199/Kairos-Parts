@@ -2,7 +2,7 @@
 
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
-import { getClientProfileForSession, requireClientSession } from '@/lib/client/access';
+import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 
@@ -15,16 +15,16 @@ export default async function ClientRequestsPage() {
     return <ClientDbBlocker />;
   }
 
-  const profile = await getClientProfileForSession(session.user.id);
+  const access = await getClientAccessContext(session.user.id);
 
-  if (!profile) {
+  if (!access) {
     return <ClientDbBlocker />;
   }
 
   const requests = await prisma.request.findMany({
-    where: { clientId: profile.id },
+    where: requestAccessWhere(access),
     orderBy: { createdAt: 'desc' },
-    include: { category: true }
+    include: { category: true, company: { select: { name: true } } }
   });
 
   return (
@@ -33,6 +33,7 @@ export default async function ClientRequestsPage() {
         <div>
           <p className="text-sm font-bold uppercase text-accent">Мої заявки</p>
           <h2 className="mt-2 text-2xl font-bold text-foreground">Історія заявок</h2>
+          {access.companyName ? <p className="mt-2 text-sm text-muted">Компанія: {access.companyName}</p> : null}
         </div>
         <Link href="/request?source=client" className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover">
           Створити заявку
