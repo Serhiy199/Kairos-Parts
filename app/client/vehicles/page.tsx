@@ -74,7 +74,7 @@ export default async function ClientVehiclesPage({
                   </p>
                 </div>
                 <span className="h-fit rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">
-                  {vehicle.requests.length} заявок
+                  {vehicle.archivedAt ? 'Архів' : `${vehicle.requests.length} заявок`}
                 </span>
               </div>
               {vehicle.comment ? <p className="mt-4 text-sm leading-6 text-muted">{vehicle.comment}</p> : null}

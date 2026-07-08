@@ -119,6 +119,7 @@ model User {
   createdCommercialOffers CommercialOffer[] @relation("CommercialOfferCreatedBy")
   changeRequestsRequested ChangeRequest[]   @relation("ChangeRequestRequestedBy")
   changeRequestsReviewed  ChangeRequest[]   @relation("ChangeRequestReviewedBy")
+  archivedVehicles Vehicle[]              @relation("VehicleArchivedBy")
   notifications    Notification[]
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
@@ -480,6 +481,9 @@ model Vehicle {
   year         Int?
   vinOrSerial  String?
   comment      String?
+  archivedAt   DateTime?
+  archivedById String?
+  archivedBy   User?         @relation("VehicleArchivedBy", fields: [archivedById], references: [id], onDelete: SetNull)
   requests     Request[]
   requestItems RequestItem[]
   documents    Document[]
@@ -488,6 +492,8 @@ model Vehicle {
 
   @@index([clientId])
   @@index([companyId])
+  @@index([archivedAt])
+  @@index([archivedById])
 }
 
 model Document {

@@ -95,6 +95,7 @@ export default async function ClientVehicleDetailPage({
           <h2 className="mt-2 text-2xl font-bold text-foreground">
             {vehicle.manufacturer} {vehicle.model}
           </h2>
+          {vehicle.archivedAt ? <span className="mt-2 inline-flex rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">Архів</span> : null}
           <p className="mt-2 text-sm text-muted">{vehicle.type}</p>
         </div>
         <Link href={`/request?source=client&vehicleId=${vehicle.id}`} className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover">
@@ -111,7 +112,7 @@ export default async function ClientVehicleDetailPage({
       <div className="grid gap-4 lg:grid-cols-2">
         <ContextualChangeRequestForm
           title="Запросити редагування техніки"
-          description="Надішліть менеджеру уточнення щодо даних техніки. Запит не змінює картку автоматично."
+          description="Надішліть менеджеру уточнення щодо даних техніки. Після погодження дозволена зміна буде застосована автоматично."
           entityType="VEHICLE"
           entityId={vehicle.id}
           action="UPDATE"
@@ -128,7 +129,7 @@ export default async function ClientVehicleDetailPage({
         />
         <ContextualChangeRequestForm
           title="Запросити архівацію техніки"
-          description="Створюється тільки запит на архівацію. Техніка не архівується автоматично на цьому етапі."
+          description="Після погодження менеджером техніка отримає позначку архіву, але її історія не видаляється."
           entityType="VEHICLE"
           entityId={vehicle.id}
           action="ARCHIVE"

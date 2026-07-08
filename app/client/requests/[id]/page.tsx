@@ -125,7 +125,7 @@ export default async function ClientRequestDetailPage({
 
       <ContextualChangeRequestForm
         title="Запросити зміну по заявці"
-        description="Опишіть, що потрібно уточнити або змінити в цій заявці. Менеджер розгляне запит і зафіксує рішення."
+        description="Опишіть, що потрібно уточнити або змінити в цій заявці. Після погодження менеджером дозволена зміна буде застосована автоматично."
         entityType="REQUEST"
         entityId={request.id}
         action="UPDATE"

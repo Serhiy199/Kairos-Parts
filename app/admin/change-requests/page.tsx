@@ -15,7 +15,12 @@ function resultMessage(result?: string) {
     rejected: 'Запит відхилено.',
     database: 'DATABASE_URL не налаштовано.',
     'review-error': 'Не вдалося обробити запит.',
-    'change-request-not-found-or-not-pending': 'Запит не знайдено або він уже не очікує погодження.'
+    'change-request-not-found-or-not-pending': 'Запит не знайдено або він уже не очікує погодження.',
+    'change-request-unsupported-apply': 'Цей тип запиту поки не підтримує автоматичне застосування.',
+    'change-request-field-not-allowed': 'Це поле не входить у allowlist і не може бути застосоване автоматично.',
+    'change-request-new-value-required': 'Для погодження потрібне нове значення.',
+    'change-request-invalid-value': 'Нове значення має некоректний формат.',
+    'change-request-target-not-found-or-forbidden': 'Пов’язаний об’єкт не знайдено або scope запиту не збігається.'
   };
 
   return result ? messages[result] : null;
@@ -65,7 +70,10 @@ export default async function AdminChangeRequestsPage({
         <p className="text-sm font-bold uppercase text-accent">Запити змін</p>
         <h1 className="mt-2 text-2xl font-bold text-foreground">Клієнтські запити на зміну</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-          Менеджер або адміністратор бачить запити клієнтів на зміну даних і фіксує рішення. На цьому етапі погодження не змінює саму заявку, техніку чи документ автоматично.
+          Менеджер або адміністратор бачить запити клієнтів на зміну даних і фіксує рішення. Погодження автоматично застосовує тільки allowlisted поля для заявки, позиції заявки або техніки.
+        </p>
+        <p className="mt-2 max-w-3xl text-xs font-semibold text-muted">
+          Архівація техніки не видаляє історію, заявки, документи або підібрані позиції.
         </p>
         {message ? <div className="mt-4 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm font-semibold text-[#8A5B24]">{message}</div> : null}
       </div>
@@ -118,7 +126,7 @@ export default async function AdminChangeRequestsPage({
                           <input type="hidden" name="changeRequestId" value={item.id} />
                           <input name="adminComment" className={inputClass} placeholder="Коментар до погодження" />
                           <button className="rounded-md bg-accent px-3 py-2 text-xs font-bold text-foreground transition hover:bg-accent-hover">
-                            Погодити
+                            Погодити і застосувати
                           </button>
                         </form>
                         <form action={rejectChangeRequestAction} className="grid gap-2">

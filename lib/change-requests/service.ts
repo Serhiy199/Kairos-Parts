@@ -3,6 +3,7 @@ import type { ChangeAction, ChangeEntityType, Prisma } from '@prisma/client';
 
 import type { ClientAccessContext } from '@/lib/client/access';
 import { requestAccessWhere, vehicleAccessWhere } from '@/lib/client/access';
+import { applyChangeRequest } from '@/lib/change-requests/apply';
 import { prisma } from '@/lib/prisma';
 
 type ChangeRequestInput = {
@@ -132,7 +133,36 @@ export async function cancelOwnPendingChangeRequest(access: ClientAccessContext,
 }
 
 export async function approveChangeRequest(id: string, reviewedById: string, adminComment: string | null) {
-  return reviewPendingChangeRequest(id, reviewedById, 'APPROVED', adminComment);
+  const result = await prisma.$transaction(async (tx) => {
+    const changeRequest = await tx.changeRequest.findFirst({
+      where: { id, status: 'PENDING' }
+    });
+
+    if (!changeRequest) {
+      return { ok: false as const, status: 'change-request-not-found-or-not-pending' };
+    }
+
+    const applyResult = await applyChangeRequest(tx, changeRequest, reviewedById);
+
+    if (!applyResult.ok) {
+      return applyResult;
+    }
+
+    const updated = await tx.changeRequest.update({
+      where: { id: changeRequest.id },
+      data: {
+        status: 'APPROVED',
+        reviewedById,
+        reviewedAt: new Date(),
+        adminComment
+      },
+      include: changeRequestInclude
+    });
+
+    return { ok: true as const, changeRequest: updated };
+  });
+
+  return result;
 }
 
 export async function rejectChangeRequest(id: string, reviewedById: string, adminComment: string | null) {

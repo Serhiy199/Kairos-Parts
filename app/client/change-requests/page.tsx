@@ -115,7 +115,7 @@ export default async function ClientChangeRequestsPage({
         <p className="text-sm font-bold uppercase text-accent">Запити на зміну</p>
         <h1 className="mt-2 text-2xl font-bold text-foreground">Зміни в заявках, техніці та документах</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-          Тут зібрані всі ваші запити на зміну. Погодження не змінює дані автоматично, а передає менеджеру контрольовану задачу на обробку.
+          Тут зібрані всі ваші запити на зміну. Після погодження менеджером дозволені зміни застосовуються автоматично, а складні або нестандартні уточнення залишаються контрольованою задачею для CRM.
         </p>
         {access.companyName ? <p className="mt-2 text-sm text-muted">Компанія: {access.companyName}</p> : null}
         {message ? <div className="mt-4 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm font-semibold text-[#8A5B24]">{message}</div> : null}
