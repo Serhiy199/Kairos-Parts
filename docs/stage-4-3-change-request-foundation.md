@@ -245,3 +245,182 @@ After applying migration:
 No code blockers are known.
 
 Before Stage 4.4 or live smoke testing, apply the migration to the target DB and verify the UI with real seeded/client data.
+
+## Stage 4.3.1: Migration Apply And Smoke Test
+
+Date: 2026-07-08
+
+### Migration
+
+Migration applied: yes.
+
+Applied migration:
+
+- `20260708170000_add_change_requests`
+
+Database used:
+
+- Neon Postgres database from the current `.env.local`;
+- database name: `neondb`;
+- schema: `public`;
+- host family: Neon `eu-central-1` endpoint;
+- secrets and full connection URL were not logged or committed.
+
+Commands run:
+
+- `npx.cmd prisma migrate status`
+- `npx.cmd prisma migrate deploy`
+- `npx.cmd prisma generate`
+- `npx.cmd prisma migrate status`
+
+Final Prisma status:
+
+- `Database schema is up to date!`
+
+### Smoke Test Method
+
+Smoke test was performed through Prisma / service-layer route-equivalent checks against the Neon DB.
+
+The test created temporary records with prefix:
+
+- `TEST Stage 4.3.1`
+
+Temporary records were cleaned after verification.
+
+### Personal Client Checks
+
+Verified:
+
+- CLIENT can create a `PENDING` ChangeRequest for an accessible personal request;
+- `requestedById` is saved;
+- `companyId` remains `null`;
+- CLIENT sees own ChangeRequest;
+- CLIENT does not see company ChangeRequests outside personal scope;
+- CLIENT can cancel own `PENDING` ChangeRequest;
+- after cancel, status becomes `CANCELLED`;
+- CLIENT cannot cancel a `CANCELLED` ChangeRequest;
+- CLIENT cannot cancel a foreign ChangeRequest;
+- CLIENT cannot cancel an `APPROVED` ChangeRequest.
+
+Result:
+
+- passed.
+
+### Company Client Checks
+
+The current staging DB did not have existing companies, so temporary company/client/request records were created and cleaned.
+
+Verified:
+
+- company CLIENT can create a ChangeRequest for a request in the same company scope;
+- ChangeRequest automatically receives `companyId`;
+- another CLIENT in the same company can see the company ChangeRequest;
+- CLIENT from another company cannot see it;
+- personal CLIENT without company cannot see it;
+- personal CLIENT cannot create a ChangeRequest for a company request;
+- CLIENT from another company cannot create a ChangeRequest for a foreign company request.
+
+Result:
+
+- passed.
+
+### Admin / Manager Checks
+
+Verified:
+
+- MANAGER can see all ChangeRequests through admin service list;
+- MANAGER can approve a `PENDING` ChangeRequest;
+- after approve, `status = APPROVED`;
+- after approve, `reviewedById` is saved;
+- after approve, `reviewedAt` is saved;
+- MANAGER cannot approve an already approved ChangeRequest again;
+- MANAGER can reject a `PENDING` ChangeRequest with `adminComment`;
+- after reject, `status = REJECTED`;
+- after reject, `reviewedById` is saved;
+- after reject, `reviewedAt` is saved;
+- after reject, `adminComment` is saved;
+- MANAGER cannot reject an already rejected ChangeRequest again.
+
+Result:
+
+- passed.
+
+### Validation And Invalid Transition Checks
+
+Verified:
+
+- invalid `entityType` payload is rejected by validation;
+- invalid `action` payload is rejected by validation;
+- foreign entity access returns controlled failure;
+- invalid status transitions return controlled failure instead of throwing a server error;
+- allowed transitions are limited to:
+  - `PENDING -> APPROVED`;
+  - `PENDING -> REJECTED`;
+  - `PENDING -> CANCELLED`.
+
+Result:
+
+- passed.
+
+### Cleanup
+
+Temporary records created during smoke test:
+
+- 4 ChangeRequests;
+- temporary requests;
+- temporary companies;
+- temporary company users / memberships.
+
+Cleanup result:
+
+- test ChangeRequests left: 0;
+- test requests left: 0;
+- test companies left: 0.
+
+No real production/staging business data was deleted.
+
+### Backward Compatibility
+
+Final checks confirm the app still builds and the affected routes compile:
+
+- client dashboard routes;
+- admin CRM routes;
+- requests;
+- vehicles;
+- request documents;
+- commercial offers;
+- auth routes;
+- Telegram webhook route.
+
+### Final Checks
+
+Commands run:
+
+- `npm.cmd run typecheck`
+- `npm.cmd run lint`
+- `npm.cmd run build`
+
+Result:
+
+- all checks passed.
+
+Note:
+
+- an initial parallel `typecheck` run failed because `next build` was rebuilding `.next/types` at the same time;
+- after running `typecheck` sequentially after build, it passed.
+
+### Stage 4.4 Readiness
+
+Blocker for Stage 4.4 — Client “Запросити зміну” UI:
+
+- none known.
+
+Stage 4.3 is now fully closed:
+
+- migration applied;
+- Prisma schema synchronized with Neon DB;
+- personal and company ChangeRequest flows verified;
+- admin approve/reject verified;
+- invalid transitions blocked;
+- temporary test data cleaned;
+- typecheck/lint/build passed.
