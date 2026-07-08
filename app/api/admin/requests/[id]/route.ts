@@ -22,6 +22,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       assignedManager: { select: { id: true, name: true, email: true, role: true } },
       files: true,
       items: true,
+      requestDocuments: {
+        include: { uploadedBy: { select: { id: true, name: true, email: true, role: true } } }
+      },
       documents: true,
       comments: {
         where: { internal: true },

@@ -4,6 +4,7 @@ import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { getClientProfileForSession, requireClientSession } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import { REQUEST_DOCUMENT_TYPE_LABELS } from '@/lib/request-documents/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,7 @@ export default async function ClientDocumentsPage() {
     return <ClientDbBlocker />;
   }
 
-  const [documents, requestFiles] = await Promise.all([
+  const [documents, requestFiles, requestDocuments] = await Promise.all([
     prisma.document.findMany({
       where: {
         OR: [{ clientId: profile.id }, { request: { clientId: profile.id } }, { vehicle: { clientId: profile.id } }]
@@ -37,6 +38,11 @@ export default async function ClientDocumentsPage() {
     }),
     prisma.requestFile.findMany({
       where: { request: { clientId: profile.id } },
+      orderBy: { createdAt: 'desc' },
+      include: { request: { select: { id: true, requestNumber: true } } }
+    }),
+    prisma.requestDocument.findMany({
+      where: { visibleToClient: true, request: { clientId: profile.id } },
       orderBy: { createdAt: 'desc' },
       include: { request: { select: { id: true, requestNumber: true } } }
     })
@@ -62,6 +68,16 @@ export default async function ClientDocumentsPage() {
       request: document.request,
       vehicle: document.vehicle,
       url: document.fileUrl
+    })),
+    ...requestDocuments.map((document) => ({
+      id: `request-document-${document.id}`,
+      fileName: `${REQUEST_DOCUMENT_TYPE_LABELS[document.type]}: ${document.title}`,
+      mimeType: document.mimeType ?? 'application/octet-stream',
+      size: document.size ?? 0,
+      createdAt: document.createdAt,
+      request: document.request,
+      vehicle: null,
+      url: `/api/client/request-documents/${document.id}/file`
     }))
   ].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
 
@@ -89,7 +105,7 @@ export default async function ClientDocumentsPage() {
           <tbody>
             {items.map((item) => (
               <tr key={item.id} className="border-b border-border last:border-0">
-                <td className="px-4 py-3 font-bold text-foreground">{item.fileName}</td>
+                <td className="px-4 py-3 font-bold text-foreground">{item.url ? <a href={item.url} target="_blank" rel="noreferrer" className="transition hover:text-accent">{item.fileName}</a> : item.fileName}</td>
                 <td className="px-4 py-3 text-muted">{item.mimeType}</td>
                 <td className="px-4 py-3 text-muted">{formatSize(item.size)}</td>
                 <td className="px-4 py-3 text-muted">{item.createdAt.toLocaleDateString('uk-UA')}</td>

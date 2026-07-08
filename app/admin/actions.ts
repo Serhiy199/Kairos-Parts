@@ -6,9 +6,11 @@ import { redirect } from 'next/navigation';
 
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { saveRequestDocumentLocal } from '@/lib/files/local-storage';
 import { notifyRequestStatusChange } from '@/lib/notifications/status-change';
 import { runOcrForRequestFile, updateOcrCorrection } from '@/lib/ocr/service';
 import { prisma } from '@/lib/prisma';
+import { parseRequestDocumentMetadata, readRequiredRequestDocumentFile } from '@/lib/request-documents/validation';
 import { parseRequestItemInput } from '@/lib/request-items/validation';
 
 function readString(formData: FormData, key: string) {
@@ -257,4 +259,101 @@ export async function deleteAdminRequestItem(formData: FormData) {
   }
 
   redirectBack(item.requestId, 'item-deleted');
+}
+
+export async function createAdminRequestDocument(formData: FormData) {
+  const session = await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+  const metadata = parseRequestDocumentMetadata(formData);
+  const fileResult = readRequiredRequestDocumentFile(formData);
+
+  if (!hasDatabaseUrl() || !requestId || !metadata.ok || !fileResult.ok) {
+    redirectBack(requestId, 'document-error');
+  }
+
+  const request = await prisma.request.findUnique({
+    where: { id: requestId },
+    select: { id: true }
+  });
+
+  if (!request) {
+    redirect('/admin/requests?result=request-not-found');
+  }
+
+  const savedFile = await saveRequestDocumentLocal(request.id, fileResult.file);
+
+  await prisma.requestDocument.create({
+    data: {
+      requestId: request.id,
+      type: metadata.data.type,
+      title: metadata.data.title,
+      fileName: savedFile.fileName,
+      fileUrl: savedFile.fileUrl,
+      storageKey: savedFile.storageKey,
+      mimeType: savedFile.mimeType,
+      size: savedFile.size,
+      visibleToClient: metadata.data.visibleToClient,
+      uploadedById: session.user.id
+    }
+  });
+
+  revalidatePath(`/admin/requests/${request.id}`);
+  revalidatePath(`/client/requests/${request.id}`);
+  redirectBack(request.id, 'document-created');
+}
+
+export async function updateAdminRequestDocument(formData: FormData) {
+  await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+  const documentId = readString(formData, 'documentId');
+  const metadata = parseRequestDocumentMetadata(formData);
+
+  if (!hasDatabaseUrl() || !requestId || !documentId || !metadata.ok) {
+    redirectBack(requestId, 'document-error');
+  }
+
+  const document = await prisma.requestDocument.findFirst({
+    where: { id: documentId, requestId },
+    select: { id: true, requestId: true }
+  });
+
+  if (!document) {
+    redirectBack(requestId, 'document-not-found');
+  }
+
+  await prisma.requestDocument.update({
+    where: { id: document.id },
+    data: metadata.data
+  });
+
+  revalidatePath(`/admin/requests/${document.requestId}`);
+  revalidatePath(`/client/requests/${document.requestId}`);
+  redirectBack(document.requestId, 'document-updated');
+}
+
+export async function deleteAdminRequestDocument(formData: FormData) {
+  await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+  const documentId = readString(formData, 'documentId');
+
+  if (!hasDatabaseUrl() || !requestId || !documentId) {
+    redirectBack(requestId, 'document-error');
+  }
+
+  const document = await prisma.requestDocument.findFirst({
+    where: { id: documentId, requestId },
+    select: { id: true, requestId: true }
+  });
+
+  if (!document) {
+    redirectBack(requestId, 'document-not-found');
+  }
+
+  await prisma.requestDocument.delete({
+    where: { id: document.id }
+  });
+
+  revalidatePath(`/admin/requests/${document.requestId}`);
+  revalidatePath(`/client/requests/${document.requestId}`);
+  redirectBack(document.requestId, 'document-deleted');
 }

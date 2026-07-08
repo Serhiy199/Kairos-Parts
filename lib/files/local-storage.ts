@@ -56,3 +56,22 @@ export async function saveRequestFileBufferLocal(
     size: input.buffer.byteLength
   };
 }
+
+export async function saveRequestDocumentLocal(requestId: string, file: File): Promise<SavedUpload> {
+  const uploadRoot = path.join(process.cwd(), 'uploads', 'request-documents', requestId);
+  await mkdir(uploadRoot, { recursive: true });
+
+  const safeName = `${Date.now()}-${sanitizeFileName(file.name)}`;
+  const storageKey = path.join('request-documents', requestId, safeName).replace(/\\/g, '/');
+  const targetPath = path.join(uploadRoot, safeName);
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  await writeFile(targetPath, buffer);
+
+  return {
+    fileName: file.name,
+    storageKey,
+    mimeType: file.type || 'application/octet-stream',
+    size: file.size
+  };
+}

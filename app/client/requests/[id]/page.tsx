@@ -6,11 +6,16 @@ import { StatusBadge } from '@/components/client/status-badge';
 import { getClientProfileForSession, requireClientSession } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import { REQUEST_DOCUMENT_TYPE_LABELS } from '@/lib/request-documents/validation';
 
 export const dynamic = 'force-dynamic';
 
 function formatMoney(value: { toString: () => string } | null, currency: string) {
   return value ? `${value.toString()} ${currency}` : null;
+}
+
+function formatSize(size: number | null) {
+  return size ? `${(size / 1024 / 1024).toFixed(2)} MB` : '—';
 }
 
 export default async function ClientRequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -33,6 +38,10 @@ export default async function ClientRequestDetailPage({ params }: { params: Prom
       category: true,
       manufacturer: true,
       items: {
+        where: { visibleToClient: true },
+        orderBy: { createdAt: 'desc' }
+      },
+      requestDocuments: {
         where: { visibleToClient: true },
         orderBy: { createdAt: 'desc' }
       },
@@ -122,6 +131,33 @@ export default async function ClientRequestDetailPage({ params }: { params: Prom
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      ) : null}
+
+      {request.requestDocuments.length > 0 ? (
+        <div className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <h3 className="text-lg font-bold text-foreground">Документи по заявці</h3>
+          <p className="mt-2 text-sm text-muted">Тут показані документи, які менеджер відкрив для клієнта.</p>
+          <div className="mt-4 grid gap-3">
+            {request.requestDocuments.map((document) => (
+              <div key={document.id} className="flex flex-col gap-3 rounded-md border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-bold text-foreground">{document.title}</p>
+                  <p className="mt-1 text-sm text-muted">
+                    {REQUEST_DOCUMENT_TYPE_LABELS[document.type]} · {document.fileName} · {formatSize(document.size)} · {document.createdAt.toLocaleDateString('uk-UA')}
+                  </p>
+                </div>
+                <a
+                  href={`/api/client/request-documents/${document.id}/file`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted"
+                >
+                  Завантажити
+                </a>
+              </div>
+            ))}
           </div>
         </div>
       ) : null}

@@ -4,9 +4,12 @@ import { notFound } from 'next/navigation';
 import {
   assignAdminRequestManager,
   addAdminRequestComment,
+  createAdminRequestDocument,
   createAdminRequestItem,
+  deleteAdminRequestDocument,
   deleteAdminRequestItem,
   runAdminRequestOcr,
+  updateAdminRequestDocument,
   updateAdminRequestItem,
   updateAdminOcrCorrection,
   updateAdminRequestStatus
@@ -17,6 +20,7 @@ import { ActionIcon } from '@/components/ui/action-icons';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import { REQUEST_DOCUMENT_TYPE_LABELS, REQUEST_DOCUMENT_TYPES } from '@/lib/request-documents/validation';
 import { REQUEST_SOURCE_LABELS } from '@/lib/requests/sources';
 import { REQUEST_STATUS_LABELS, REQUEST_STATUSES } from '@/lib/requests/statuses';
 
@@ -48,7 +52,12 @@ function resultMessage(result?: string) {
     'item-updated': 'Позицію оновлено.',
     'item-deleted': 'Позицію видалено.',
     'item-error': 'Перевірте дані позиції.',
-    'item-not-found': 'Позицію не знайдено.'
+    'item-not-found': 'Позицію не знайдено.',
+    'document-created': 'Документ додано.',
+    'document-updated': 'Документ оновлено.',
+    'document-deleted': 'Документ видалено.',
+    'document-error': 'Перевірте дані документа.',
+    'document-not-found': 'Документ не знайдено.'
   };
 
   return result ? messages[result] : null;
@@ -86,6 +95,10 @@ export default async function AdminRequestDetailPage({
         assignedManager: { select: { id: true, name: true, email: true, role: true } },
         files: { orderBy: { createdAt: 'desc' } },
         items: { orderBy: { createdAt: 'desc' } },
+        requestDocuments: {
+          orderBy: { createdAt: 'desc' },
+          include: { uploadedBy: { select: { name: true, email: true, role: true } } }
+        },
         documents: { orderBy: { createdAt: 'desc' } },
         ocrResults: {
           orderBy: { createdAt: 'desc' },
@@ -192,6 +205,8 @@ export default async function AdminRequestDetailPage({
           ) : null}
 
           <RequestItemsSection requestId={request.id} items={request.items} />
+
+          <RequestDocumentsSection requestId={request.id} documents={request.requestDocuments} />
 
           <section className="rounded-lg border border-border bg-card p-6 shadow-card">
             <p className="text-sm font-bold uppercase text-accent">Файли і документи</p>
@@ -593,6 +608,171 @@ function TextField({
         defaultValue={defaultValue ?? ''}
         className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
       />
+    </label>
+  );
+}
+
+type RequestDocumentView = {
+  id: string;
+  type: keyof typeof REQUEST_DOCUMENT_TYPE_LABELS;
+  title: string;
+  fileName: string;
+  mimeType: string | null;
+  size: number | null;
+  visibleToClient: boolean;
+  createdAt: Date;
+  uploadedBy: { name: string | null; email: string | null; role: string } | null;
+};
+
+function RequestDocumentsSection({ requestId, documents }: { requestId: string; documents: RequestDocumentView[] }) {
+  return (
+    <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-bold uppercase text-accent">Документи заявки</p>
+          <h3 className="mt-2 text-xl font-bold text-foreground">Пропозиції, рахунки та вкладення для клієнта</h3>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Завантажуйте зовнішньо підготовлені PDF, Word, Excel або зображення. Клієнт побачить тільки документи з позначкою видимості.
+          </p>
+        </div>
+        <span className="rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{documents.length} документів</span>
+      </div>
+
+      <div className="mt-5 overflow-x-auto rounded-md border border-border">
+        <table className="w-full min-w-[1040px] border-collapse text-left text-sm">
+          <thead>
+            <tr className="border-b border-border bg-surface-muted text-muted">
+              <th className="px-4 py-3 font-bold">Документ</th>
+              <th className="px-4 py-3 font-bold">Файл</th>
+              <th className="px-4 py-3 font-bold">Завантажив</th>
+              <th className="px-4 py-3 font-bold">Клієнт</th>
+              <th className="px-4 py-3 font-bold">Дії</th>
+            </tr>
+          </thead>
+          <tbody>
+            {documents.map((document) => (
+              <tr key={document.id} className="border-b border-border align-top last:border-0">
+                <td className="px-4 py-3">
+                  <p className="font-bold text-foreground">{document.title}</p>
+                  <p className="mt-1 text-xs text-muted">{REQUEST_DOCUMENT_TYPE_LABELS[document.type]} · {document.createdAt.toLocaleString('uk-UA')}</p>
+                </td>
+                <td className="px-4 py-3 text-muted">
+                  <a href={`/api/admin/request-documents/${document.id}/file`} target="_blank" rel="noreferrer" className="font-bold text-foreground transition hover:text-accent">
+                    {document.fileName}
+                  </a>
+                  <p className="mt-1 text-xs">{document.mimeType ?? 'application/octet-stream'} · {document.size ? formatSize(document.size) : '—'}</p>
+                </td>
+                <td className="px-4 py-3 text-muted">
+                  {document.uploadedBy?.name ?? document.uploadedBy?.email ?? '—'}
+                  {document.uploadedBy?.role ? <p className="mt-1 text-xs">{document.uploadedBy.role}</p> : null}
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${document.visibleToClient ? 'bg-[#E7F6EC] text-success' : 'bg-surface-muted text-muted'}`}>
+                    {document.visibleToClient ? 'Видимо' : 'Приховано'}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <details>
+                    <summary className="cursor-pointer text-sm font-bold text-foreground transition hover:text-accent">Редагувати</summary>
+                    <div className="mt-4 w-[560px] max-w-[80vw] rounded-md border border-border bg-card p-4 shadow-card">
+                      <RequestDocumentMetadataForm
+                        action={updateAdminRequestDocument}
+                        requestId={requestId}
+                        document={document}
+                        submitLabel="Зберегти документ"
+                      />
+                    </div>
+                  </details>
+                  <form action={deleteAdminRequestDocument} className="mt-3">
+                    <input type="hidden" name="requestId" value={requestId} />
+                    <input type="hidden" name="documentId" value={document.id} />
+                    <button className="text-sm font-bold text-danger transition hover:opacity-80">Видалити</button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {documents.length === 0 ? (
+          <p className="border-t border-border p-5 text-sm text-muted">
+            Документи ще не додані. Додайте комерційну пропозицію, рахунок або інший файл до цієї заявки.
+          </p>
+        ) : null}
+      </div>
+
+      <details className="mt-5 rounded-md border border-border bg-surface-muted p-4" open={documents.length === 0}>
+        <summary className="cursor-pointer text-sm font-bold text-foreground">Додати документ</summary>
+        <form action={createAdminRequestDocument} className="mt-4 grid gap-4" encType="multipart/form-data">
+          <input type="hidden" name="requestId" value={requestId} />
+          <div className="grid gap-3 md:grid-cols-2">
+            <RequestDocumentTypeSelect />
+            <TextField name="title" label="Назва документа" required />
+          </div>
+          <label className="grid gap-2 text-sm font-semibold text-foreground">
+            Файл
+            <input
+              name="file"
+              type="file"
+              required
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,image/jpeg,image/png"
+              className="rounded-md border border-border bg-card px-3 py-2 text-sm outline-none file:mr-4 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-2 file:text-sm file:font-bold file:text-foreground focus:border-accent focus:ring-2 focus:ring-accent/25"
+            />
+          </label>
+          <label className="flex items-center gap-3 text-sm font-semibold text-foreground">
+            <input type="checkbox" name="visibleToClient" className="size-4 accent-[var(--accent)]" />
+            Видимо клієнту
+          </label>
+          <button className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+            Завантажити
+          </button>
+        </form>
+      </details>
+    </section>
+  );
+}
+
+function RequestDocumentMetadataForm({
+  action,
+  requestId,
+  document,
+  submitLabel
+}: {
+  action: (formData: FormData) => void | Promise<void>;
+  requestId: string;
+  document: RequestDocumentView;
+  submitLabel: string;
+}) {
+  return (
+    <form action={action} className="grid gap-4">
+      <input type="hidden" name="requestId" value={requestId} />
+      <input type="hidden" name="documentId" value={document.id} />
+      <RequestDocumentTypeSelect defaultValue={document.type} />
+      <TextField name="title" label="Назва документа" required defaultValue={document.title} />
+      <label className="flex items-center gap-3 text-sm font-semibold text-foreground">
+        <input type="checkbox" name="visibleToClient" defaultChecked={document.visibleToClient} className="size-4 accent-[var(--accent)]" />
+        Видимо клієнту
+      </label>
+      <button className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+        {submitLabel}
+      </button>
+    </form>
+  );
+}
+
+function RequestDocumentTypeSelect({ defaultValue }: { defaultValue?: keyof typeof REQUEST_DOCUMENT_TYPE_LABELS }) {
+  return (
+    <label className="grid gap-2 text-sm font-semibold text-foreground">
+      Тип документа
+      <select
+        name="type"
+        required
+        defaultValue={defaultValue ?? 'COMMERCIAL_OFFER'}
+        className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+      >
+        {REQUEST_DOCUMENT_TYPES.map((type) => (
+          <option key={type} value={type}>{REQUEST_DOCUMENT_TYPE_LABELS[type]}</option>
+        ))}
+      </select>
     </label>
   );
 }
