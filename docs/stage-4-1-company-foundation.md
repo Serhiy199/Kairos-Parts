@@ -181,3 +181,77 @@ Recommended next steps:
 2. Smoke test admin company creation and member assignment.
 3. Smoke test shared company dashboard visibility for two CLIENT users in one company.
 4. Start Stage 4.2 for company dashboard polish or Stage 4.3 for `ChangeRequest` approval workflow.
+
+## Stage 4.1.1: Migration and Smoke Test
+
+Date: 2026-07-08
+
+Migration applied: yes.
+
+Database used: Neon PostgreSQL database from the current local `.env.local` (`neondb`, `public` schema). Secret values were not logged or committed.
+
+Applied migration:
+
+```text
+20260708150000_add_companies
+```
+
+Prisma status after deploy:
+
+```text
+Database schema is up to date!
+```
+
+Commands completed:
+
+```bash
+npx.cmd prisma migrate status
+npx.cmd prisma migrate deploy
+npx.cmd prisma generate
+npx.cmd prisma migrate status
+```
+
+Smoke test method: route-equivalent Prisma smoke test against Neon DB using temporary records with run id:
+
+```text
+stage411-1783501388389
+```
+
+Smoke checks completed:
+
+- Company creation works.
+- CompanyMember creation works.
+- Duplicate membership is blocked.
+- Primary contact is saved.
+- New company request receives `companyId`.
+- New company vehicle receives `companyId`.
+- Company users can see shared company requests.
+- Company users can see shared company vehicles.
+- Company documents are visible in company scope.
+- Visible request documents are available in company scope.
+- Hidden request documents remain hidden.
+- `SENT` commercial offers are visible in company scope.
+- `DRAFT` commercial offers remain hidden from client scope.
+- Foreign company access is blocked for requests, vehicles, documents, and commercial offers.
+- CLIENT without company still sees personal requests and vehicles only.
+
+Cleanup:
+
+- Temporary companies removed.
+- Temporary users/client profiles removed.
+- Temporary requests removed.
+- Temporary vehicles removed.
+- Temporary documents/request documents removed.
+- Temporary commercial offers removed.
+- Cleanup verification returned zero records for the test run id.
+
+Final checks completed:
+
+- `npm.cmd run typecheck`
+- `npm.cmd run lint`
+- `npm.cmd run build`
+
+Blocker for Stage 4.3:
+
+- None found in migration or route-equivalent smoke test.
+- Manual browser UI smoke test can still be performed on Vercel after redeploy.
