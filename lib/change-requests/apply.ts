@@ -1,9 +1,9 @@
-import type { ChangeRequest, Prisma } from '@prisma/client';
+import type { AuditAction, AuditEntityType, ChangeRequest, Prisma } from '@prisma/client';
 
 type ApplyableChangeRequest = Pick<ChangeRequest, 'entityType' | 'entityId' | 'action' | 'fieldName' | 'newValue' | 'companyId' | 'requestedById'>;
 
 type ApplyResult =
-  | { ok: true }
+  | { ok: true; audit: AppliedChangeAudit }
   | {
       ok: false;
       status:
@@ -13,6 +13,15 @@ type ApplyResult =
         | 'change-request-invalid-value'
         | 'change-request-target-not-found-or-forbidden';
     };
+
+type AppliedChangeAudit = {
+  entityType: AuditEntityType;
+  entityId: string;
+  action: Extract<AuditAction, 'CHANGE_APPLIED' | 'VEHICLE_ARCHIVED' | 'ENTITY_UPDATED'>;
+  oldValue: Prisma.InputJsonValue;
+  newValue: Prisma.InputJsonValue;
+  metadata: Prisma.InputJsonValue;
+};
 
 const REQUEST_FIELD_ALIASES = {
   description: 'description',
@@ -186,7 +195,7 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
       where: changeRequest.companyId
         ? { id: changeRequest.entityId, companyId: changeRequest.companyId }
         : { id: changeRequest.entityId, client: { userId: changeRequest.requestedById } },
-      select: { id: true }
+      select: { id: true, description: true, equipmentType: true, model: true, vinOrSerial: true }
     });
 
     if (!request) {
@@ -194,7 +203,24 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
     }
 
     await tx.request.update({ where: { id: request.id }, data });
-    return { ok: true };
+    const newValue = extractNewValue(changeRequest, field);
+
+    return {
+      ok: true,
+      audit: {
+        entityType: 'REQUEST',
+        entityId: request.id,
+        action: 'CHANGE_APPLIED',
+        oldValue: { [field]: request[field] ?? null },
+        newValue: { [field]: newValue as Prisma.InputJsonValue },
+        metadata: {
+          fieldName: changeRequest.fieldName,
+          normalizedField: field,
+          action: changeRequest.action,
+          source: 'CHANGE_REQUEST_APPROVAL'
+        }
+      }
+    };
   }
 
   if (changeRequest.entityType === 'REQUEST_ITEM' && changeRequest.action === 'UPDATE') {
@@ -214,7 +240,7 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
       where: changeRequest.companyId
         ? { id: changeRequest.entityId, visibleToClient: true, request: { companyId: changeRequest.companyId } }
         : { id: changeRequest.entityId, visibleToClient: true, request: { client: { userId: changeRequest.requestedById } } },
-      select: { id: true }
+      select: { id: true, name: true, brand: true, catalogNumber: true, analogNumber: true, quantity: true, unit: true, comment: true }
     });
 
     if (!requestItem) {
@@ -222,7 +248,24 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
     }
 
     await tx.requestItem.update({ where: { id: requestItem.id }, data });
-    return { ok: true };
+    const newValue = extractNewValue(changeRequest, field);
+
+    return {
+      ok: true,
+      audit: {
+        entityType: 'REQUEST_ITEM',
+        entityId: requestItem.id,
+        action: 'CHANGE_APPLIED',
+        oldValue: { [field]: requestItem[field] ?? null },
+        newValue: { [field]: newValue as Prisma.InputJsonValue },
+        metadata: {
+          fieldName: changeRequest.fieldName,
+          normalizedField: field,
+          action: changeRequest.action,
+          source: 'CHANGE_REQUEST_APPROVAL'
+        }
+      }
+    };
   }
 
   if (changeRequest.entityType === 'VEHICLE' && changeRequest.action === 'UPDATE') {
@@ -242,7 +285,7 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
       where: changeRequest.companyId
         ? { id: changeRequest.entityId, companyId: changeRequest.companyId }
         : { id: changeRequest.entityId, client: { userId: changeRequest.requestedById } },
-      select: { id: true }
+      select: { id: true, type: true, manufacturer: true, model: true, year: true, vinOrSerial: true, comment: true }
     });
 
     if (!vehicle) {
@@ -250,7 +293,24 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
     }
 
     await tx.vehicle.update({ where: { id: vehicle.id }, data });
-    return { ok: true };
+    const newValue = extractNewValue(changeRequest, field);
+
+    return {
+      ok: true,
+      audit: {
+        entityType: 'VEHICLE',
+        entityId: vehicle.id,
+        action: 'CHANGE_APPLIED',
+        oldValue: { [field]: vehicle[field] ?? null },
+        newValue: { [field]: newValue as Prisma.InputJsonValue },
+        metadata: {
+          fieldName: changeRequest.fieldName,
+          normalizedField: field,
+          action: changeRequest.action,
+          source: 'CHANGE_REQUEST_APPROVAL'
+        }
+      }
+    };
   }
 
   if (changeRequest.entityType === 'VEHICLE' && changeRequest.action === 'ARCHIVE') {
@@ -258,22 +318,43 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
       where: changeRequest.companyId
         ? { id: changeRequest.entityId, companyId: changeRequest.companyId }
         : { id: changeRequest.entityId, client: { userId: changeRequest.requestedById } },
-      select: { id: true }
+      select: { id: true, archivedAt: true, archivedById: true }
     });
 
     if (!vehicle) {
       return { ok: false, status: 'change-request-target-not-found-or-forbidden' };
     }
 
+    const archivedAt = new Date();
+
     await tx.vehicle.update({
       where: { id: vehicle.id },
       data: {
-        archivedAt: new Date(),
+        archivedAt,
         archivedBy: { connect: { id: reviewedById } }
       }
     });
 
-    return { ok: true };
+    return {
+      ok: true,
+      audit: {
+        entityType: 'VEHICLE',
+        entityId: vehicle.id,
+        action: 'VEHICLE_ARCHIVED',
+        oldValue: {
+          archivedAt: vehicle.archivedAt?.toISOString() ?? null,
+          archivedById: vehicle.archivedById
+        },
+        newValue: {
+          archivedAt: archivedAt.toISOString(),
+          archivedById: reviewedById
+        },
+        metadata: {
+          action: changeRequest.action,
+          source: 'CHANGE_REQUEST_APPROVAL'
+        }
+      }
+    };
   }
 
   return { ok: false, status: 'change-request-unsupported-apply' };

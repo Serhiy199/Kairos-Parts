@@ -98,6 +98,27 @@ enum ChangeAction {
   RESTORE
 }
 
+enum AuditEntityType {
+  REQUEST
+  REQUEST_ITEM
+  VEHICLE
+  REQUEST_DOCUMENT
+  COMMERCIAL_OFFER
+  COMPANY
+  CHANGE_REQUEST
+  USER
+}
+
+enum AuditAction {
+  CHANGE_REQUEST_CREATED
+  CHANGE_REQUEST_CANCELLED
+  CHANGE_REQUEST_APPROVED
+  CHANGE_REQUEST_REJECTED
+  CHANGE_APPLIED
+  VEHICLE_ARCHIVED
+  ENTITY_UPDATED
+}
+
 model User {
   id               String                 @id @default(cuid())
   name             String?
@@ -120,6 +141,7 @@ model User {
   changeRequestsRequested ChangeRequest[]   @relation("ChangeRequestRequestedBy")
   changeRequestsReviewed  ChangeRequest[]   @relation("ChangeRequestReviewedBy")
   archivedVehicles Vehicle[]              @relation("VehicleArchivedBy")
+  auditLogs       AuditLog[]             @relation("AuditLogActor")
   notifications    Notification[]
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
@@ -195,6 +217,7 @@ model Company {
   vehicles     Vehicle[]
   documents    Document[]
   changeRequests ChangeRequest[]
+  auditLogs    AuditLog[]
 
   @@unique([name, edrpou])
   @@index([edrpou])
@@ -217,6 +240,7 @@ model ChangeRequest {
   newValue      Json?
   reason        String?
   adminComment  String?
+  auditLogs     AuditLog[]
   reviewedAt    DateTime?
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
@@ -226,6 +250,30 @@ model ChangeRequest {
   @@index([reviewedById])
   @@index([entityType, entityId])
   @@index([status])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id              String          @id @default(cuid())
+  actorId         String?
+  actor           User?           @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+  companyId       String?
+  company         Company?        @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  changeRequestId String?
+  changeRequest   ChangeRequest?  @relation(fields: [changeRequestId], references: [id], onDelete: SetNull)
+  entityType      AuditEntityType
+  entityId        String
+  action          AuditAction
+  oldValue        Json?
+  newValue        Json?
+  metadata        Json?
+  createdAt       DateTime        @default(now())
+
+  @@index([actorId])
+  @@index([companyId])
+  @@index([changeRequestId])
+  @@index([entityType, entityId])
+  @@index([action])
   @@index([createdAt])
 }
 
