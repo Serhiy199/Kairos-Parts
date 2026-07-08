@@ -209,9 +209,100 @@ Runtime smoke test через UI/API не виконувався, бо migration
 
 Блокера для Stage 4 — Company Multi-User Accounts + Full Change Approval Workflow — на рівні коду Stage 3 немає.
 
-Перед Stage 4 потрібно закрити Stage 3.1:
+Stage 3.1 нижче фіксує застосування migration, smoke test і cleanup у Neon DB.
 
-- застосувати migration до staging/production-like Neon DB;
-- перевірити CRM create/edit/send;
-- перевірити client approve/reject;
-- перевірити security сценарії.
+## Stage 3.1: Migration + smoke test
+
+Дата перевірки: 2026-07-08.
+
+Migration status перед застосуванням:
+
+- pending migration: `20260708130000_add_commercial_offers`.
+
+Migration applied: yes.
+
+Команда:
+
+```bash
+npx.cmd prisma migrate deploy
+```
+
+Використана БД:
+
+- Neon Postgres;
+- database: `neondb`;
+- schema: `public`;
+- host перевірено через Prisma output без фіксації секретів у документації.
+
+Після deploy:
+
+- `npx.cmd prisma generate` пройшов;
+- `npx.cmd prisma migrate status` показав `Database schema is up to date!`.
+
+### Smoke test
+
+Smoke test виконано через Prisma / route-equivalent перевірку проти Neon DB.
+
+Тестова заявка:
+
+- `KP-20260703-EEE907`.
+
+Перевірено:
+
+- MANAGER може створити commercial offer з заявки;
+- offer створюється зі статусом `DRAFT`;
+- `offerNumber` генерується як `<requestNumber>-CP-01`;
+- друга пропозиція отримує наступний sequence `<requestNumber>-CP-02`;
+- `RequestItem` копіюються у `CommercialOfferItem`;
+- `salePrice` копіюється у `price`;
+- якщо `salePrice` немає, `price = 0`;
+- `quantity` копіюється з `RequestItem`;
+- `total = quantity * price`;
+- `subtotal` / `totalAmount` рахуються коректно;
+- DRAFT metadata редагується;
+- DRAFT item редагується: `price`, `quantity`, `deliveryTime`, `availability`, `comment`;
+- після редагування item total і offer total перераховуються;
+- send переводить offer у `SENT`;
+- `sentAt` заповнюється;
+- client-visible query бачить `SENT` offer;
+- client-visible query не бачить `DRAFT`;
+- client approve переводить `SENT` у `APPROVED` і заповнює `approvedAt`;
+- client reject переводить `SENT` у `REJECTED`, заповнює `rejectedAt` і зберігає `clientComment`;
+- foreign client не бачить чужий offer;
+- non-SENT approve/reject блокується на рівні status guard;
+- invalid id не дає 500-equivalent поведінки;
+- DRAFT cancel перевірено;
+- DRAFT delete перевірено.
+
+Cleanup:
+
+- створені під час smoke test `CommercialOffer` записи видалено;
+- тимчасові `RequestItem`, якщо створювались для smoke test, видалено;
+- тимчасову заявку не створювали, бо була доступна існуюча тестова заявка з клієнтом;
+- cleanup завершено успішно.
+
+### Security notes
+
+Повний browser/API auth smoke test безпосередньо з cookie-сесіями не виконувався в цьому кроці.
+
+Перевірка виконувалась як route-equivalent Prisma smoke test:
+
+- client access перевірявся через ownership + client-visible status query;
+- foreign ownership blocked;
+- DRAFT hidden from client;
+- invalid IDs/status transitions не проходять як успішні операції;
+- admin/client API routes у коді використовують `getCrmApiSession` / `getClientApiSession`, які повертають 401/403 для GUEST/CLIENT/staff mismatch.
+
+### Final checks
+
+Після smoke test виконано:
+
+- `npm.cmd run typecheck` — passed;
+- `npm.cmd run lint` — passed;
+- `npm.cmd run build` — passed.
+
+### Stage 4 readiness
+
+Blocker для Stage 4 — Company Multi-User Accounts + Full Change Approval Workflow: немає.
+
+Stage 3 можна вважати закритим після Stage 3.1: migration застосована, DB синхронізована, commercial offer flow перевірений, тестові записи очищені.
