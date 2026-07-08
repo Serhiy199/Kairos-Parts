@@ -6,6 +6,7 @@ const clientNavItems = [
   { href: '/client/requests', label: 'Мої заявки' },
   { href: '/client/vehicles', label: 'Мій парк техніки' },
   { href: '/client/documents', label: 'Документи' },
+  { href: '/client/change-requests', label: 'Запити на зміну' },
   { href: '/client/profile', label: 'Профіль' }
 ];
 

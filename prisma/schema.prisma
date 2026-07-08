@@ -74,6 +74,30 @@ enum CommercialOfferStatus {
   CANCELLED
 }
 
+enum ChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ChangeEntityType {
+  REQUEST
+  REQUEST_ITEM
+  VEHICLE
+  REQUEST_DOCUMENT
+  COMMERCIAL_OFFER
+  COMPANY
+  COMPANY_PROFILE
+}
+
+enum ChangeAction {
+  UPDATE
+  DELETE
+  ARCHIVE
+  RESTORE
+}
+
 model User {
   id               String                 @id @default(cuid())
   name             String?
@@ -93,6 +117,8 @@ model User {
   comments         RequestComment[]       @relation("RequestCommentAuthor")
   uploadedDocuments RequestDocument[]      @relation("RequestDocumentUploadedBy")
   createdCommercialOffers CommercialOffer[] @relation("CommercialOfferCreatedBy")
+  changeRequestsRequested ChangeRequest[]   @relation("ChangeRequestRequestedBy")
+  changeRequestsReviewed  ChangeRequest[]   @relation("ChangeRequestReviewedBy")
   notifications    Notification[]
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
@@ -167,9 +193,39 @@ model Company {
   requests     Request[]
   vehicles     Vehicle[]
   documents    Document[]
+  changeRequests ChangeRequest[]
 
   @@unique([name, edrpou])
   @@index([edrpou])
+}
+
+model ChangeRequest {
+  id            String              @id @default(cuid())
+  companyId     String?
+  company       Company?            @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  requestedById String
+  requestedBy   User                @relation("ChangeRequestRequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
+  reviewedById  String?
+  reviewedBy    User?               @relation("ChangeRequestReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  entityType    ChangeEntityType
+  entityId      String
+  action        ChangeAction
+  status        ChangeRequestStatus @default(PENDING)
+  fieldName     String?
+  oldValue      Json?
+  newValue      Json?
+  reason        String?
+  adminComment  String?
+  reviewedAt    DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([companyId])
+  @@index([requestedById])
+  @@index([reviewedById])
+  @@index([entityType, entityId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model CompanyMember {

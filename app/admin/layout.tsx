@@ -6,6 +6,7 @@ const adminNavItems = [
   { href: '/admin/requests', label: 'Заявки' },
   { href: '/admin/clients', label: 'Клієнти' },
   { href: '/admin/companies', label: 'Компанії' },
+  { href: '/admin/change-requests', label: 'Запити змін' },
   { href: '/admin/categories', label: 'Категорії' },
   { href: '/admin/manufacturers', label: 'Виробники' },
   { href: '/admin/settings', label: 'Налаштування' }
