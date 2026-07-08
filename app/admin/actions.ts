@@ -5,6 +5,15 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { requireCrmSession } from '@/lib/admin/access';
+import {
+  cancelCommercialOffer,
+  createCommercialOfferFromRequest,
+  deleteDraftCommercialOffer,
+  sendCommercialOffer,
+  updateCommercialOfferItem,
+  updateCommercialOfferMetadata
+} from '@/lib/commercial-offers/service';
+import { parseCommercialOfferItemInput, parseCommercialOfferMetadata } from '@/lib/commercial-offers/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { saveRequestDocumentLocal } from '@/lib/files/local-storage';
 import { notifyRequestStatusChange } from '@/lib/notifications/status-change';
@@ -356,4 +365,122 @@ export async function deleteAdminRequestDocument(formData: FormData) {
   revalidatePath(`/admin/requests/${document.requestId}`);
   revalidatePath(`/client/requests/${document.requestId}`);
   redirectBack(document.requestId, 'document-deleted');
+}
+
+export async function createAdminCommercialOffer(formData: FormData) {
+  const session = await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+
+  if (!hasDatabaseUrl() || !requestId) {
+    redirectBack(requestId, 'offer-error');
+  }
+
+  const result = await createCommercialOfferFromRequest(requestId, session.user.id);
+
+  if (!result.ok) {
+    redirectBack(requestId, result.status);
+  }
+
+  revalidatePath(`/admin/requests/${requestId}`);
+  redirectBack(requestId, 'offer-created');
+}
+
+export async function updateAdminCommercialOfferMetadata(formData: FormData) {
+  await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+  const offerId = readString(formData, 'offerId');
+  const parsed = parseCommercialOfferMetadata(formData);
+
+  if (!hasDatabaseUrl() || !requestId || !offerId || !parsed.ok) {
+    redirectBack(requestId, 'offer-error');
+  }
+
+  const result = await updateCommercialOfferMetadata(offerId, parsed.data);
+
+  if (!result.ok) {
+    redirectBack(requestId, result.status);
+  }
+
+  revalidatePath(`/admin/requests/${requestId}`);
+  redirectBack(requestId, 'offer-updated');
+}
+
+export async function updateAdminCommercialOfferItem(formData: FormData) {
+  await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+  const offerId = readString(formData, 'offerId');
+  const itemId = readString(formData, 'offerItemId');
+  const parsed = parseCommercialOfferItemInput(formData);
+
+  if (!hasDatabaseUrl() || !requestId || !offerId || !itemId || !parsed.ok) {
+    redirectBack(requestId, 'offer-error');
+  }
+
+  const result = await updateCommercialOfferItem(offerId, itemId, parsed.data);
+
+  if (!result.ok) {
+    redirectBack(requestId, result.status);
+  }
+
+  revalidatePath(`/admin/requests/${requestId}`);
+  redirectBack(requestId, 'offer-item-updated');
+}
+
+export async function sendAdminCommercialOffer(formData: FormData) {
+  await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+  const offerId = readString(formData, 'offerId');
+
+  if (!hasDatabaseUrl() || !requestId || !offerId) {
+    redirectBack(requestId, 'offer-error');
+  }
+
+  const result = await sendCommercialOffer(offerId);
+
+  if (!result.ok) {
+    redirectBack(requestId, result.status);
+  }
+
+  revalidatePath(`/admin/requests/${requestId}`);
+  revalidatePath(`/client/requests/${requestId}`);
+  redirectBack(requestId, 'offer-sent');
+}
+
+export async function cancelAdminCommercialOffer(formData: FormData) {
+  await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+  const offerId = readString(formData, 'offerId');
+
+  if (!hasDatabaseUrl() || !requestId || !offerId) {
+    redirectBack(requestId, 'offer-error');
+  }
+
+  const result = await cancelCommercialOffer(offerId);
+
+  if (!result.ok) {
+    redirectBack(requestId, result.status);
+  }
+
+  revalidatePath(`/admin/requests/${requestId}`);
+  revalidatePath(`/client/requests/${requestId}`);
+  redirectBack(requestId, 'offer-cancelled');
+}
+
+export async function deleteAdminCommercialOffer(formData: FormData) {
+  await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+  const offerId = readString(formData, 'offerId');
+
+  if (!hasDatabaseUrl() || !requestId || !offerId) {
+    redirectBack(requestId, 'offer-error');
+  }
+
+  const result = await deleteDraftCommercialOffer(offerId);
+
+  if (!result.ok) {
+    redirectBack(requestId, result.status);
+  }
+
+  revalidatePath(`/admin/requests/${requestId}`);
+  redirectBack(requestId, 'offer-deleted');
 }
