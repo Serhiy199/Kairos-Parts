@@ -239,3 +239,110 @@ Recommended UI smoke test:
 No known code blockers for Stage 4.5 — Admin review UI improvements.
 
 Stage 4.6 — automatic applying approved changes — should remain a separate implementation stage because it will mutate business entities and needs field-level rules.
+
+## Stage 4.4.1: UI Smoke Test
+
+Date: 2026-07-08
+
+### Scope
+
+Stage 4.4.1 verified the client “Запросити зміну” UI behavior through route-equivalent Prisma/service-layer checks against the Neon DB.
+
+No Prisma schema changes were made.
+
+No migration was required.
+
+### Smoke Test Data
+
+Temporary records used prefix:
+
+- `TEST Stage 4.4.1`
+
+Temporary data created during the smoke test:
+
+- personal request;
+- personal visible RequestItem;
+- personal vehicle;
+- temporary companies;
+- temporary company clients;
+- company requests;
+- company visible RequestItems;
+- company vehicles;
+- ChangeRequests for request, request item, vehicle update, vehicle archive, and company-scope request.
+
+All temporary records were cleaned after the test.
+
+### Tests Performed
+
+Verified:
+
+- CLIENT creates ChangeRequest from request context;
+- CLIENT creates ChangeRequest for visible RequestItem;
+- CLIENT creates ChangeRequest for vehicle update;
+- CLIENT creates ChangeRequest for vehicle archive;
+- ChangeRequests are created with `PENDING` status;
+- personal ChangeRequests have `companyId = null`;
+- company ChangeRequests receive the correct `companyId`;
+- CLIENT sees created requests on the client change request list through the service scope;
+- another CLIENT in the same company sees company-scoped ChangeRequest;
+- CLIENT from another company does not see company-scoped ChangeRequest;
+- CLIENT from another company cannot create ChangeRequest for a foreign request;
+- CLIENT from another company cannot create ChangeRequest for a foreign RequestItem;
+- CLIENT from another company cannot create ChangeRequest for a foreign vehicle;
+- CLIENT can cancel own `PENDING` ChangeRequest;
+- MANAGER can see created ChangeRequests through admin list;
+- MANAGER approve changes only ChangeRequest status/reviewer metadata;
+- MANAGER reject changes only ChangeRequest status/reviewer metadata;
+- `oldValue`, `newValue`, and `reason` are saved for UI display;
+- validation rejects an empty request without both `reason` and `newValue`.
+
+Result:
+
+- passed.
+
+### Non-Mutation Checks
+
+Verified:
+
+- request data is not changed after creating a ChangeRequest;
+- RequestItem data is not changed after creating a ChangeRequest;
+- vehicle data is not changed after creating an update ChangeRequest;
+- vehicle is not archived or changed after creating an `ARCHIVE` ChangeRequest;
+- approve/reject do not apply requested changes automatically.
+
+Result:
+
+- passed.
+
+### Cleanup
+
+Cleanup result:
+
+- test ChangeRequests left: 0;
+- test requests left: 0;
+- test RequestItems left: 0;
+- test vehicles left: 0;
+- test companies left: 0.
+
+No real staging business data was deleted.
+
+### Final Checks
+
+Commands run:
+
+- `npx.cmd prisma generate`
+- `npx.cmd prisma validate`
+- `npm.cmd run typecheck`
+- `npm.cmd run lint`
+- `npm.cmd run build`
+
+Result:
+
+- all checks passed.
+
+### Stage 4.6 Readiness
+
+Blocker for Stage 4.6 — Automatic applying approved changes:
+
+- no blocker from Stage 4.4.1 smoke test;
+- Stage 4.6 must still define field-level allowlists and mutation rules before approved ChangeRequests can safely update business entities.
