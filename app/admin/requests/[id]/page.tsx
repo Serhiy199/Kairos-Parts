@@ -4,7 +4,10 @@ import { notFound } from 'next/navigation';
 import {
   assignAdminRequestManager,
   addAdminRequestComment,
+  createAdminRequestItem,
+  deleteAdminRequestItem,
   runAdminRequestOcr,
+  updateAdminRequestItem,
   updateAdminOcrCorrection,
   updateAdminRequestStatus
 } from '@/app/admin/actions';
@@ -23,6 +26,10 @@ function formatSize(size: number) {
   return `${(size / 1024 / 1024).toFixed(2)} MB`;
 }
 
+function formatMoney(value: { toString: () => string } | null, currency: string) {
+  return value ? `${value.toString()} ${currency}` : '—';
+}
+
 function resultMessage(result?: string) {
   const messages: Record<string, string> = {
     'status-updated': 'Статус оновлено.',
@@ -36,7 +43,12 @@ function resultMessage(result?: string) {
     'ocr-correction-error': 'Не вдалося зберегти OCR-корекцію.',
     'assign-error': 'Не вдалося призначити менеджера.',
     'comment-error': 'Коментар не може бути порожнім.',
-    'manager-not-found': 'Менеджера не знайдено.'
+    'manager-not-found': 'Менеджера не знайдено.',
+    'item-created': 'Позицію додано.',
+    'item-updated': 'Позицію оновлено.',
+    'item-deleted': 'Позицію видалено.',
+    'item-error': 'Перевірте дані позиції.',
+    'item-not-found': 'Позицію не знайдено.'
   };
 
   return result ? messages[result] : null;
@@ -73,6 +85,7 @@ export default async function AdminRequestDetailPage({
         vehicle: true,
         assignedManager: { select: { id: true, name: true, email: true, role: true } },
         files: { orderBy: { createdAt: 'desc' } },
+        items: { orderBy: { createdAt: 'desc' } },
         documents: { orderBy: { createdAt: 'desc' } },
         ocrResults: {
           orderBy: { createdAt: 'desc' },
@@ -178,13 +191,15 @@ export default async function AdminRequestDetailPage({
             </section>
           ) : null}
 
+          <RequestItemsSection requestId={request.id} items={request.items} />
+
           <section className="rounded-lg border border-border bg-card p-6 shadow-card">
             <p className="text-sm font-bold uppercase text-accent">Файли і документи</p>
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              <FileList title="Файли заявки" items={request.files.map((file) => ({ id: file.id, fileName: file.fileName, mimeType: file.mimeType, size: file.size, url: file.fileUrl }))} />
+              <FileList title="Файли заявки" items={request.files.map((file) => ({ id: file.id, fileName: file.fileName, mimeType: file.mimeType, size: file.size, url: file.fileUrl ?? `/api/admin/files/${file.id}` }))} />
               <FileList title="Документи заявки" items={request.documents.map((document) => ({ id: document.id, fileName: document.fileName, mimeType: document.mimeType, size: document.size, url: document.fileUrl }))} />
             </div>
-            <p className="mt-4 text-xs text-muted">Private storage paths не показуються. Якщо безпечне public URL не налаштоване, CRM бачить тільки metadata.</p>
+            <p className="mt-4 text-xs text-muted">Private storage paths не показуються. Файли заявки відкриваються через захищений CRM download route.</p>
           </section>
 
           <section className="rounded-lg border border-border bg-card p-6 shadow-card">
@@ -395,6 +410,193 @@ export default async function AdminRequestDetailPage({
   );
 }
 
+type RequestItemView = {
+  id: string;
+  name: string;
+  brand: string | null;
+  catalogNumber: string | null;
+  analogNumber: string | null;
+  quantity: number;
+  unit: string;
+  supplierName: string | null;
+  availability: string | null;
+  deliveryTime: string | null;
+  purchasePrice: { toString: () => string } | null;
+  salePrice: { toString: () => string } | null;
+  currency: string;
+  comment: string | null;
+  visibleToClient: boolean;
+};
+
+function RequestItemsSection({ requestId, items }: { requestId: string; items: RequestItemView[] }) {
+  return (
+    <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-bold uppercase text-accent">Підібрані позиції</p>
+          <h3 className="mt-2 text-xl font-bold text-foreground">Номенклатура та каталожні номери</h3>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Додавайте структуровані позиції запчастин. Якщо заявка привʼязана до техніки, позиції автоматично зʼявляться в історії цієї одиниці.
+          </p>
+        </div>
+        <span className="rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{items.length} позицій</span>
+      </div>
+
+      <div className="mt-5 overflow-x-auto rounded-md border border-border">
+        <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
+          <thead>
+            <tr className="border-b border-border bg-surface-muted text-muted">
+              <th className="px-4 py-3 font-bold">Запчастина</th>
+              <th className="px-4 py-3 font-bold">Номери</th>
+              <th className="px-4 py-3 font-bold">К-сть</th>
+              <th className="px-4 py-3 font-bold">Наявність</th>
+              <th className="px-4 py-3 font-bold">Ціни</th>
+              <th className="px-4 py-3 font-bold">Клієнт</th>
+              <th className="px-4 py-3 font-bold">Дії</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => (
+              <tr key={item.id} className="border-b border-border align-top last:border-0">
+                <td className="px-4 py-3">
+                  <p className="font-bold text-foreground">{item.name}</p>
+                  <p className="mt-1 text-xs text-muted">{item.brand ?? 'Бренд не вказано'}</p>
+                  {item.comment ? <p className="mt-2 max-w-xs text-xs leading-5 text-muted">{item.comment}</p> : null}
+                </td>
+                <td className="px-4 py-3 text-muted">
+                  <p>Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
+                  <p className="mt-1">Аналог: <span className="font-semibold text-foreground">{item.analogNumber ?? '—'}</span></p>
+                </td>
+                <td className="px-4 py-3 font-semibold text-foreground">{item.quantity} {item.unit}</td>
+                <td className="px-4 py-3 text-muted">
+                  <p>{item.availability ?? '—'}</p>
+                  <p className="mt-1 text-xs">{item.deliveryTime ?? 'Термін не вказано'}</p>
+                </td>
+                <td className="px-4 py-3 text-muted">
+                  <p>Закупівля: {formatMoney(item.purchasePrice, item.currency)}</p>
+                  <p className="mt-1">Продаж: {formatMoney(item.salePrice, item.currency)}</p>
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.visibleToClient ? 'bg-[#E7F6EC] text-success' : 'bg-surface-muted text-muted'}`}>
+                    {item.visibleToClient ? 'Видимо' : 'Приховано'}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <details className="group">
+                    <summary className="cursor-pointer text-sm font-bold text-foreground transition hover:text-accent">Редагувати</summary>
+                    <div className="mt-4 w-[720px] max-w-[80vw] rounded-md border border-border bg-card p-4 shadow-card">
+                      <RequestItemForm action={updateAdminRequestItem} requestId={requestId} item={item} submitLabel="Зберегти позицію" />
+                    </div>
+                  </details>
+                  <form action={deleteAdminRequestItem} className="mt-3">
+                    <input type="hidden" name="requestId" value={requestId} />
+                    <input type="hidden" name="itemId" value={item.id} />
+                    <button className="text-sm font-bold text-danger transition hover:opacity-80">Видалити</button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {items.length === 0 ? (
+          <p className="border-t border-border p-5 text-sm text-muted">
+            Позиції ще не додані. Додайте першу позицію, щоб зберегти номенклатуру та каталожні номери по цій заявці.
+          </p>
+        ) : null}
+      </div>
+
+      <details className="mt-5 rounded-md border border-border bg-surface-muted p-4" open={items.length === 0}>
+        <summary className="cursor-pointer text-sm font-bold text-foreground">Додати позицію</summary>
+        <div className="mt-4">
+          <RequestItemForm action={createAdminRequestItem} requestId={requestId} submitLabel="Додати позицію" />
+        </div>
+      </details>
+    </section>
+  );
+}
+
+function RequestItemForm({
+  action,
+  requestId,
+  item,
+  submitLabel
+}: {
+  action: (formData: FormData) => void | Promise<void>;
+  requestId: string;
+  item?: RequestItemView;
+  submitLabel: string;
+}) {
+  return (
+    <form action={action} className="grid gap-4">
+      <input type="hidden" name="requestId" value={requestId} />
+      {item ? <input type="hidden" name="itemId" value={item.id} /> : null}
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <TextField name="name" label="Назва запчастини" required defaultValue={item?.name} />
+        <TextField name="brand" label="Бренд" defaultValue={item?.brand} />
+        <TextField name="catalogNumber" label="Каталожний номер" defaultValue={item?.catalogNumber} />
+        <TextField name="analogNumber" label="Аналоговий номер" defaultValue={item?.analogNumber} />
+        <TextField name="quantity" label="Кількість" type="number" min="1" defaultValue={String(item?.quantity ?? 1)} />
+        <TextField name="unit" label="Одиниця" defaultValue={item?.unit ?? 'шт'} />
+        <TextField name="supplierName" label="Постачальник" defaultValue={item?.supplierName} />
+        <TextField name="availability" label="Наявність" defaultValue={item?.availability} />
+        <TextField name="deliveryTime" label="Термін постачання" defaultValue={item?.deliveryTime} />
+        <TextField name="purchasePrice" label="Ціна закупівлі" type="number" min="0" step="0.01" defaultValue={item?.purchasePrice?.toString()} />
+        <TextField name="salePrice" label="Ціна продажу" type="number" min="0" step="0.01" defaultValue={item?.salePrice?.toString()} />
+        <TextField name="currency" label="Валюта" defaultValue={item?.currency ?? 'UAH'} />
+      </div>
+      <label className="grid gap-2 text-sm font-semibold text-foreground">
+        Коментар
+        <textarea
+          name="comment"
+          rows={3}
+          defaultValue={item?.comment ?? ''}
+          className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+        />
+      </label>
+      <label className="flex items-center gap-3 text-sm font-semibold text-foreground">
+        <input type="checkbox" name="visibleToClient" defaultChecked={item?.visibleToClient ?? false} className="size-4 accent-[var(--accent)]" />
+        Видимо клієнту
+      </label>
+      <button className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+        {submitLabel}
+      </button>
+    </form>
+  );
+}
+
+function TextField({
+  name,
+  label,
+  defaultValue,
+  required,
+  type = 'text',
+  min,
+  step
+}: {
+  name: string;
+  label: string;
+  defaultValue?: string | null;
+  required?: boolean;
+  type?: string;
+  min?: string;
+  step?: string;
+}) {
+  return (
+    <label className="grid gap-2 text-sm font-semibold text-foreground">
+      {label}
+      <input
+        name={name}
+        required={required}
+        type={type}
+        min={min}
+        step={step}
+        defaultValue={defaultValue ?? ''}
+        className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+      />
+    </label>
+  );
+}
+
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-border p-4">
@@ -411,7 +613,13 @@ function FileList({ title, items }: { title: string; items: Array<{ id: string; 
       <div className="mt-3 grid gap-2">
         {items.length === 0 ? <p className="text-sm text-muted">Немає файлів.</p> : items.map((item) => (
           <div key={item.id} className="rounded-md bg-surface-muted p-3 text-sm text-muted">
-            <p className="font-bold text-foreground">{item.fileName}</p>
+            {item.url ? (
+              <a href={item.url} target="_blank" rel="noreferrer" className="font-bold text-foreground transition hover:text-accent">
+                {item.fileName}
+              </a>
+            ) : (
+              <p className="font-bold text-foreground">{item.fileName}</p>
+            )}
             <p className="mt-1">{item.mimeType} · {formatSize(item.size)} · {item.url ? 'Посилання доступне' : 'Приватне сховище'}</p>
           </div>
         ))}

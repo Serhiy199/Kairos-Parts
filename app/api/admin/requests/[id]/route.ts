@@ -21,6 +21,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       vehicle: true,
       assignedManager: { select: { id: true, name: true, email: true, role: true } },
       files: true,
+      items: true,
       documents: true,
       comments: {
         where: { internal: true },

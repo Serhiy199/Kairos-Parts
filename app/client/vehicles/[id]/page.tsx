@@ -46,6 +46,20 @@ export default async function ClientVehicleDetailPage({
           createdAt: true,
           description: true
         }
+      },
+      requestItems: {
+        where: { visibleToClient: true },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          request: {
+            select: {
+              id: true,
+              requestNumber: true,
+              status: true,
+              createdAt: true
+            }
+          }
+        }
       }
     }
   });
@@ -92,6 +106,37 @@ export default async function ClientVehicleDetailPage({
             ))
           ) : (
             <p className="rounded-md border border-dashed border-border p-5 text-sm text-muted">По цій техніці ще немає заявок.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-border bg-card p-6 shadow-card">
+        <h3 className="text-xl font-bold text-foreground">Історія підібраних запчастин</h3>
+        <p className="mt-2 text-sm text-muted">Тут показані позиції, які менеджер позначив як видимі для клієнта по цій одиниці техніки.</p>
+        <div className="mt-5 grid gap-3">
+          {vehicle.requestItems.length > 0 ? (
+            vehicle.requestItems.map((item) => (
+              <article key={item.id} className="rounded-md border border-border p-4">
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                  <div>
+                    <p className="text-xs font-semibold text-muted">
+                      {item.request.createdAt.toLocaleDateString('uk-UA')} · {item.request.requestNumber}
+                    </p>
+                    <h4 className="mt-2 font-bold text-foreground">
+                      {item.name}{item.brand ? ` — ${item.brand}` : ''}{item.catalogNumber ? ` ${item.catalogNumber}` : ''}
+                    </h4>
+                    <p className="mt-1 text-sm text-muted">{item.quantity} {item.unit}{item.analogNumber ? ` · Аналог: ${item.analogNumber}` : ''}</p>
+                    <p className="mt-1 text-sm text-muted">{item.availability ?? 'Наявність уточнюється'}{item.deliveryTime ? ` · ${item.deliveryTime}` : ''}</p>
+                    {item.comment ? <p className="mt-2 text-sm leading-6 text-muted">{item.comment}</p> : null}
+                  </div>
+                  <StatusBadge status={item.request.status} />
+                </div>
+              </article>
+            ))
+          ) : (
+            <p className="rounded-md border border-dashed border-border p-5 text-sm text-muted">
+              Для цієї одиниці техніки ще немає збережених підібраних позицій.
+            </p>
           )}
         </div>
       </div>

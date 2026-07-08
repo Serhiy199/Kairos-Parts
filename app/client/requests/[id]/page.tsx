@@ -9,6 +9,10 @@ import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
+function formatMoney(value: { toString: () => string } | null, currency: string) {
+  return value ? `${value.toString()} ${currency}` : null;
+}
+
 export default async function ClientRequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireClientSession();
   const { id } = await params;
@@ -28,6 +32,10 @@ export default async function ClientRequestDetailPage({ params }: { params: Prom
     include: {
       category: true,
       manufacturer: true,
+      items: {
+        where: { visibleToClient: true },
+        orderBy: { createdAt: 'desc' }
+      },
       files: true
     }
   });
@@ -76,6 +84,47 @@ export default async function ClientRequestDetailPage({ params }: { params: Prom
           </div>
         ))}
       </div>
+
+      {request.items.length > 0 ? (
+        <div className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <h3 className="text-lg font-bold text-foreground">Підібрані позиції</h3>
+          <p className="mt-2 text-sm text-muted">Менеджер показує тут тільки позиції, які готові для перегляду клієнтом.</p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[820px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-border bg-surface-muted text-muted">
+                  <th className="px-4 py-3 font-bold">Запчастина</th>
+                  <th className="px-4 py-3 font-bold">Номери</th>
+                  <th className="px-4 py-3 font-bold">К-сть</th>
+                  <th className="px-4 py-3 font-bold">Наявність</th>
+                  <th className="px-4 py-3 font-bold">Ціна</th>
+                </tr>
+              </thead>
+              <tbody>
+                {request.items.map((item) => (
+                  <tr key={item.id} className="border-b border-border align-top last:border-0">
+                    <td className="px-4 py-3">
+                      <p className="font-bold text-foreground">{item.name}</p>
+                      <p className="mt-1 text-xs text-muted">{item.brand ?? 'Бренд уточнюється'}</p>
+                      {item.comment ? <p className="mt-2 text-xs leading-5 text-muted">{item.comment}</p> : null}
+                    </td>
+                    <td className="px-4 py-3 text-muted">
+                      <p>Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
+                      <p className="mt-1">Аналог: <span className="font-semibold text-foreground">{item.analogNumber ?? '—'}</span></p>
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-foreground">{item.quantity} {item.unit}</td>
+                    <td className="px-4 py-3 text-muted">
+                      <p>{item.availability ?? 'Уточнюється'}</p>
+                      <p className="mt-1 text-xs">{item.deliveryTime ?? 'Термін уточнюється'}</p>
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-foreground">{formatMoney(item.salePrice, item.currency) ?? 'Уточнюється'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
 
       <div className="rounded-lg border border-border bg-card p-6 shadow-card">
         <h3 className="text-lg font-bold text-foreground">Прикріплені файли</h3>

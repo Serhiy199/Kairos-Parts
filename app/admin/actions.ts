@@ -9,13 +9,14 @@ import { hasDatabaseUrl } from '@/lib/env/database';
 import { notifyRequestStatusChange } from '@/lib/notifications/status-change';
 import { runOcrForRequestFile, updateOcrCorrection } from '@/lib/ocr/service';
 import { prisma } from '@/lib/prisma';
+import { parseRequestItemInput } from '@/lib/request-items/validation';
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function redirectBack(requestId: string, result: string) {
+function redirectBack(requestId: string, result: string): never {
   redirect(`/admin/requests/${requestId}?result=${result}`);
 }
 
@@ -157,4 +158,103 @@ export async function updateAdminOcrCorrection(formData: FormData) {
 
   revalidatePath(`/admin/requests/${requestId}`);
   redirectBack(requestId, 'ocr-corrected');
+}
+
+export async function createAdminRequestItem(formData: FormData) {
+  await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+  const parsed = parseRequestItemInput(formData);
+
+  if (!hasDatabaseUrl() || !requestId || !parsed.ok) {
+    redirectBack(requestId, 'item-error');
+  }
+
+  const request = await prisma.request.findUnique({
+    where: { id: requestId },
+    select: { id: true, vehicleId: true, clientId: true }
+  });
+
+  if (!request) {
+    redirect('/admin/requests?result=request-not-found');
+  }
+
+  await prisma.requestItem.create({
+    data: {
+      requestId: request.id,
+      vehicleId: request.vehicleId,
+      ...parsed.data
+    }
+  });
+
+  revalidatePath(`/admin/requests/${request.id}`);
+
+  if (request.vehicleId) {
+    revalidatePath(`/client/vehicles/${request.vehicleId}`);
+  }
+
+  redirectBack(request.id, 'item-created');
+}
+
+export async function updateAdminRequestItem(formData: FormData) {
+  await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+  const itemId = readString(formData, 'itemId');
+  const parsed = parseRequestItemInput(formData);
+
+  if (!hasDatabaseUrl() || !requestId || !itemId || !parsed.ok) {
+    redirectBack(requestId, 'item-error');
+  }
+
+  const item = await prisma.requestItem.findFirst({
+    where: { id: itemId, requestId },
+    select: { id: true, requestId: true, vehicleId: true }
+  });
+
+  if (!item) {
+    redirectBack(requestId, 'item-not-found');
+  }
+
+  await prisma.requestItem.update({
+    where: { id: item.id },
+    data: parsed.data
+  });
+
+  revalidatePath(`/admin/requests/${item.requestId}`);
+
+  if (item.vehicleId) {
+    revalidatePath(`/client/vehicles/${item.vehicleId}`);
+  }
+
+  redirectBack(item.requestId, 'item-updated');
+}
+
+export async function deleteAdminRequestItem(formData: FormData) {
+  await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+  const itemId = readString(formData, 'itemId');
+
+  if (!hasDatabaseUrl() || !requestId || !itemId) {
+    redirectBack(requestId, 'item-error');
+  }
+
+  const item = await prisma.requestItem.findFirst({
+    where: { id: itemId, requestId },
+    select: { id: true, requestId: true, vehicleId: true }
+  });
+
+  if (!item) {
+    redirectBack(requestId, 'item-not-found');
+  }
+
+  await prisma.requestItem.delete({
+    where: { id: item.id }
+  });
+
+  revalidatePath(`/admin/requests/${item.requestId}`);
+
+  if (item.vehicleId) {
+    revalidatePath(`/client/vehicles/${item.vehicleId}`);
+  }
+
+  redirectBack(item.requestId, 'item-deleted');
 }

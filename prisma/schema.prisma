@@ -170,6 +170,7 @@ model Request {
   assignedManagerId String?
   assignedManager   User?                  @relation("AssignedManager", fields: [assignedManagerId], references: [id], onDelete: SetNull)
   files             RequestFile[]
+  items             RequestItem[]
   documents         Document[]
   statusHistory     RequestStatusHistory[]
   ocrResults        OCRResult[]
@@ -201,6 +202,35 @@ model RequestFile {
   createdAt  DateTime    @default(now())
 
   @@index([requestId])
+}
+
+model RequestItem {
+  id               String   @id @default(cuid())
+  requestId        String
+  request          Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  vehicleId        String?
+  vehicle          Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  name             String
+  brand            String?
+  catalogNumber    String?
+  analogNumber     String?
+  quantity         Int      @default(1)
+  unit             String   @default("шт")
+  supplierName     String?
+  availability     String?
+  deliveryTime     String?
+  purchasePrice    Decimal? @db.Decimal(12, 2)
+  salePrice        Decimal? @db.Decimal(12, 2)
+  currency         String   @default("UAH")
+  comment          String?
+  visibleToClient  Boolean  @default(false)
+  approvedByClient Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([requestId])
+  @@index([vehicleId])
+  @@index([visibleToClient])
 }
 
 model TelegramDraftRequest {
@@ -260,6 +290,7 @@ model Vehicle {
   vinOrSerial  String?
   comment      String?
   requests     Request[]
+  requestItems RequestItem[]
   documents    Document[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt

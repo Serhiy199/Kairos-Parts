@@ -25,7 +25,24 @@ export default async function AdminClientDetailPage({ params }: { params: Promis
     where: { id },
     include: {
       user: { select: { name: true, email: true, phone: true } },
-      vehicles: { orderBy: { createdAt: 'desc' } },
+      vehicles: {
+        orderBy: { createdAt: 'desc' },
+        include: {
+          requestItems: {
+            orderBy: { createdAt: 'desc' },
+            include: {
+              request: {
+                select: {
+                  id: true,
+                  requestNumber: true,
+                  status: true,
+                  createdAt: true
+                }
+              }
+            }
+          }
+        }
+      },
       documents: { orderBy: { createdAt: 'desc' } },
       requests: {
         orderBy: { createdAt: 'desc' },
@@ -65,6 +82,31 @@ export default async function AdminClientDetailPage({ params }: { params: Promis
               <h3 className="font-bold text-foreground">{vehicle.manufacturer} {vehicle.model}</h3>
               <p className="mt-2 text-sm text-muted">{vehicle.type}{vehicle.year ? ` · ${vehicle.year} р.` : ''}</p>
               <p className="mt-2 text-sm text-muted">{vehicle.vinOrSerial ?? 'VIN / серійний номер не вказано'}</p>
+              <div className="mt-4 border-t border-border pt-4">
+                <p className="text-xs font-bold uppercase text-accent">Історія підібраних запчастин</p>
+                <div className="mt-3 grid gap-2">
+                  {vehicle.requestItems.length === 0 ? (
+                    <p className="rounded-md border border-dashed border-border p-3 text-xs text-muted">Для цієї техніки ще немає підібраних позицій.</p>
+                  ) : (
+                    vehicle.requestItems.map((item) => (
+                      <div key={item.id} className="rounded-md bg-surface-muted p-3 text-sm">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <Link href={`/admin/requests/${item.request.id}`} className="font-bold text-foreground transition hover:text-accent">
+                            {item.request.requestNumber} · {item.name}
+                          </Link>
+                          <StatusBadge status={item.request.status} />
+                        </div>
+                        <p className="mt-2 text-xs text-muted">
+                          {item.request.createdAt.toLocaleDateString('uk-UA')} · {item.brand ?? 'Бренд —'} · {item.catalogNumber ?? 'Каталог —'} · {item.quantity} {item.unit}
+                        </p>
+                        <p className="mt-1 text-xs text-muted">
+                          {item.availability ?? 'Наявність —'}{item.deliveryTime ? ` · ${item.deliveryTime}` : ''}{item.supplierName ? ` · ${item.supplierName}` : ''}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </article>
           ))}
         </div>
