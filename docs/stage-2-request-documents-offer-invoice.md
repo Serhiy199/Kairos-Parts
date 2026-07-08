@@ -207,3 +207,74 @@ Public status page у Stage 2 не показує request documents.
 Технічного blocker для переходу до Stage 3 немає після застосування migration у потрібному середовищі.
 
 Перед Stage 3 потрібно вирішити production storage strategy для файлів, якщо тестування має проходити на Vercel production/preview з реальними attachment-файлами.
+
+## Stage 2.1: Migration + smoke test
+
+Дата перевірки: 2026-07-08.
+
+Migration status перед застосуванням:
+
+- pending migration: `20260708110000_add_request_documents`.
+
+Migration applied: yes.
+
+Команда:
+
+```bash
+npx.cmd prisma migrate deploy
+```
+
+Використана БД:
+
+- Neon Postgres;
+- database: `neondb`;
+- schema: `public`;
+- host перевірено через Prisma output без фіксації секретів у документації.
+
+Після deploy:
+
+- `npx.cmd prisma generate` пройшов;
+- `npx.cmd prisma migrate status` показав `Database schema is up to date!`.
+
+### Smoke test
+
+Smoke test виконано через Prisma проти Neon DB.
+
+Тестова заявка:
+
+- `KP-20260703-EEE907`.
+
+Перевірено:
+
+- створення `RequestDocument` типу `COMMERCIAL_OFFER`;
+- завантаження/наявність metadata для PDF-like файлу;
+- оновлення metadata;
+- перемикання `visibleToClient = true`;
+- створення другого hidden документа з `visibleToClient = false`;
+- admin може читати visible і hidden documents;
+- admin file route equivalent проходить safe local storage resolution;
+- client бачить тільки visible document;
+- client download route equivalent проходить ownership + visibility logic;
+- hidden document не повертається у client-visible query;
+- foreign client не може отримати документ чужої заявки;
+- path traversal для `../.env.local` і absolute path блокується;
+- frontend не рендерить `storageKey`, а використовує protected `/api/*/request-documents/[documentId]/file` routes.
+
+Cleanup:
+
+- тестові `RequestDocument` записи видалено;
+- тимчасові smoke-файли з `uploads/request-documents/...` видалено.
+
+### Final checks
+
+Після smoke test виконано:
+
+- `npm.cmd run typecheck` — passed;
+- `npm.cmd run lint` — passed;
+- `npm.cmd run build` — passed.
+
+### Stage 3 readiness
+
+Blocker для Stage 3 — CommercialOffer module: немає.
+
+Операційна примітка лишається актуальною: для production/preview на Vercel потрібне persistent object storage, бо локальна папка `uploads` у serverless середовищі не є надійним довгостроковим сховищем.
