@@ -16,6 +16,12 @@ export const removeKeyboard = {
   remove_keyboard: true
 };
 
+export const skipKeyboard = {
+  keyboard: [[{ text: 'Пропустити' }]],
+  resize_keyboard: true,
+  one_time_keyboard: true
+};
+
 export const confirmationKeyboard = {
   inline_keyboard: [
     [{ text: 'Підтвердити заявку', callback_data: TELEGRAM_CALLBACKS.confirm }],
@@ -45,6 +51,7 @@ export function buildSummary(input: {
   phone?: string | null;
   companyName?: string | null;
   equipmentType?: string | null;
+  partsText?: string | null;
   description?: string | null;
   files: TelegramDraftFile[];
 }) {
@@ -55,7 +62,8 @@ export function buildSummary(input: {
     `Телефон: ${input.phone || '—'}`,
     `Компанія: ${input.companyName || '—'}`,
     `Тип техніки: ${input.equipmentType || '—'}`,
-    `Опис потреби: ${input.description || '—'}`,
+    `Запчастини / каталожні номери: ${input.partsText || 'не вказано'}`,
+    `Опис потреби / коментар: ${input.description || 'не вказано'}`,
     `Файлів/фото: ${input.files.length}`,
     '',
     'Створити заявку в CRM?'

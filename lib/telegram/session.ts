@@ -11,17 +11,23 @@ import {
   contactKeyboard,
   isSkipText,
   removeKeyboard,
+  skipKeyboard,
   TELEGRAM_CALLBACKS
 } from './messages';
 import type { TelegramCallbackQuery, TelegramDraftFile, TelegramMessage, TelegramUpdate } from './types';
 
 type TelegramDraft = NonNullable<Awaited<ReturnType<typeof getDraft>>>;
 
+type TelegramDraftMetadata = {
+  files: TelegramDraftFile[];
+  partsText: string | null;
+};
+
 function toStringId(id: number | string) {
   return String(id);
 }
 
-function readDraftFiles(value: unknown): TelegramDraftFile[] {
+function readDraftFilesFromValue(value: unknown): TelegramDraftFile[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -39,6 +45,44 @@ function readDraftFiles(value: unknown): TelegramDraftFile[] {
       typeof candidate.mimeType === 'string'
     );
   });
+}
+
+function readDraftMetadata(value: unknown): TelegramDraftMetadata {
+  if (Array.isArray(value)) {
+    return {
+      files: readDraftFilesFromValue(value),
+      partsText: null
+    };
+  }
+
+  if (!value || typeof value !== 'object') {
+    return {
+      files: [],
+      partsText: null
+    };
+  }
+
+  const candidate = value as { files?: unknown; partsText?: unknown };
+
+  return {
+    files: readDraftFilesFromValue(candidate.files),
+    partsText: typeof candidate.partsText === 'string' && candidate.partsText.trim() ? candidate.partsText.trim() : null
+  };
+}
+
+function readDraftFiles(value: unknown): TelegramDraftFile[] {
+  return readDraftMetadata(value).files;
+}
+
+function readDraftPartsText(value: unknown) {
+  return readDraftMetadata(value).partsText;
+}
+
+function buildDraftMetadata(input: { files: TelegramDraftFile[]; partsText?: string | null }) {
+  return {
+    files: input.files,
+    partsText: input.partsText?.trim() || null
+  };
 }
 
 function getMessageText(message: TelegramMessage) {
@@ -101,7 +145,7 @@ async function resetDraft(input: { telegramUserId: string; chatId: string }) {
       telegramUserId: input.telegramUserId,
       chatId: input.chatId,
       step: 'AWAITING_CONTACT',
-      fileMetadata: []
+      fileMetadata: buildDraftMetadata({ files: [] })
     },
     update: {
       chatId: input.chatId,
@@ -111,7 +155,7 @@ async function resetDraft(input: { telegramUserId: string; chatId: string }) {
       companyName: null,
       equipmentType: null,
       description: null,
-      fileMetadata: []
+      fileMetadata: buildDraftMetadata({ files: [] })
     }
   });
 }
@@ -142,6 +186,7 @@ async function showConfirmation(draft: TelegramDraft) {
       phone: updatedDraft.phone,
       companyName: updatedDraft.companyName,
       equipmentType: updatedDraft.equipmentType,
+      partsText: readDraftPartsText(updatedDraft.fileMetadata),
       description: updatedDraft.description,
       files: readDraftFiles(updatedDraft.fileMetadata)
     }),
@@ -174,7 +219,7 @@ async function handleContact(message: TelegramMessage) {
       step: 'ASK_NAME',
       phone: contact.phone_number,
       contactName: [contact.first_name, contact.last_name].filter(Boolean).join(' ') || null,
-      fileMetadata: []
+      fileMetadata: buildDraftMetadata({ files: [] })
     },
     update: {
       chatId: toStringId(message.chat.id),
@@ -196,14 +241,17 @@ async function handleFileMessage(message: TelegramMessage, draft: TelegramDraft)
     return false;
   }
 
-  const files = readDraftFiles(draft.fileMetadata);
-  files.push(file);
+  const metadata = readDraftMetadata(draft.fileMetadata);
+  const files = [...metadata.files, file];
 
   await prisma.telegramDraftRequest.update({
     where: { telegramUserId: draft.telegramUserId },
     data: {
       step: 'ASK_FILES',
-      fileMetadata: files
+      fileMetadata: buildDraftMetadata({
+        files,
+        partsText: metadata.partsText
+      })
     }
   });
 
@@ -252,20 +300,73 @@ async function handleTextMessage(message: TelegramMessage, draft: TelegramDraft)
   if (draft.step === 'ASK_EQUIPMENT') {
     await prisma.telegramDraftRequest.update({
       where: { telegramUserId: draft.telegramUserId },
-      data: { equipmentType: text, step: 'ASK_DESCRIPTION' }
+      data: { equipmentType: text, step: 'ASK_PARTS' }
     });
-    await sendTelegramMessage(message.chat.id, 'Опишіть, які запчастини або матеріали потрібно підібрати.');
+    await sendTelegramMessage(
+      message.chat.id,
+      [
+        'Вкажіть каталожний номер та назву запчастини, яку шукаєте.',
+        'Якщо позицій декілька — напишіть їх одним повідомленням.',
+        '',
+        'Якщо маєте готову заявку файлом — натисніть або напишіть “Пропустити”.'
+      ].join('\n'),
+      { replyMarkup: skipKeyboard }
+    );
+    return;
+  }
+
+  if (draft.step === 'ASK_PARTS') {
+    const files = readDraftFiles(draft.fileMetadata);
+
+    if (isSkipText(text)) {
+      await prisma.telegramDraftRequest.update({
+        where: { telegramUserId: draft.telegramUserId },
+        data: {
+          step: 'ASK_FILES',
+          fileMetadata: buildDraftMetadata({ files })
+        }
+      });
+      await sendTelegramMessage(
+        message.chat.id,
+        'Можете надіслати фото, файл або список. Якщо файлів немає — напишіть “Пропустити”.',
+        { replyMarkup: skipKeyboard }
+      );
+      return;
+    }
+
+    await prisma.telegramDraftRequest.update({
+      where: { telegramUserId: draft.telegramUserId },
+      data: {
+        step: 'ASK_DESCRIPTION',
+        fileMetadata: buildDraftMetadata({
+          files,
+          partsText: text
+        })
+      }
+    });
+    await sendTelegramMessage(
+      message.chat.id,
+      'Додайте короткий опис потреби або коментар для менеджера. Якщо коментар не потрібен — напишіть “Пропустити”.',
+      { replyMarkup: skipKeyboard }
+    );
     return;
   }
 
   if (draft.step === 'ASK_DESCRIPTION') {
+    const metadata = readDraftMetadata(draft.fileMetadata);
+
     await prisma.telegramDraftRequest.update({
       where: { telegramUserId: draft.telegramUserId },
-      data: { description: text, step: 'ASK_FILES' }
+      data: {
+        description: isSkipText(text) ? null : text,
+        step: 'ASK_FILES',
+        fileMetadata: buildDraftMetadata(metadata)
+      }
     });
     await sendTelegramMessage(
       message.chat.id,
-      'Можете надіслати фото, файл або список. Якщо файлів немає — напишіть “Пропустити”.'
+      'Можете надіслати фото, файл або список. Якщо файлів немає — напишіть “Пропустити”.',
+      { replyMarkup: skipKeyboard }
     );
     return;
   }
@@ -325,6 +426,24 @@ async function findClientProfileByPhone(phone: string) {
   );
 }
 
+function buildTelegramRequestDescription(input: {
+  equipmentType: string;
+  partsText?: string | null;
+  description?: string | null;
+}) {
+  return [
+    `Тип техніки: ${input.equipmentType}`,
+    '',
+    'Каталожний номер / назва запчастини:',
+    input.partsText || 'Не вказано',
+    '',
+    'Опис потреби / коментар:',
+    input.description || 'Не вказано',
+    '',
+    'Джерело: Telegram'
+  ].join('\n');
+}
+
 async function attachTelegramFiles(requestId: string, files: TelegramDraftFile[]) {
   const savedFiles = [];
 
@@ -371,14 +490,20 @@ async function attachTelegramFiles(requestId: string, files: TelegramDraftFile[]
 }
 
 async function createTelegramRequest(draft: TelegramDraft) {
-  if (!draft.phone || !draft.contactName || !draft.equipmentType || !draft.description) {
+  if (!draft.phone || !draft.contactName || !draft.equipmentType) {
     throw new Error('Telegram draft is incomplete.');
   }
 
   const clientProfile = await findClientProfileByPhone(draft.phone);
   const requestNumber = generateRequestNumber();
   const publicStatusToken = generatePublicStatusToken();
-  const files = readDraftFiles(draft.fileMetadata);
+  const metadata = readDraftMetadata(draft.fileMetadata);
+  const files = metadata.files;
+  const description = buildTelegramRequestDescription({
+    equipmentType: draft.equipmentType,
+    partsText: metadata.partsText,
+    description: draft.description
+  });
 
   const createdRequest = await prisma.request.create({
     data: {
@@ -391,7 +516,7 @@ async function createTelegramRequest(draft: TelegramDraft) {
       guestPhone: clientProfile ? null : draft.phone,
       companyName: draft.companyName ?? clientProfile?.companyName ?? draft.contactName,
       equipmentType: draft.equipmentType,
-      description: draft.description,
+      description,
       statusHistory: {
         create: {
           newStatus: 'NEW'

@@ -3,6 +3,7 @@ export type TelegramDraftStep =
   | 'ASK_NAME'
   | 'ASK_COMPANY'
   | 'ASK_EQUIPMENT'
+  | 'ASK_PARTS'
   | 'ASK_DESCRIPTION'
   | 'ASK_FILES'
   | 'CONFIRM';
