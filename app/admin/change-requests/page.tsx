@@ -15,7 +15,7 @@ function resultMessage(result?: string) {
     rejected: 'Запит відхилено.',
     database: 'DATABASE_URL не налаштовано.',
     'review-error': 'Не вдалося обробити запит.',
-    'change-request-not-found-or-not-pending': 'Запит не знайдено або він уже не очікує розгляду.'
+    'change-request-not-found-or-not-pending': 'Запит не знайдено або він уже не очікує погодження.'
   };
 
   return result ? messages[result] : null;
@@ -30,6 +30,18 @@ function statusClass(status: keyof typeof CHANGE_STATUS_LABELS) {
   };
 
   return classes[status];
+}
+
+function formatJsonValue(value: unknown) {
+  if (value === null || value === undefined) {
+    return '—';
+  }
+
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  return JSON.stringify(value);
 }
 
 export default async function AdminChangeRequestsPage({
@@ -51,7 +63,7 @@ export default async function AdminChangeRequestsPage({
     <div className="grid gap-6">
       <div className="rounded-lg border border-border bg-card p-6 shadow-card">
         <p className="text-sm font-bold uppercase text-accent">Запити змін</p>
-        <h1 className="mt-2 text-2xl font-bold text-foreground">Client change requests</h1>
+        <h1 className="mt-2 text-2xl font-bold text-foreground">Клієнтські запити на зміну</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
           Менеджер або адміністратор бачить запити клієнтів на зміну даних і фіксує рішення. На цьому етапі погодження не змінює саму заявку, техніку чи документ автоматично.
         </p>
@@ -61,7 +73,7 @@ export default async function AdminChangeRequestsPage({
       <div className="rounded-lg border border-border bg-card p-6 shadow-card">
         <h2 className="text-lg font-bold text-foreground">Список запитів</h2>
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[1320px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border bg-surface-muted text-muted">
                 <th className="px-4 py-3 font-bold">Дата</th>
@@ -69,7 +81,8 @@ export default async function AdminChangeRequestsPage({
                 <th className="px-4 py-3 font-bold">Об’єкт</th>
                 <th className="px-4 py-3 font-bold">Дія</th>
                 <th className="px-4 py-3 font-bold">Статус</th>
-                <th className="px-4 py-3 font-bold">Коментар клієнта</th>
+                <th className="px-4 py-3 font-bold">Значення</th>
+                <th className="px-4 py-3 font-bold">Причина</th>
                 <th className="px-4 py-3 font-bold">Рішення</th>
               </tr>
             </thead>
@@ -90,6 +103,12 @@ export default async function AdminChangeRequestsPage({
                   <td className="px-4 py-3 font-semibold text-foreground">{CHANGE_ACTION_LABELS[item.action]}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass(item.status)}`}>{CHANGE_STATUS_LABELS[item.status]}</span>
+                  </td>
+                  <td className="max-w-xs px-4 py-3 text-muted">
+                    <p className="text-xs font-bold uppercase text-muted">Поточне</p>
+                    <p className="mt-1 break-words">{formatJsonValue(item.oldValue)}</p>
+                    <p className="mt-3 text-xs font-bold uppercase text-muted">Нове</p>
+                    <p className="mt-1 break-words">{formatJsonValue(item.newValue)}</p>
                   </td>
                   <td className="max-w-xs px-4 py-3 text-muted">{item.reason ?? '—'}</td>
                   <td className="px-4 py-3">

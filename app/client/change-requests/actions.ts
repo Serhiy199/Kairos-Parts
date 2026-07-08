@@ -13,15 +13,32 @@ function readString(formData: FormData, key: string) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function redirectBack(result: string): never {
-  redirect(`/client/change-requests?result=${result}`);
+function redirectBack(result: string, fallback = '/client/change-requests'): never {
+  const target = fallback.startsWith('/client') ? fallback : '/client/change-requests';
+  const separator = target.includes('?') ? '&' : '?';
+  redirect(`${target}${separator}result=${result}`);
+}
+
+function normalizeContextualPayload(formData: FormData) {
+  const newValueText = readString(formData, 'newValueText');
+  const currentValueText = readString(formData, 'currentValueText');
+
+  if (newValueText && !readString(formData, 'newValue')) {
+    formData.set('newValue', JSON.stringify({ text: newValueText }));
+  }
+
+  if (currentValueText && !readString(formData, 'oldValue')) {
+    formData.set('oldValue', JSON.stringify({ text: currentValueText }));
+  }
 }
 
 export async function createClientChangeRequestAction(formData: FormData) {
   const session = await requireClientSession();
+  const redirectTo = readString(formData, 'redirectTo') || '/client/change-requests';
+  normalizeContextualPayload(formData);
 
   if (!hasDatabaseUrl()) {
-    redirectBack('database');
+    redirectBack('database', redirectTo);
   }
 
   const access = await getClientAccessContext(session.user.id);
@@ -33,17 +50,18 @@ export async function createClientChangeRequestAction(formData: FormData) {
   const parsed = parseChangeRequestInput(formData);
 
   if (!parsed.ok) {
-    redirectBack(parsed.status);
+    redirectBack(parsed.status, redirectTo);
   }
 
   const result = await createChangeRequest(access, parsed.data);
 
   if (!result.ok) {
-    redirectBack(result.status);
+    redirectBack(result.status, redirectTo);
   }
 
   revalidatePath('/client/change-requests');
-  redirectBack('created');
+  revalidatePath(redirectTo);
+  redirectBack('created', redirectTo);
 }
 
 export async function cancelClientChangeRequestAction(formData: FormData) {

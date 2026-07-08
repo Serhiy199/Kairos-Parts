@@ -19,7 +19,7 @@ export const CHANGE_ACTION_LABELS: Record<ChangeAction, string> = {
 };
 
 export const CHANGE_STATUS_LABELS = {
-  PENDING: 'Очікує розгляду',
+  PENDING: 'Очікує погодження',
   APPROVED: 'Погоджено',
   REJECTED: 'Відхилено',
   CANCELLED: 'Скасовано'
@@ -78,6 +78,13 @@ export function parseChangeRequestInput(source: InputSource) {
     return { ok: false as const, status: 'invalid-action' };
   }
 
+  const oldValue = parseOptionalJson(source, 'oldValue');
+  const newValue = parseOptionalJson(source, 'newValue');
+
+  if (!reason && newValue === undefined) {
+    return { ok: false as const, status: 'change-details-required' };
+  }
+
   return {
     ok: true as const,
     data: {
@@ -85,8 +92,8 @@ export function parseChangeRequestInput(source: InputSource) {
       entityId,
       action: action as ChangeAction,
       fieldName: fieldName || null,
-      oldValue: parseOptionalJson(source, 'oldValue'),
-      newValue: parseOptionalJson(source, 'newValue'),
+      oldValue,
+      newValue,
       reason: reason || null
     }
   };

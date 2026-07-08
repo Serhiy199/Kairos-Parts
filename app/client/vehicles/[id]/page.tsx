@@ -1,6 +1,7 @@
 ﻿import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { ContextualChangeRequestForm } from '@/app/client/change-requests/contextual-change-request-form';
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
 import { getClientAccessContext, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
@@ -12,12 +13,26 @@ import { VehicleForm } from '../vehicle-form';
 
 export const dynamic = 'force-dynamic';
 
+function resultMessage(result?: string) {
+  const messages: Record<string, string> = {
+    created: 'Запит на зміну відправлено на погодження.',
+    database: 'DATABASE_URL не налаштовано.',
+    'invalid-entity-type': 'Некоректний тип об’єкта для запиту на зміну.',
+    'entity-id-required': 'Не вдалося визначити об’єкт для запиту на зміну.',
+    'invalid-action': 'Некоректна дія для запиту на зміну.',
+    'change-details-required': 'Вкажіть нове значення або причину зміни.',
+    'entity-not-found-or-forbidden': 'Об’єкт не знайдено або недоступний для вашого кабінету.'
+  };
+
+  return result ? messages[result] : null;
+}
+
 export default async function ClientVehicleDetailPage({
   params,
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ updated?: string; error?: string }>;
+  searchParams: Promise<{ updated?: string; error?: string; result?: string }>;
 }) {
   const session = await requireClientSession();
   const { id } = await params;
@@ -69,6 +84,9 @@ export default async function ClientVehicleDetailPage({
     notFound();
   }
 
+  const currentPath = `/client/vehicles/${vehicle.id}`;
+  const changeMessage = resultMessage(query.result);
+
   return (
     <div className="grid gap-6">
       <div className="flex flex-col justify-between gap-4 rounded-lg border border-border bg-card p-6 shadow-card md:flex-row md:items-center">
@@ -86,8 +104,39 @@ export default async function ClientVehicleDetailPage({
 
       {query.updated ? <div className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">Дані техніки оновлено.</div> : null}
       {query.error ? <div className="rounded-md border border-danger/30 bg-[#FEF3F2] p-4 text-sm font-semibold text-danger">Перевірте обовʼязкові поля.</div> : null}
+      {changeMessage ? <div className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">{changeMessage}</div> : null}
 
       <VehicleForm action={updateVehicle} submitLabel="Зберегти зміни" vehicle={vehicle} />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ContextualChangeRequestForm
+          title="Запросити редагування техніки"
+          description="Надішліть менеджеру уточнення щодо даних техніки. Запит не змінює картку автоматично."
+          entityType="VEHICLE"
+          entityId={vehicle.id}
+          action="UPDATE"
+          redirectTo={currentPath}
+          fieldOptions={[
+            { value: 'type', label: 'Тип техніки', currentValue: vehicle.type },
+            { value: 'manufacturer', label: 'Виробник', currentValue: vehicle.manufacturer },
+            { value: 'model', label: 'Модель', currentValue: vehicle.model },
+            { value: 'year', label: 'Рік', currentValue: vehicle.year },
+            { value: 'vinOrSerial', label: 'VIN / серійний номер', currentValue: vehicle.vinOrSerial },
+            { value: 'comment', label: 'Коментар', currentValue: vehicle.comment },
+            { value: 'other', label: 'Інше' }
+          ]}
+        />
+        <ContextualChangeRequestForm
+          title="Запросити архівацію техніки"
+          description="Створюється тільки запит на архівацію. Техніка не архівується автоматично на цьому етапі."
+          entityType="VEHICLE"
+          entityId={vehicle.id}
+          action="ARCHIVE"
+          redirectTo={currentPath}
+          submitLabel="Запросити архівацію техніки"
+          fieldOptions={[{ value: 'archive', label: 'Архівація техніки', currentValue: `${vehicle.manufacturer} ${vehicle.model}` }]}
+        />
+      </div>
 
       <div className="rounded-lg border border-border bg-card p-6 shadow-card">
         <h3 className="text-xl font-bold text-foreground">Повʼязані заявки</h3>

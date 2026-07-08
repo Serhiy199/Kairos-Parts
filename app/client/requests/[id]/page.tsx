@@ -2,6 +2,7 @@
 import { notFound } from 'next/navigation';
 
 import { approveClientCommercialOfferAction, rejectClientCommercialOfferAction } from '@/app/client/actions';
+import { ContextualChangeRequestForm } from '@/app/client/change-requests/contextual-change-request-form';
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
 import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
@@ -25,7 +26,14 @@ function resultMessage(result?: string) {
     'offer-approved': 'Комерційну пропозицію погоджено.',
     'offer-rejected': 'Комерційну пропозицію відхилено.',
     'offer-not-found-or-not-sent': 'Пропозицію не знайдено або вона вже не очікує рішення.',
-    'offer-error': 'Не вдалося обробити комерційну пропозицію.'
+    'offer-error': 'Не вдалося обробити комерційну пропозицію.',
+    created: 'Запит на зміну відправлено на погодження.',
+    database: 'DATABASE_URL не налаштовано.',
+    'invalid-entity-type': 'Некоректний тип об’єкта для запиту на зміну.',
+    'entity-id-required': 'Не вдалося визначити об’єкт для запиту на зміну.',
+    'invalid-action': 'Некоректна дія для запиту на зміну.',
+    'change-details-required': 'Вкажіть нове значення або причину зміни.',
+    'entity-not-found-or-forbidden': 'Об’єкт не знайдено або недоступний для вашого кабінету.'
   };
 
   return result ? messages[result] : null;
@@ -88,6 +96,7 @@ export default async function ClientRequestDetailPage({
     ['VIN / серійний номер', request.vinOrSerial ?? '—']
   ];
   const message = resultMessage(query.result);
+  const currentPath = `/client/requests/${request.id}`;
 
   return (
     <div className="grid gap-6">
@@ -114,6 +123,22 @@ export default async function ClientRequestDetailPage({
         </div>
       </div>
 
+      <ContextualChangeRequestForm
+        title="Запросити зміну по заявці"
+        description="Опишіть, що потрібно уточнити або змінити в цій заявці. Менеджер розгляне запит і зафіксує рішення."
+        entityType="REQUEST"
+        entityId={request.id}
+        action="UPDATE"
+        redirectTo={currentPath}
+        fieldOptions={[
+          { value: 'description', label: 'Опис потреби', currentValue: request.description },
+          { value: 'equipmentType', label: 'Тип техніки', currentValue: request.equipmentType },
+          { value: 'model', label: 'Модель', currentValue: request.model },
+          { value: 'vinOrSerial', label: 'VIN / серійний номер', currentValue: request.vinOrSerial },
+          { value: 'other', label: 'Інше' }
+        ]}
+      />
+
       <div className="grid gap-4 md:grid-cols-2">
         {details.map(([label, value]) => (
           <div key={label} className="rounded-lg border border-border bg-card p-4 shadow-card">
@@ -136,6 +161,7 @@ export default async function ClientRequestDetailPage({
                   <th className="px-4 py-3 font-bold">К-сть</th>
                   <th className="px-4 py-3 font-bold">Наявність</th>
                   <th className="px-4 py-3 font-bold">Ціна</th>
+                  <th className="px-4 py-3 font-bold">Зміни</th>
                 </tr>
               </thead>
               <tbody>
@@ -156,6 +182,25 @@ export default async function ClientRequestDetailPage({
                       <p className="mt-1 text-xs">{item.deliveryTime ?? 'Термін уточнюється'}</p>
                     </td>
                     <td className="px-4 py-3 font-semibold text-foreground">{formatMoney(item.salePrice, item.currency) ?? 'Уточнюється'}</td>
+                    <td className="min-w-[300px] px-4 py-3">
+                      <ContextualChangeRequestForm
+                        title="Запросити зміну позиції"
+                        entityType="REQUEST_ITEM"
+                        entityId={item.id}
+                        action="UPDATE"
+                        redirectTo={currentPath}
+                        compact
+                        fieldOptions={[
+                          { value: 'catalogNumber', label: 'Каталожний номер', currentValue: item.catalogNumber },
+                          { value: 'analogNumber', label: 'Аналог', currentValue: item.analogNumber },
+                          { value: 'name', label: 'Назва запчастини', currentValue: item.name },
+                          { value: 'quantity', label: 'Кількість', currentValue: item.quantity },
+                          { value: 'comment', label: 'Коментар', currentValue: item.comment },
+                          { value: 'other', label: 'Інше' }
+                        ]}
+                        submitLabel="Запросити зміну позиції"
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
