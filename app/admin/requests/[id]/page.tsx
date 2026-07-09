@@ -542,64 +542,60 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
         <span className="rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{items.length} позицій</span>
       </div>
 
-      <div className="mt-5 overflow-x-auto rounded-md border border-border">
-        <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
-          <thead>
-            <tr className="border-b border-border bg-surface-muted text-muted">
-              <th className="px-4 py-3 font-bold">Запчастина</th>
-              <th className="px-4 py-3 font-bold">Номери</th>
-              <th className="px-4 py-3 font-bold">К-сть</th>
-              <th className="px-4 py-3 font-bold">Наявність</th>
-              <th className="px-4 py-3 font-bold">Ціни</th>
-              <th className="px-4 py-3 font-bold">Клієнт</th>
-              <th className="px-4 py-3 font-bold">Дії</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id} className="border-b border-border align-top last:border-0">
-                <td className="px-4 py-3">
-                  <p className="font-bold text-foreground">{item.name}</p>
-                  <p className="mt-1 text-xs text-muted">{item.brand ?? 'Бренд не вказано'}</p>
-                  {item.comment ? <p className="mt-2 max-w-xs text-xs leading-5 text-muted">{item.comment}</p> : null}
-                </td>
-                <td className="px-4 py-3 text-muted">
-                  <p>Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
-                  <p className="mt-1">Аналог: <span className="font-semibold text-foreground">{item.analogNumber ?? '—'}</span></p>
-                </td>
-                <td className="px-4 py-3 font-semibold text-foreground">{item.quantity} {item.unit}</td>
-                <td className="px-4 py-3 text-muted">
-                  <p>{item.availability ?? '—'}</p>
-                  <p className="mt-1 text-xs">{item.deliveryTime ?? 'Термін не вказано'}</p>
-                </td>
-                <td className="px-4 py-3 text-muted">
-                  <p>Закупівля: {formatMoney(item.purchasePrice, item.currency)}</p>
-                  <p className="mt-1">Продаж: {formatMoney(item.salePrice, item.currency)}</p>
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.visibleToClient ? 'bg-[#E7F6EC] text-success' : 'bg-surface-muted text-muted'}`}>
-                    {item.visibleToClient ? 'Видимо' : 'Приховано'}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <details className="group">
-                    <summary className="cursor-pointer text-sm font-bold text-foreground transition hover:text-accent">Редагувати</summary>
-                    <div className="mt-4 w-[720px] max-w-[80vw] rounded-md border border-border bg-card p-4 shadow-card">
-                      <RequestItemForm action={updateAdminRequestItem} requestId={requestId} item={item} submitLabel="Зберегти позицію" />
-                    </div>
-                  </details>
-                  <form action={deleteAdminRequestItem} className="mt-3">
-                    <input type="hidden" name="requestId" value={requestId} />
-                    <input type="hidden" name="itemId" value={item.id} />
-                    <button className="text-sm font-bold text-danger transition hover:opacity-80">Видалити</button>
-                  </form>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="mt-5 grid gap-3 rounded-md border border-border p-4">
+        {items.map((item) => (
+          <article key={item.id} className="rounded-md border border-border bg-card p-4">
+            <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr_0.6fr_0.9fr_0.9fr_0.7fr]">
+              <div>
+                <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
+                <p className="mt-2 font-bold text-foreground">{item.name}</p>
+                <p className="mt-1 text-xs text-muted">{item.brand ?? 'Бренд не вказано'}</p>
+                {item.comment ? <p className="mt-2 text-xs leading-5 text-muted">{item.comment}</p> : null}
+              </div>
+              <div className="text-sm text-muted">
+                <p className="text-xs font-bold uppercase text-muted">Номери</p>
+                <p className="mt-2">Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
+                <p className="mt-1">Аналог: <span className="font-semibold text-foreground">{item.analogNumber ?? '—'}</span></p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase text-muted">К-сть</p>
+                <p className="mt-2 font-semibold text-foreground">{item.quantity} {item.unit}</p>
+              </div>
+              <div className="text-sm text-muted">
+                <p className="text-xs font-bold uppercase text-muted">Наявність</p>
+                <p className="mt-2">{item.availability ?? '—'}</p>
+                <p className="mt-1 text-xs">{item.deliveryTime ?? 'Термін не вказано'}</p>
+              </div>
+              <div className="text-sm text-muted">
+                <p className="text-xs font-bold uppercase text-muted">Ціни</p>
+                <p className="mt-2">Закупівля: {formatMoney(item.purchasePrice, item.currency)}</p>
+                <p className="mt-1">Продаж: {formatMoney(item.salePrice, item.currency)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase text-muted">Клієнт</p>
+                <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${item.visibleToClient ? 'bg-[#E7F6EC] text-success' : 'bg-surface-muted text-muted'}`}>
+                  {item.visibleToClient ? 'Видимо' : 'Приховано'}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-4 border-t border-border pt-4">
+              <details className="group">
+                <summary className="cursor-pointer text-sm font-bold text-foreground transition hover:text-accent">Редагувати позицію</summary>
+                <div className="mt-4 rounded-md border border-border bg-surface-muted p-4">
+                  <RequestItemForm action={updateAdminRequestItem} requestId={requestId} item={item} submitLabel="Зберегти позицію" />
+                </div>
+              </details>
+              <form action={deleteAdminRequestItem} className="mt-3">
+                <input type="hidden" name="requestId" value={requestId} />
+                <input type="hidden" name="itemId" value={item.id} />
+                <button className="text-sm font-bold text-danger transition hover:opacity-80">Видалити</button>
+              </form>
+            </div>
+          </article>
+        ))}
         {items.length === 0 ? (
-          <p className="border-t border-border p-5 text-sm text-muted">
+          <p className="p-5 text-sm text-muted">
             Позиції ще не додані. Додайте першу позицію, щоб зберегти номенклатуру та каталожні номери по цій заявці.
           </p>
         ) : null}

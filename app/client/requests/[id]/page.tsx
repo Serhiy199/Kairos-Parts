@@ -152,59 +152,61 @@ export default async function ClientRequestDetailPage({
         <div className="rounded-lg border border-border bg-card p-6 shadow-card">
           <h3 className="text-lg font-bold text-foreground">Підібрані позиції</h3>
           <p className="mt-2 text-sm text-muted">Менеджер показує тут тільки позиції, які готові для перегляду клієнтом.</p>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[820px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-border bg-surface-muted text-muted">
-                  <th className="px-4 py-3 font-bold">Запчастина</th>
-                  <th className="px-4 py-3 font-bold">Номери</th>
-                  <th className="px-4 py-3 font-bold">К-сть</th>
-                  <th className="px-4 py-3 font-bold">Наявність</th>
-                  <th className="px-4 py-3 font-bold">Ціна</th>
-                  <th className="px-4 py-3 font-bold">Зміни</th>
-                </tr>
-              </thead>
-              <tbody>
-                {request.items.map((item) => (
-                  <tr key={item.id} className="border-b border-border align-top last:border-0">
-                    <td className="px-4 py-3">
-                      <p className="font-bold text-foreground">{item.name}</p>
+          <div className="mt-4 grid gap-3">
+            {request.items.map((item) => (
+              <details key={item.id} className="group rounded-md border border-border p-4">
+                <summary className="cursor-pointer list-none">
+                  <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr_0.6fr_0.9fr_0.8fr_auto] lg:items-start">
+                    <div>
+                      <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
+                      <p className="mt-2 font-bold text-foreground">{item.name}</p>
                       <p className="mt-1 text-xs text-muted">{item.brand ?? 'Бренд уточнюється'}</p>
                       {item.comment ? <p className="mt-2 text-xs leading-5 text-muted">{item.comment}</p> : null}
-                    </td>
-                    <td className="px-4 py-3 text-muted">
-                      <p>Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
+                    </div>
+                    <div className="text-sm text-muted">
+                      <p className="text-xs font-bold uppercase text-muted">Номери</p>
+                      <p className="mt-2">Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
                       <p className="mt-1">Аналог: <span className="font-semibold text-foreground">{item.analogNumber ?? '—'}</span></p>
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-foreground">{item.quantity} {item.unit}</td>
-                    <td className="px-4 py-3 text-muted">
-                      <p>{item.availability ?? 'Уточнюється'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase text-muted">К-сть</p>
+                      <p className="mt-2 font-semibold text-foreground">{item.quantity} {item.unit}</p>
+                    </div>
+                    <div className="text-sm text-muted">
+                      <p className="text-xs font-bold uppercase text-muted">Наявність</p>
+                      <p className="mt-2">{item.availability ?? 'Уточнюється'}</p>
                       <p className="mt-1 text-xs">{item.deliveryTime ?? 'Термін уточнюється'}</p>
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-foreground">{formatMoney(item.salePrice, item.currency) ?? 'Уточнюється'}</td>
-                    <td className="min-w-[300px] px-4 py-3">
-                      <ContextualChangeRequestForm
-                        title="Запросити зміну позиції"
-                        entityType="REQUEST_ITEM"
-                        entityId={item.id}
-                        action="UPDATE"
-                        redirectTo={currentPath}
-                        compact
-                        fieldOptions={[
-                          { value: 'catalogNumber', label: 'Каталожний номер', currentValue: item.catalogNumber },
-                          { value: 'analogNumber', label: 'Аналог', currentValue: item.analogNumber },
-                          { value: 'name', label: 'Назва запчастини', currentValue: item.name },
-                          { value: 'quantity', label: 'Кількість', currentValue: item.quantity },
-                          { value: 'comment', label: 'Коментар', currentValue: item.comment },
-                          { value: 'other', label: 'Інше' }
-                        ]}
-                        submitLabel="Запросити зміну позиції"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase text-muted">Ціна</p>
+                      <p className="mt-2 font-semibold text-foreground">{formatMoney(item.salePrice, item.currency) ?? 'Уточнюється'}</p>
+                    </div>
+                    <span className="inline-flex h-10 items-center justify-center rounded-md border border-border px-4 text-sm font-bold text-foreground transition group-hover:border-accent group-hover:bg-surface-muted">
+                      Запросити зміну
+                    </span>
+                  </div>
+                </summary>
+                <div className="mt-4 border-t border-border pt-4">
+                  <ContextualChangeRequestForm
+                    title="Запросити зміну позиції"
+                    entityType="REQUEST_ITEM"
+                    entityId={item.id}
+                    action="UPDATE"
+                    redirectTo={currentPath}
+                    compact
+                    fieldOptions={[
+                      { value: 'catalogNumber', label: 'Каталожний номер', currentValue: item.catalogNumber },
+                      { value: 'analogNumber', label: 'Аналог', currentValue: item.analogNumber },
+                      { value: 'name', label: 'Назва запчастини', currentValue: item.name },
+                      { value: 'quantity', label: 'Кількість', currentValue: item.quantity },
+                      { value: 'comment', label: 'Коментар', currentValue: item.comment },
+                      { value: 'other', label: 'Інше' }
+                    ]}
+                    submitLabel="Запросити зміну позиції"
+                  />
+                </div>
+              </details>
+            ))}
           </div>
         </div>
       ) : null}
