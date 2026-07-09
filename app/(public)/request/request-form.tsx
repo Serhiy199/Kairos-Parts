@@ -94,6 +94,7 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
 
     const fileErrors = validateFiles(selectedFiles);
 
@@ -108,7 +109,7 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
 
     setSubmitState({ status: 'submitting' });
 
-    const formData = new FormData(event.currentTarget);
+    const formData = new FormData(form);
     formData.set('formType', formType);
 
     try {
@@ -133,17 +134,18 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
         return;
       }
 
+      form.reset();
+      setSelectedFiles([]);
       setSubmitState({
         status: 'success',
         requestNumber: payload.requestNumber ?? '',
         publicStatusUrl: payload.publicStatusUrl ?? '/'
       });
-      event.currentTarget.reset();
-      setSelectedFiles([]);
     } catch (error) {
+      console.error('Request form submit failed', error);
       setSubmitState({
         status: 'error',
-        message: error instanceof Error ? error.message : 'Не вдалося відправити заявку.'
+        message: 'Не вдалося відправити заявку. Спробуйте ще раз або напишіть нам у Telegram.'
       });
     }
   }

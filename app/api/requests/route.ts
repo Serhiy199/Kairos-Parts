@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     return Response.json(
       {
         status: 'database_not_configured',
-        message: 'DATABASE_URL is not configured. Request validation passed, but database insert requires a local PostgreSQL database.',
+        message: 'Зараз не вдалося створити заявку через налаштування сервера. Спробуйте пізніше або напишіть нам у Telegram.',
         errors: []
       },
       { status: 503 }
@@ -137,11 +137,11 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
+    console.error('Request creation failed', error);
     return Response.json(
       {
         status: 'database_error',
-        message: 'Request could not be created. Check DATABASE_URL, Prisma migration state, and local file permissions.',
-        detail: error instanceof Error ? error.message : 'Unknown error'
+        message: 'Не вдалося створити заявку. Спробуйте ще раз або напишіть нам у Telegram.'
       },
       { status: 503 }
     );
