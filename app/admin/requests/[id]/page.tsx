@@ -29,7 +29,7 @@ import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 import { REQUEST_DOCUMENT_TYPE_LABELS, REQUEST_DOCUMENT_TYPES } from '@/lib/request-documents/validation';
 import { REQUEST_SOURCE_LABELS } from '@/lib/requests/sources';
-import { REQUEST_STATUS_LABELS, REQUEST_STATUSES } from '@/lib/requests/statuses';
+import { normalizeRequestStatusForSelection, REQUEST_STATUS_LABELS, REQUEST_STATUSES } from '@/lib/requests/statuses';
 
 export const dynamic = 'force-dynamic';
 
@@ -175,6 +175,7 @@ export default async function AdminRequestDetailPage({
   const companyName = request.company?.name ?? request.client?.companyName ?? request.companyName ?? '—';
   const phone = request.client?.phone ?? request.guestPhone ?? '—';
   const email = request.client?.email ?? request.guestEmail ?? '—';
+  const selectedRequestStatus = normalizeRequestStatusForSelection(request.status);
 
   return (
     <div className="grid gap-6">
@@ -405,7 +406,7 @@ export default async function AdminRequestDetailPage({
               <input type="hidden" name="requestId" value={request.id} />
               <label className="grid gap-2 text-sm font-semibold text-foreground">
                 Статус
-                <select name="status" defaultValue={request.status} className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent">
+                <select name="status" defaultValue={selectedRequestStatus} className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent">
                   {REQUEST_STATUSES.map((status) => <option key={status} value={status}>{REQUEST_STATUS_LABELS[status]}</option>)}
                 </select>
               </label>

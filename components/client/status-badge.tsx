@@ -1,6 +1,6 @@
-import { REQUEST_STATUS_BADGES, REQUEST_STATUS_LABELS, type RequestStatus } from '@/lib/requests/statuses';
+import { REQUEST_STATUS_BADGES, REQUEST_STATUS_LABELS, type AnyRequestStatus } from '@/lib/requests/statuses';
 
-export function StatusBadge({ status }: { status: RequestStatus }) {
+export function StatusBadge({ status }: { status: AnyRequestStatus }) {
   const colors = REQUEST_STATUS_BADGES[status];
 
   return (

@@ -21,6 +21,7 @@ import { runOcrForRequestFile, updateOcrCorrection } from '@/lib/ocr/service';
 import { prisma } from '@/lib/prisma';
 import { parseRequestDocumentMetadata, readRequiredRequestDocumentFile } from '@/lib/request-documents/validation';
 import { parseRequestItemInput } from '@/lib/request-items/validation';
+import { REQUEST_STATUSES } from '@/lib/requests/statuses';
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -36,7 +37,7 @@ export async function updateAdminRequestStatus(formData: FormData) {
   const requestId = readString(formData, 'requestId');
   const status = readString(formData, 'status');
 
-  if (!hasDatabaseUrl() || !requestId || !Object.values(RequestStatus).includes(status as RequestStatus)) {
+  if (!hasDatabaseUrl() || !requestId || !REQUEST_STATUSES.includes(status as (typeof REQUEST_STATUSES)[number])) {
     redirectBack(requestId, 'status-error');
   }
 

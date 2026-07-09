@@ -96,6 +96,15 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
       select: { id: true, name: true }
     })
   ]);
+  const filterFormKey = [
+    inputValue(params.q),
+    inputValue(params.status),
+    inputValue(params.source),
+    inputValue(params.manager),
+    inputValue(params.category),
+    inputValue(params.dateFrom),
+    inputValue(params.dateTo)
+  ].join('|');
 
   return (
     <div className="grid gap-6">
@@ -106,7 +115,7 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
           {session.user.role === 'ADMIN' ? 'Адміністратор бачить повний потік заявок.' : 'Менеджер бачить CRM потік заявок. Обмеження тільки призначеними менеджеру заявками ще не ввімкнено.'}
         </p>
 
-        <form action="/admin/requests" method="get" className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+        <form key={filterFormKey} action="/admin/requests" method="get" className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
           <input name="q" defaultValue={inputValue(params.q)} placeholder="Пошук: №, телефон, клієнт, VIN" className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25 xl:col-span-2" />
           <select name="status" defaultValue={inputValue(params.status)} className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent">
             <option value="">Всі статуси</option>

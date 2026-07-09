@@ -2,6 +2,7 @@ import { RequestStatus } from '@prisma/client';
 
 import { crmAccessError, getCrmApiSession } from '@/lib/admin/access';
 import { prisma } from '@/lib/prisma';
+import { REQUEST_STATUSES } from '@/lib/requests/statuses';
 
 export const runtime = 'nodejs';
 
@@ -15,7 +16,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   const body = (await request.json()) as { status?: string };
 
-  if (!body.status || !Object.values(RequestStatus).includes(body.status as RequestStatus)) {
+  if (!body.status || !REQUEST_STATUSES.includes(body.status as (typeof REQUEST_STATUSES)[number])) {
     return Response.json({ status: 'validation_error' }, { status: 400 });
   }
 

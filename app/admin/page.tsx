@@ -5,7 +5,7 @@ import { StatusBadge } from '@/components/client/status-badge';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
-import { REQUEST_STATUS_LABELS, REQUEST_STATUSES, type RequestStatus } from '@/lib/requests/statuses';
+import { REQUEST_STATUS_LABELS, REQUEST_STATUSES, type AnyRequestStatus } from '@/lib/requests/statuses';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +39,7 @@ export default async function AdminDashboardPage() {
     })
   ]);
 
-  const statusCounts = new Map<RequestStatus, number>(
+  const statusCounts = new Map<AnyRequestStatus, number>(
     groupedStatuses.map((item) => [item.status, item._count.status])
   );
 
