@@ -27,7 +27,7 @@ export function DashboardShell({ children, title, subtitle, navItems, homeHref, 
   const logoutAction = logoutTarget === 'staff' ? logoutStaff : logoutClient;
 
   return (
-    <div className="min-h-screen bg-background lg:flex">
+    <div className="min-h-screen overflow-x-hidden bg-background">
       <aside className="bg-dark-sidebar text-sidebar-text lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex min-h-16 items-center justify-between px-4 lg:min-h-20">
           <Link href={homeHref} className="flex items-center" aria-label="Kairos Parts">
@@ -70,14 +70,14 @@ export function DashboardShell({ children, title, subtitle, navItems, homeHref, 
           </form>
         </div>
       </aside>
-      <div className="min-w-0 flex-1 lg:pl-64">
+      <div className="min-w-0 w-full lg:pl-64">
         <header className="border-b border-border bg-card">
           <div className="px-4 py-5 sm:px-6 lg:px-8">
             <p className="text-sm font-semibold text-muted">{subtitle}</p>
             <h1 className="mt-1 text-2xl font-bold text-foreground">{title}</h1>
           </div>
         </header>
-        <main className="px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="min-w-0 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>
   );

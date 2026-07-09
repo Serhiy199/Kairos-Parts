@@ -1,6 +1,6 @@
 import { approveChangeRequestAction, rejectChangeRequestAction } from '@/app/admin/change-request-actions';
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
-import { requireCrmSession } from '@/lib/admin/access';
+import { requireAdminSession } from '@/lib/admin/access';
 import { listChangeRequestsForAdmin } from '@/lib/change-requests/service';
 import { CHANGE_ACTION_LABELS, CHANGE_ENTITY_TYPE_LABELS, CHANGE_STATUS_LABELS } from '@/lib/change-requests/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
@@ -54,7 +54,7 @@ export default async function AdminChangeRequestsPage({
 }: {
   searchParams: Promise<{ result?: string }>;
 }) {
-  await requireCrmSession();
+  await requireAdminSession();
   const query = await searchParams;
 
   if (!hasDatabaseUrl()) {
@@ -70,7 +70,7 @@ export default async function AdminChangeRequestsPage({
         <p className="text-sm font-bold uppercase text-accent">Запити змін</p>
         <h1 className="mt-2 text-2xl font-bold text-foreground">Клієнтські запити на зміну</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-          Менеджер або адміністратор бачить запити клієнтів на зміну даних і фіксує рішення. Погодження автоматично застосовує тільки allowlisted поля для заявки, позиції заявки або техніки.
+          Адміністратор бачить запити клієнтів на зміну даних і фіксує рішення. Погодження автоматично застосовує тільки allowlisted поля для заявки, позиції заявки або техніки.
         </p>
         <p className="mt-2 max-w-3xl text-xs font-semibold text-muted">
           Архівація техніки не видаляє історію, заявки, документи або підібрані позиції.

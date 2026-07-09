@@ -1,11 +1,11 @@
-import { crmAccessError, getCrmApiSession } from '@/lib/admin/access';
+import { crmAccessError, getAdminApiSession } from '@/lib/admin/access';
 import { approveChangeRequest } from '@/lib/change-requests/service';
 import { parseAdminReviewInput } from '@/lib/change-requests/validation';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const access = await getCrmApiSession();
+  const access = await getAdminApiSession();
 
   if (!access.ok) {
     return crmAccessError(access);

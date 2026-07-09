@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { requireCrmSession } from '@/lib/admin/access';
+import { requireAdminSession } from '@/lib/admin/access';
 import { approveChangeRequest, rejectChangeRequest } from '@/lib/change-requests/service';
 import { parseAdminReviewInput } from '@/lib/change-requests/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
@@ -18,7 +18,7 @@ function redirectBack(result: string): never {
 }
 
 export async function approveChangeRequestAction(formData: FormData) {
-  const session = await requireCrmSession();
+  const session = await requireAdminSession();
   const changeRequestId = readString(formData, 'changeRequestId');
 
   if (!hasDatabaseUrl() || !changeRequestId) {
@@ -37,7 +37,7 @@ export async function approveChangeRequestAction(formData: FormData) {
 }
 
 export async function rejectChangeRequestAction(formData: FormData) {
-  const session = await requireCrmSession();
+  const session = await requireAdminSession();
   const changeRequestId = readString(formData, 'changeRequestId');
 
   if (!hasDatabaseUrl() || !changeRequestId) {
