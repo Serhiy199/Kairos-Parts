@@ -51,21 +51,32 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return Response.json({ status: 'not_found' }, { status: 404 });
   }
 
-  const savedFile = await saveRequestDocumentLocal(requestRecord.id, fileResult.file);
-  const document = await prisma.requestDocument.create({
-    data: {
-      requestId: requestRecord.id,
-      type: metadata.data.type,
-      title: metadata.data.title,
-      fileName: savedFile.fileName,
-      fileUrl: savedFile.fileUrl,
-      storageKey: savedFile.storageKey,
-      mimeType: savedFile.mimeType,
-      size: savedFile.size,
-      visibleToClient: metadata.data.visibleToClient,
-      uploadedById: access.session.user.id
-    }
-  });
+  try {
+    const savedFile = await saveRequestDocumentLocal(requestRecord.id, fileResult.file);
+    const document = await prisma.requestDocument.create({
+      data: {
+        requestId: requestRecord.id,
+        type: metadata.data.type,
+        title: metadata.data.title,
+        fileName: savedFile.fileName,
+        fileUrl: savedFile.fileUrl,
+        storageKey: savedFile.storageKey,
+        mimeType: savedFile.mimeType,
+        size: savedFile.size,
+        visibleToClient: metadata.data.visibleToClient,
+        uploadedById: access.session.user.id
+      }
+    });
 
-  return Response.json({ document }, { status: 201 });
+    return Response.json({ document }, { status: 201 });
+  } catch (error) {
+    console.error('Failed to upload request document via API', error);
+    return Response.json(
+      {
+        status: 'upload_error',
+        message: 'Не вдалося завантажити документ. Спробуйте менший файл або повторіть пізніше.'
+      },
+      { status: 500 }
+    );
+  }
 }

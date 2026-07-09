@@ -32,6 +32,10 @@ export const confirmationKeyboard = {
   ]
 };
 
+export const createdRequestKeyboard = {
+  inline_keyboard: [[{ text: 'Створити ще одну заявку', callback_data: TELEGRAM_CALLBACKS.restart }]]
+};
+
 export function isSkipText(text: string) {
   return ['пропустити', 'skip', 'немає', 'нет', '-'].includes(text.trim().toLowerCase());
 }
@@ -79,6 +83,8 @@ export function buildCreatedMessage(input: { requestNumber: string; statusUrl: s
     'Статус заявки можна переглянути за посиланням:',
     input.statusUrl,
     '',
-    'Менеджер Kairos Parts звʼяжеться з вами після обробки заявки.'
+    'Менеджер Kairos Parts звʼяжеться з вами після обробки заявки.',
+    '',
+    'Щоб створити ще одну заявку, натисніть кнопку нижче або введіть /start.'
   ].join('\n');
 }

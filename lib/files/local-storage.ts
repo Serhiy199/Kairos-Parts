@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 
 export type SavedUpload = {
@@ -13,8 +14,20 @@ function sanitizeFileName(fileName: string) {
   return fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
 }
 
+export function getUploadRoot() {
+  if (process.env.KAIROS_UPLOAD_DIR) {
+    return path.resolve(process.env.KAIROS_UPLOAD_DIR);
+  }
+
+  if (process.env.VERCEL) {
+    return path.join(os.tmpdir(), 'kairos-parts-uploads');
+  }
+
+  return path.join(process.cwd(), 'uploads');
+}
+
 export async function saveRequestFileLocal(requestId: string, file: File): Promise<SavedUpload> {
-  const uploadRoot = path.join(process.cwd(), 'uploads', 'request-files', requestId);
+  const uploadRoot = path.join(getUploadRoot(), 'request-files', requestId);
   await mkdir(uploadRoot, { recursive: true });
 
   const safeName = `${Date.now()}-${sanitizeFileName(file.name)}`;
@@ -40,7 +53,7 @@ export async function saveRequestFileBufferLocal(
     mimeType?: string;
   }
 ): Promise<SavedUpload> {
-  const uploadRoot = path.join(process.cwd(), 'uploads', 'request-files', requestId);
+  const uploadRoot = path.join(getUploadRoot(), 'request-files', requestId);
   await mkdir(uploadRoot, { recursive: true });
 
   const safeName = `${Date.now()}-${sanitizeFileName(input.fileName)}`;
@@ -58,7 +71,7 @@ export async function saveRequestFileBufferLocal(
 }
 
 export async function saveRequestDocumentLocal(requestId: string, file: File): Promise<SavedUpload> {
-  const uploadRoot = path.join(process.cwd(), 'uploads', 'request-documents', requestId);
+  const uploadRoot = path.join(getUploadRoot(), 'request-documents', requestId);
   await mkdir(uploadRoot, { recursive: true });
 
   const safeName = `${Date.now()}-${sanitizeFileName(file.name)}`;

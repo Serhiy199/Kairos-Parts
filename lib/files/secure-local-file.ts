@@ -1,12 +1,14 @@
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
+import { getUploadRoot } from './local-storage';
+
 export function isSafeStorageKey(storageKey: string | null | undefined) {
   return Boolean(storageKey) && !path.isAbsolute(storageKey ?? '') && !(storageKey ?? '').split(/[\\/]/).includes('..');
 }
 
 export function resolveUploadPath(storageKey: string) {
-  const uploadsRoot = path.resolve(process.cwd(), 'uploads');
+  const uploadsRoot = getUploadRoot();
   const filePath = path.resolve(uploadsRoot, storageKey);
 
   if (!filePath.startsWith(`${uploadsRoot}${path.sep}`)) {

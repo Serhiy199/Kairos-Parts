@@ -9,6 +9,7 @@ import {
   buildSummary,
   confirmationKeyboard,
   contactKeyboard,
+  createdRequestKeyboard,
   isSkipText,
   removeKeyboard,
   skipKeyboard,
@@ -591,7 +592,8 @@ async function handleCallback(callbackQuery: TelegramCallbackQuery) {
     buildCreatedMessage({
       requestNumber: createdRequest.requestNumber,
       statusUrl: buildStatusUrl(createdRequest.publicStatusToken)
-    })
+    }),
+    { replyMarkup: createdRequestKeyboard }
   );
 }
 

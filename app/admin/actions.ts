@@ -290,22 +290,27 @@ export async function createAdminRequestDocument(formData: FormData) {
     redirect('/admin/requests?result=request-not-found');
   }
 
-  const savedFile = await saveRequestDocumentLocal(request.id, fileResult.file);
+  try {
+    const savedFile = await saveRequestDocumentLocal(request.id, fileResult.file);
 
-  await prisma.requestDocument.create({
-    data: {
-      requestId: request.id,
-      type: metadata.data.type,
-      title: metadata.data.title,
-      fileName: savedFile.fileName,
-      fileUrl: savedFile.fileUrl,
-      storageKey: savedFile.storageKey,
-      mimeType: savedFile.mimeType,
-      size: savedFile.size,
-      visibleToClient: metadata.data.visibleToClient,
-      uploadedById: session.user.id
-    }
-  });
+    await prisma.requestDocument.create({
+      data: {
+        requestId: request.id,
+        type: metadata.data.type,
+        title: metadata.data.title,
+        fileName: savedFile.fileName,
+        fileUrl: savedFile.fileUrl,
+        storageKey: savedFile.storageKey,
+        mimeType: savedFile.mimeType,
+        size: savedFile.size,
+        visibleToClient: metadata.data.visibleToClient,
+        uploadedById: session.user.id
+      }
+    });
+  } catch (error) {
+    console.error('Failed to upload request document', error);
+    redirectBack(request.id, 'document-error');
+  }
 
   revalidatePath(`/admin/requests/${request.id}`);
   revalidatePath(`/client/requests/${request.id}`);
