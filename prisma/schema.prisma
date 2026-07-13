@@ -390,6 +390,8 @@ model RequestItem {
   comment          String?
   visibleToClient  Boolean  @default(false)
   approvedByClient Boolean  @default(false)
+  includeInInvoice Boolean  @default(false)
+  approvedAt       DateTime?
   commercialOfferItems CommercialOfferItem[]
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -397,6 +399,7 @@ model RequestItem {
   @@index([requestId])
   @@index([vehicleId])
   @@index([visibleToClient])
+  @@index([includeInInvoice])
 }
 
 model RequestDocument {

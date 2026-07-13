@@ -1,8 +1,12 @@
 ﻿import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { approveClientCommercialOfferAction, rejectClientCommercialOfferAction } from '@/app/client/actions';
-import { ContextualChangeRequestForm } from '@/app/client/change-requests/contextual-change-request-form';
+import {
+  approveClientCommercialOfferAction,
+  approveClientRequestItemsAction,
+  createClientRequestItemEditAction,
+  rejectClientCommercialOfferAction
+} from '@/app/client/actions';
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
 import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
@@ -27,7 +31,16 @@ function resultMessage(result?: string) {
     'offer-rejected': 'Комерційну пропозицію відхилено.',
     'offer-not-found-or-not-sent': 'Пропозицію не знайдено або вона вже не очікує рішення.',
     'offer-error': 'Не вдалося обробити комерційну пропозицію.',
-    created: 'Запит на зміну відправлено на погодження.',
+    'items-approved': 'Позиції погоджено. Менеджер сформує рахунок на основі вибраних позицій.',
+    'item-selection-required': 'Оберіть хоча б одну позицію для включення у рахунок.',
+    'items-approval-error': 'Не вдалося погодити позиції. Спробуйте ще раз.',
+    'items-approval-forbidden': 'Позиції не знайдено або вони недоступні для вашого кабінету.',
+    'item-change-created': 'Уточнення по позиції передано менеджеру.',
+    'item-change-required': 'Вкажіть нове значення або причину уточнення.',
+    'item-change-field-forbidden': 'Це поле не можна змінювати з кабінету клієнта.',
+    'item-change-forbidden': 'Позицію не знайдено або вона недоступна для вашого кабінету.',
+    'item-change-error': 'Не вдалося передати уточнення менеджеру.',
+    created: 'Уточнення відправлено менеджеру.',
     database: 'DATABASE_URL не налаштовано.',
     'invalid-entity-type': 'Некоректний тип об’єкта для запиту на зміну.',
     'entity-id-required': 'Не вдалося визначити об’єкт для запиту на зміну.',
@@ -97,8 +110,6 @@ export default async function ClientRequestDetailPage({
     ['VIN / серійний номер', request.vinOrSerial ?? '—']
   ];
   const message = resultMessage(query.result);
-  const currentPath = `/client/requests/${request.id}`;
-
   return (
     <div className="grid gap-6">
       {message ? <div className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">{message}</div> : null}
@@ -124,22 +135,6 @@ export default async function ClientRequestDetailPage({
         </div>
       </div>
 
-      <ContextualChangeRequestForm
-        title="Запросити зміну по заявці"
-        description="Опишіть, що потрібно уточнити або змінити в цій заявці. Після погодження менеджером дозволена зміна буде застосована автоматично."
-        entityType="REQUEST"
-        entityId={request.id}
-        action="UPDATE"
-        redirectTo={currentPath}
-        fieldOptions={[
-          { value: 'description', label: 'Опис потреби', currentValue: request.description },
-          { value: 'equipmentType', label: 'Тип техніки', currentValue: request.equipmentType },
-          { value: 'model', label: 'Модель', currentValue: request.model },
-          { value: 'vinOrSerial', label: 'VIN / серійний номер', currentValue: request.vinOrSerial },
-          { value: 'other', label: 'Інше' }
-        ]}
-      />
-
       <div className="grid gap-4 md:grid-cols-2">
         {details.map(([label, value]) => (
           <div key={label} className="rounded-lg border border-border bg-card p-4 shadow-card">
@@ -151,8 +146,20 @@ export default async function ClientRequestDetailPage({
 
       {request.items.length > 0 ? (
         <div className="rounded-lg border border-border bg-card p-6 shadow-card">
-          <h3 className="text-lg font-bold text-foreground">Підібрані позиції</h3>
-          <p className="mt-2 text-sm text-muted">Менеджер показує тут тільки позиції, які готові для перегляду клієнтом.</p>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-foreground">Підібрані позиції</h3>
+              <p className="mt-2 text-sm text-muted">
+                Оберіть позиції, які потрібно включити у рахунок. Якщо щось треба уточнити, натисніть “Редагувати” біля позиції.
+              </p>
+            </div>
+            <form id="approve-request-items" action={approveClientRequestItemsAction}>
+              <input type="hidden" name="requestId" value={request.id} />
+              <button className="inline-flex items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+                Погодити вибрані позиції
+              </button>
+            </form>
+          </div>
           <div className="mt-4 grid gap-3">
             {request.items.map((item) => (
               <details key={item.id} className="group rounded-md border border-border p-4">
@@ -182,29 +189,78 @@ export default async function ClientRequestDetailPage({
                       <p className="text-xs font-bold uppercase text-muted">Ціна</p>
                       <p className="mt-2 font-semibold text-foreground">{formatMoney(item.salePrice, item.currency) ?? 'Уточнюється'}</p>
                     </div>
-                    <span className="inline-flex h-10 items-center justify-center rounded-md border border-border px-4 text-sm font-bold text-foreground transition group-hover:border-accent group-hover:bg-surface-muted">
-                      Запросити зміну
-                    </span>
+                    <div className="grid gap-2">
+                      <label className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">
+                        <input
+                          form="approve-request-items"
+                          type="checkbox"
+                          name="itemIds"
+                          value={item.id}
+                          defaultChecked={item.includeInInvoice}
+                          className="h-4 w-4 accent-[var(--accent)]"
+                        />
+                        Включити у рахунок
+                      </label>
+                      <span className="inline-flex h-10 items-center justify-center rounded-md border border-border px-4 text-sm font-bold text-foreground transition group-hover:border-accent group-hover:bg-surface-muted">
+                        Редагувати
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {item.approvedByClient ? (
+                          <span className="rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success">Погоджено</span>
+                        ) : (
+                          <span className="rounded-full bg-[#FFF7E0] px-2.5 py-1 text-xs font-bold text-[#8A5B24]">Очікує погодження</span>
+                        )}
+                        {item.includeInInvoice ? (
+                          <span className="rounded-full bg-[#E8F1FF] px-2.5 py-1 text-xs font-bold text-info">Включено у рахунок</span>
+                        ) : null}
+                      </div>
+                    </div>
                   </div>
                 </summary>
                 <div className="mt-4 border-t border-border pt-4">
-                  <ContextualChangeRequestForm
-                    title="Запросити зміну позиції"
-                    entityType="REQUEST_ITEM"
-                    entityId={item.id}
-                    action="UPDATE"
-                    redirectTo={currentPath}
-                    compact
-                    fieldOptions={[
-                      { value: 'catalogNumber', label: 'Каталожний номер', currentValue: item.catalogNumber },
-                      { value: 'analogNumber', label: 'Аналог', currentValue: item.analogNumber },
-                      { value: 'name', label: 'Назва запчастини', currentValue: item.name },
-                      { value: 'quantity', label: 'Кількість', currentValue: item.quantity },
-                      { value: 'comment', label: 'Коментар', currentValue: item.comment },
-                      { value: 'other', label: 'Інше' }
-                    ]}
-                    submitLabel="Запросити зміну позиції"
-                  />
+                  <form action={createClientRequestItemEditAction} className="grid gap-4 rounded-md border border-border bg-surface-muted p-4">
+                    <input type="hidden" name="requestId" value={request.id} />
+                    <input type="hidden" name="itemId" value={item.id} />
+                    <div>
+                      <p className="text-sm font-bold uppercase text-accent">Редагування позиції</p>
+                      <h4 className="mt-1 font-bold text-foreground">Надіслати уточнення менеджеру</h4>
+                      <p className="mt-2 text-sm leading-6 text-muted">
+                        Ваше уточнення буде передано менеджеру. Після перевірки менеджер оновить позицію.
+                      </p>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <label className="grid gap-2 text-sm font-semibold text-foreground">
+                        Що потрібно змінити?
+                        <select name="fieldName" className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25">
+                          <option value="name">Назва запчастини</option>
+                          <option value="catalogNumber">Каталожний номер</option>
+                          <option value="analogNumber">Аналоговий номер</option>
+                          <option value="quantity">Кількість</option>
+                          <option value="comment">Коментар</option>
+                        </select>
+                      </label>
+                      <label className="grid gap-2 text-sm font-semibold text-foreground">
+                        Нове значення
+                        <input
+                          name="newValue"
+                          className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+                          placeholder="Вкажіть нове значення"
+                        />
+                      </label>
+                    </div>
+                    <label className="grid gap-2 text-sm font-semibold text-foreground">
+                      Причина / коментар
+                      <textarea
+                        name="reason"
+                        rows={3}
+                        className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+                        placeholder="Коротко поясніть, що потрібно уточнити"
+                      />
+                    </label>
+                    <button className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+                      Надіслати
+                    </button>
+                  </form>
                 </div>
               </details>
             ))}

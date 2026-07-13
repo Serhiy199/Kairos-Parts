@@ -493,6 +493,9 @@ type RequestItemView = {
   currency: string;
   comment: string | null;
   visibleToClient: boolean;
+  approvedByClient: boolean;
+  includeInInvoice: boolean;
+  approvedAt: Date | null;
 };
 
 type CommercialOfferItemView = {
@@ -574,9 +577,26 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
               </div>
               <div>
                 <p className="text-xs font-bold uppercase text-muted">Клієнт</p>
-                <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${item.visibleToClient ? 'bg-[#E7F6EC] text-success' : 'bg-surface-muted text-muted'}`}>
-                  {item.visibleToClient ? 'Видимо' : 'Приховано'}
-                </span>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${item.visibleToClient ? 'bg-[#E7F6EC] text-success' : 'bg-surface-muted text-muted'}`}>
+                    {item.visibleToClient ? 'Видимо' : 'Приховано'}
+                  </span>
+                  {item.visibleToClient ? (
+                    item.approvedByClient ? (
+                      <span className="inline-flex rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success">Погоджено клієнтом</span>
+                    ) : (
+                      <span className="inline-flex rounded-full bg-[#FFF7E0] px-2.5 py-1 text-xs font-bold text-[#8A5B24]">Очікує погодження</span>
+                    )
+                  ) : null}
+                  {item.visibleToClient ? (
+                    item.includeInInvoice ? (
+                      <span className="inline-flex rounded-full bg-[#E8F1FF] px-2.5 py-1 text-xs font-bold text-info">Включено у рахунок</span>
+                    ) : (
+                      <span className="inline-flex rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-muted">Не включено у рахунок</span>
+                    )
+                  ) : null}
+                </div>
+                {item.approvedAt ? <p className="mt-2 text-xs text-muted">Погоджено: {item.approvedAt.toLocaleString('uk-UA')}</p> : null}
               </div>
             </div>
 
