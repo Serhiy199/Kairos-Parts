@@ -1,35 +1,62 @@
-﻿import Image from 'next/image';
+import Image from 'next/image';
 import Link from 'next/link';
 import { FaClipboardList, FaTractor } from 'react-icons/fa';
-import { FaArrowsRotate, FaHandshakeAngle } from 'react-icons/fa6';
+import { FaHandshakeAngle } from 'react-icons/fa6';
 import { GoGear } from 'react-icons/go';
 import { LuBoxes, LuSearchCheck } from 'react-icons/lu';
 
 import { ActionIcon } from '@/components/ui/action-icons';
-import { catalogCategories } from '@/lib/catalog/catalog-data';
 
 const telegramBotUrl = 'https://t.me/kairos_parts_bot';
 
+const heroFleetHighlights = [
+  {
+    title: 'Повторне замовлення за секунди',
+    text: 'Платформа памʼятає, що вже купували для кожної машини.',
+    icon: 'clock'
+  },
+  {
+    title: 'Уся історія в одному місці',
+    text: 'Заявки, запчастини, каталожні номери й документи зберігаються разом.',
+    icon: 'database'
+  },
+  {
+    title: 'Контроль витрат та аналітика',
+    text: 'Легше бачити, що і для якої техніки замовлялось.',
+    icon: 'chart'
+  },
+  {
+    title: 'Надійні постачальники і гарантія',
+    text: 'Менеджер працює з перевіреними партнерами та фіксує рішення.',
+    icon: 'shield'
+  }
+];
+
 const processSteps = [
   {
-    title: 'Залишив заявку',
-    text: 'Опишіть потребу, додайте фото, список, артикул або дані техніки.',
+    title: 'Створіть заявку',
+    text: 'Оберіть техніку зі свого парку або оформіть разову заявку. Додайте артикул, список, фото чи опис потреби.',
     icon: 'file'
   },
   {
-    title: 'Менеджер підібрав',
-    text: 'Перевіряємо сумісність, наявність, аналоги та можливі варіанти постачання.',
+    title: 'Менеджер опрацьовує запит',
+    text: 'Уточнюємо деталі, перевіряємо сумісність і аналізуємо доступні варіанти.',
     icon: 'search'
   },
   {
-    title: 'Узгодили рішення',
-    text: 'Погоджуємо позиції, строки, ціну та формат поставки перед замовленням.',
+    title: 'Підбираємо рішення',
+    text: 'Знаходимо оригінальні запчастини та аналоги серед перевірених постачальників.',
     icon: 'check'
   },
   {
-    title: 'Отримали запчастини',
-    text: 'Kairos Parts супроводжує заявку до доставки або передачі клієнту.',
-    icon: 'truck'
+    title: 'Узгодження та оплата',
+    text: 'Погоджуємо склад замовлення, терміни, доставку та формуємо рахунок.',
+    icon: 'invoice'
+  },
+  {
+    title: 'Історія оновлюється автоматично',
+    text: 'Якщо заявка привʼязана до техніки з вашого парку, система зберігає запчастини, каталожні номери, рахунки та документи в історії цієї машини.',
+    icon: 'database'
   }
 ];
 
@@ -60,9 +87,37 @@ const advantages = [
     icon: 'tractor'
   },
   {
-    title: 'Реалізація неліквідних запчастин',
-    text: 'Допомагаємо реалізувати складські залишки та повернути кошти в обіг.',
-    icon: 'refresh'
+    title: 'Цифровий парк техніки для зареєстрованих користувачів',
+    text: 'Кожне замовлення, оформлене через Kairos, автоматично привʼязується до конкретної машини. Платформа сама накопичує історію запчастин, рахунків та каталожних номерів без додаткового введення даних.',
+    icon: 'fleet'
+  }
+];
+
+const serviceCards = [
+  {
+    title: 'Повторне замовлення за секунди',
+    text: 'Платформа памʼятає, що ви вже купували для кожної машини, тому повторне замовлення займає лише кілька кліків.',
+    icon: 'clock'
+  },
+  {
+    title: 'Уся історія по техніці',
+    text: 'Заявки, підібрані позиції, документи й рахунки зберігаються в цифровій історії кожної одиниці техніки.',
+    icon: 'database'
+  },
+  {
+    title: 'Перевірені постачальники',
+    text: 'Працюємо з надійними партнерами, щоб зменшити ризик помилок і зривів постачання.',
+    icon: 'shield'
+  },
+  {
+    title: 'Персональний супровід',
+    text: 'Менеджер веде заявку від першого опису потреби до узгодження й передачі замовлення.',
+    icon: 'clipboard'
+  },
+  {
+    title: 'Рішення для техніки',
+    text: 'Агро, вантажна та спеціальна техніка в одному сервісному процесі без товарного каталогу.',
+    icon: 'gear'
   }
 ];
 
@@ -83,30 +138,29 @@ const channels = [
   { title: 'Через менеджера', text: 'Для складних або термінових заявок.', href: '/contacts' }
 ];
 
-const trustStats = [
-  {
-    title: 'Економимо ваш час',
-    text: 'Одна заявка — десятки перевірених постачальників',
-    icon: 'search'
-  },
-  {
-    title: 'Перевірені постачальники',
-    text: 'Працюємо лише з надійними партнерами',
-    icon: 'shield'
-  },
-  {
-    title: 'Персональний супровід',
-    text: 'Менеджер з вами на кожному етапі',
-    icon: 'clipboard'
-  },
-  {
-    title: 'Рішення для техніки',
-    text: 'Агро, вантажна та спеціальна техніка',
-    icon: 'gear'
-  }
-];
-
 function ProcessIcon({ icon }: { icon: string }) {
+  if (icon === 'database') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <ellipse cx="12" cy="5" rx="7" ry="3" />
+        <path d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5" />
+        <path d="M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" />
+        <path d="m14 15 1.5 1.5L19 13" />
+      </svg>
+    );
+  }
+
+  if (icon === 'invoice') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M7 3h10v18l-2-1-2 1-2-1-2 1-2-1z" />
+        <path d="M10 8h4" />
+        <path d="M10 12h5" />
+        <path d="M10 16h3" />
+      </svg>
+    );
+  }
+
   if (icon === 'search') {
     return (
       <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -125,17 +179,6 @@ function ProcessIcon({ icon }: { icon: string }) {
     );
   }
 
-  if (icon === 'truck') {
-    return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 7h11v9H3z" />
-        <path d="M14 10h4l3 3v3h-7z" />
-        <circle cx="7" cy="18" r="2" />
-        <circle cx="18" cy="18" r="2" />
-      </svg>
-    );
-  }
-
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M7 3h7l4 4v14H7z" />
@@ -150,7 +193,7 @@ function TrustIcon({ icon }: { icon: string }) {
   const baseProps = {
     'aria-hidden': true,
     viewBox: '0 0 24 24',
-    className: 'size-14 sm:size-16',
+    className: 'size-10 sm:size-12',
     fill: 'none',
     stroke: 'currentColor',
     strokeWidth: 1.7,
@@ -158,11 +201,36 @@ function TrustIcon({ icon }: { icon: string }) {
     strokeLinejoin: 'round' as const
   };
 
-  if (icon === 'search') {
+  if (icon === 'clock') {
     return (
       <svg {...baseProps}>
-        <circle cx="10" cy="10" r="6" />
-        <path d="m14.5 14.5 5 5" />
+        <circle cx="12" cy="12" r="8" />
+        <path d="M12 7v5l3 2" />
+        <path d="M4 12H2" />
+        <path d="M22 12h-2" />
+      </svg>
+    );
+  }
+
+  if (icon === 'database') {
+    return (
+      <svg {...baseProps}>
+        <ellipse cx="12" cy="5" rx="7" ry="3" />
+        <path d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5" />
+        <path d="M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" />
+      </svg>
+    );
+  }
+
+  if (icon === 'chart') {
+    return (
+      <svg {...baseProps}>
+        <path d="M4 19V5" />
+        <path d="M4 19h16" />
+        <path d="M8 16v-4" />
+        <path d="M12 16V8" />
+        <path d="M16 16v-6" />
+        <path d="m16 8 3-3" />
       </svg>
     );
   }
@@ -187,91 +255,37 @@ function TrustIcon({ icon }: { icon: string }) {
     );
   }
 
-  if (icon === 'gear') {
-    return <GoGear aria-hidden="true" className="size-14 sm:size-16" />;
-  }
-
-  return (
-    <svg {...baseProps}>
-      <circle cx="12" cy="12" r="3.5" />
-      <path d="M12 2v3" />
-      <path d="M12 19v3" />
-      <path d="m4.9 4.9 2.1 2.1" />
-      <path d="m17 17 2.1 2.1" />
-      <path d="M2 12h3" />
-      <path d="M19 12h3" />
-      <path d="m4.9 19.1 2.1-2.1" />
-      <path d="m17 7 2.1-2.1" />
-    </svg>
-  );
+  return <GoGear aria-hidden="true" className="size-10 sm:size-12" />;
 }
 
 function BenefitIcon({ icon }: { icon: string }) {
   if (icon === 'package') {
-    return (
-      <LuBoxes aria-hidden="true" className="size-12 sm:size-16" />
-    );
+    return <LuBoxes aria-hidden="true" className="size-12 sm:size-16" />;
   }
 
   if (icon === 'search') {
-    return (
-      <LuSearchCheck aria-hidden="true" className="size-12 sm:size-16" />
-    );
+    return <LuSearchCheck aria-hidden="true" className="size-12 sm:size-16" />;
   }
 
   if (icon === 'handshake') {
-    return (
-      <FaHandshakeAngle aria-hidden="true" className="size-12 sm:size-16" />
-    );
-  }
-
-  if (icon === 'file') {
-    return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-12 sm:size-16" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M7 3h7l4 4v14H7z" />
-        <path d="M14 3v5h5" />
-        <path d="M10 14h7" />
-        <path d="m9 10 1.5 1.5L14 8" />
-      </svg>
-    );
+    return <FaHandshakeAngle aria-hidden="true" className="size-12 sm:size-16" />;
   }
 
   if (icon === 'clipboard') {
-    return (
-      <FaClipboardList aria-hidden="true" className="size-12 sm:size-16" />
-    );
-  }
-
-  if (icon === 'calendar') {
-    return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-12 sm:size-16" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M5 4h14v17H5z" />
-        <path d="M8 2v4" />
-        <path d="M16 2v4" />
-        <path d="M5 9h14" />
-        <path d="m8 15 2 2 5-5" />
-      </svg>
-    );
+    return <FaClipboardList aria-hidden="true" className="size-12 sm:size-16" />;
   }
 
   if (icon === 'tractor') {
-    return (
-      <FaTractor aria-hidden="true" className="size-12 sm:size-16" />
-    );
-  }
-
-  if (icon === 'refresh') {
-    return (
-      <FaArrowsRotate aria-hidden="true" className="size-12 sm:size-16" />
-    );
+    return <FaTractor aria-hidden="true" className="size-12 sm:size-16" />;
   }
 
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className="size-12 sm:size-16" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 21v-2a4 4 0 0 0-8 0v2" />
-      <circle cx="12" cy="8" r="4" />
-      <path d="M21 21v-2a3 3 0 0 0-3-3" />
-      <path d="M3 21v-2a3 3 0 0 1 3-3" />
+      <path d="M4 17h16" />
+      <path d="M6 17V9h5v8" />
+      <path d="M13 17V6h5v11" />
+      <circle cx="8.5" cy="19" r="1.5" />
+      <circle cx="16.5" cy="19" r="1.5" />
     </svg>
   );
 }
@@ -363,14 +377,14 @@ export default function HomePage() {
           fill
           priority
           sizes="100vw"
-          className="object-cover opacity-70"
+          className="object-cover opacity-80"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,5,5,0.92)_0%,rgba(5,5,5,0.76)_42%,rgba(5,5,5,0.34)_100%)]" />
-        <div className="kp-container relative grid min-h-[calc(100vh-64px)] content-center pb-20 pt-16 lg:min-h-[680px] lg:pb-24 lg:pt-20">
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,5,5,0.9)_0%,rgba(5,5,5,0.7)_42%,rgba(5,5,5,0.2)_100%)]" />
+        <div className="kp-container relative flex min-h-[calc(100vh-64px)] flex-col justify-center pb-12 pt-16 lg:min-h-[720px] lg:pb-14 lg:pt-20">
           <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm">Kairos Parts — сервіс для B2B-клієнтів аграрної та транспортної галузі.</p>
             <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.04] sm:text-5xl lg:text-6xl xl:text-7xl">
-              Підберемо запчастини для вашої техніки за одним запитом
+              Підберемо запчастини для вашої техніки <span className="text-accent">за одним запитом</span>
             </h1>
             <p className="mt-5 max-w-2xl text-lg font-semibold leading-8 text-white/85">
               Для аграрної, вантажної та спеціальної техніки.
@@ -389,6 +403,33 @@ export default function HomePage() {
               </Link>
             </div>
           </div>
+
+          <div className="mt-10 overflow-hidden rounded-xl border border-white/15 bg-primary/70 shadow-panel backdrop-blur-md">
+            <div className="grid divide-y divide-white/10 md:grid-cols-[1.35fr_repeat(4,1fr)] md:divide-x md:divide-y-0">
+              <div className="flex gap-4 p-5 text-white sm:p-6">
+                <div className="hidden size-16 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-technical-white sm:flex">
+                  <TrustIcon icon="database" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold leading-snug sm:text-xl">
+                    Кожне замовлення автоматично поповнює цифрову історію вашої техніки.
+                  </h2>
+                  <p className="mt-3 text-sm leading-6 text-white/65">
+                    Більше не потрібно шукати, які запчастини вже купували, для якої машини та коли.
+                  </p>
+                </div>
+              </div>
+              {heroFleetHighlights.map((item) => (
+                <div key={item.title} className="p-5 text-center sm:p-6">
+                  <div className="mx-auto flex size-12 items-center justify-center text-accent">
+                    <TrustIcon icon={item.icon} />
+                  </div>
+                  <h3 className="mt-3 text-sm font-bold leading-6 text-white">{item.title}</h3>
+                  <p className="mt-2 text-xs leading-5 text-white/55">{item.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -401,28 +442,27 @@ export default function HomePage() {
               Менеджер веде заявку поетапно: від первинного опису потреби до погодження рішення та супроводу постачання.
             </p>
           </div>
-          <div className="relative mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="pointer-events-none absolute left-8 right-8 top-6 hidden h-px bg-gradient-to-r from-transparent via-accent/35 to-transparent lg:block" />
+          <div className="relative mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="pointer-events-none absolute left-8 right-8 top-6 hidden h-px bg-gradient-to-r from-transparent via-accent/35 to-transparent xl:block" />
             {processSteps.map((step, index) => (
-              <div key={step.title} className="relative flex min-h-[232px] flex-col rounded-lg border border-border bg-card p-6 shadow-card transition hover:border-accent/45 hover:shadow-panel">
+              <div key={step.title} className="relative flex min-h-[300px] flex-col rounded-lg border border-accent/20 bg-card p-6 shadow-card transition hover:border-accent/45 hover:shadow-panel">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex size-12 items-center justify-center rounded-md border border-accent/25 bg-primary text-accent shadow-card">
                     <ProcessIcon icon={step.icon} />
                   </div>
-                  <span className="font-display text-sm font-bold tracking-[0.16em] text-accent/80">
-                    Крок {index + 1}
-                  </span>
+                  <span className="font-display text-sm font-bold tracking-[0.16em] text-accent/80">Крок {index + 1}</span>
                 </div>
                 <div className="flex flex-1 flex-col">
                   <h3 className="mt-5 text-xl font-bold text-foreground">{step.title}</h3>
                   <p className="mt-3 text-sm leading-6 text-muted">{step.text}</p>
                 </div>
-                <div className="mt-6 h-1.5 w-full rounded-full bg-border/80">
-                  <div
-                    className="h-full rounded-full bg-accent"
-                    style={{ width: `${(index + 1) * 25}%` }}
-                    aria-hidden="true"
-                  />
+                <div className="mt-6 grid grid-cols-5 gap-1.5" aria-hidden="true">
+                  {processSteps.map((segment, segmentIndex) => (
+                    <span
+                      key={`${step.title}-${segment.title}`}
+                      className={`h-1.5 rounded-full ${segmentIndex <= index ? 'bg-accent' : 'bg-border/80'}`}
+                    />
+                  ))}
                 </div>
               </div>
             ))}
@@ -471,7 +511,6 @@ export default function HomePage() {
               </article>
             ))}
           </div>
-
         </div>
       </section>
 
@@ -480,17 +519,17 @@ export default function HomePage() {
         <div className="kp-container relative">
           <div className="max-w-3xl">
             <p className="text-sm font-bold uppercase text-accent">Сервіс</p>
-            <h2 className="mt-2 max-w-2xl text-3xl font-bold leading-tight text-foreground sm:text-4xl">
-              Асортимент, постачальники й супровід — в одному процесі
+            <h2 className="mt-2 max-w-3xl text-3xl font-bold leading-tight text-foreground sm:text-4xl">
+              Все для ефективного обслуговування вашої техніки — в одній платформі
             </h2>
-            <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-foreground/80 sm:text-lg sm:leading-8">
-              Kairos Parts допомагає швидко знаходити запчастини для аграрної, вантажної та спеціальної техніки через одну заявку.
+            <p className="mt-4 max-w-3xl text-base font-medium leading-7 text-foreground/80 sm:text-lg sm:leading-8">
+              Kairos не лише знаходить запчастини серед перевірених постачальників, а й автоматично формує цифрову історію кожної одиниці вашої техніки.
             </p>
           </div>
           <div className="mt-10 overflow-hidden rounded-xl border border-[rgba(125,128,133,0.24)] bg-card shadow-card">
-            <div className="grid divide-y divide-border/80 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
-              {trustStats.map((stat) => (
-                <div key={stat.title} className="min-h-72 px-8 py-10 sm:px-10 lg:px-12">
+            <div className="grid divide-y divide-border/80 sm:grid-cols-2 lg:grid-cols-5 lg:divide-x lg:divide-y-0">
+              {serviceCards.map((stat) => (
+                <div key={stat.title} className="min-h-72 px-8 py-10 sm:px-10 lg:px-8 xl:px-10">
                   <div className="text-accent">
                     <TrustIcon icon={stat.icon} />
                   </div>
@@ -524,39 +563,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-card py-16">
-        <div className="kp-container">
-          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.4fr] lg:items-start">
-            <div>
-              <p className="text-sm font-bold uppercase text-accent">Напрями підбору</p>
-              <h2 className="mt-2 text-3xl font-bold text-foreground">Категорії допомагають швидше описати потребу</h2>
-              <p className="mt-4 text-sm leading-6 text-muted">
-                Це не товарний каталог. Оберіть напрям, а менеджер уточнить деталі й підбере рішення.
-              </p>
-              <Link
-                href="/categories"
-                className="mt-6 inline-flex items-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover"
-              >
-                <ActionIcon name="search" />
-                Переглянути всі категорії
-              </Link>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {catalogCategories.slice(0, 4).map((category) => (
-                <Link
-                  key={category.id}
-                  href={`/categories/${category.slug}`}
-                  className="rounded-lg border border-border bg-surface-muted p-5 transition hover:border-accent hover:bg-card"
-                >
-                  <p className="text-sm font-bold text-foreground">{category.name}</p>
-                  <p className="mt-2 text-xs leading-5 text-muted">{category.subcategories.slice(0, 3).join(', ')}</p>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section id="telegram" className="bg-primary py-16 text-white">
         <div className="kp-container">
           <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
@@ -585,4 +591,3 @@ export default function HomePage() {
     </>
   );
 }
-

@@ -10,7 +10,7 @@ const telegramBotUrl = 'https://t.me/kairos_parts_bot';
 const navItems = [
   { href: '/about', label: 'Про нас' },
   { href: '/how-it-works', label: 'Як це працює' },
-  { href: '/categories', label: 'Категорії' },
+  { href: '/used-equipment', label: 'Майданчик БВ техніки' },
   { href: '/#benefits', label: 'Переваги' },
   { href: '/contacts', label: 'Контакти' }
 ];

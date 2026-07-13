@@ -1,64 +1,168 @@
-﻿import Link from 'next/link';
+import Link from 'next/link';
+
+const platformItems = [
+  'професійний підбір запчастин',
+  'пошук оригіналів і аналогів',
+  'роботу з кількома постачальниками одночасно',
+  'консолідовану доставку',
+  'персональний супровід менеджера',
+  'особистий кабінет компанії',
+  'цифрову історію парку техніки'
+];
+
+const audiences = [
+  'аграрні підприємства',
+  'фермерські господарства',
+  'транспортні компанії',
+  'будівельні підприємства',
+  'сервісні центри',
+  'підприємства з власним парком техніки'
+];
 
 const principles = [
   {
-    title: 'Не магазин, а сервіс заявок',
-    text: 'Клієнт не шукає товар у кошику. Він залишає потребу, а менеджер Kairos Parts підбирає правильне рішення.'
+    title: 'Швидкість',
+    text: 'Мінімізуємо час від заявки до отримання комерційної пропозиції.'
   },
   {
-    title: 'Єдина точка контакту',
-    text: 'Замість окремих переговорів з різними постачальниками клієнт працює через один процес і одного відповідального менеджера.'
+    title: 'Надійність',
+    text: 'Працюємо лише з перевіреними постачальниками.'
   },
   {
-    title: 'B2B-логіка для техніки',
-    text: 'Платформа враховує техніку, документи, статуси, файли та історію заявок, які потрібні бізнес-клієнтам.'
+    title: 'Професійність',
+    text: 'Підбираємо запчастини з урахуванням каталожних номерів, сумісності та потреб клієнта.'
+  },
+  {
+    title: 'Цифровізація',
+    text: 'Кожне замовлення автоматично формує цифрову історію техніки та компанії.'
+  },
+  {
+    title: 'Довгострокове партнерство',
+    text: 'Будуємо відносини, засновані на сервісі, а не лише на разовому продажі.'
   }
-];
-
-const painPoints = [
-  'пошук деталей у десятках каналів',
-  'ризик замовити несумісну позицію',
-  'розрізнені рахунки та постачальники',
-  'відсутність прозорого статусу заявки'
 ];
 
 export default function AboutPage() {
   return (
     <>
-      <section className="bg-primary px-4 py-16 text-white sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="max-w-3xl">
+      <section className="bg-primary py-16 text-white">
+        <div className="kp-container">
+          <div className="max-w-4xl">
             <p className="text-sm font-bold uppercase text-accent">Про Kairos Parts</p>
             <h1 className="mt-3 text-4xl font-bold leading-tight sm:text-5xl">
-              Сервіс, який бере на себе складність підбору запчастин
+              Ми створюємо новий стандарт закупівлі запчастин для аграрного сектору та комерційного транспорту
             </h1>
             <p className="mt-5 text-base leading-7 text-sidebar-text">
-              Kairos Parts — це B2B-платформа для збору й обробки заявок на підбір запчастин для аграрної,
-              вантажної, комерційної та спеціальної техніки.
+              Kairos Parts — українська технологічна компанія, заснована у 2026 році, яка поєднує професійний
+              підбір запчастин, широку мережу постачальників та цифрові інструменти управління парком техніки
+              в єдиній платформі.
             </p>
           </div>
         </div>
       </section>
 
-      <section className="bg-background px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_1fr]">
-          <div className="rounded-lg border border-border bg-card p-6 shadow-card">
-            <p className="text-sm font-bold uppercase text-accent">Проблема</p>
-            <h2 className="mt-2 text-3xl font-bold text-foreground">Закупівля запчастин часто розпадається на хаос</h2>
-            <div className="mt-6 grid gap-3">
-              {painPoints.map((item) => (
+      <section className="bg-background py-16">
+        <div className="kp-container grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <article className="rounded-lg border border-border bg-card p-6 shadow-card">
+            <p className="text-sm font-bold uppercase text-accent">Наша місія</p>
+            <h2 className="mt-2 text-3xl font-bold text-foreground">Спростити обслуговування техніки</h2>
+            <p className="mt-4 text-sm leading-6 text-muted">
+              Наша мета — зробити процес закупівлі запчастин швидким, прозорим та системним, щоб підприємства
+              витрачали менше часу на пошук деталей і більше — на свою основну діяльність.
+            </p>
+            <p className="mt-4 text-sm leading-6 text-muted">
+              Ми надаємо підприємствам єдину платформу для оперативного підбору, закупівлі та накопичення
+              історії запчастин по кожній одиниці техніки.
+            </p>
+          </article>
+          <article className="rounded-lg border border-border bg-card p-6 shadow-card">
+            <p className="text-sm font-bold uppercase text-accent">Що ми робимо</p>
+            <h2 className="mt-2 text-3xl font-bold text-foreground">Не магазин, а центр підбору</h2>
+            <p className="mt-4 text-sm leading-6 text-muted">
+              Kairos Parts працює як центр підбору та постачання запчастин, де клієнт створює одну заявку,
+              а наша команда знаходить оптимальне рішення серед перевірених постачальників.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section className="bg-card py-16">
+        <div className="kp-container">
+          <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+            <div>
+              <p className="text-sm font-bold uppercase text-accent">Платформа обʼєднує</p>
+              <h2 className="mt-2 text-3xl font-bold text-foreground">Один процес замість десятків ручних дій</h2>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {platformItems.map((item) => (
                 <div key={item} className="rounded-md border border-border bg-surface-muted px-4 py-3 text-sm font-semibold text-foreground">
                   {item}
                 </div>
               ))}
             </div>
           </div>
-          <div className="rounded-lg border border-border bg-card p-6 shadow-card">
-            <p className="text-sm font-bold uppercase text-accent">Рішення</p>
-            <h2 className="mt-2 text-3xl font-bold text-foreground">Один запит, один процес, один відповідальний контакт</h2>
-            <p className="mt-5 text-sm leading-6 text-muted">
-              Kairos Parts допомагає клієнту описати потребу, передати фото чи список позицій, отримати підбір
-              і бачити статус без ручного контролю кожного постачальника.
+        </div>
+      </section>
+
+      <section className="bg-background py-16">
+        <div className="kp-container grid gap-6 lg:grid-cols-2">
+          <article className="rounded-lg border border-border bg-card p-6 shadow-card">
+            <p className="text-sm font-bold uppercase text-accent">Чому це працює</p>
+            <h2 className="mt-2 text-3xl font-bold text-foreground">Кожне замовлення створює цінність на майбутнє</h2>
+            <p className="mt-4 text-sm leading-6 text-muted">
+              Платформа автоматично накопичує історію придбаних запчастин для кожної одиниці техніки,
+              зареєстрованої в особистому кабінеті. З кожним новим замовленням підприємство отримує
+              структуровану базу даних свого парку без додаткового введення інформації.
+            </p>
+          </article>
+          <article className="rounded-lg border border-border bg-card p-6 shadow-card">
+            <p className="text-sm font-bold uppercase text-accent">Наш підхід</p>
+            <h2 className="mt-2 text-3xl font-bold text-foreground">Сервіс навколо потреб клієнта</h2>
+            <p className="mt-4 text-sm leading-6 text-muted">
+              Ми не змушуємо шукати запчастини серед тисяч товарів, самостійно перевіряти сумісність
+              або повторно вводити однакові дані. Ми беремо на себе підбір, комунікацію з постачальниками
+              та організацію поставки, а платформа систематизує інформацію про кожне замовлення.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section className="bg-primary py-16 text-white">
+        <div className="kp-container">
+          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+            <div>
+              <p className="text-sm font-bold uppercase text-accent">Для кого створено Kairos Parts</p>
+              <h2 className="mt-2 text-3xl font-bold">Для компаній із технікою, яка має працювати щодня</h2>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {audiences.map((item) => (
+                <div key={item} className="rounded-md border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-sidebar-text">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-background py-16">
+        <div className="kp-container">
+          <div className="max-w-2xl">
+            <p className="text-sm font-bold uppercase text-accent">Наші принципи</p>
+            <h2 className="mt-2 text-3xl font-bold text-foreground">Працюємо як довгостроковий сервісний партнер</h2>
+          </div>
+          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            {principles.map((principle) => (
+              <article key={principle.title} className="rounded-lg border border-border bg-card p-5 shadow-card">
+                <h3 className="text-lg font-bold text-foreground">{principle.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-muted">{principle.text}</p>
+              </article>
+            ))}
+          </div>
+          <div className="mt-10 rounded-lg border border-border bg-card p-6 text-center shadow-card">
+            <h2 className="text-2xl font-bold text-foreground">Почніть із заявки</h2>
+            <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted">
+              Опишіть потребу, а Kairos Parts підбере рішення і збереже історію для наступних звернень.
             </p>
             <Link
               href="/request"
@@ -66,23 +170,6 @@ export default function AboutPage() {
             >
               Створити заявку
             </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-card px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="max-w-2xl">
-            <p className="text-sm font-bold uppercase text-accent">Як ми мислимо сервіс</p>
-            <h2 className="mt-2 text-3xl font-bold text-foreground">Платформа навколо заявки, а не кошика</h2>
-          </div>
-          <div className="mt-8 grid gap-4 lg:grid-cols-3">
-            {principles.map((principle) => (
-              <div key={principle.title} className="rounded-lg border border-border bg-surface-muted p-6">
-                <h3 className="text-lg font-bold text-foreground">{principle.title}</h3>
-                <p className="mt-3 text-sm leading-6 text-muted">{principle.text}</p>
-              </div>
-            ))}
           </div>
         </div>
       </section>
