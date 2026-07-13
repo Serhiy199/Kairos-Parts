@@ -45,6 +45,7 @@ export default async function RequestStatusPage({ params }: { params: Promise<{ 
       updatedAt: true,
       description: true,
       equipmentType: true,
+      vehicleYear: true,
       companyName: true,
       statusHistory: {
         orderBy: { createdAt: 'asc' },
@@ -91,6 +92,7 @@ export default async function RequestStatusPage({ params }: { params: Promise<{ 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <Info label="Джерело" value={REQUEST_SOURCE_LABELS[request.source]} />
             <Info label="Тип техніки" value={request.equipmentType ?? '—'} />
+            <Info label="Рік випуску" value={request.vehicleYear ? String(request.vehicleYear) : '—'} />
             <Info label="Компанія" value={request.companyName ?? '—'} />
             <Info label="Останнє оновлення" value={formatDate(request.updatedAt)} />
           </div>

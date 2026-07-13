@@ -228,9 +228,10 @@ export default async function AdminRequestDetailPage({
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <Info label="Категорія" value={request.category?.name ?? '—'} />
               <Info label="Підкатегорія" value={request.subcategory?.name ?? '—'} />
-              <Info label="Виробник" value={request.manufacturer?.name ?? '—'} />
+              <Info label="Виробник / марка" value={request.manufacturer?.name ?? '—'} />
               <Info label="Тип техніки" value={request.equipmentType ?? '—'} />
               <Info label="Модель" value={request.model ?? '—'} />
+              <Info label="Рік випуску" value={request.vehicleYear ? String(request.vehicleYear) : '—'} />
               <Info label="VIN / серійний номер" value={request.vinOrSerial ?? '—'} />
             </div>
             <div className="mt-5 rounded-md border border-border bg-surface-muted p-4">

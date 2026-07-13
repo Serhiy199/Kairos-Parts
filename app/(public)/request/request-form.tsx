@@ -1,15 +1,14 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
 import { ActionIcon } from '@/components/ui/action-icons';
-import type { CatalogCategory } from '@/lib/catalog/catalog-data';
 import { ALLOWED_UPLOAD_EXTENSIONS, ALLOWED_UPLOAD_MIME_TYPES } from '@/lib/files/upload-policy';
+import { EQUIPMENT_TYPE_GROUPS } from '@/lib/vehicles/equipment-types';
 
 type RequestFormProps = {
-  categories: CatalogCategory[];
-  initialCategory?: string;
+  manufacturerOptions: string[];
   initialContact?: {
     contactName?: string;
     companyName?: string;
@@ -19,10 +18,10 @@ type RequestFormProps = {
   initialMode?: string;
   initialRequest?: {
     vehicleId?: string;
-    category?: string;
     equipmentType?: string;
     manufacturer?: string;
     model?: string;
+    vehicleYear?: number | null;
     vinOrSerial?: string;
     description?: string;
     comment?: string;
@@ -37,19 +36,17 @@ type SubmitState =
   | { status: 'success'; requestNumber: string; publicStatusUrl: string }
   | { status: 'error'; message: string; errors?: string[] };
 
-export function RequestForm({ categories, initialCategory, initialContact, initialMode, initialRequest, initialSource, maxSizeMb }: RequestFormProps) {
-  const requestCategory = initialRequest?.category || initialCategory;
-  const initialCategoryExists = categories.some((category) => category.slug === requestCategory);
-  const [formType, setFormType] = useState<'quick' | 'detailed'>(initialMode === 'file' || initialRequest ? 'detailed' : 'quick');
-  const [selectedCategory, setSelectedCategory] = useState(initialCategoryExists ? (requestCategory ?? '') : '');
+export function RequestForm({
+  manufacturerOptions,
+  initialContact,
+  initialMode,
+  initialRequest,
+  initialSource,
+  maxSizeMb
+}: RequestFormProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
-
-  const selectedCategoryData = useMemo(
-    () => categories.find((category) => category.slug === selectedCategory),
-    [categories, selectedCategory]
-  );
-  const manufacturers = selectedCategoryData?.manufacturers ?? [];
+  const manufacturerDatalist = useMemo(() => Array.from(new Set(manufacturerOptions)).sort((left, right) => left.localeCompare(right, 'uk')), [manufacturerOptions]);
 
   function validateFiles(files: File[]) {
     const maxSizeBytes = maxSizeMb * 1024 * 1024;
@@ -95,7 +92,6 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-
     const fileErrors = validateFiles(selectedFiles);
 
     if (fileErrors.length > 0) {
@@ -110,7 +106,7 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
     setSubmitState({ status: 'submitting' });
 
     const formData = new FormData(form);
-    formData.set('formType', formType);
+    formData.set('formType', 'detailed');
 
     try {
       const response = await fetch('/api/requests', {
@@ -187,28 +183,21 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
 
   return (
     <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-card p-6 shadow-card">
-      <div className="grid gap-2 rounded-lg bg-surface-muted p-1 sm:grid-cols-2">
-        {(['quick', 'detailed'] as const).map((type) => (
-          <button
-            key={type}
-            type="button"
-            onClick={() => setFormType(type)}
-            className={`rounded-md px-4 py-3 text-sm font-bold transition ${
-              formType === type ? 'bg-primary text-white shadow-card' : 'text-muted hover:bg-card hover:text-foreground'
-            }`}
-          >
-            {type === 'quick' ? 'Швидка заявка' : 'Детальна заявка'}
-          </button>
-        ))}
+      <div>
+        <p className="text-sm font-bold uppercase text-accent">Створити заявку</p>
+        <h2 className="mt-2 text-3xl font-bold text-foreground">Заявка на підбір запчастин</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
+          Опишіть техніку, потрібні запчастини та додайте фото або файл. Менеджер перевірить сумісність і запропонує рішення.
+        </p>
       </div>
 
       {initialMode === 'file' ? (
         <div className="mt-5 rounded-lg border border-accent/40 bg-[#F7F1E8] p-4 text-sm leading-6 text-foreground">
-          Ви перейшли в режим завантаження файлу або фото. Додайте файл у блоці нижче та коротко опишіть потребу.
+          Додайте файл або фото у блоці нижче та коротко опишіть потребу. Форма працює в єдиному детальному форматі заявки.
         </div>
       ) : null}
 
-      <input type="hidden" name="formType" value={formType} />
+      <input type="hidden" name="formType" value="detailed" />
       {initialSource ? <input type="hidden" name="source" value={initialSource} /> : null}
       {initialRequest?.vehicleId ? <input type="hidden" name="vehicleId" value={initialRequest.vehicleId} /> : null}
 
@@ -256,54 +245,76 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
         </label>
       </div>
 
-      {formType === 'detailed' ? (
-        <div className="mt-6 grid gap-5 md:grid-cols-2">
-          <label className="grid gap-2 text-sm font-semibold text-foreground">
-            Тип техніки
-            <input name="equipmentType" defaultValue={initialRequest?.equipmentType} className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
-          </label>
-          <label className="grid gap-2 text-sm font-semibold text-foreground">
-            Категорія
-            <select
-              name="category"
-              value={selectedCategory}
-              onChange={(event) => setSelectedCategory(event.target.value)}
-              className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
-            >
-              <option value="">Не обрано</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.slug}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-2 text-sm font-semibold text-foreground">
-            Виробник
-            <select name="manufacturer" defaultValue={initialRequest?.manufacturer ?? ''} className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25">
-              <option value="">Не обрано</option>
-              {initialRequest?.manufacturer && !manufacturers.includes(initialRequest.manufacturer) ? (
-                <option value={initialRequest.manufacturer}>{initialRequest.manufacturer}</option>
-              ) : null}
-              {manufacturers.map((manufacturer) => (
-                <option key={manufacturer} value={manufacturer}>
-                  {manufacturer}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-2 text-sm font-semibold text-foreground">
-            Модель
-            <input name="model" defaultValue={initialRequest?.model} className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
-          </label>
-          <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
-            VIN / серійний номер
-            <input name="vinOrSerial" defaultValue={initialRequest?.vinOrSerial} className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25" />
-          </label>
-        </div>
-      ) : (
-        <input type="hidden" name="category" value={selectedCategory} />
-      )}
+      <div className="mt-6 grid gap-5 md:grid-cols-2">
+        <label className="grid gap-2 text-sm font-semibold text-foreground">
+          Тип техніки
+          <select
+            name="equipmentType"
+            defaultValue={initialRequest?.equipmentType ?? ''}
+            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+          >
+            <option value="">Оберіть тип техніки</option>
+            {initialRequest?.equipmentType && !EQUIPMENT_TYPE_GROUPS.some((group) => group.options.includes(initialRequest.equipmentType ?? '')) ? (
+              <option value={initialRequest.equipmentType}>{initialRequest.equipmentType}</option>
+            ) : null}
+            {EQUIPMENT_TYPE_GROUPS.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.options.map((option) => (
+                  <option key={`${group.label}-${option}`} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+            <option value="Інше">Інше</option>
+          </select>
+        </label>
+        <label className="grid gap-2 text-sm font-semibold text-foreground">
+          Виробник / марка
+          <input
+            name="manufacturer"
+            list="manufacturer-options"
+            defaultValue={initialRequest?.manufacturer}
+            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+            placeholder="Наприклад: John Deere, MAN, Claas"
+          />
+          <datalist id="manufacturer-options">
+            {manufacturerDatalist.map((manufacturer) => (
+              <option key={manufacturer} value={manufacturer} />
+            ))}
+          </datalist>
+        </label>
+        <label className="grid gap-2 text-sm font-semibold text-foreground">
+          Модель
+          <input
+            name="model"
+            defaultValue={initialRequest?.model}
+            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+            placeholder="Наприклад: MAN TGX 18.440, John Deere 8430"
+          />
+        </label>
+        <label className="grid gap-2 text-sm font-semibold text-foreground">
+          Рік випуску
+          <input
+            name="vehicleYear"
+            type="number"
+            min="1900"
+            max="2100"
+            defaultValue={initialRequest?.vehicleYear ?? ''}
+            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+            placeholder="Наприклад: 2018"
+          />
+        </label>
+        <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
+          VIN / серійний номер
+          <input
+            name="vinOrSerial"
+            defaultValue={initialRequest?.vinOrSerial}
+            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+            placeholder="VIN, серійний номер або номер шасі"
+          />
+        </label>
+      </div>
 
       <label className="mt-6 grid gap-2 text-sm font-semibold text-foreground">
         Опис потреби *
@@ -316,17 +327,15 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
         />
       </label>
 
-      {formType === 'detailed' ? (
-        <label className="mt-6 grid gap-2 text-sm font-semibold text-foreground">
-          Коментар
-          <textarea
-            name="comment"
-            defaultValue={initialRequest?.comment}
-            className="min-h-24 rounded-md border border-border bg-white px-3 py-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
-            placeholder="Додаткові побажання, терміновість, аналоги, умови доставки."
-          />
-        </label>
-      ) : null}
+      <label className="mt-6 grid gap-2 text-sm font-semibold text-foreground">
+        Коментар
+        <textarea
+          name="comment"
+          defaultValue={initialRequest?.comment}
+          className="min-h-24 rounded-md border border-border bg-white px-3 py-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+          placeholder="Додаткові побажання, терміновість, аналоги, умови доставки."
+        />
+      </label>
 
       <div className="mt-6 rounded-lg border border-dashed border-border bg-surface-muted p-5">
         <label className="grid gap-3 text-sm font-semibold text-foreground">
@@ -350,7 +359,7 @@ export function RequestForm({ categories, initialCategory, initialContact, initi
           <div className="mt-4 grid gap-2">
             {selectedFiles.map((file) => (
               <div key={`${file.name}-${file.size}`} className="rounded-md border border-border bg-card px-3 py-2 text-xs text-muted">
-                {file.name} — {(file.size / 1024 / 1024).toFixed(2)} MB
+                {file.name} - {(file.size / 1024 / 1024).toFixed(2)} MB
               </div>
             ))}
           </div>

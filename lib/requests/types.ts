@@ -24,6 +24,7 @@ export type RequestDetail = RequestListItem & {
   vehicleId?: string | null;
   equipmentType?: string | null;
   model?: string | null;
+  vehicleYear?: number | null;
   vinOrSerial?: string | null;
   description: string;
 };
@@ -39,6 +40,7 @@ export type CreateGuestRequestInput = {
   manufacturerId?: string;
   equipmentType?: string;
   model?: string;
+  vehicleYear?: number;
   vinOrSerial?: string;
   description: string;
 };

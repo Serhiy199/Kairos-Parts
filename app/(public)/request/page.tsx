@@ -1,5 +1,5 @@
-﻿import { auth } from '@/auth';
-import { catalogCategories, getCategoryBySlug } from '@/lib/catalog/catalog-data';
+import { auth } from '@/auth';
+import { getAllManufacturers } from '@/lib/catalog/catalog-data';
 import { getClientProfileForSession } from '@/lib/client/access';
 import { getUploadMaxSizeMb } from '@/lib/files/upload-policy';
 
@@ -13,8 +13,8 @@ export default async function RequestPage({
   const params = await searchParams;
   const session = await auth();
   const clientProfile = session?.user?.role === 'CLIENT' ? await getClientProfileForSession(session.user.id) : null;
-  const initialCategory = params.category && getCategoryBySlug(params.category) ? params.category : undefined;
   const maxSizeMb = getUploadMaxSizeMb();
+  const manufacturerOptions = getAllManufacturers().map((manufacturer) => manufacturer.name);
   const clientFullName = clientProfile ? [clientProfile.firstName, clientProfile.lastName].filter(Boolean).join(' ') : '';
   const initialContact = clientProfile
     ? {
@@ -40,12 +40,10 @@ export default async function RequestPage({
       <section className="bg-primary px-4 py-16 text-white sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="text-sm font-bold uppercase text-accent">Створити заявку</p>
-          <h1 className="mt-3 max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
-            Опишіть потребу, додайте файл або фото, і менеджер підбере рішення
-          </h1>
+          <h1 className="mt-3 max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">Заявка на підбір запчастин</h1>
           <p className="mt-5 max-w-3xl text-base leading-7 text-sidebar-text">
-            Форма збирає дані для менеджера Kairos Parts. Це не кошик і не автоматичне замовлення: заявка
-            потрапляє в базу для подальшої обробки CRM.
+            Вкажіть техніку, модель, VIN або серійний номер, опишіть потребу та додайте фото чи файл.
+            Менеджер Kairos Parts перевірить сумісність і підбере рішення.
           </p>
         </div>
       </section>
@@ -53,8 +51,7 @@ export default async function RequestPage({
       <section className="bg-background px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_0.45fr] lg:items-start">
           <RequestForm
-            categories={[...catalogCategories]}
-            initialCategory={initialCategory}
+            manufacturerOptions={manufacturerOptions}
             initialContact={initialContact}
             initialMode={params.mode}
             initialRequest={initialRequest}
@@ -66,14 +63,10 @@ export default async function RequestPage({
             <div className="mt-5 grid gap-4 text-sm leading-6 text-muted">
               <p>1. Назву компанії або контактну особу.</p>
               <p>2. Телефон для уточнення деталей.</p>
-              <p>3. Опис деталі, вузла або проблеми.</p>
-              <p>4. Фото, PDF, Excel або DOC список, якщо є.</p>
+              <p>3. Тип техніки, марку, модель, рік випуску та VIN або серійний номер, якщо вони відомі.</p>
+              <p>4. Опис деталі, вузла або проблеми.</p>
+              <p>5. Фото, PDF, Excel або DOC список, якщо є.</p>
             </div>
-            {initialCategory ? (
-              <div className="mt-6 rounded-md border border-accent/40 bg-[#F7F1E8] p-4 text-sm text-foreground">
-                Категорію вже підставлено з посилання: {getCategoryBySlug(initialCategory)?.name}
-              </div>
-            ) : null}
           </aside>
         </div>
       </section>
@@ -102,6 +95,7 @@ async function prismaVehiclePrefill(clientId: string, vehicleId: string) {
     equipmentType: vehicle.type,
     manufacturer: vehicle.manufacturer,
     model: vehicle.model,
+    vehicleYear: vehicle.year,
     vinOrSerial: vehicle.vinOrSerial ?? '',
     description: '',
     comment: vehicle.comment ?? ''
@@ -118,7 +112,7 @@ async function prismaRepeatPrefill(clientId: string, requestId: string) {
 
   const request = await prisma.request.findFirst({
     where: { id: requestId, clientId },
-    include: { category: true, manufacturer: true }
+    include: { manufacturer: true }
   });
 
   if (!request) {
@@ -127,10 +121,10 @@ async function prismaRepeatPrefill(clientId: string, requestId: string) {
 
   return {
     vehicleId: request.vehicleId ?? '',
-    category: request.category?.slug ?? '',
     equipmentType: request.equipmentType ?? '',
     manufacturer: request.manufacturer?.name ?? '',
     model: request.model ?? '',
+    vehicleYear: request.vehicleYear,
     vinOrSerial: request.vinOrSerial ?? '',
     description: request.description,
     comment: ''

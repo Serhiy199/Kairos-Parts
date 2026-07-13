@@ -1,8 +1,7 @@
-import { getCategoryBySlug } from '@/lib/catalog/catalog-data';
 import { getUploadMaxSizeBytes, isAllowedUpload } from '@/lib/files/upload-policy';
 
 export type ParsedRequestInput = {
-  formType: 'quick' | 'detailed';
+  formType: 'detailed';
   source?: 'client';
   vehicleId?: string;
   contactName: string;
@@ -11,9 +10,9 @@ export type ParsedRequestInput = {
   email?: string;
   description: string;
   equipmentType?: string;
-  categorySlug?: string;
   manufacturer?: string;
   model?: string;
+  vehicleYear?: number;
   vinOrSerial?: string;
   comment?: string;
   files: File[];
@@ -30,9 +29,19 @@ function readFiles(formData: FormData) {
     .filter((value): value is File => value instanceof File && value.size > 0);
 }
 
+function readVehicleYear(formData: FormData) {
+  const rawValue = readString(formData, 'vehicleYear');
+
+  if (!rawValue) {
+    return undefined;
+  }
+
+  const year = Number(rawValue);
+  return Number.isInteger(year) ? year : Number.NaN;
+}
+
 export function parseRequestFormData(formData: FormData): { data?: ParsedRequestInput; errors: string[] } {
   const errors: string[] = [];
-  const formType = readString(formData, 'formType') === 'detailed' ? 'detailed' : 'quick';
   const source = readString(formData, 'source') === 'client' ? 'client' : undefined;
   const vehicleId = readString(formData, 'vehicleId');
   const companyName = readString(formData, 'companyName');
@@ -40,7 +49,7 @@ export function parseRequestFormData(formData: FormData): { data?: ParsedRequest
   const phone = readString(formData, 'phone');
   const email = readString(formData, 'email');
   const description = readString(formData, 'description');
-  const categorySlug = readString(formData, 'category');
+  const vehicleYear = readVehicleYear(formData);
   const files = readFiles(formData);
 
   if (!contactName) {
@@ -59,8 +68,8 @@ export function parseRequestFormData(formData: FormData): { data?: ParsedRequest
     errors.push('Вкажіть коректний email або залиште поле порожнім.');
   }
 
-  if (categorySlug && !getCategoryBySlug(categorySlug)) {
-    errors.push('Обрана категорія не знайдена.');
+  if (Number.isNaN(vehicleYear) || (vehicleYear && (vehicleYear < 1900 || vehicleYear > 2100))) {
+    errors.push('Вкажіть коректний рік випуску або залиште поле порожнім.');
   }
 
   const maxSizeBytes = getUploadMaxSizeBytes();
@@ -82,7 +91,7 @@ export function parseRequestFormData(formData: FormData): { data?: ParsedRequest
   return {
     errors: [],
     data: {
-      formType,
+      formType: 'detailed',
       source,
       vehicleId: vehicleId || undefined,
       contactName,
@@ -91,9 +100,9 @@ export function parseRequestFormData(formData: FormData): { data?: ParsedRequest
       email: email || undefined,
       description,
       equipmentType: readString(formData, 'equipmentType') || undefined,
-      categorySlug: categorySlug || undefined,
       manufacturer: readString(formData, 'manufacturer') || undefined,
       model: readString(formData, 'model') || undefined,
+      vehicleYear: vehicleYear || undefined,
       vinOrSerial: readString(formData, 'vinOrSerial') || undefined,
       comment: readString(formData, 'comment') || undefined,
       files

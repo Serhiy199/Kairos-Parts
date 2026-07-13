@@ -326,6 +326,7 @@ model Request {
   vehicle           Vehicle?               @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   equipmentType     String?
   model             String?
+  vehicleYear       Int?
   vinOrSerial       String?
   description       String
   assignedManagerId String?

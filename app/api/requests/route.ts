@@ -1,7 +1,7 @@
 import { auth } from '@/auth';
 import { getClientAccessContext, vehicleAccessWhere } from '@/lib/client/access';
-import { saveRequestFileLocal } from '@/lib/files/local-storage';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { saveRequestFileLocal } from '@/lib/files/local-storage';
 import { prisma } from '@/lib/prisma';
 import { generatePublicStatusToken, generateRequestNumber } from '@/lib/requests/identifiers';
 import { parseRequestFormData } from '@/lib/requests/validation';
@@ -38,7 +38,14 @@ export async function POST(request: Request) {
   const parsed = parseRequestFormData(formData);
 
   if (!parsed.data) {
-    return Response.json({ status: 'validation_error', errors: parsed.errors }, { status: 400 });
+    return Response.json(
+      {
+        status: 'validation_error',
+        message: 'Перевірте обовʼязкові поля заявки.',
+        errors: parsed.errors
+      },
+      { status: 400 }
+    );
   }
 
   if (!hasDatabaseUrl()) {
@@ -54,18 +61,9 @@ export async function POST(request: Request) {
 
   const session = await auth();
   const clientAccess = session?.user?.role === 'CLIENT' ? await getClientAccessContext(session.user.id) : null;
-
-  const category = parsed.data.categorySlug
-    ? await prisma.category.findUnique({
-        where: { slug: parsed.data.categorySlug }
-      })
-    : null;
   const manufacturer = parsed.data.manufacturer
     ? await prisma.manufacturer.findFirst({
-        where: {
-          name: parsed.data.manufacturer,
-          ...(category ? { categoryId: category.id } : {})
-        }
+        where: { name: parsed.data.manufacturer }
       })
     : null;
 
@@ -94,11 +92,13 @@ export async function POST(request: Request) {
         guestPhone: clientAccess ? null : parsed.data.phone,
         guestEmail: clientAccess ? null : parsed.data.email,
         companyName: parsed.data.companyName ?? parsed.data.contactName,
-        categoryId: category?.id,
+        categoryId: null,
+        subcategoryId: null,
         manufacturerId: manufacturer?.id,
         vehicleId: vehicle?.id,
         equipmentType: parsed.data.equipmentType,
         model: parsed.data.model,
+        vehicleYear: parsed.data.vehicleYear,
         vinOrSerial: parsed.data.vinOrSerial,
         description: buildDescription(parsed.data.description, parsed.data.comment)
       }
