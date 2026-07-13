@@ -17,9 +17,34 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function getClientNextPath(nextPath: string) {
+  if (nextPath === '/request' || nextPath.startsWith('/request?')) {
+    return nextPath;
+  }
+
+  if (nextPath === '/client' || nextPath.startsWith('/client/')) {
+    return nextPath;
+  }
+
+  return '/client';
+}
+
+function appendNextParam(path: string, nextPath: string) {
+  const normalizedNext = getClientNextPath(nextPath);
+
+  if (!nextPath || normalizedNext === '/client') {
+    return path;
+  }
+
+  const separator = path.includes('?') ? '&' : '?';
+  return `${path}${separator}next=${encodeURIComponent(normalizedNext)}`;
+}
+
 export async function registerClient(formData: FormData) {
+  const nextPath = readString(formData, 'next');
+
   if (!hasDatabaseUrl()) {
-    redirect('/register?error=database');
+    redirect(appendNextParam('/register?error=database', nextPath));
   }
 
   const accountType = readString(formData, 'accountType') === 'INDIVIDUAL' ? 'INDIVIDUAL' : 'BUSINESS';
@@ -47,7 +72,7 @@ export async function registerClient(formData: FormData) {
     password !== confirmPassword ||
     password.length < 8
   ) {
-    redirect('/register?error=validation');
+    redirect(appendNextParam('/register?error=validation', nextPath));
   }
 
   const existingUser = await prisma.user.findFirst({
@@ -57,7 +82,7 @@ export async function registerClient(formData: FormData) {
   });
 
   if (existingUser) {
-    redirect('/register?error=exists');
+    redirect(appendNextParam('/register?error=exists', nextPath));
   }
 
   const passwordHash = await hashPassword(password);
@@ -84,7 +109,7 @@ export async function registerClient(formData: FormData) {
     }
   });
 
-  redirect('/login?registered=1');
+  redirect(appendNextParam('/login?registered=1', nextPath));
 }
 
 export async function loginClient(formData: FormData) {
@@ -93,7 +118,7 @@ export async function loginClient(formData: FormData) {
   const nextPath = readString(formData, 'next');
 
   if (!email || !password) {
-    redirect('/login?error=validation');
+    redirect(appendNextParam('/login?error=validation', nextPath));
   }
 
   const user = await prisma.user.findUnique({
@@ -102,7 +127,7 @@ export async function loginClient(formData: FormData) {
   });
 
   if (user?.role === 'MANAGER' || user?.role === 'ADMIN') {
-    redirect('/login?error=staff-login');
+    redirect(appendNextParam('/login?error=staff-login', nextPath));
   }
 
   try {
@@ -113,13 +138,13 @@ export async function loginClient(formData: FormData) {
     });
   } catch (error) {
     if (error instanceof AuthError) {
-      redirect('/login?error=credentials');
+      redirect(appendNextParam('/login?error=credentials', nextPath));
     }
 
     throw error;
   }
 
-  redirect(nextPath === '/client' || nextPath.startsWith('/client/') ? nextPath : '/client');
+  redirect(getClientNextPath(nextPath));
 }
 
 export async function loginStaff(formData: FormData) {

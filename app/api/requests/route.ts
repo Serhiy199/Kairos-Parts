@@ -34,6 +34,28 @@ function buildDescription(description: string, comment?: string) {
 }
 
 export async function POST(request: Request) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return Response.json(
+      {
+        status: 'unauthorized',
+        message: 'Щоб створити заявку, увійдіть у клієнтський кабінет.'
+      },
+      { status: 401 }
+    );
+  }
+
+  if (session.user.role !== 'CLIENT') {
+    return Response.json(
+      {
+        status: 'forbidden',
+        message: 'Створення заявки доступне тільки для клієнтського акаунта.'
+      },
+      { status: 403 }
+    );
+  }
+
   const formData = await request.formData();
   const parsed = parseRequestFormData(formData);
 
@@ -59,8 +81,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const session = await auth();
-  const clientAccess = session?.user?.role === 'CLIENT' ? await getClientAccessContext(session.user.id) : null;
+  const clientAccess = await getClientAccessContext(session.user.id);
+
+  if (!clientAccess) {
+    return Response.json(
+      {
+        status: 'client_profile_not_found',
+        message: 'Не знайдено клієнтський профіль для створення заявки.'
+      },
+      { status: 403 }
+    );
+  }
+
   const manufacturer = parsed.data.manufacturer
     ? await prisma.manufacturer.findFirst({
         where: { name: parsed.data.manufacturer }
@@ -74,7 +106,7 @@ export async function POST(request: Request) {
       ? await prisma.vehicle.findFirst({
           where: {
             id: parsed.data.vehicleId,
-            ...(clientAccess ? vehicleAccessWhere(clientAccess) : { id: '__not_allowed_for_guest__' })
+            ...vehicleAccessWhere(clientAccess)
           },
           select: { id: true }
         })
@@ -84,13 +116,13 @@ export async function POST(request: Request) {
       data: {
         requestNumber,
         publicStatusToken,
-        source: clientAccess && parsed.data.source === 'client' ? 'CLIENT_DASHBOARD' : 'WEBSITE',
+        source: 'CLIENT_DASHBOARD',
         status: 'NEW',
-        clientId: clientAccess?.clientProfileId,
-        companyId: clientAccess?.companyId,
-        guestName: clientAccess ? null : parsed.data.contactName,
-        guestPhone: clientAccess ? null : parsed.data.phone,
-        guestEmail: clientAccess ? null : parsed.data.email,
+        clientId: clientAccess.clientProfileId,
+        companyId: clientAccess.companyId,
+        guestName: null,
+        guestPhone: null,
+        guestEmail: null,
         companyName: parsed.data.companyName ?? parsed.data.contactName,
         categoryId: null,
         subcategoryId: null,

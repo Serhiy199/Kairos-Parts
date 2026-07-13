@@ -1,6 +1,9 @@
+import Link from 'next/link';
+
 import { auth } from '@/auth';
+import { ActionIcon } from '@/components/ui/action-icons';
 import { getAllManufacturers } from '@/lib/catalog/catalog-data';
-import { getClientProfileForSession } from '@/lib/client/access';
+import { getClientAccessContext, getClientProfileForSession, requestAccessWhere, vehicleAccessWhere } from '@/lib/client/access';
 import { getUploadMaxSizeMb } from '@/lib/files/upload-policy';
 
 import { RequestForm } from './request-form';
@@ -12,27 +15,31 @@ export default async function RequestPage({
 }) {
   const params = await searchParams;
   const session = await auth();
-  const clientProfile = session?.user?.role === 'CLIENT' ? await getClientProfileForSession(session.user.id) : null;
+
+  if (!session?.user?.id || session.user.role !== 'CLIENT') {
+    return <RequestAuthGate isStaff={session?.user?.role === 'MANAGER' || session?.user?.role === 'ADMIN'} />;
+  }
+
+  const [clientProfile, clientAccess] = await Promise.all([
+    getClientProfileForSession(session.user.id),
+    getClientAccessContext(session.user.id)
+  ]);
+
+  if (!clientProfile || !clientAccess) {
+    return <RequestAuthGate profileMissing />;
+  }
+
   const maxSizeMb = getUploadMaxSizeMb();
   const manufacturerOptions = getAllManufacturers().map((manufacturer) => manufacturer.name);
-  const clientFullName = clientProfile ? [clientProfile.firstName, clientProfile.lastName].filter(Boolean).join(' ') : '';
-  const initialContact = clientProfile
-    ? {
-        contactName: clientProfile.contactName ?? (clientFullName || clientProfile.user.name || ''),
-        companyName: clientProfile.clientType === 'BUSINESS' ? clientProfile.companyName ?? '' : '',
-        phone: clientProfile.phone ?? clientProfile.user.phone ?? '',
-        email: clientProfile.email ?? clientProfile.user.email ?? ''
-      }
-    : undefined;
-  const initialSource = session?.user?.role === 'CLIENT' && params.source === 'client' ? 'client' : undefined;
-  const vehiclePrefill =
-    clientProfile && params.vehicleId
-      ? await prismaVehiclePrefill(clientProfile.id, params.vehicleId)
-      : null;
-  const repeatPrefill =
-    clientProfile && params.repeatRequestId
-      ? await prismaRepeatPrefill(clientProfile.id, params.repeatRequestId)
-      : null;
+  const clientFullName = [clientProfile.firstName, clientProfile.lastName].filter(Boolean).join(' ');
+  const initialContact = {
+    contactName: clientProfile.contactName ?? (clientFullName || clientProfile.user.name || ''),
+    companyName: clientAccess.companyName ?? (clientProfile.clientType === 'BUSINESS' ? clientProfile.companyName ?? '' : ''),
+    phone: clientProfile.phone ?? clientProfile.user.phone ?? '',
+    email: clientProfile.email ?? clientProfile.user.email ?? ''
+  };
+  const vehiclePrefill = params.vehicleId ? await prismaVehiclePrefill(clientAccess, params.vehicleId) : null;
+  const repeatPrefill = params.repeatRequestId ? await prismaRepeatPrefill(clientAccess, params.repeatRequestId) : null;
   const initialRequest = vehiclePrefill ?? repeatPrefill ?? undefined;
 
   return (
@@ -55,7 +62,7 @@ export default async function RequestPage({
             initialContact={initialContact}
             initialMode={params.mode}
             initialRequest={initialRequest}
-            initialSource={initialSource}
+            initialSource="client"
             maxSizeMb={maxSizeMb}
           />
           <aside className="rounded-lg border border-border bg-card p-6 shadow-card">
@@ -67,6 +74,11 @@ export default async function RequestPage({
               <p>4. Опис деталі, вузла або проблеми.</p>
               <p>5. Фото, PDF, Excel або DOC список, якщо є.</p>
             </div>
+            {clientAccess.mode === 'COMPANY' ? (
+              <div className="mt-6 rounded-md border border-accent/40 bg-[#F7F1E8] p-4 text-sm leading-6 text-foreground">
+                Заявка буде привʼязана до компанії <span className="font-bold">{clientAccess.companyName}</span> і буде доступна учасникам цієї компанії.
+              </div>
+            ) : null}
           </aside>
         </div>
       </section>
@@ -74,7 +86,63 @@ export default async function RequestPage({
   );
 }
 
-async function prismaVehiclePrefill(clientId: string, vehicleId: string) {
+function RequestAuthGate({ isStaff = false, profileMissing = false }: { isStaff?: boolean; profileMissing?: boolean }) {
+  return (
+    <section className="bg-background px-4 py-16 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-4xl rounded-lg border border-border bg-card p-6 shadow-card sm:p-8">
+        <p className="text-sm font-bold uppercase text-accent">Заявка на підбір</p>
+        <h1 className="mt-3 text-3xl font-bold text-foreground sm:text-4xl">
+          {profileMissing ? 'Профіль клієнта потребує налаштування' : 'Створення заявки доступне після входу'}
+        </h1>
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">
+          {profileMissing
+            ? 'Ми не знайшли клієнтський профіль для цього акаунта. Зверніться до менеджера Kairos Parts або увійдіть іншим клієнтським акаунтом.'
+            : 'Увійдіть або зареєструйтеся, щоб створити заявку на підбір запчастин, привʼязувати її до техніки та зберігати історію замовлень у кабінеті.'}
+        </p>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          {[
+            'Історія заявок і підібраних запчастин',
+            'Привʼязка до парку техніки',
+            'Документи та рахунки в одному кабінеті',
+            'Статус заявки онлайн'
+          ].map((item) => (
+            <div key={item} className="rounded-md border border-border bg-surface-muted px-4 py-3 text-sm font-semibold text-foreground">
+              {item}
+            </div>
+          ))}
+        </div>
+
+        {isStaff ? (
+          <div className="mt-6 rounded-md border border-accent/40 bg-[#F7F1E8] p-4 text-sm leading-6 text-foreground">
+            Ви авторизовані як менеджер або адміністратор. Для створення клієнтської заявки використовуйте CLIENT-акаунт.
+          </div>
+        ) : null}
+
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <Link
+            href="/login?next=/request"
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover"
+          >
+            <ActionIcon name="login" />
+            Увійти
+          </Link>
+          <Link
+            href="/register?next=/request"
+            className="inline-flex items-center justify-center gap-2 rounded-md border border-border px-5 py-3 text-sm font-semibold text-foreground transition hover:border-accent hover:bg-surface-muted"
+          >
+            <ActionIcon name="plus" />
+            Зареєструватися
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+type ClientAccess = Awaited<ReturnType<typeof getClientAccessContext>>;
+
+async function prismaVehiclePrefill(access: NonNullable<ClientAccess>, vehicleId: string) {
   const { hasDatabaseUrl } = await import('@/lib/env/database');
   const { prisma } = await import('@/lib/prisma');
 
@@ -83,7 +151,7 @@ async function prismaVehiclePrefill(clientId: string, vehicleId: string) {
   }
 
   const vehicle = await prisma.vehicle.findFirst({
-    where: { id: vehicleId, clientId }
+    where: { id: vehicleId, AND: [vehicleAccessWhere(access)] }
   });
 
   if (!vehicle) {
@@ -102,7 +170,7 @@ async function prismaVehiclePrefill(clientId: string, vehicleId: string) {
   };
 }
 
-async function prismaRepeatPrefill(clientId: string, requestId: string) {
+async function prismaRepeatPrefill(access: NonNullable<ClientAccess>, requestId: string) {
   const { hasDatabaseUrl } = await import('@/lib/env/database');
   const { prisma } = await import('@/lib/prisma');
 
@@ -111,7 +179,7 @@ async function prismaRepeatPrefill(clientId: string, requestId: string) {
   }
 
   const request = await prisma.request.findFirst({
-    where: { id: requestId, clientId },
+    where: { id: requestId, AND: [requestAccessWhere(access)] },
     include: { manufacturer: true }
   });
 

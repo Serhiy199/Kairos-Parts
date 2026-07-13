@@ -20,7 +20,9 @@ export default async function LoginPage({
       <div className="mx-auto max-w-md rounded-lg border border-border bg-card p-6 shadow-card">
         <p className="text-sm font-bold uppercase text-accent">Кабінет клієнта</p>
         <h1 className="mt-2 text-3xl font-bold text-foreground">Вхід</h1>
-        <p className="mt-3 text-sm leading-6 text-muted">Увійдіть як клієнт, щоб бачити свої заявки та створювати нові з автопідстановкою контактів.</p>
+        <p className="mt-3 text-sm leading-6 text-muted">
+          Увійдіть як клієнт, щоб бачити свої заявки, створювати нові та зберігати історію в кабінеті.
+        </p>
         {params.registered ? (
           <div className="mt-5 rounded-md border border-success/30 bg-[#E7F6EC] p-3 text-sm font-semibold text-success">
             Реєстрацію завершено. Тепер можна увійти.

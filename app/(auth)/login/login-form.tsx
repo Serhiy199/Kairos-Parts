@@ -11,6 +11,7 @@ type AccountType = 'BUSINESS' | 'INDIVIDUAL';
 
 export function LoginForm({ nextPath }: { nextPath?: string }) {
   const [accountType, setAccountType] = useState<AccountType>('BUSINESS');
+  const registerHref = nextPath ? `/register?next=${encodeURIComponent(nextPath)}` : '/register';
 
   return (
     <>
@@ -54,7 +55,7 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
       </form>
       <p className="mt-5 text-sm text-muted">
         Ще немає акаунта?{' '}
-        <Link href="/register" className="font-bold text-foreground transition hover:text-accent">
+        <Link href={registerHref} className="font-bold text-foreground transition hover:text-accent">
           Зареєструватися
         </Link>
       </p>

@@ -12,8 +12,9 @@ type AccountType = 'BUSINESS' | 'INDIVIDUAL';
 const inputClass =
   'h-11 rounded-md border border-border px-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25';
 
-export function RegisterForm() {
+export function RegisterForm({ nextPath }: { nextPath?: string }) {
   const [accountType, setAccountType] = useState<AccountType>('BUSINESS');
+  const loginHref = nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : '/login';
 
   return (
     <>
@@ -36,6 +37,7 @@ export function RegisterForm() {
 
       <form action={registerClient} className="mt-6 grid gap-4 md:grid-cols-2">
         <input type="hidden" name="accountType" value={accountType} />
+        {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
 
         {accountType === 'BUSINESS' ? (
           <>
@@ -89,7 +91,7 @@ export function RegisterForm() {
 
       <p className="mt-5 text-sm text-muted">
         Вже маєте акаунт?{' '}
-        <Link href="/login" className="font-bold text-foreground transition hover:text-accent">
+        <Link href={loginHref} className="font-bold text-foreground transition hover:text-accent">
           <span className="inline-flex items-center gap-1.5">
             <ActionIcon name="login" />
           Увійти
