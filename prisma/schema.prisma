@@ -75,6 +75,13 @@ enum CommercialOfferStatus {
   CANCELLED
 }
 
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  CANCELLED
+}
+
 enum ChangeRequestStatus {
   PENDING
   APPROVED
@@ -139,6 +146,8 @@ model User {
   comments         RequestComment[]       @relation("RequestCommentAuthor")
   uploadedDocuments RequestDocument[]      @relation("RequestDocumentUploadedBy")
   createdCommercialOffers CommercialOffer[] @relation("CommercialOfferCreatedBy")
+  clientInvoices    Invoice[]              @relation("InvoiceClient")
+  createdInvoices   Invoice[]              @relation("InvoiceCreatedBy")
   changeRequestsRequested ChangeRequest[]   @relation("ChangeRequestRequestedBy")
   changeRequestsReviewed  ChangeRequest[]   @relation("ChangeRequestReviewedBy")
   archivedVehicles Vehicle[]              @relation("VehicleArchivedBy")
@@ -219,6 +228,7 @@ model Company {
   documents    Document[]
   changeRequests ChangeRequest[]
   auditLogs    AuditLog[]
+  invoices     Invoice[]
 
   @@unique([name, edrpou])
   @@index([edrpou])
@@ -336,6 +346,7 @@ model Request {
   documents         Document[]
   requestDocuments  RequestDocument[]
   commercialOffers  CommercialOffer[]
+  invoices          Invoice[]
   statusHistory     RequestStatusHistory[]
   ocrResults        OCRResult[]
   notifications     Notification[]
@@ -393,6 +404,7 @@ model RequestItem {
   includeInInvoice Boolean  @default(false)
   approvedAt       DateTime?
   commercialOfferItems CommercialOfferItem[]
+  invoiceItems     InvoiceItem[]
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -473,6 +485,59 @@ model CommercialOfferItem {
   updatedAt     DateTime        @updatedAt
 
   @@index([offerId])
+  @@index([requestItemId])
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  requestId      String
+  request        Request       @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  companyId      String?
+  company        Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  clientId       String?
+  client         User?         @relation("InvoiceClient", fields: [clientId], references: [id], onDelete: SetNull)
+  invoiceNumber  String        @unique
+  status         InvoiceStatus @default(DRAFT)
+  currency       String        @default("UAH")
+  subtotal       Decimal       @default(0) @db.Decimal(12, 2)
+  totalAmount    Decimal       @default(0) @db.Decimal(12, 2)
+  managerComment String?
+  clientComment  String?
+  createdById    String?
+  createdBy      User?         @relation("InvoiceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  sentAt         DateTime?
+  paidAt         DateTime?
+  cancelledAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  items          InvoiceItem[]
+
+  @@index([requestId])
+  @@index([companyId])
+  @@index([clientId])
+  @@index([status])
+  @@index([createdById])
+}
+
+model InvoiceItem {
+  id            String       @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  requestItemId String?
+  requestItem   RequestItem? @relation(fields: [requestItemId], references: [id], onDelete: SetNull)
+  name          String
+  brand         String?
+  catalogNumber String?
+  analogNumber  String?
+  quantity      Int          @default(1)
+  unit          String?      @default("шт")
+  price         Decimal      @default(0) @db.Decimal(12, 2)
+  total         Decimal      @default(0) @db.Decimal(12, 2)
+  comment       String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([invoiceId])
   @@index([requestItemId])
 }
 

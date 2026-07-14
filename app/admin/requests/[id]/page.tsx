@@ -5,7 +5,9 @@ import {
   assignAdminRequestManager,
   addAdminRequestComment,
   cancelAdminCommercialOffer,
+  cancelAdminInvoice,
   createAdminCommercialOffer,
+  createAdminInvoice,
   createAdminRequestDocument,
   createAdminRequestItem,
   deleteAdminCommercialOffer,
@@ -13,6 +15,8 @@ import {
   deleteAdminRequestItem,
   runAdminRequestOcr,
   sendAdminCommercialOffer,
+  sendAdminInvoice,
+  markAdminInvoicePaid,
   updateAdminCommercialOfferItem,
   updateAdminCommercialOfferMetadata,
   updateAdminRequestDocument,
@@ -26,6 +30,7 @@ import { ActionIcon } from '@/components/ui/action-icons';
 import { requireCrmSession } from '@/lib/admin/access';
 import { COMMERCIAL_OFFER_STATUS_LABELS } from '@/lib/commercial-offers/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 import { prisma } from '@/lib/prisma';
 import { REQUEST_DOCUMENT_TYPE_LABELS, REQUEST_DOCUMENT_TYPES } from '@/lib/request-documents/validation';
 import { REQUEST_SOURCE_LABELS } from '@/lib/requests/sources';
@@ -81,7 +86,17 @@ function resultMessage(result?: string) {
     'offer-invalid-transition': 'Некоректна зміна статусу пропозиції.',
     'offer-empty': 'Не можна надіслати порожню пропозицію.',
     'offer-delete-draft-only': 'Видалити можна тільки чернетку.',
-    'offer-error': 'Не вдалося обробити комерційну пропозицію.'
+    'offer-error': 'Не вдалося обробити комерційну пропозицію.',
+    'invoice-created': 'Рахунок створено.',
+    'invoice-sent': 'Рахунок надіслано клієнту.',
+    'invoice-cancelled': 'Рахунок скасовано.',
+    'invoice-paid': 'Рахунок позначено як оплачений.',
+    'invoice-no-approved-items': 'Немає погоджених позицій для створення рахунку.',
+    'invoice-not-found': 'Рахунок не знайдено.',
+    'invoice-invalid-transition': 'Некоректна зміна статусу рахунку.',
+    'invoice-empty': 'Не можна надіслати порожній рахунок.',
+    'invoice-forbidden': 'Недостатньо прав для роботи з рахунком.',
+    'invoice-error': 'Не вдалося обробити рахунок.'
   };
 
   return result ? messages[result] : null;
@@ -134,6 +149,13 @@ export default async function AdminRequestDetailPage({
             items: { orderBy: { createdAt: 'asc' } }
           }
         },
+        invoices: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            createdBy: { select: { name: true, email: true, role: true } },
+            items: { orderBy: { createdAt: 'asc' } }
+          }
+        },
         requestDocuments: {
           orderBy: { createdAt: 'desc' },
           include: { uploadedBy: { select: { name: true, email: true, role: true } } }
@@ -176,6 +198,7 @@ export default async function AdminRequestDetailPage({
   const phone = request.client?.phone ?? request.guestPhone ?? '—';
   const email = request.client?.email ?? request.guestEmail ?? '—';
   const selectedRequestStatus = normalizeRequestStatusForSelection(request.status);
+  const approvedInvoiceItemCount = request.items.filter((item) => item.visibleToClient && item.approvedByClient && item.includeInInvoice).length;
 
   return (
     <div className="grid gap-6">
@@ -255,6 +278,8 @@ export default async function AdminRequestDetailPage({
           ) : null}
 
           <RequestItemsSection requestId={request.id} items={request.items} />
+
+          <InvoicesSection requestId={request.id} invoices={request.invoices} approvedInvoiceItemCount={approvedInvoiceItemCount} />
 
           <CommercialOffersSection requestId={request.id} offers={request.commercialOffers} requestItemCount={request.items.length} />
 
@@ -532,6 +557,36 @@ type CommercialOfferView = {
   items: CommercialOfferItemView[];
 };
 
+type InvoiceItemView = {
+  id: string;
+  name: string;
+  brand: string | null;
+  catalogNumber: string | null;
+  analogNumber: string | null;
+  quantity: number;
+  unit: string | null;
+  price: { toString: () => string };
+  total: { toString: () => string };
+  comment: string | null;
+};
+
+type InvoiceView = {
+  id: string;
+  invoiceNumber: string;
+  status: keyof typeof INVOICE_STATUS_LABELS;
+  currency: string;
+  subtotal: { toString: () => string };
+  totalAmount: { toString: () => string };
+  managerComment: string | null;
+  clientComment: string | null;
+  sentAt: Date | null;
+  paidAt: Date | null;
+  cancelledAt: Date | null;
+  createdAt: Date;
+  createdBy: { name: string | null; email: string | null; role: string } | null;
+  items: InvoiceItemView[];
+};
+
 function RequestItemsSection({ requestId, items }: { requestId: string; items: RequestItemView[] }) {
   return (
     <section className="rounded-lg border border-border bg-card p-6 shadow-card">
@@ -628,6 +683,159 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
           <RequestItemForm action={createAdminRequestItem} requestId={requestId} submitLabel="Додати позицію" />
         </div>
       </details>
+    </section>
+  );
+}
+
+function InvoicesSection({
+  requestId,
+  invoices,
+  approvedInvoiceItemCount
+}: {
+  requestId: string;
+  invoices: InvoiceView[];
+  approvedInvoiceItemCount: number;
+}) {
+  const canCreateInvoice = approvedInvoiceItemCount > 0;
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-sm font-bold uppercase text-accent">Рахунки</p>
+          <h3 className="mt-2 text-xl font-bold text-foreground">Рахунки на основі погоджених позицій</h3>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Рахунок формується тільки з позицій, які клієнт погодив і відмітив для включення у рахунок.
+          </p>
+        </div>
+        <form action={createAdminInvoice}>
+          <input type="hidden" name="requestId" value={requestId} />
+          <button
+            disabled={!canCreateInvoice}
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-muted"
+          >
+            <ActionIcon name="plus" />
+            Створити рахунок
+          </button>
+        </form>
+      </div>
+
+      {!canCreateInvoice ? (
+        <p className="mt-4 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm font-semibold text-[#8A5B24]">
+          Рахунок можна створити після того, як клієнт погодить позиції та відмітить їх для включення у рахунок.
+        </p>
+      ) : (
+        <p className="mt-4 rounded-md border border-info/20 bg-[#E8F1FF] p-4 text-sm font-semibold text-info">
+          До рахунку готово {approvedInvoiceItemCount} позицій.
+        </p>
+      )}
+
+      <div className="mt-5 grid gap-4">
+        {invoices.length === 0 ? (
+          <p className="rounded-md border border-dashed border-border p-5 text-sm text-muted">
+            Рахунків по цій заявці ще немає.
+          </p>
+        ) : (
+          invoices.map((invoice) => {
+            const canSend = invoice.status === 'DRAFT';
+            const canCancel = invoice.status === 'DRAFT' || invoice.status === 'SENT';
+            const canMarkPaid = invoice.status === 'SENT';
+
+            return (
+              <article key={invoice.id} className="rounded-md border border-border p-4">
+                <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-lg font-bold text-foreground">{invoice.invoiceNumber}</h4>
+                      <InvoiceStatusBadge status={invoice.status} />
+                    </div>
+                    <p className="mt-2 text-sm text-muted">
+                      Створено {invoice.createdAt.toLocaleString('uk-UA')} · {invoice.createdBy?.name ?? invoice.createdBy?.email ?? 'CRM'}
+                    </p>
+                    <p className="mt-2 text-sm font-bold text-foreground">
+                      Загальна сума: {formatMoney(invoice.totalAmount, invoice.currency)}
+                    </p>
+                    <p className="mt-1 text-xs text-muted">{invoice.items.length} позицій</p>
+                    {invoice.sentAt ? <p className="mt-1 text-xs text-muted">Надіслано: {invoice.sentAt.toLocaleString('uk-UA')}</p> : null}
+                    {invoice.paidAt ? <p className="mt-1 text-xs text-success">Оплачено: {invoice.paidAt.toLocaleString('uk-UA')}</p> : null}
+                    {invoice.cancelledAt ? <p className="mt-1 text-xs text-danger">Скасовано: {invoice.cancelledAt.toLocaleString('uk-UA')}</p> : null}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {canSend ? (
+                      <form action={sendAdminInvoice}>
+                        <input type="hidden" name="requestId" value={requestId} />
+                        <input type="hidden" name="invoiceId" value={invoice.id} />
+                        <button className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+                          <ActionIcon name="send" />
+                          Надіслати клієнту
+                        </button>
+                      </form>
+                    ) : null}
+                    {canMarkPaid ? (
+                      <form action={markAdminInvoicePaid}>
+                        <input type="hidden" name="requestId" value={requestId} />
+                        <input type="hidden" name="invoiceId" value={invoice.id} />
+                        <button className="rounded-md border border-success/40 px-4 py-2 text-sm font-bold text-success transition hover:bg-success/10">
+                          Позначити як оплачено
+                        </button>
+                      </form>
+                    ) : null}
+                    {canCancel ? (
+                      <form action={cancelAdminInvoice}>
+                        <input type="hidden" name="requestId" value={requestId} />
+                        <input type="hidden" name="invoiceId" value={invoice.id} />
+                        <button className="rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">
+                          Скасувати
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
+                </div>
+
+                <details className="mt-4 rounded-md border border-border bg-surface-muted p-4" open>
+                  <summary className="cursor-pointer text-sm font-bold text-foreground">Переглянути позиції рахунку</summary>
+                  <div className="mt-4 overflow-x-auto rounded-md border border-border bg-card">
+                    <table className="w-full min-w-[860px] border-collapse text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-border bg-surface-muted text-muted">
+                          <th className="px-4 py-3 font-bold">№</th>
+                          <th className="px-4 py-3 font-bold">Назва</th>
+                          <th className="px-4 py-3 font-bold">Бренд</th>
+                          <th className="px-4 py-3 font-bold">Артикул / каталог</th>
+                          <th className="px-4 py-3 font-bold">Кількість</th>
+                          <th className="px-4 py-3 font-bold">Од.</th>
+                          <th className="px-4 py-3 font-bold">Ціна</th>
+                          <th className="px-4 py-3 font-bold">Сума</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invoice.items.map((item, index) => (
+                          <tr key={item.id} className="border-b border-border align-top last:border-0">
+                            <td className="px-4 py-3 text-muted">{index + 1}</td>
+                            <td className="px-4 py-3">
+                              <p className="font-bold text-foreground">{item.name}</p>
+                              {item.comment ? <p className="mt-2 text-xs leading-5 text-muted">{item.comment}</p> : null}
+                            </td>
+                            <td className="px-4 py-3 text-foreground">{item.brand ?? '—'}</td>
+                            <td className="px-4 py-3 text-muted">
+                              <p>Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
+                              <p className="mt-1">Аналог: <span className="font-semibold text-foreground">{item.analogNumber ?? '—'}</span></p>
+                            </td>
+                            <td className="px-4 py-3 font-semibold text-foreground">{item.quantity}</td>
+                            <td className="px-4 py-3 text-foreground">{item.unit ?? 'шт'}</td>
+                            <td className="px-4 py-3 text-foreground">{formatMoney(item.price, invoice.currency)}</td>
+                            <td className="px-4 py-3 font-bold text-foreground">{formatMoney(item.total, invoice.currency)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              </article>
+            );
+          })
+        )}
+      </div>
     </section>
   );
 }
@@ -832,6 +1040,21 @@ function CommercialOffersSection({
         )}
       </div>
     </section>
+  );
+}
+
+function InvoiceStatusBadge({ status }: { status: keyof typeof INVOICE_STATUS_LABELS }) {
+  const classNameByStatus: Record<keyof typeof INVOICE_STATUS_LABELS, string> = {
+    DRAFT: 'bg-surface-muted text-muted',
+    SENT: 'bg-[#E8F1FF] text-info',
+    PAID: 'bg-[#E7F6EC] text-success',
+    CANCELLED: 'bg-surface-muted text-muted'
+  };
+
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${classNameByStatus[status]}`}>
+      {INVOICE_STATUS_LABELS[status]}
+    </span>
   );
 }
 

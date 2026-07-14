@@ -16,6 +16,12 @@ import {
 import { parseCommercialOfferItemInput, parseCommercialOfferMetadata } from '@/lib/commercial-offers/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { saveRequestDocumentLocal } from '@/lib/files/local-storage';
+import {
+  cancelInvoice,
+  createInvoiceFromApprovedRequestItems,
+  markInvoicePaid,
+  sendInvoiceToClient
+} from '@/lib/invoices/service';
 import { notifyRequestStatusChange } from '@/lib/notifications/status-change';
 import { runOcrForRequestFile, updateOcrCorrection } from '@/lib/ocr/service';
 import { prisma } from '@/lib/prisma';
@@ -30,6 +36,10 @@ function readString(formData: FormData, key: string) {
 
 function redirectBack(requestId: string, result: string): never {
   redirect(`/admin/requests/${requestId}?result=${result}`);
+}
+
+function getCrmRole(session: Awaited<ReturnType<typeof requireCrmSession>>) {
+  return session.user.role === 'ADMIN' || session.user.role === 'MANAGER' ? session.user.role : 'GUEST';
 }
 
 export async function updateAdminRequestStatus(formData: FormData) {
@@ -489,4 +499,86 @@ export async function deleteAdminCommercialOffer(formData: FormData) {
 
   revalidatePath(`/admin/requests/${requestId}`);
   redirectBack(requestId, 'offer-deleted');
+}
+
+export async function createAdminInvoice(formData: FormData) {
+  const session = await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+
+  if (!hasDatabaseUrl() || !requestId) {
+    redirectBack(requestId, 'invoice-error');
+  }
+
+  const result = await createInvoiceFromApprovedRequestItems({
+    requestId,
+    createdById: session.user.id,
+    createdByRole: getCrmRole(session)
+  });
+
+  if (!result.ok) {
+    redirectBack(requestId, result.status);
+  }
+
+  revalidatePath(`/admin/requests/${requestId}`);
+  redirectBack(requestId, 'invoice-created');
+}
+
+export async function sendAdminInvoice(formData: FormData) {
+  const session = await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+  const invoiceId = readString(formData, 'invoiceId');
+
+  if (!hasDatabaseUrl() || !requestId || !invoiceId) {
+    redirectBack(requestId, 'invoice-error');
+  }
+
+  const result = await sendInvoiceToClient(invoiceId, getCrmRole(session));
+
+  if (!result.ok) {
+    redirectBack(requestId, result.status);
+  }
+
+  revalidatePath(`/admin/requests/${requestId}`);
+  revalidatePath(`/client/requests/${requestId}`);
+  redirectBack(requestId, 'invoice-sent');
+}
+
+export async function cancelAdminInvoice(formData: FormData) {
+  const session = await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+  const invoiceId = readString(formData, 'invoiceId');
+
+  if (!hasDatabaseUrl() || !requestId || !invoiceId) {
+    redirectBack(requestId, 'invoice-error');
+  }
+
+  const result = await cancelInvoice(invoiceId, getCrmRole(session));
+
+  if (!result.ok) {
+    redirectBack(requestId, result.status);
+  }
+
+  revalidatePath(`/admin/requests/${requestId}`);
+  revalidatePath(`/client/requests/${requestId}`);
+  redirectBack(requestId, 'invoice-cancelled');
+}
+
+export async function markAdminInvoicePaid(formData: FormData) {
+  const session = await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+  const invoiceId = readString(formData, 'invoiceId');
+
+  if (!hasDatabaseUrl() || !requestId || !invoiceId) {
+    redirectBack(requestId, 'invoice-error');
+  }
+
+  const result = await markInvoicePaid(invoiceId, getCrmRole(session));
+
+  if (!result.ok) {
+    redirectBack(requestId, result.status);
+  }
+
+  revalidatePath(`/admin/requests/${requestId}`);
+  revalidatePath(`/client/requests/${requestId}`);
+  redirectBack(requestId, 'invoice-paid');
 }

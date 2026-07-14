@@ -12,6 +12,7 @@ import { StatusBadge } from '@/components/client/status-badge';
 import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
 import { CLIENT_VISIBLE_OFFER_STATUSES, COMMERCIAL_OFFER_STATUS_LABELS } from '@/lib/commercial-offers/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { CLIENT_INVOICE_STATUS_LABELS, CLIENT_VISIBLE_INVOICE_STATUSES } from '@/lib/invoices/validation';
 import { prisma } from '@/lib/prisma';
 import { REQUEST_DOCUMENT_TYPE_LABELS } from '@/lib/request-documents/validation';
 
@@ -89,6 +90,11 @@ export default async function ClientRequestDetailPage({
       },
       commercialOffers: {
         where: { status: { in: CLIENT_VISIBLE_OFFER_STATUSES } },
+        orderBy: { createdAt: 'desc' },
+        include: { items: { orderBy: { createdAt: 'asc' } } }
+      },
+      invoices: {
+        where: { status: { in: CLIENT_VISIBLE_INVOICE_STATUSES } },
         orderBy: { createdAt: 'desc' },
         include: { items: { orderBy: { createdAt: 'asc' } } }
       },
@@ -268,6 +274,66 @@ export default async function ClientRequestDetailPage({
         </div>
       ) : null}
 
+      {request.invoices.length > 0 ? (
+        <div className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <h3 className="text-lg font-bold text-foreground">Рахунки</h3>
+          <p className="mt-2 text-sm text-muted">Тут показані рахунки, які менеджер виставив за погодженими позиціями.</p>
+          <div className="mt-4 grid gap-4">
+            {request.invoices.map((invoice) => (
+              <article key={invoice.id} className="rounded-md border border-border p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-bold text-foreground">{invoice.invoiceNumber}</p>
+                      <ClientInvoiceStatusBadge status={invoice.status as keyof typeof CLIENT_INVOICE_STATUS_LABELS} />
+                    </div>
+                    <p className="mt-2 text-sm text-muted">
+                      Створено {invoice.createdAt.toLocaleDateString('uk-UA')}
+                      {invoice.sentAt ? ` · надіслано ${invoice.sentAt.toLocaleDateString('uk-UA')}` : ''}
+                    </p>
+                    {invoice.paidAt ? <p className="mt-2 text-sm font-semibold text-success">Оплачено {invoice.paidAt.toLocaleDateString('uk-UA')}</p> : null}
+                    {invoice.cancelledAt ? <p className="mt-2 text-sm font-semibold text-danger">Скасовано {invoice.cancelledAt.toLocaleDateString('uk-UA')}</p> : null}
+                  </div>
+                  <p className="text-lg font-bold text-foreground">{formatMoney(invoice.totalAmount, invoice.currency)}</p>
+                </div>
+
+                <div className="mt-4 overflow-x-auto rounded-md border border-border">
+                  <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-surface-muted text-muted">
+                        <th className="px-4 py-3 font-bold">Позиція</th>
+                        <th className="px-4 py-3 font-bold">Номери</th>
+                        <th className="px-4 py-3 font-bold">К-сть</th>
+                        <th className="px-4 py-3 font-bold">Ціна</th>
+                        <th className="px-4 py-3 font-bold">Сума</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invoice.items.map((item) => (
+                        <tr key={item.id} className="border-b border-border align-top last:border-0">
+                          <td className="px-4 py-3">
+                            <p className="font-bold text-foreground">{item.name}</p>
+                            <p className="mt-1 text-xs text-muted">{item.brand ?? 'Бренд уточнюється'}</p>
+                            {item.comment ? <p className="mt-2 text-xs leading-5 text-muted">{item.comment}</p> : null}
+                          </td>
+                          <td className="px-4 py-3 text-muted">
+                            <p>Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
+                            <p className="mt-1">Аналог: <span className="font-semibold text-foreground">{item.analogNumber ?? '—'}</span></p>
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-foreground">{item.quantity} {item.unit ?? 'шт'}</td>
+                          <td className="px-4 py-3 text-foreground">{formatMoney(item.price, invoice.currency)}</td>
+                          <td className="px-4 py-3 font-bold text-foreground">{formatMoney(item.total, invoice.currency)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {request.commercialOffers.length > 0 ? (
         <div className="rounded-lg border border-border bg-card p-6 shadow-card">
           <h3 className="text-lg font-bold text-foreground">Комерційні пропозиції</h3>
@@ -398,6 +464,20 @@ export default async function ClientRequestDetailPage({
         </div>
       </div>
     </div>
+  );
+}
+
+function ClientInvoiceStatusBadge({ status }: { status: keyof typeof CLIENT_INVOICE_STATUS_LABELS }) {
+  const classNameByStatus: Record<keyof typeof CLIENT_INVOICE_STATUS_LABELS, string> = {
+    SENT: 'bg-[#E8F1FF] text-info',
+    PAID: 'bg-[#E7F6EC] text-success',
+    CANCELLED: 'bg-surface-muted text-muted'
+  };
+
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${classNameByStatus[status]}`}>
+      {CLIENT_INVOICE_STATUS_LABELS[status]}
+    </span>
   );
 }
 
