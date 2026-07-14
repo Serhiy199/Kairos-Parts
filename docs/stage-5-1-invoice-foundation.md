@@ -30,7 +30,7 @@ Migration prepared:
 prisma/migrations/20260714100000_add_invoices/migration.sql
 ```
 
-The migration is prepared but not applied to Neon/production-like DB in this stage.
+The migration was prepared in Stage 5.1 and applied to the Neon staging/production-like DB during Stage 5.1.1.
 
 ## Invoice Number
 
@@ -178,3 +178,73 @@ npm.cmd run build
 ```
 
 Manual smoke testing requires applying the migration to the intended DB first.
+
+## Stage 5.1.1: Migration and Smoke Test
+
+Date: 2026-07-14
+
+Migration applied: yes.
+
+Applied migration:
+
+```text
+20260714100000_add_invoices
+```
+
+Database used:
+
+- Neon Postgres database from the current local `.env.local`.
+- Prisma reported database name `neondb`.
+- Secrets, credentials, and full connection URLs are intentionally not documented.
+
+Prisma migration status after deploy:
+
+```text
+Database schema is up to date.
+```
+
+Commands completed successfully:
+
+```bash
+npx.cmd prisma migrate deploy
+npx.cmd prisma generate
+npx.cmd prisma migrate status
+npx.cmd prisma validate
+npm.cmd run typecheck
+npm.cmd run lint
+npm.cmd run build
+```
+
+Smoke test status:
+
+- A route-equivalent smoke test was prepared against the real invoice service logic.
+- The test was blocked before creating any data by a local Prisma Client TLS connection error on Windows:
+
+```text
+Error opening a TLS connection: В пакете безопасности отсутствуют учетные данные (os error -2146893042)
+```
+
+- Prisma CLI commands can connect to the database, apply migrations, and read migration status.
+- Direct Prisma Client runtime queries from the local Node.js environment failed before the first test query completed.
+- No invoice, invoice item, request, request item, or user test records were created by the attempted smoke test.
+- No test data cleanup was required.
+
+Functional checks not completed locally because of the TLS blocker:
+
+- CRM invoice creation from approved and included request items.
+- Invoice numbering sequence `INV-01`, `INV-02`.
+- DRAFT invoice hidden from client.
+- SENT/PAID/CANCELLED invoice visibility for client.
+- Status transitions `DRAFT -> SENT`, `SENT -> PAID`, `DRAFT/SENT -> CANCELLED`.
+- Invalid transition blocking.
+- CLIENT create-invoice blocking.
+
+Recommended follow-up:
+
+- Redeploy Vercel with the Stage 5.1 code and applied database schema.
+- Run the invoice UI smoke test against the deployed Vercel runtime, or run the route-equivalent smoke test from an environment where Prisma Client can connect to Neon successfully.
+
+Blocker for Stage 5.2:
+
+- Schema migration is not blocked.
+- Full functional confirmation of the invoice service/UI is still blocked locally by Prisma Client TLS. Complete Vercel/runtime smoke testing before relying on invoice flow for the next production-facing stage.
