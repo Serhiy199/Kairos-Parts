@@ -84,7 +84,7 @@ const advantages = [
   },
   {
     title: 'Цифровий парк техніки для зареєстрованих користувачів',
-    text: 'Кожне замовлення, оформлене через Kairos, автоматично привʼязується до конкретної машини. Платформа сама накопичує історію запчастин, рахунків та каталожних номерів без додаткового введення даних.',
+    text: 'Замовлення, запчастини, рахунки й каталожні номери автоматично зберігаються в історії конкретної машини.',
     icon: 'fleet'
   }
 ];
@@ -92,12 +92,12 @@ const advantages = [
 const serviceCards = [
   {
     title: 'Повторне замовлення за секунди',
-    text: 'Платформа памʼятає, що ви вже купували для кожної машини, тому повторне замовлення займає лише кілька кліків.',
+    text: 'Платформа пам’ятає попередні покупки для кожної машини, тому повторне замовлення займає кілька кліків.',
     icon: 'clock'
   },
   {
-    title: 'Уся історія по техніці',
-    text: 'Заявки, підібрані позиції, документи й рахунки зберігаються в цифровій історії кожної одиниці техніки.',
+    title: 'Уся історія техніки',
+    text: 'Заявки, запчастини, документи й рахунки зберігаються в історії кожної машини.',
     icon: 'database'
   },
   {
@@ -107,12 +107,12 @@ const serviceCards = [
   },
   {
     title: 'Персональний супровід',
-    text: 'Менеджер веде заявку від першого опису потреби до узгодження й передачі замовлення.',
+    text: 'Менеджер супроводжує заявку від уточнення потреби до погодження та передачі замовлення.',
     icon: 'clipboard'
   },
   {
     title: 'Рішення для техніки',
-    text: 'Агро, вантажна та спеціальна техніка в одному сервісному процесі без товарного каталогу.',
+    text: 'Підбираємо запчастини для аграрної, вантажної та спеціальної техніки без товарного каталогу.',
     icon: 'gear'
   }
 ];
@@ -527,12 +527,14 @@ export default function HomePage() {
           <div className="mt-10 overflow-hidden rounded-xl border border-public-border bg-public-card">
             <div className="grid divide-y divide-public-border sm:grid-cols-2 lg:grid-cols-5 lg:divide-x lg:divide-y-0">
               {serviceCards.map((stat) => (
-                <div key={stat.title} className="min-h-72 px-8 py-10 transition-colors duration-200 hover:bg-public-elevated sm:px-10 lg:px-8 xl:px-10">
-                  <div className="text-accent">
-                    <TrustIcon icon={stat.icon} />
+                <div key={stat.title} className="min-w-0 px-8 py-10 transition-colors duration-200 hover:bg-public-elevated sm:px-10 lg:px-6">
+                  <div className="flex items-start gap-3">
+                    <div className="shrink-0 text-accent">
+                      <TrustIcon icon={stat.icon} />
+                    </div>
+                    <h3 className="min-w-0 flex-1 break-words text-left text-xl font-bold leading-tight text-public-primary">{stat.title}</h3>
                   </div>
-                  <h3 className="mt-9 max-w-52 text-xl font-bold leading-tight text-public-primary">{stat.title}</h3>
-                  <p className="mt-5 max-w-56 text-base font-medium leading-7 text-public-muted">{stat.text}</p>
+                  <p className="mt-5 w-full max-w-56 text-base font-medium leading-7 text-public-muted">{stat.text}</p>
                 </div>
               ))}
             </div>
