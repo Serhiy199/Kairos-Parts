@@ -46,6 +46,26 @@ function resultMessage(result?: string) {
   return result ? messages[result] : null;
 }
 
+function resultMessageTone(result?: string) {
+  const errorResults = new Set([
+    'item-selection-required',
+    'items-approval-error',
+    'items-approval-forbidden',
+    'item-change-required',
+    'item-change-field-forbidden',
+    'item-change-forbidden',
+    'item-change-error',
+    'database',
+    'invalid-entity-type',
+    'entity-id-required',
+    'invalid-action',
+    'change-details-required',
+    'entity-not-found-or-forbidden'
+  ]);
+
+  return result && errorResults.has(result) ? 'error' : 'success';
+}
+
 export default async function ClientRequestDetailPage({
   params,
   searchParams
@@ -107,11 +127,22 @@ export default async function ClientRequestDetailPage({
     ['VIN / серійний номер', request.vinOrSerial ?? '—']
   ];
   const message = resultMessage(query.result);
+  const messageTone = resultMessageTone(query.result);
   const pendingApprovalItems = request.items.filter((item) => !item.approvedByClient);
 
   return (
     <div className="grid gap-6">
-      {message ? <div className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">{message}</div> : null}
+      {message ? (
+        <div
+          className={
+            messageTone === 'error'
+              ? 'rounded-md border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700'
+              : 'rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success'
+          }
+        >
+          {message}
+        </div>
+      ) : null}
       {pendingApprovalItems.length > 0 ? (
         <div className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">
           У цій заявці є {pendingApprovalItems.length} {pendingApprovalItems.length === 1 ? 'позиція' : 'позиції'} на погодження. Оберіть потрібні позиції та натисніть “Погодити вибрані позиції”.
