@@ -394,6 +394,29 @@ select {
     drop-shadow(0 7px 8px rgba(55, 36, 12, 0.34));
 }
 
+.for-whom-card__agro-icon {
+  position: relative;
+  display: block;
+  width: 66px;
+  height: 66px;
+}
+
+.for-whom-card__agro-icon .for-whom-card__agro-machine {
+  position: absolute;
+  bottom: 0;
+  left: -2px;
+  width: 58px;
+  height: 58px;
+}
+
+.for-whom-card__agro-icon .for-whom-card__agro-crop {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 27px;
+  height: 27px;
+}
+
 .for-whom-card__header {
   display: flex;
   align-items: flex-start;
@@ -657,6 +680,21 @@ select {
   .for-whom-card__icon-wrap svg {
     width: 52px;
     height: 52px;
+  }
+
+  .for-whom-card__agro-icon {
+    width: 52px;
+    height: 52px;
+  }
+
+  .for-whom-card__agro-icon .for-whom-card__agro-machine {
+    width: 46px;
+    height: 46px;
+  }
+
+  .for-whom-card__agro-icon .for-whom-card__agro-crop {
+    width: 22px;
+    height: 22px;
   }
 
   .for-whom-card__number {

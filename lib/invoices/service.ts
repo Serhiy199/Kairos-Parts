@@ -4,6 +4,7 @@ import type { ClientAccessContext } from '@/lib/client/access';
 import { requestAccessWhere } from '@/lib/client/access';
 import { buyerBillingSnapshot, sellerBillingSnapshot, type ClientBillingInput, type CompanyBillingInput } from '@/lib/billing/validation';
 import { prisma } from '@/lib/prisma';
+import { sendTelegramInvoiceSentNotification } from '@/lib/telegram/notifications';
 
 const crmRoles: UserRole[] = ['MANAGER', 'ADMIN'];
 
@@ -273,6 +274,12 @@ export async function sendInvoiceToClient(invoiceId: string, actorRole: UserRole
     where: { id: invoice.id },
     data: { status: 'SENT', sentAt: new Date() }
   });
+
+  try {
+    await sendTelegramInvoiceSentNotification({ invoiceId: updated.id });
+  } catch {
+    // Telegram delivery must not block the invoice status transition.
+  }
 
   return { ok: true as const, invoice: updated };
 }

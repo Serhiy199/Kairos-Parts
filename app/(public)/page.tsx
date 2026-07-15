@@ -4,6 +4,7 @@ import { FaClipboardList, FaTractor } from 'react-icons/fa';
 import { FaHandshakeAngle } from 'react-icons/fa6';
 import { GoGear } from 'react-icons/go';
 import { LuBoxes, LuSearchCheck } from 'react-icons/lu';
+import { TbDeviceDesktopAnalytics, TbTools, TbTractor, TbTruck, TbTruckDelivery, TbWheat } from 'react-icons/tb';
 
 import { ActionIcon } from '@/components/ui/action-icons';
 
@@ -311,86 +312,32 @@ function BenefitIcon({ icon }: { icon: string }) {
 }
 
 function AudienceIcon({ icon }: { icon: string }) {
-  const baseProps = {
-    'aria-hidden': true,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.75,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const
-  };
-
   if (icon === 'tractor') {
-    return (
-      <svg {...baseProps}>
-        <path d="M4 16h5l2-5h4l3 5h2" />
-        <path d="M8 11h3" />
-        <path d="M14 11V7h3" />
-        <circle cx="7" cy="18" r="3" />
-        <circle cx="18" cy="18" r="2" />
-      </svg>
-    );
+    return <TbTractor aria-hidden="true" focusable="false" />;
   }
 
   if (icon === 'harvester') {
     return (
-      <svg {...baseProps}>
-        <path d="M4 16h11l2-5h3" />
-        <path d="M5 12h7l2 4" />
-        <path d="M3 20h18" />
-        <path d="M4 16 2 12" />
-        <circle cx="8" cy="18" r="2" />
-        <circle cx="17" cy="18" r="2" />
-      </svg>
+      <span className="for-whom-card__agro-icon" aria-hidden="true">
+        <TbTractor className="for-whom-card__agro-machine" focusable="false" />
+        <TbWheat className="for-whom-card__agro-crop" focusable="false" />
+      </span>
     );
   }
 
   if (icon === 'truck') {
-    return (
-      <svg {...baseProps}>
-        <path d="M3 7h10v9H3z" />
-        <path d="M13 10h4l4 4v2h-8z" />
-        <circle cx="7" cy="18" r="2" />
-        <circle cx="17" cy="18" r="2" />
-      </svg>
-    );
+    return <TbTruck aria-hidden="true" focusable="false" />;
   }
 
   if (icon === 'tools') {
-    return (
-      <svg {...baseProps}>
-        <path d="m14.5 6.5 3-3 3 3-3 3" />
-        <path d="m3.5 20.5 7.5-7.5" />
-        <path d="m10 14 4 4" />
-        <path d="m13 11 5.5 5.5" />
-        <circle cx="6.5" cy="17.5" r="2.5" />
-      </svg>
-    );
+    return <TbTools aria-hidden="true" focusable="false" />;
   }
 
   if (icon === 'delivery') {
-    return (
-      <svg {...baseProps}>
-        <path d="M3 8h10v8H3z" />
-        <path d="M13 11h4l4 4v1h-8z" />
-        <path d="M2 12h5" />
-        <path d="M4 5h7" />
-        <circle cx="7" cy="18" r="2" />
-        <circle cx="17" cy="18" r="2" />
-      </svg>
-    );
+    return <TbTruckDelivery aria-hidden="true" focusable="false" />;
   }
 
-  return (
-    <svg {...baseProps}>
-      <path d="M4 17h16" />
-      <path d="M6 17V9h5v8" />
-      <path d="M13 17V6h5v11" />
-      <circle cx="8.5" cy="19" r="1.5" />
-      <circle cx="16.5" cy="19" r="1.5" />
-    </svg>
-  );
+  return <TbDeviceDesktopAnalytics aria-hidden="true" focusable="false" />;
 }
 
 export default function HomePage() {
@@ -578,14 +525,12 @@ export default function HomePage() {
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.3)_0%,rgba(5,5,5,0.04)_34%,rgba(5,5,5,0.24)_100%)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[0.04] [background-image:linear-gradient(rgba(232,232,232,0.78)_1px,transparent_1px),linear-gradient(90deg,rgba(232,232,232,0.78)_1px,transparent_1px)] [background-size:40px_40px]" />
         <div className="kp-container relative z-10">
-          <div className="grid gap-5 lg:grid-cols-[0.9fr_1fr] lg:items-end">
-            <div className="max-w-[660px]">
+          <div className="max-w-[720px]">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">Для кого</p>
-              <h2 className="mt-2 text-[28px] font-bold leading-[1.08] text-white sm:text-[34px] lg:text-[38px]">
-                Для компаній, де техніка має працювати, а не чекати
-              </h2>
-            </div>
-            <p className="max-w-[560px] text-sm font-semibold leading-6 text-technical-white/85 sm:text-base sm:leading-7 lg:justify-self-end">
+            <h2 className="mt-2 max-w-[660px] text-[28px] font-bold leading-[1.08] text-white sm:text-[34px] lg:text-[38px]">
+              Для компаній, де техніка має працювати, а не чекати
+            </h2>
+            <p className="mt-4 max-w-[680px] text-left text-sm font-semibold leading-6 text-technical-white/85 sm:text-base sm:leading-7">
               Ми працюємо з різними типами бізнесу, де важливі надійність техніки та швидкість постачання запчастин.
             </p>
           </div>
