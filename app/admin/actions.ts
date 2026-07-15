@@ -204,7 +204,8 @@ export async function createAdminRequestItem(formData: FormData) {
     data: {
       requestId: request.id,
       vehicleId: request.vehicleId,
-      ...parsed.data
+      ...parsed.data,
+      visibleToClient: false
     }
   });
 
@@ -236,9 +237,19 @@ export async function updateAdminRequestItem(formData: FormData) {
     redirectBack(requestId, 'item-not-found');
   }
 
+  const {
+    purchasePrice: _purchasePrice,
+    supplierName: _supplierName,
+    visibleToClient: _visibleToClient,
+    ...itemData
+  } = parsed.data;
+  void _purchasePrice;
+  void _supplierName;
+  void _visibleToClient;
+
   await prisma.requestItem.update({
     where: { id: item.id },
-    data: parsed.data
+    data: itemData
   });
 
   revalidatePath(`/admin/requests/${item.requestId}`);
@@ -248,6 +259,42 @@ export async function updateAdminRequestItem(formData: FormData) {
   }
 
   redirectBack(item.requestId, 'item-updated');
+}
+
+export async function sendAdminRequestItemsForApproval(formData: FormData) {
+  await requireCrmSession();
+  const requestId = readString(formData, 'requestId');
+
+  if (!hasDatabaseUrl() || !requestId) {
+    redirectBack(requestId, 'items-send-error');
+  }
+
+  const request = await prisma.request.findUnique({
+    where: { id: requestId },
+    select: { id: true }
+  });
+
+  if (!request) {
+    redirect('/admin/requests?result=request-not-found');
+  }
+
+  const result = await prisma.requestItem.updateMany({
+    where: {
+      requestId: request.id,
+      visibleToClient: false
+    },
+    data: {
+      visibleToClient: true
+    }
+  });
+
+  if (result.count === 0) {
+    redirectBack(request.id, 'items-send-empty');
+  }
+
+  revalidatePath(`/admin/requests/${request.id}`);
+  revalidatePath(`/client/requests/${request.id}`);
+  redirectBack(request.id, 'items-sent-for-approval');
 }
 
 export async function deleteAdminRequestItem(formData: FormData) {

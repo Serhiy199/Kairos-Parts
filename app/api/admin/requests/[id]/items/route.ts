@@ -53,7 +53,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     data: {
       requestId: requestRecord.id,
       vehicleId: requestRecord.vehicleId,
-      ...parsed.data
+      ...parsed.data,
+      visibleToClient: false
     }
   });
 

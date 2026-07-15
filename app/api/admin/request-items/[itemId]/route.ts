@@ -33,9 +33,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ it
     return Response.json({ status: 'not_found' }, { status: 404 });
   }
 
+  const {
+    purchasePrice: _purchasePrice,
+    supplierName: _supplierName,
+    visibleToClient: _visibleToClient,
+    ...itemData
+  } = parsed.data;
+  void _purchasePrice;
+  void _supplierName;
+  void _visibleToClient;
+
   const item = await prisma.requestItem.update({
     where: { id: itemId },
-    data: parsed.data
+    data: itemData
   });
 
   return Response.json({ item });

@@ -167,7 +167,7 @@ export default async function ClientRequestDetailPage({
                     <div>
                       <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
                       <p className="mt-2 font-bold text-foreground">{item.name}</p>
-                      <p className="mt-1 text-xs text-muted">{item.brand ?? 'Бренд уточнюється'}</p>
+                      <p className="mt-1 text-xs text-muted">{item.brand ?? 'Виробник уточнюється'}</p>
                       {item.comment ? <p className="mt-2 text-xs leading-5 text-muted">{item.comment}</p> : null}
                     </div>
                     <div className="text-sm text-muted">
@@ -182,7 +182,7 @@ export default async function ClientRequestDetailPage({
                     <div className="text-sm text-muted">
                       <p className="text-xs font-bold uppercase text-muted">Наявність</p>
                       <p className="mt-2">{item.availability ?? 'Уточнюється'}</p>
-                      <p className="mt-1 text-xs">{item.deliveryTime ?? 'Термін уточнюється'}</p>
+                      <p className="mt-1 text-xs">{item.deliveryTime ?? 'Орієнтовний термін уточнюється'}</p>
                     </div>
                     <div>
                       <p className="text-xs font-bold uppercase text-muted">Ціна</p>
@@ -306,7 +306,7 @@ export default async function ClientRequestDetailPage({
                         <tr key={item.id} className="border-b border-border align-top last:border-0">
                           <td className="px-4 py-3">
                             <p className="font-bold text-foreground">{item.name}</p>
-                            <p className="mt-1 text-xs text-muted">{item.brand ?? 'Бренд уточнюється'}</p>
+                            <p className="mt-1 text-xs text-muted">{item.brand ?? 'Виробник уточнюється'}</p>
                             {item.comment ? <p className="mt-2 text-xs leading-5 text-muted">{item.comment}</p> : null}
                           </td>
                           <td className="px-4 py-3 text-muted">

@@ -12,6 +12,7 @@ import {
   deleteAdminRequestItem,
   runAdminRequestOcr,
   sendAdminInvoice,
+  sendAdminRequestItemsForApproval,
   markAdminInvoicePaid,
   updateAdminRequestDocument,
   updateAdminRequestItem,
@@ -24,6 +25,7 @@ import { ActionIcon } from '@/components/ui/action-icons';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
+import { PART_MANUFACTURERS } from '@/lib/parts/part-manufacturers';
 import { prisma } from '@/lib/prisma';
 import { REQUEST_DOCUMENT_TYPE_LABELS, REQUEST_DOCUMENT_TYPES } from '@/lib/request-documents/validation';
 import { REQUEST_SOURCE_LABELS } from '@/lib/requests/sources';
@@ -56,6 +58,9 @@ function resultMessage(result?: string) {
     'item-created': 'Позицію додано.',
     'item-updated': 'Позицію оновлено.',
     'item-deleted': 'Позицію видалено.',
+    'items-sent-for-approval': 'Позиції відправлено клієнту на погодження.',
+    'items-send-empty': 'Немає нових позицій для відправлення на погодження.',
+    'items-send-error': 'Не вдалося відправити позиції на погодження.',
     'item-error': 'Перевірте дані позиції.',
     'item-not-found': 'Позицію не знайдено.',
     'document-created': 'Документ додано.',
@@ -521,27 +526,43 @@ type InvoiceView = {
 };
 
 function RequestItemsSection({ requestId, items }: { requestId: string; items: RequestItemView[] }) {
+  const hiddenItemCount = items.filter((item) => !item.visibleToClient).length;
+
   return (
     <section className="rounded-lg border border-border bg-card p-6 shadow-card">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-sm font-bold uppercase text-accent">Підібрані позиції</p>
           <h3 className="mt-2 text-xl font-bold text-foreground">Номенклатура та каталожні номери</h3>
           <p className="mt-2 text-sm leading-6 text-muted">
-            Додавайте структуровані позиції запчастин. Якщо заявка привʼязана до техніки, позиції автоматично зʼявляться в історії цієї одиниці.
+            Додавайте позиції як внутрішню чернетку. Коли список готовий, відправте позиції клієнту на погодження.
           </p>
         </div>
-        <span className="rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{items.length} позицій</span>
+        <div className="grid gap-3 sm:min-w-[280px]">
+          <span className="w-fit rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{items.length} позицій</span>
+          <form action={sendAdminRequestItemsForApproval}>
+            <input type="hidden" name="requestId" value={requestId} />
+            <button className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+              <ActionIcon name="send" />
+              Відправити на погодження
+            </button>
+          </form>
+          <p className="text-xs leading-5 text-muted">
+            {hiddenItemCount > 0
+              ? `${hiddenItemCount} нових позицій ще не відправлено клієнту.`
+              : 'Усі додані позиції вже відправлені або позицій ще немає.'}
+          </p>
+        </div>
       </div>
 
       <div className="mt-5 grid gap-3 rounded-md border border-border p-4">
         {items.map((item) => (
           <article key={item.id} className="rounded-md border border-border bg-card p-4">
-            <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr_0.6fr_0.9fr_0.9fr_0.7fr]">
+            <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr_0.6fr_0.9fr_0.8fr_0.8fr]">
               <div>
                 <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
                 <p className="mt-2 font-bold text-foreground">{item.name}</p>
-                <p className="mt-1 text-xs text-muted">{item.brand ?? 'Бренд не вказано'}</p>
+                <p className="mt-1 text-xs text-muted">{item.brand ?? 'Виробник не вказано'}</p>
                 {item.comment ? <p className="mt-2 text-xs leading-5 text-muted">{item.comment}</p> : null}
               </div>
               <div className="text-sm text-muted">
@@ -556,19 +577,18 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
               <div className="text-sm text-muted">
                 <p className="text-xs font-bold uppercase text-muted">Наявність</p>
                 <p className="mt-2">{item.availability ?? '—'}</p>
-                <p className="mt-1 text-xs">{item.deliveryTime ?? 'Термін не вказано'}</p>
+                <p className="mt-1 text-xs">{item.deliveryTime ?? 'Орієнтовний термін не вказано'}</p>
               </div>
               <div className="text-sm text-muted">
-                <p className="text-xs font-bold uppercase text-muted">Ціни</p>
-                <p className="mt-2">Закупівля: {formatMoney(item.purchasePrice, item.currency)}</p>
-                <p className="mt-1">Продаж: {formatMoney(item.salePrice, item.currency)}</p>
+                <p className="text-xs font-bold uppercase text-muted">Ціна</p>
+                <p className="mt-2 font-semibold text-foreground">{formatMoney(item.salePrice, item.currency)}</p>
               </div>
               <div>
                 <p className="text-xs font-bold uppercase text-muted">Клієнт</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${item.visibleToClient ? 'bg-[#E7F6EC] text-success' : 'bg-surface-muted text-muted'}`}>
-                    {item.visibleToClient ? 'Видимо' : 'Приховано'}
-                  </span>
+                  {!item.visibleToClient ? (
+                    <span className="inline-flex rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-muted">Не відправлено клієнту</span>
+                  ) : null}
                   {item.visibleToClient ? (
                     item.approvedByClient ? (
                       <span className="inline-flex rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success">Погоджено клієнтом</span>
@@ -733,7 +753,7 @@ function InvoicesSection({
                         <tr className="border-b border-border bg-surface-muted text-muted">
                           <th className="px-4 py-3 font-bold">№</th>
                           <th className="px-4 py-3 font-bold">Назва</th>
-                          <th className="px-4 py-3 font-bold">Бренд</th>
+                          <th className="px-4 py-3 font-bold">Виробник</th>
                           <th className="px-4 py-3 font-bold">Артикул / каталог</th>
                           <th className="px-4 py-3 font-bold">Кількість</th>
                           <th className="px-4 py-3 font-bold">Од.</th>
@@ -805,16 +825,14 @@ function RequestItemForm({
       {item ? <input type="hidden" name="itemId" value={item.id} /> : null}
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <TextField name="name" label="Назва запчастини" required defaultValue={item?.name} />
-        <TextField name="brand" label="Бренд" defaultValue={item?.brand} />
+        <PartManufacturerField defaultValue={item?.brand} listId={`part-manufacturer-${item?.id ?? 'new'}`} />
         <TextField name="catalogNumber" label="Каталожний номер" defaultValue={item?.catalogNumber} />
         <TextField name="analogNumber" label="Аналоговий номер" defaultValue={item?.analogNumber} />
         <TextField name="quantity" label="Кількість" type="number" min="1" defaultValue={String(item?.quantity ?? 1)} />
         <TextField name="unit" label="Одиниця" defaultValue={item?.unit ?? 'шт'} />
-        <TextField name="supplierName" label="Постачальник" defaultValue={item?.supplierName} />
         <TextField name="availability" label="Наявність" defaultValue={item?.availability} />
-        <TextField name="deliveryTime" label="Термін постачання" defaultValue={item?.deliveryTime} />
-        <TextField name="purchasePrice" label="Ціна закупівлі" type="number" min="0" step="0.01" defaultValue={item?.purchasePrice?.toString()} />
-        <TextField name="salePrice" label="Ціна продажу" type="number" min="0" step="0.01" defaultValue={item?.salePrice?.toString()} />
+        <TextField name="deliveryTime" label="Орієнтовний термін" defaultValue={item?.deliveryTime} />
+        <TextField name="salePrice" label="Ціна" type="number" min="0" step="0.01" defaultValue={item?.salePrice?.toString()} />
         <TextField name="currency" label="Валюта" defaultValue={item?.currency ?? 'UAH'} />
       </div>
       <label className="grid gap-2 text-sm font-semibold text-foreground">
@@ -826,14 +844,29 @@ function RequestItemForm({
           className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
         />
       </label>
-      <label className="flex items-center gap-3 text-sm font-semibold text-foreground">
-        <input type="checkbox" name="visibleToClient" defaultChecked={item?.visibleToClient ?? false} className="size-4 accent-[var(--accent)]" />
-        Видимо клієнту
-      </label>
       <button className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
         {submitLabel}
       </button>
     </form>
+  );
+}
+
+function PartManufacturerField({ defaultValue, listId }: { defaultValue?: string | null; listId: string }) {
+  return (
+    <label className="grid gap-2 text-sm font-semibold text-foreground">
+      Виробник
+      <input
+        name="brand"
+        list={listId}
+        defaultValue={defaultValue ?? ''}
+        className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+      />
+      <datalist id={listId}>
+        {PART_MANUFACTURERS.map((manufacturer) => (
+          <option key={manufacturer} value={manufacturer} />
+        ))}
+      </datalist>
+    </label>
   );
 }
 

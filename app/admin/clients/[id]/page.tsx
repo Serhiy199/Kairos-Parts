@@ -117,7 +117,7 @@ export default async function AdminClientDetailPage({ params }: { params: Promis
                           <StatusBadge status={item.request.status} />
                         </div>
                         <p className="mt-2 text-xs text-muted">
-                          {item.request.createdAt.toLocaleDateString('uk-UA')} · {item.brand ?? 'Бренд —'} · {item.catalogNumber ?? 'Каталог —'} · {item.quantity} {item.unit}
+                          {item.request.createdAt.toLocaleDateString('uk-UA')} · {item.brand ?? 'Виробник —'} · {item.catalogNumber ?? 'Каталог —'} · {item.quantity} {item.unit}
                         </p>
                         <p className="mt-1 text-xs text-muted">
                           {item.availability ?? 'Наявність —'}{item.deliveryTime ? ` · ${item.deliveryTime}` : ''}{item.supplierName ? ` · ${item.supplierName}` : ''}
