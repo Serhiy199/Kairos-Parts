@@ -28,6 +28,7 @@ import { prisma } from '@/lib/prisma';
 import { parseRequestDocumentMetadata, readRequiredRequestDocumentFile } from '@/lib/request-documents/validation';
 import { parseRequestItemInput } from '@/lib/request-items/validation';
 import { REQUEST_STATUSES } from '@/lib/requests/statuses';
+import { sendTelegramRequestItemsApprovalNotification } from '@/lib/telegram/notifications';
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -290,6 +291,16 @@ export async function sendAdminRequestItemsForApproval(formData: FormData) {
 
   if (result.count === 0) {
     redirectBack(request.id, 'items-send-empty');
+  }
+
+  try {
+    const notificationResult = await sendTelegramRequestItemsApprovalNotification({ requestId: request.id });
+
+    if (notificationResult.status === 'failed') {
+      console.warn(`Telegram items approval notification failed for request ${request.id}.`);
+    }
+  } catch {
+    console.warn(`Telegram items approval notification could not be processed for request ${request.id}.`);
   }
 
   revalidatePath(`/admin/requests/${request.id}`);
