@@ -68,11 +68,11 @@ export default async function RequestPage({
           <aside className="rounded-lg border border-border bg-card p-6 shadow-card">
             <p className="text-sm font-bold uppercase text-accent">Що підготувати</p>
             <div className="mt-5 grid gap-4 text-sm leading-6 text-muted">
-              <p>1. Назву компанії або контактну особу.</p>
-              <p>2. Телефон для уточнення деталей.</p>
-              <p>3. Тип техніки, марку, модель, рік випуску та VIN або серійний номер, якщо вони відомі.</p>
+              <p>1. Імʼя контактної особи, телефон, email і назву компанії.</p>
+              <p>2. Тип техніки, виробника або марку, модель і рік випуску.</p>
+              <p>3. VIN або серійний номер техніки.</p>
               <p>4. Опис деталі, вузла або проблеми.</p>
-              <p>5. Фото, PDF, Excel або DOC список, якщо є.</p>
+              <p>5. Фото, PDF, Excel або DOC список, якщо є. Файли можна не додавати.</p>
             </div>
             {clientAccess.mode === 'COMPANY' ? (
               <div className="mt-6 rounded-md border border-accent/40 bg-[#F7F1E8] p-4 text-sm leading-6 text-foreground">
@@ -100,7 +100,10 @@ function RequestAuthGate({ isStaff = false, profileMissing = false }: { isStaff?
             : 'Увійдіть або зареєструйтеся, щоб створити заявку на підбір запчастин, привʼязувати її до техніки та зберігати історію замовлень у кабінеті.'}
         </p>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <div className="mt-6">
+          <p className="text-sm font-bold uppercase text-accent">Що дає особистий кабінет</p>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {[
             'Історія заявок і підібраних запчастин',
             'Привʼязка до парку техніки',

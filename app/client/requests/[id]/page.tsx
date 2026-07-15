@@ -70,7 +70,6 @@ export default async function ClientRequestDetailPage({
   const request = await prisma.request.findFirst({
     where: { id, AND: [requestAccessWhere(access)] },
     include: {
-      category: true,
       manufacturer: true,
       company: { select: { name: true } },
       items: {
@@ -102,7 +101,6 @@ export default async function ClientRequestDetailPage({
   const details = [
     ['Дата створення', request.createdAt.toLocaleString('uk-UA')],
     ['Оновлено', request.updatedAt.toLocaleString('uk-UA')],
-    ['Категорія', request.category?.name ?? '—'],
     ['Виробник / марка', request.manufacturer?.name ?? '—'],
     ['Модель', request.model ?? '—'],
     ['Рік випуску', request.vehicleYear ? String(request.vehicleYear) : '—'],

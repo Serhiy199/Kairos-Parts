@@ -116,8 +116,6 @@ export default async function AdminRequestDetailPage({
             }
           }
         },
-        category: true,
-        subcategory: true,
         manufacturer: true,
         vehicle: true,
         assignedManager: { select: { id: true, name: true, email: true, role: true } },
@@ -223,8 +221,6 @@ export default async function AdminRequestDetailPage({
           <section className="rounded-lg border border-border bg-card p-6 shadow-card">
             <p className="text-sm font-bold uppercase text-accent">Потреба</p>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <Info label="Категорія" value={request.category?.name ?? '—'} />
-              <Info label="Підкатегорія" value={request.subcategory?.name ?? '—'} />
               <Info label="Виробник / марка" value={request.manufacturer?.name ?? '—'} />
               <Info label="Тип техніки" value={request.equipmentType ?? '—'} />
               <Info label="Модель" value={request.model ?? '—'} />

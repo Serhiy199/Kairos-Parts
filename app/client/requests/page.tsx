@@ -25,7 +25,6 @@ export default async function ClientRequestsPage() {
     where: requestAccessWhere(access),
     orderBy: { createdAt: 'desc' },
     include: {
-      category: true,
       company: { select: { name: true } },
       items: {
         where: {
@@ -62,7 +61,7 @@ export default async function ClientRequestsPage() {
             <tr className="border-b border-border bg-surface-muted text-muted">
               <th className="px-4 py-3 font-bold">Номер</th>
               <th className="px-4 py-3 font-bold">Дата</th>
-              <th className="px-4 py-3 font-bold">Категорія / техніка</th>
+              <th className="px-4 py-3 font-bold">Техніка</th>
               <th className="px-4 py-3 font-bold">Опис</th>
               <th className="px-4 py-3 font-bold">Статус</th>
               <th className="px-4 py-3 font-bold">Оновлено</th>
@@ -86,7 +85,7 @@ export default async function ClientRequestsPage() {
                   </div>
                 </td>
                 <td className="px-4 py-3 text-muted">{request.createdAt.toLocaleDateString('uk-UA')}</td>
-                <td className="px-4 py-3 text-muted">{request.category?.name ?? request.equipmentType ?? '—'}</td>
+                <td className="px-4 py-3 text-muted">{request.equipmentType ?? '—'}</td>
                 <td className="max-w-xs px-4 py-3 text-muted">{request.description.slice(0, 90)}</td>
                 <td className="px-4 py-3"><StatusBadge status={request.status} /></td>
                 <td className="px-4 py-3 text-muted">{request.updatedAt.toLocaleDateString('uk-UA')}</td>

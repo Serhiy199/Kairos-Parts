@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 
 import { ActionIcon } from '@/components/ui/action-icons';
 import { ALLOWED_UPLOAD_EXTENSIONS, ALLOWED_UPLOAD_MIME_TYPES } from '@/lib/files/upload-policy';
+import { getManufacturersForEquipmentType } from '@/lib/vehicles/equipment-manufacturers';
 import { EQUIPMENT_TYPE_GROUPS } from '@/lib/vehicles/equipment-types';
 
 type RequestFormProps = {
@@ -45,8 +46,14 @@ export function RequestForm({
   maxSizeMb
 }: RequestFormProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [equipmentType, setEquipmentType] = useState(initialRequest?.equipmentType ?? '');
   const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
-  const manufacturerDatalist = useMemo(() => Array.from(new Set(manufacturerOptions)).sort((left, right) => left.localeCompare(right, 'uk')), [manufacturerOptions]);
+  const manufacturerDatalist = useMemo(() => {
+    const suggestions = getManufacturersForEquipmentType(equipmentType);
+    const options = equipmentType ? suggestions : [...suggestions, ...manufacturerOptions];
+
+    return Array.from(new Set(options.filter(Boolean))).sort((left, right) => left.localeCompare(right, 'uk'));
+  }, [equipmentType, manufacturerOptions]);
 
   function validateFiles(files: File[]) {
     const maxSizeBytes = maxSizeMb * 1024 * 1024;
@@ -132,6 +139,7 @@ export function RequestForm({
 
       form.reset();
       setSelectedFiles([]);
+      setEquipmentType('');
       setSubmitState({
         status: 'success',
         requestNumber: payload.requestNumber ?? '',
@@ -203,13 +211,13 @@ export function RequestForm({
 
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         <label className="grid gap-2 text-sm font-semibold text-foreground">
-          Імʼя або назва компанії *
+          Імʼя контактної особи *
           <input
             name="contactName"
             required
             defaultValue={initialContact?.contactName}
             className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
-            placeholder="ТОВ Агро-Тех або Іваненко Іван"
+            placeholder="Іваненко Іван"
           />
         </label>
         <label className="grid gap-2 text-sm font-semibold text-foreground">
@@ -222,22 +230,22 @@ export function RequestForm({
             placeholder="+38 (067) 123 45 67"
           />
         </label>
-        {initialContact ? (
-          <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
-            Назва компанії
-            <input
-              name="companyName"
-              defaultValue={initialContact.companyName}
-              className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
-              placeholder="ТОВ Агро-Тех"
-            />
-          </label>
-        ) : null}
         <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
-          Email
+          Компанія *
+          <input
+            name="companyName"
+            required
+            defaultValue={initialContact?.companyName}
+            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+            placeholder="ТОВ Агро-Тех"
+          />
+        </label>
+        <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
+          Email *
           <input
             name="email"
             type="email"
+            required
             defaultValue={initialContact?.email}
             className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
             placeholder="name@company.ua"
@@ -247,10 +255,12 @@ export function RequestForm({
 
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         <label className="grid gap-2 text-sm font-semibold text-foreground">
-          Тип техніки
+          Тип техніки *
           <select
             name="equipmentType"
-            defaultValue={initialRequest?.equipmentType ?? ''}
+            value={equipmentType}
+            required
+            onChange={(event) => setEquipmentType(event.target.value)}
             className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
           >
             <option value="">Оберіть тип техніки</option>
@@ -266,14 +276,14 @@ export function RequestForm({
                 ))}
               </optgroup>
             ))}
-            <option value="Інше">Інше</option>
           </select>
         </label>
         <label className="grid gap-2 text-sm font-semibold text-foreground">
-          Виробник / марка
+          Виробник / марка *
           <input
             name="manufacturer"
             list="manufacturer-options"
+            required
             defaultValue={initialRequest?.manufacturer}
             className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
             placeholder="Наприклад: John Deere, MAN, Claas"
@@ -285,30 +295,33 @@ export function RequestForm({
           </datalist>
         </label>
         <label className="grid gap-2 text-sm font-semibold text-foreground">
-          Модель
+          Модель *
           <input
             name="model"
+            required
             defaultValue={initialRequest?.model}
             className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
             placeholder="Наприклад: MAN TGX 18.440, John Deere 8430"
           />
         </label>
         <label className="grid gap-2 text-sm font-semibold text-foreground">
-          Рік випуску
+          Рік випуску *
           <input
             name="vehicleYear"
             type="number"
-            min="1900"
+            min="1950"
             max="2100"
+            required
             defaultValue={initialRequest?.vehicleYear ?? ''}
             className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
             placeholder="Наприклад: 2018"
           />
         </label>
         <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
-          VIN / серійний номер
+          VIN / серійний номер *
           <input
             name="vinOrSerial"
+            required
             defaultValue={initialRequest?.vinOrSerial}
             className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
             placeholder="VIN, серійний номер або номер шасі"
@@ -317,7 +330,7 @@ export function RequestForm({
       </div>
 
       <label className="mt-6 grid gap-2 text-sm font-semibold text-foreground">
-        Опис потреби *
+        Опис / коментар *
         <textarea
           name="description"
           required
@@ -328,7 +341,7 @@ export function RequestForm({
       </label>
 
       <label className="mt-6 grid gap-2 text-sm font-semibold text-foreground">
-        Коментар
+        Додатковий коментар
         <textarea
           name="comment"
           defaultValue={initialRequest?.comment}

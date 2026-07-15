@@ -33,6 +33,15 @@ function buildDescription(description: string, comment?: string) {
   return `${description}\n\nКоментар клієнта:\n${comment}`;
 }
 
+function catalogSlug(name: string) {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9а-яіїєґ]+/giu, '-')
+      .replace(/^-|-$/g, '') || 'manufacturer'
+  );
+}
+
 export async function POST(request: Request) {
   const session = await auth();
 
@@ -93,13 +102,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const manufacturer = parsed.data.manufacturer
-    ? await prisma.manufacturer.findFirst({
-        where: { name: parsed.data.manufacturer }
-      })
-    : null;
-
   try {
+    const manufacturer = await prisma.manufacturer.findFirst({
+      where: { name: { equals: parsed.data.manufacturer, mode: 'insensitive' } }
+    }) ?? await prisma.manufacturer.create({
+      data: {
+        name: parsed.data.manufacturer,
+        slug: catalogSlug(parsed.data.manufacturer)
+      }
+    });
     const requestNumber = generateRequestNumber();
     const publicStatusToken = generatePublicStatusToken();
     const vehicle = parsed.data.vehicleId

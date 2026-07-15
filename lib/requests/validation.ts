@@ -5,15 +5,15 @@ export type ParsedRequestInput = {
   source?: 'client';
   vehicleId?: string;
   contactName: string;
-  companyName?: string;
+  companyName: string;
   phone: string;
-  email?: string;
+  email: string;
   description: string;
-  equipmentType?: string;
-  manufacturer?: string;
-  model?: string;
-  vehicleYear?: number;
-  vinOrSerial?: string;
+  equipmentType: string;
+  manufacturer: string;
+  model: string;
+  vehicleYear: number;
+  vinOrSerial: string;
   comment?: string;
   files: File[];
 };
@@ -33,7 +33,7 @@ function readVehicleYear(formData: FormData) {
   const rawValue = readString(formData, 'vehicleYear');
 
   if (!rawValue) {
-    return undefined;
+    return Number.NaN;
   }
 
   const year = Number(rawValue);
@@ -49,27 +49,53 @@ export function parseRequestFormData(formData: FormData): { data?: ParsedRequest
   const phone = readString(formData, 'phone');
   const email = readString(formData, 'email');
   const description = readString(formData, 'description');
+  const equipmentType = readString(formData, 'equipmentType');
+  const manufacturer = readString(formData, 'manufacturer');
+  const model = readString(formData, 'model');
   const vehicleYear = readVehicleYear(formData);
+  const vinOrSerial = readString(formData, 'vinOrSerial');
   const files = readFiles(formData);
 
   if (!contactName) {
-    errors.push('Вкажіть імʼя або назву компанії.');
+    errors.push('Вкажіть імʼя контактної особи.');
+  }
+
+  if (!companyName) {
+    errors.push('Вкажіть назву компанії.');
   }
 
   if (!phone) {
     errors.push('Вкажіть телефон.');
   }
 
+  if (!email) {
+    errors.push('Вкажіть email.');
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errors.push('Вкажіть коректний email.');
+  }
+
+  if (!equipmentType) {
+    errors.push('Оберіть тип техніки.');
+  }
+
+  if (!manufacturer) {
+    errors.push('Вкажіть виробника або марку техніки.');
+  }
+
+  if (!model) {
+    errors.push('Вкажіть модель техніки.');
+  }
+
+  if (Number.isNaN(vehicleYear) || vehicleYear < 1950 || vehicleYear > 2100) {
+    errors.push('Вкажіть коректний рік випуску техніки.');
+  }
+
+  if (!vinOrSerial) {
+    errors.push('Вкажіть VIN або серійний номер техніки.');
+  }
+
   if (!description) {
-    errors.push('Опишіть потребу.');
-  }
-
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errors.push('Вкажіть коректний email або залиште поле порожнім.');
-  }
-
-  if (Number.isNaN(vehicleYear) || (vehicleYear && (vehicleYear < 1900 || vehicleYear > 2100))) {
-    errors.push('Вкажіть коректний рік випуску або залиште поле порожнім.');
+    errors.push('Опишіть потребу або додайте коментар до заявки.');
   }
 
   const maxSizeBytes = getUploadMaxSizeBytes();
@@ -95,15 +121,15 @@ export function parseRequestFormData(formData: FormData): { data?: ParsedRequest
       source,
       vehicleId: vehicleId || undefined,
       contactName,
-      companyName: companyName || undefined,
+      companyName,
       phone,
-      email: email || undefined,
+      email,
       description,
-      equipmentType: readString(formData, 'equipmentType') || undefined,
-      manufacturer: readString(formData, 'manufacturer') || undefined,
-      model: readString(formData, 'model') || undefined,
-      vehicleYear: vehicleYear || undefined,
-      vinOrSerial: readString(formData, 'vinOrSerial') || undefined,
+      equipmentType,
+      manufacturer,
+      model,
+      vehicleYear,
+      vinOrSerial,
       comment: readString(formData, 'comment') || undefined,
       files
     }
