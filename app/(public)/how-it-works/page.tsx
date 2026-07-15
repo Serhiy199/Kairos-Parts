@@ -1,6 +1,18 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { TbGauge, TbReportMoney, TbShieldCheck, TbTruckDelivery } from 'react-icons/tb';
+import {
+  TbClipboardText,
+  TbDatabaseCog,
+  TbFileInvoice,
+  TbGauge,
+  TbPackage,
+  TbReportMoney,
+  TbSettingsSearch,
+  TbShieldCheck,
+  TbTruckDelivery,
+  TbUserCog,
+  TbUserSearch
+} from 'react-icons/tb';
 
 import { ActionIcon } from '@/components/ui/action-icons';
 
@@ -31,32 +43,46 @@ const processHighlights = [
 
 const steps = [
   {
+    label: 'КРОК 1',
     title: 'Створіть особистий кабінет',
-    text: 'Додайте реквізити компанії та сформуйте парк своєї техніки. Це дозволить автоматично накопичувати історію замовлень, запчастин і документів для кожної машини.'
+    text: 'Додайте реквізити компанії та сформуйте парк своєї техніки. Це дозволить автоматично накопичувати історію замовлень, запчастин і документів для кожної машини.',
+    icon: TbUserCog
   },
   {
+    label: 'КРОК 2',
     title: 'Створіть заявку',
-    text: 'Оберіть техніку зі свого парку або оформіть разову заявку без привʼязки до техніки. Додайте артикул, список, фото або опис потреби.'
+    text: 'Оберіть техніку зі свого парку або оформіть разову заявку без привʼязки до техніки. Додайте артикул, список, фото або опис потреби.',
+    icon: TbClipboardText
   },
   {
+    label: 'КРОК 3',
     title: 'Менеджер опрацьовує заявку',
-    text: 'Уточнюємо деталі, перевіряємо сумісність та аналізуємо доступні варіанти.'
+    text: 'Уточнюємо деталі, перевіряємо сумісність та аналізуємо доступні варіанти.',
+    icon: TbUserSearch
   },
   {
+    label: 'КРОК 4',
     title: 'Підбираємо рішення',
-    text: 'Підбираємо оригінальні запчастини та аналоги серед перевірених постачальників і формуємо комерційну пропозицію.'
+    text: 'Підбираємо оригінальні запчастини та аналоги серед перевірених постачальників і формуємо комерційну пропозицію.',
+    icon: TbSettingsSearch
   },
   {
+    label: 'КРОК 5',
     title: 'Узгодження та оплата',
-    text: 'Погоджуємо склад замовлення, терміни, спосіб доставки та формуємо рахунок.'
+    text: 'Погоджуємо склад замовлення, терміни, спосіб доставки та формуємо рахунок.',
+    icon: TbFileInvoice
   },
   {
+    label: 'КРОК 6',
     title: 'Комплектація та доставка',
-    text: 'Консолідуємо замовлення та організовуємо відправку у погоджений термін.'
+    text: 'Консолідуємо замовлення та організовуємо відправку у погоджений термін.',
+    icon: TbPackage
   },
   {
+    label: 'КРОК 7',
     title: 'Історія оновлюється автоматично',
-    text: 'Якщо замовлення оформлено для техніки з вашого парку, платформа автоматично збереже історію запчастин, каталожні номери, рахунки та документи.'
+    text: 'Якщо замовлення оформлено для техніки з вашого парку, платформа автоматично збереже історію запчастин, каталожні номери, рахунки та документи.',
+    icon: TbDatabaseCog
   }
 ];
 
@@ -138,32 +164,91 @@ export default function HowItWorksPage() {
         </div>
       </section>
 
-      <section className="bg-public-page py-16">
+      <section className="relative isolate overflow-hidden bg-[#070707] py-16 text-white sm:py-20 lg:py-24">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_8%,rgba(200,150,66,0.16),transparent_34%),linear-gradient(180deg,rgba(16,16,16,0.96),rgba(5,5,5,1))]" />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 opacity-[0.16] [background-image:linear-gradient(rgba(232,232,232,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(232,232,232,0.12)_1px,transparent_1px)] [background-size:48px_48px]"
+        />
         <div className="kp-container">
-          <div className="grid gap-4 lg:grid-cols-2">
-            {steps.map((step, index) => (
-            <article key={step.title} className="public-card p-6">
-                <div className="flex items-start gap-4">
-              <span className="grid size-11 shrink-0 place-items-center rounded-md border border-public-border-accent bg-public-page font-display text-sm font-bold text-accent">
-                    {index + 1}
-                  </span>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">Крок {index + 1}</p>
-                <h2 className="mt-2 text-xl font-bold text-public-primary">{step.title}</h2>
-                <p className="mt-3 text-sm leading-6 text-public-muted">{step.text}</p>
-                  </div>
-                </div>
-              </article>
-            ))}
+          <div className="relative">
+            <div className="max-w-3xl">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">Як це працює</p>
+              <h2 className="mt-4 text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-[42px]">
+                7 кроків від заявки до доставки
+              </h2>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-white/75 sm:text-lg">
+                Кожен етап прозорий: від створення заявки до доставки та автоматичного оновлення історії вашої техніки.
+              </p>
+            </div>
+
+            <div className="relative mt-12 lg:mt-16">
+              <span
+                aria-hidden="true"
+                className="absolute bottom-0 left-6 top-0 w-px bg-gradient-to-b from-accent/20 via-accent/70 to-accent/20 shadow-[0_0_28px_rgba(200,150,66,0.22)] lg:left-1/2 lg:-translate-x-1/2"
+              />
+              <ol className="relative space-y-8 pl-16 lg:space-y-0 lg:pl-0">
+                {steps.map((step, index) => {
+                  const Icon = step.icon;
+                  const isLeft = index % 2 === 0;
+
+                  return (
+                    <li
+                      key={step.label}
+                      className={`relative lg:grid lg:grid-cols-[minmax(0,1fr)_88px_minmax(0,1fr)] lg:items-center lg:gap-0 ${
+                        index > 0 ? 'lg:-mt-2' : ''
+                      }`}
+                    >
+                      <div
+                        aria-hidden="true"
+                        className={`absolute left-6 top-9 hidden h-px w-10 bg-gradient-to-r from-accent/70 to-accent/10 lg:block ${
+                          isLeft ? 'lg:left-[calc(50%-84px)]' : 'lg:left-[calc(50%+44px)]'
+                        }`}
+                      />
+                      <div
+                        aria-hidden="true"
+                        className="absolute left-6 top-5 z-10 grid size-12 -translate-x-1/2 place-items-center rounded-full border border-accent/80 bg-[#0b0b0b] font-display text-sm font-bold text-accent shadow-[0_0_0_8px_rgba(200,150,66,0.08),0_0_24px_rgba(200,150,66,0.28)] lg:left-1/2"
+                      >
+                        {index + 1}
+                      </div>
+
+                      <article
+                        className={`group relative rounded-xl border border-white/12 bg-[linear-gradient(145deg,rgba(30,30,30,0.96),rgba(12,12,12,0.98))] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.36)] transition duration-200 hover:border-accent/55 sm:p-6 lg:w-[92%] ${
+                          isLeft ? 'lg:col-start-1 lg:mr-auto' : 'lg:col-start-3 lg:ml-auto'
+                        }`}
+                      >
+                        <div
+                          aria-hidden="true"
+                          className="pointer-events-none absolute inset-0 rounded-xl bg-[radial-gradient(circle_at_18%_0%,rgba(200,150,66,0.12),transparent_32%)] opacity-70"
+                        />
+                        <div className="relative flex items-start gap-4">
+                          <span className="grid size-12 shrink-0 place-items-center rounded-lg border border-accent/35 bg-accent/10 text-accent transition group-hover:border-accent/70 group-hover:bg-accent/15">
+                            <Icon aria-hidden="true" focusable="false" className="size-7 stroke-[1.55]" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">{step.label}</p>
+                            <h3 className="mt-2 text-xl font-bold leading-snug text-white">{step.title}</h3>
+                            <p className="mt-3 text-sm leading-6 text-white/72 sm:text-[15px] sm:leading-7">
+                              {step.text}
+                            </p>
+                          </div>
+                        </div>
+                      </article>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
           </div>
-        <div className="public-card mt-10 p-6 text-center">
-          <h2 className="text-2xl font-bold text-public-primary">Почніть із одного запиту</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-public-muted">
+
+          <div className="mt-12 rounded-xl border border-white/12 bg-white/[0.04] p-6 text-center shadow-panel backdrop-blur-sm">
+            <h2 className="text-2xl font-bold text-white">Почніть із одного запиту</h2>
+            <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-white/70">
               Опишіть потребу у зручному форматі. Менеджер Kairos Parts звʼяжеться для уточнення деталей.
             </p>
             <Link
               href="/request"
-            className="mt-6 inline-flex rounded-md bg-accent px-5 py-3 text-sm font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="mt-6 inline-flex rounded-md bg-accent px-5 py-3 text-sm font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               Створити заявку
             </Link>
