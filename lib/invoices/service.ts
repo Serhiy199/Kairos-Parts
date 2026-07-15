@@ -212,7 +212,10 @@ export async function listInvoicesForClientRequest(requestId: string, access: Cl
   return prisma.invoice.findMany({
     where: {
       requestId,
-      status: { in: ['SENT', 'PAID', 'CANCELLED'] },
+      OR: [
+        { status: { in: ['SENT', 'PAID'] } },
+        { status: 'CANCELLED', sentAt: { not: null } }
+      ],
       request: requestAccessWhere(access)
     },
     orderBy: { createdAt: 'desc' },
@@ -224,7 +227,10 @@ export async function getInvoiceForClient(invoiceId: string, access: ClientAcces
   return prisma.invoice.findFirst({
     where: {
       id: invoiceId,
-      status: { in: ['SENT', 'PAID', 'CANCELLED'] },
+      OR: [
+        { status: { in: ['SENT', 'PAID'] } },
+        { status: 'CANCELLED', sentAt: { not: null } }
+      ],
       request: requestAccessWhere(access)
     },
     include: {

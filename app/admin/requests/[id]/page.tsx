@@ -4,21 +4,15 @@ import { notFound } from 'next/navigation';
 import {
   assignAdminRequestManager,
   addAdminRequestComment,
-  cancelAdminCommercialOffer,
   cancelAdminInvoice,
-  createAdminCommercialOffer,
   createAdminInvoice,
   createAdminRequestDocument,
   createAdminRequestItem,
-  deleteAdminCommercialOffer,
   deleteAdminRequestDocument,
   deleteAdminRequestItem,
   runAdminRequestOcr,
-  sendAdminCommercialOffer,
   sendAdminInvoice,
   markAdminInvoicePaid,
-  updateAdminCommercialOfferItem,
-  updateAdminCommercialOfferMetadata,
   updateAdminRequestDocument,
   updateAdminRequestItem,
   updateAdminOcrCorrection,
@@ -28,7 +22,6 @@ import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
 import { ActionIcon } from '@/components/ui/action-icons';
 import { requireCrmSession } from '@/lib/admin/access';
-import { COMMERCIAL_OFFER_STATUS_LABELS } from '@/lib/commercial-offers/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 import { prisma } from '@/lib/prisma';
@@ -44,10 +37,6 @@ function formatSize(size: number) {
 
 function formatMoney(value: { toString: () => string } | null, currency: string) {
   return value ? `${value.toString()} ${currency}` : '—';
-}
-
-function formatDateInput(value: Date | null) {
-  return value ? value.toISOString().slice(0, 10) : '';
 }
 
 function resultMessage(result?: string) {
@@ -74,19 +63,6 @@ function resultMessage(result?: string) {
     'document-deleted': 'Документ видалено.',
     'document-error': 'Перевірте дані документа.',
     'document-not-found': 'Документ не знайдено.',
-    'offer-created': 'Комерційну пропозицію сформовано.',
-    'offer-updated': 'Комерційну пропозицію оновлено.',
-    'offer-item-updated': 'Позицію пропозиції оновлено.',
-    'offer-sent': 'Комерційну пропозицію надіслано клієнту.',
-    'offer-cancelled': 'Комерційну пропозицію скасовано.',
-    'offer-deleted': 'Чернетку комерційної пропозиції видалено.',
-    'offer-no-items': 'Спочатку додайте підібрані позиції до заявки.',
-    'offer-not-found': 'Комерційну пропозицію не знайдено.',
-    'offer-not-editable': 'Редагувати можна тільки чернетку пропозиції.',
-    'offer-invalid-transition': 'Некоректна зміна статусу пропозиції.',
-    'offer-empty': 'Не можна надіслати порожню пропозицію.',
-    'offer-delete-draft-only': 'Видалити можна тільки чернетку.',
-    'offer-error': 'Не вдалося обробити комерційну пропозицію.',
     'invoice-created': 'Рахунок створено.',
     'invoice-sent': 'Рахунок надіслано клієнту.',
     'invoice-cancelled': 'Рахунок скасовано.',
@@ -142,13 +118,6 @@ export default async function AdminRequestDetailPage({
         assignedManager: { select: { id: true, name: true, email: true, role: true } },
         files: { orderBy: { createdAt: 'desc' } },
         items: { orderBy: { createdAt: 'desc' } },
-        commercialOffers: {
-          orderBy: { createdAt: 'desc' },
-          include: {
-            createdBy: { select: { name: true, email: true, role: true } },
-            items: { orderBy: { createdAt: 'asc' } }
-          }
-        },
         invoices: {
           orderBy: { createdAt: 'desc' },
           include: {
@@ -280,8 +249,6 @@ export default async function AdminRequestDetailPage({
           <RequestItemsSection requestId={request.id} items={request.items} />
 
           <InvoicesSection requestId={request.id} invoices={request.invoices} approvedInvoiceItemCount={approvedInvoiceItemCount} />
-
-          <CommercialOffersSection requestId={request.id} offers={request.commercialOffers} requestItemCount={request.items.length} />
 
           <RequestDocumentsSection requestId={request.id} documents={request.requestDocuments} />
 
@@ -521,40 +488,6 @@ type RequestItemView = {
   approvedByClient: boolean;
   includeInInvoice: boolean;
   approvedAt: Date | null;
-};
-
-type CommercialOfferItemView = {
-  id: string;
-  name: string;
-  brand: string | null;
-  catalogNumber: string | null;
-  analogNumber: string | null;
-  quantity: number;
-  unit: string | null;
-  price: { toString: () => string };
-  total: { toString: () => string };
-  availability: string | null;
-  deliveryTime: string | null;
-  comment: string | null;
-};
-
-type CommercialOfferView = {
-  id: string;
-  offerNumber: string;
-  status: keyof typeof COMMERCIAL_OFFER_STATUS_LABELS;
-  currency: string;
-  subtotal: { toString: () => string };
-  totalAmount: { toString: () => string };
-  validUntil: Date | null;
-  managerComment: string | null;
-  clientComment: string | null;
-  sentAt: Date | null;
-  approvedAt: Date | null;
-  rejectedAt: Date | null;
-  cancelledAt: Date | null;
-  createdAt: Date;
-  createdBy: { name: string | null; email: string | null; role: string } | null;
-  items: CommercialOfferItemView[];
 };
 
 type InvoiceItemView = {
@@ -840,209 +773,6 @@ function InvoicesSection({
   );
 }
 
-function CommercialOffersSection({
-  requestId,
-  offers,
-  requestItemCount
-}: {
-  requestId: string;
-  offers: CommercialOfferView[];
-  requestItemCount: number;
-}) {
-  return (
-    <section className="rounded-lg border border-border bg-card p-6 shadow-card">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <p className="text-sm font-bold uppercase text-accent">Комерційні пропозиції</p>
-          <h3 className="mt-2 text-xl font-bold text-foreground">Пропозиції на основі підібраних позицій</h3>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            Сформуйте чернетку з RequestItem, перевірте ціни та строки, після чого надішліть пропозицію клієнту в кабінет.
-          </p>
-        </div>
-        <form action={createAdminCommercialOffer}>
-          <input type="hidden" name="requestId" value={requestId} />
-          <button
-            disabled={requestItemCount === 0}
-            className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-muted"
-          >
-            <ActionIcon name="plus" />
-            Сформувати пропозицію
-          </button>
-        </form>
-      </div>
-
-      {requestItemCount === 0 ? (
-        <p className="mt-4 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm font-semibold text-[#8A5B24]">
-          Спочатку додайте підібрані позиції до заявки.
-        </p>
-      ) : null}
-
-      <div className="mt-5 grid gap-4">
-        {offers.length === 0 ? (
-          <p className="rounded-md border border-dashed border-border p-5 text-sm text-muted">
-            Комерційних пропозицій ще немає.
-          </p>
-        ) : (
-          offers.map((offer) => {
-            const isDraft = offer.status === 'DRAFT';
-            const canCancel = offer.status === 'DRAFT' || offer.status === 'SENT';
-
-            return (
-              <article key={offer.id} className="rounded-md border border-border p-4">
-                <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="text-lg font-bold text-foreground">{offer.offerNumber}</h4>
-                      <OfferStatusBadge status={offer.status} />
-                    </div>
-                    <p className="mt-2 text-sm text-muted">
-                      Створено {offer.createdAt.toLocaleString('uk-UA')} · {offer.createdBy?.name ?? offer.createdBy?.email ?? 'CRM'}
-                    </p>
-                    <p className="mt-2 text-sm font-bold text-foreground">
-                      Загальна сума: {formatMoney(offer.totalAmount, offer.currency)}
-                    </p>
-                    {offer.validUntil ? <p className="mt-1 text-sm text-muted">Дійсна до {offer.validUntil.toLocaleDateString('uk-UA')}</p> : null}
-                    {offer.sentAt ? <p className="mt-1 text-xs text-muted">Надіслано: {offer.sentAt.toLocaleString('uk-UA')}</p> : null}
-                    {offer.approvedAt ? <p className="mt-1 text-xs text-success">Погоджено: {offer.approvedAt.toLocaleString('uk-UA')}</p> : null}
-                    {offer.rejectedAt ? <p className="mt-1 text-xs text-danger">Відхилено: {offer.rejectedAt.toLocaleString('uk-UA')}</p> : null}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {isDraft ? (
-                      <form action={sendAdminCommercialOffer}>
-                        <input type="hidden" name="requestId" value={requestId} />
-                        <input type="hidden" name="offerId" value={offer.id} />
-                        <button className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent-hover">
-                          <ActionIcon name="send" />
-                          Надіслати клієнту
-                        </button>
-                      </form>
-                    ) : null}
-                    {canCancel ? (
-                      <form action={cancelAdminCommercialOffer}>
-                        <input type="hidden" name="requestId" value={requestId} />
-                        <input type="hidden" name="offerId" value={offer.id} />
-                        <button className="rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">
-                          Скасувати
-                        </button>
-                      </form>
-                    ) : null}
-                    {isDraft ? (
-                      <form action={deleteAdminCommercialOffer}>
-                        <input type="hidden" name="requestId" value={requestId} />
-                        <input type="hidden" name="offerId" value={offer.id} />
-                        <button className="rounded-md border border-danger/40 px-4 py-2 text-sm font-bold text-danger transition hover:bg-danger/10">
-                          Видалити
-                        </button>
-                      </form>
-                    ) : null}
-                  </div>
-                </div>
-
-                <details className="mt-4 rounded-md border border-border bg-surface-muted p-4" open={isDraft}>
-                  <summary className="cursor-pointer text-sm font-bold text-foreground">Переглянути / редагувати</summary>
-                  <div className="mt-4 grid gap-5">
-                    <form action={updateAdminCommercialOfferMetadata} className="grid gap-4">
-                      <input type="hidden" name="requestId" value={requestId} />
-                      <input type="hidden" name="offerId" value={offer.id} />
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <TextField name="currency" label="Валюта" defaultValue={offer.currency} required />
-                        <TextField name="validUntil" label="Дійсна до" type="date" defaultValue={formatDateInput(offer.validUntil)} />
-                      </div>
-                      <label className="grid gap-2 text-sm font-semibold text-foreground">
-                        Коментар менеджера
-                        <textarea
-                          name="managerComment"
-                          rows={3}
-                          defaultValue={offer.managerComment ?? ''}
-                          disabled={!isDraft}
-                          className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25 disabled:bg-surface-muted disabled:text-muted"
-                        />
-                      </label>
-                      {offer.clientComment ? (
-                        <div className="rounded-md border border-border bg-card p-3">
-                          <p className="text-xs font-bold uppercase text-muted">Коментар клієнта</p>
-                          <p className="mt-2 text-sm leading-6 text-foreground">{offer.clientComment}</p>
-                        </div>
-                      ) : null}
-                      {isDraft ? (
-                        <button className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
-                          Зберегти пропозицію
-                        </button>
-                      ) : (
-                        <p className="text-xs text-muted">Після надсилання ключові поля пропозиції заблоковані від редагування.</p>
-                      )}
-                    </form>
-
-                    <div className="overflow-x-auto rounded-md border border-border bg-card">
-                      <table className="w-full min-w-[980px] border-collapse text-left text-sm">
-                        <thead>
-                          <tr className="border-b border-border bg-surface-muted text-muted">
-                            <th className="px-4 py-3 font-bold">Позиція</th>
-                            <th className="px-4 py-3 font-bold">К-сть</th>
-                            <th className="px-4 py-3 font-bold">Ціна</th>
-                            <th className="px-4 py-3 font-bold">Сума</th>
-                            <th className="px-4 py-3 font-bold">Наявність / строк</th>
-                            <th className="px-4 py-3 font-bold">Дії</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {offer.items.map((item) => (
-                            <tr key={item.id} className="border-b border-border align-top last:border-0">
-                              <td className="px-4 py-3">
-                                <p className="font-bold text-foreground">{item.name}</p>
-                                <p className="mt-1 text-xs text-muted">{item.brand ?? 'Бренд не вказано'} · каталог {item.catalogNumber ?? '—'} · аналог {item.analogNumber ?? '—'}</p>
-                                {item.comment ? <p className="mt-2 text-xs leading-5 text-muted">{item.comment}</p> : null}
-                              </td>
-                              <td className="px-4 py-3 text-foreground">{item.quantity} {item.unit ?? 'шт'}</td>
-                              <td className="px-4 py-3 text-foreground">{formatMoney(item.price, offer.currency)}</td>
-                              <td className="px-4 py-3 font-bold text-foreground">{formatMoney(item.total, offer.currency)}</td>
-                              <td className="px-4 py-3 text-muted">
-                                <p>{item.availability ?? '—'}</p>
-                                <p className="mt-1 text-xs">{item.deliveryTime ?? '—'}</p>
-                              </td>
-                              <td className="px-4 py-3">
-                                {isDraft ? (
-                                  <details>
-                                    <summary className="cursor-pointer text-sm font-bold text-foreground transition hover:text-accent">Редагувати</summary>
-                                    <form action={updateAdminCommercialOfferItem} className="mt-4 grid w-[560px] max-w-[80vw] gap-3 rounded-md border border-border bg-card p-4 shadow-card">
-                                      <input type="hidden" name="requestId" value={requestId} />
-                                      <input type="hidden" name="offerId" value={offer.id} />
-                                      <input type="hidden" name="offerItemId" value={item.id} />
-                                      <div className="grid gap-3 sm:grid-cols-2">
-                                        <TextField name="quantity" label="Кількість" type="number" min="1" defaultValue={String(item.quantity)} />
-                                        <TextField name="price" label="Ціна" type="number" min="0" step="0.01" defaultValue={item.price.toString()} />
-                                        <TextField name="availability" label="Наявність" defaultValue={item.availability} />
-                                        <TextField name="deliveryTime" label="Строк постачання" defaultValue={item.deliveryTime} />
-                                      </div>
-                                      <label className="grid gap-2 text-sm font-semibold text-foreground">
-                                        Коментар
-                                        <textarea name="comment" rows={3} defaultValue={item.comment ?? ''} className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25" />
-                                      </label>
-                                      <button className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
-                                        Зберегти позицію
-                                      </button>
-                                    </form>
-                                  </details>
-                                ) : (
-                                  <span className="text-xs text-muted">Заблоковано</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </details>
-              </article>
-            );
-          })
-        )}
-      </div>
-    </section>
-  );
-}
-
 function InvoiceStatusBadge({ status }: { status: keyof typeof INVOICE_STATUS_LABELS }) {
   const classNameByStatus: Record<keyof typeof INVOICE_STATUS_LABELS, string> = {
     DRAFT: 'bg-surface-muted text-muted',
@@ -1054,23 +784,6 @@ function InvoiceStatusBadge({ status }: { status: keyof typeof INVOICE_STATUS_LA
   return (
     <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${classNameByStatus[status]}`}>
       {INVOICE_STATUS_LABELS[status]}
-    </span>
-  );
-}
-
-function OfferStatusBadge({ status }: { status: keyof typeof COMMERCIAL_OFFER_STATUS_LABELS }) {
-  const classNameByStatus: Record<keyof typeof COMMERCIAL_OFFER_STATUS_LABELS, string> = {
-    DRAFT: 'bg-surface-muted text-muted',
-    SENT: 'bg-[#E8F1FF] text-info',
-    APPROVED: 'bg-[#E7F6EC] text-success',
-    REJECTED: 'bg-[#FDECEC] text-danger',
-    EXPIRED: 'bg-[#FFF7E0] text-[#8A5B24]',
-    CANCELLED: 'bg-surface-muted text-muted'
-  };
-
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${classNameByStatus[status]}`}>
-      {COMMERCIAL_OFFER_STATUS_LABELS[status]}
     </span>
   );
 }

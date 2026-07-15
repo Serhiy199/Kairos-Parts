@@ -2,17 +2,14 @@
 import { notFound } from 'next/navigation';
 
 import {
-  approveClientCommercialOfferAction,
   approveClientRequestItemsAction,
-  createClientRequestItemEditAction,
-  rejectClientCommercialOfferAction
+  createClientRequestItemEditAction
 } from '@/app/client/actions';
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
 import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
-import { CLIENT_VISIBLE_OFFER_STATUSES, COMMERCIAL_OFFER_STATUS_LABELS } from '@/lib/commercial-offers/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
-import { CLIENT_INVOICE_STATUS_LABELS, CLIENT_VISIBLE_INVOICE_STATUSES } from '@/lib/invoices/validation';
+import { CLIENT_INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 import { prisma } from '@/lib/prisma';
 import { REQUEST_DOCUMENT_TYPE_LABELS } from '@/lib/request-documents/validation';
 
@@ -28,10 +25,6 @@ function formatSize(size: number | null) {
 
 function resultMessage(result?: string) {
   const messages: Record<string, string> = {
-    'offer-approved': 'Комерційну пропозицію погоджено.',
-    'offer-rejected': 'Комерційну пропозицію відхилено.',
-    'offer-not-found-or-not-sent': 'Пропозицію не знайдено або вона вже не очікує рішення.',
-    'offer-error': 'Не вдалося обробити комерційну пропозицію.',
     'items-approved': 'Позиції погоджено. Менеджер сформує рахунок на основі вибраних позицій.',
     'item-selection-required': 'Оберіть хоча б одну позицію для включення у рахунок.',
     'items-approval-error': 'Не вдалося погодити позиції. Спробуйте ще раз.',
@@ -88,13 +81,13 @@ export default async function ClientRequestDetailPage({
         where: { visibleToClient: true },
         orderBy: { createdAt: 'desc' }
       },
-      commercialOffers: {
-        where: { status: { in: CLIENT_VISIBLE_OFFER_STATUSES } },
-        orderBy: { createdAt: 'desc' },
-        include: { items: { orderBy: { createdAt: 'asc' } } }
-      },
       invoices: {
-        where: { status: { in: CLIENT_VISIBLE_INVOICE_STATUSES } },
+        where: {
+          OR: [
+            { status: { in: ['SENT', 'PAID'] } },
+            { status: 'CANCELLED', sentAt: { not: null } }
+          ]
+        },
         orderBy: { createdAt: 'desc' },
         include: { items: { orderBy: { createdAt: 'asc' } } }
       },
@@ -334,94 +327,6 @@ export default async function ClientRequestDetailPage({
         </div>
       ) : null}
 
-      {request.commercialOffers.length > 0 ? (
-        <div className="rounded-lg border border-border bg-card p-6 shadow-card">
-          <h3 className="text-lg font-bold text-foreground">Комерційні пропозиції</h3>
-          <p className="mt-2 text-sm text-muted">Тут показані пропозиції, які менеджер надіслав для погодження.</p>
-          <div className="mt-4 grid gap-4">
-            {request.commercialOffers.map((offer) => (
-              <article key={offer.id} className="rounded-md border border-border p-4">
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-bold text-foreground">{offer.offerNumber}</p>
-                      <ClientOfferStatusBadge status={offer.status} />
-                    </div>
-                    <p className="mt-2 text-sm text-muted">
-                      Створено {offer.createdAt.toLocaleDateString('uk-UA')}
-                      {offer.validUntil ? ` · дійсна до ${offer.validUntil.toLocaleDateString('uk-UA')}` : ''}
-                    </p>
-                    {offer.managerComment ? <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">{offer.managerComment}</p> : null}
-                    {offer.clientComment ? (
-                      <div className="mt-3 rounded-md border border-border bg-surface-muted p-3">
-                        <p className="text-xs font-bold uppercase text-muted">Ваш коментар</p>
-                        <p className="mt-2 text-sm leading-6 text-foreground">{offer.clientComment}</p>
-                      </div>
-                    ) : null}
-                  </div>
-                  <p className="text-lg font-bold text-foreground">{formatMoney(offer.totalAmount, offer.currency)}</p>
-                </div>
-
-                <div className="mt-4 overflow-x-auto rounded-md border border-border">
-                  <table className="w-full min-w-[820px] border-collapse text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-border bg-surface-muted text-muted">
-                        <th className="px-4 py-3 font-bold">Позиція</th>
-                        <th className="px-4 py-3 font-bold">К-сть</th>
-                        <th className="px-4 py-3 font-bold">Ціна</th>
-                        <th className="px-4 py-3 font-bold">Сума</th>
-                        <th className="px-4 py-3 font-bold">Строк</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {offer.items.map((item) => (
-                        <tr key={item.id} className="border-b border-border align-top last:border-0">
-                          <td className="px-4 py-3">
-                            <p className="font-bold text-foreground">{item.name}</p>
-                            <p className="mt-1 text-xs text-muted">{item.brand ?? 'Бренд уточнюється'} · каталог {item.catalogNumber ?? '—'} · аналог {item.analogNumber ?? '—'}</p>
-                            {item.comment ? <p className="mt-2 text-xs leading-5 text-muted">{item.comment}</p> : null}
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-foreground">{item.quantity} {item.unit ?? 'шт'}</td>
-                          <td className="px-4 py-3 text-foreground">{formatMoney(item.price, offer.currency)}</td>
-                          <td className="px-4 py-3 font-bold text-foreground">{formatMoney(item.total, offer.currency)}</td>
-                          <td className="px-4 py-3 text-muted">
-                            <p>{item.availability ?? 'Уточнюється'}</p>
-                            <p className="mt-1 text-xs">{item.deliveryTime ?? 'Строк уточнюється'}</p>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {offer.status === 'SENT' ? (
-                  <div className="mt-4 grid gap-3 rounded-md border border-border bg-surface-muted p-4">
-                    <form action={approveClientCommercialOfferAction}>
-                      <input type="hidden" name="requestId" value={request.id} />
-                      <input type="hidden" name="offerId" value={offer.id} />
-                      <button className="inline-flex items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
-                        Погодити
-                      </button>
-                    </form>
-                    <form action={rejectClientCommercialOfferAction} className="grid gap-3">
-                      <input type="hidden" name="requestId" value={request.id} />
-                      <input type="hidden" name="offerId" value={offer.id} />
-                      <label className="grid gap-2 text-sm font-semibold text-foreground">
-                        Причина відхилення / коментар
-                        <textarea name="clientComment" rows={3} className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25" />
-                      </label>
-                      <button className="inline-flex w-fit items-center justify-center rounded-md border border-danger/40 px-5 py-3 text-sm font-bold text-danger transition hover:bg-danger/10">
-                        Відхилити
-                      </button>
-                    </form>
-                  </div>
-                ) : null}
-              </article>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
       {request.requestDocuments.length > 0 ? (
         <div className="rounded-lg border border-border bg-card p-6 shadow-card">
           <h3 className="text-lg font-bold text-foreground">Документи по заявці</h3>
@@ -477,23 +382,6 @@ function ClientInvoiceStatusBadge({ status }: { status: keyof typeof CLIENT_INVO
   return (
     <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${classNameByStatus[status]}`}>
       {CLIENT_INVOICE_STATUS_LABELS[status]}
-    </span>
-  );
-}
-
-function ClientOfferStatusBadge({ status }: { status: keyof typeof COMMERCIAL_OFFER_STATUS_LABELS }) {
-  const classNameByStatus: Record<keyof typeof COMMERCIAL_OFFER_STATUS_LABELS, string> = {
-    DRAFT: 'bg-surface-muted text-muted',
-    SENT: 'bg-[#E8F1FF] text-info',
-    APPROVED: 'bg-[#E7F6EC] text-success',
-    REJECTED: 'bg-[#FDECEC] text-danger',
-    EXPIRED: 'bg-[#FFF7E0] text-[#8A5B24]',
-    CANCELLED: 'bg-surface-muted text-muted'
-  };
-
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${classNameByStatus[status]}`}>
-      {COMMERCIAL_OFFER_STATUS_LABELS[status]}
     </span>
   );
 }

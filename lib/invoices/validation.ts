@@ -13,4 +13,4 @@ export const CLIENT_INVOICE_STATUS_LABELS: Record<Exclude<InvoiceStatus, 'DRAFT'
   CANCELLED: 'Скасовано'
 };
 
-export const CLIENT_VISIBLE_INVOICE_STATUSES: InvoiceStatus[] = ['SENT', 'PAID', 'CANCELLED'];
+export const CLIENT_VISIBLE_INVOICE_STATUSES: InvoiceStatus[] = ['SENT', 'PAID'];
