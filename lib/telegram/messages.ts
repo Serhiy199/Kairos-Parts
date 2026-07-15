@@ -1,6 +1,7 @@
 import type { TelegramDraftFile } from './types';
 
 export const TELEGRAM_CALLBACKS = {
+  continueRequest: 'telegram_request_continue',
   confirm: 'telegram_request_confirm',
   cancel: 'telegram_request_cancel',
   restart: 'telegram_request_restart'
@@ -22,9 +23,24 @@ export const skipKeyboard = {
   one_time_keyboard: true
 };
 
+export const equipmentTypeKeyboard = {
+  keyboard: [
+    [{ text: 'Комбайн' }, { text: 'Трактори' }],
+    [{ text: 'Вантажний транспорт' }, { text: 'Причіп / напівпричіп' }],
+    [{ text: 'Будівельна техніка' }, { text: 'Спеціальна техніка' }],
+    [{ text: 'Інше' }]
+  ],
+  resize_keyboard: true,
+  one_time_keyboard: true
+};
+
+export const continueRequestKeyboard = {
+  inline_keyboard: [[{ text: 'Продовжити створення заявки', callback_data: TELEGRAM_CALLBACKS.continueRequest }]]
+};
+
 export const confirmationKeyboard = {
   inline_keyboard: [
-    [{ text: 'Підтвердити заявку', callback_data: TELEGRAM_CALLBACKS.confirm }],
+    [{ text: 'Створити заявку', callback_data: TELEGRAM_CALLBACKS.confirm }],
     [
       { text: 'Скасувати', callback_data: TELEGRAM_CALLBACKS.cancel },
       { text: 'Почати заново', callback_data: TELEGRAM_CALLBACKS.restart }
@@ -63,6 +79,25 @@ export function buildStartMessage() {
   ].join('\n');
 }
 
+export function buildProfileFoundMessage(input: {
+  contactName?: string | null;
+  companyName?: string | null;
+  phone?: string | null;
+  email?: string | null;
+}) {
+  return [
+    'Ми знайшли ваш клієнтський кабінет Kairos Parts.',
+    '',
+    'Заявка буде створена від імені:',
+    `Контакт: ${input.contactName || '—'}`,
+    `Компанія: ${input.companyName || '—'}`,
+    `Телефон: ${input.phone || '—'}`,
+    `Email: ${input.email || '—'}`,
+    '',
+    'Продовжити створення заявки?'
+  ].join('\n');
+}
+
 export function buildRegistrationRequiredMessage() {
   return [
     'Ми не знайшли клієнтський кабінет із цим номером телефону.',
@@ -75,21 +110,40 @@ export function buildSummary(input: {
   contactName?: string | null;
   phone?: string | null;
   companyName?: string | null;
+  email?: string | null;
   equipmentType?: string | null;
-  partsText?: string | null;
+  manufacturer?: string | null;
+  model?: string | null;
+  vehicleYear?: number | null;
+  vinOrSerial?: string | null;
   description?: string | null;
+  extraComment?: string | null;
   files: TelegramDraftFile[];
 }) {
+  const fileNames = input.files.length ? input.files.map((file) => `- ${file.fileName}`).join('\n') : 'не додано';
+
   return [
     'Перевірте заявку перед створенням:',
     '',
-    `Імʼя: ${input.contactName || '—'}`,
-    `Телефон: ${input.phone || '—'}`,
+    `Контакт: ${input.contactName || '—'}`,
     `Компанія: ${input.companyName || '—'}`,
+    `Телефон: ${input.phone || '—'}`,
+    `Email: ${input.email || '—'}`,
+    '',
     `Тип техніки: ${input.equipmentType || '—'}`,
-    `Запчастини / каталожні номери: ${input.partsText || 'не вказано'}`,
-    `Опис потреби / коментар: ${input.description || 'не вказано'}`,
-    `Файлів/фото: ${input.files.length}`,
+    `Виробник / марка: ${input.manufacturer || '—'}`,
+    `Модель: ${input.model || '—'}`,
+    `Рік випуску: ${input.vehicleYear ?? '—'}`,
+    `VIN / серійний номер: ${input.vinOrSerial || '—'}`,
+    '',
+    'Опис / коментар:',
+    input.description || '—',
+    '',
+    'Додатковий коментар:',
+    input.extraComment || '—',
+    '',
+    'Файл:',
+    fileNames,
     '',
     'Створити заявку в CRM?'
   ].join('\n');

@@ -2,17 +2,21 @@ import { saveRequestFileBufferLocal } from '@/lib/files/local-storage';
 import { getPhoneLookupTail, normalizePhoneDigits, phoneNumbersMatch } from '@/lib/phone/normalize';
 import { prisma } from '@/lib/prisma';
 import { generatePublicStatusToken, generateRequestNumber } from '@/lib/requests/identifiers';
+import { EQUIPMENT_TYPE_OPTIONS } from '@/lib/vehicles/equipment-types';
 
 import { answerCallbackQuery, downloadTelegramFile, getTelegramFile, sendTelegramMessage } from './bot';
 import {
   buildCreatedMessage,
+  buildProfileFoundMessage,
   buildRegistrationKeyboard,
   buildRegistrationRequiredMessage,
   buildStartMessage,
   buildSummary,
   confirmationKeyboard,
   contactKeyboard,
+  continueRequestKeyboard,
   createdRequestKeyboard,
+  equipmentTypeKeyboard,
   isSkipText,
   removeKeyboard,
   skipKeyboard,
@@ -25,7 +29,16 @@ type TelegramDraft = NonNullable<Awaited<ReturnType<typeof getDraft>>>;
 type TelegramDraftMetadata = {
   files: TelegramDraftFile[];
   partsText: string | null;
+  manufacturer: string | null;
+  model: string | null;
+  vehicleYear: number | null;
+  vinOrSerial: string | null;
+  extraComment: string | null;
+  email: string | null;
 };
+
+const MAX_TELEGRAM_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+const ALLOWED_DOCUMENT_EXTENSIONS = ['jpg', 'jpeg', 'png', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx'];
 
 function toStringId(id: number | string) {
   return String(id);
@@ -55,22 +68,50 @@ function readDraftMetadata(value: unknown): TelegramDraftMetadata {
   if (Array.isArray(value)) {
     return {
       files: readDraftFilesFromValue(value),
-      partsText: null
+      partsText: null,
+      manufacturer: null,
+      model: null,
+      vehicleYear: null,
+      vinOrSerial: null,
+      extraComment: null,
+      email: null
     };
   }
 
   if (!value || typeof value !== 'object') {
     return {
       files: [],
-      partsText: null
+      partsText: null,
+      manufacturer: null,
+      model: null,
+      vehicleYear: null,
+      vinOrSerial: null,
+      extraComment: null,
+      email: null
     };
   }
 
-  const candidate = value as { files?: unknown; partsText?: unknown };
+  const candidate = value as {
+    files?: unknown;
+    partsText?: unknown;
+    manufacturer?: unknown;
+    model?: unknown;
+    vehicleYear?: unknown;
+    vinOrSerial?: unknown;
+    extraComment?: unknown;
+    email?: unknown;
+  };
+  const vehicleYear = typeof candidate.vehicleYear === 'number' && Number.isInteger(candidate.vehicleYear) ? candidate.vehicleYear : null;
 
   return {
     files: readDraftFilesFromValue(candidate.files),
-    partsText: typeof candidate.partsText === 'string' && candidate.partsText.trim() ? candidate.partsText.trim() : null
+    partsText: typeof candidate.partsText === 'string' && candidate.partsText.trim() ? candidate.partsText.trim() : null,
+    manufacturer: typeof candidate.manufacturer === 'string' && candidate.manufacturer.trim() ? candidate.manufacturer.trim() : null,
+    model: typeof candidate.model === 'string' && candidate.model.trim() ? candidate.model.trim() : null,
+    vehicleYear,
+    vinOrSerial: typeof candidate.vinOrSerial === 'string' && candidate.vinOrSerial.trim() ? candidate.vinOrSerial.trim() : null,
+    extraComment: typeof candidate.extraComment === 'string' && candidate.extraComment.trim() ? candidate.extraComment.trim() : null,
+    email: typeof candidate.email === 'string' && candidate.email.trim() ? candidate.email.trim() : null
   };
 }
 
@@ -82,11 +123,27 @@ function readDraftPartsText(value: unknown) {
   return readDraftMetadata(value).partsText;
 }
 
-function buildDraftMetadata(input: { files: TelegramDraftFile[]; partsText?: string | null }) {
+function buildDraftMetadata(input: Partial<TelegramDraftMetadata> & { files: TelegramDraftFile[] }) {
   return {
     files: input.files,
-    partsText: input.partsText?.trim() || null
+    partsText: input.partsText?.trim() || null,
+    manufacturer: input.manufacturer?.trim() || null,
+    model: input.model?.trim() || null,
+    vehicleYear: input.vehicleYear ?? null,
+    vinOrSerial: input.vinOrSerial?.trim() || null,
+    extraComment: input.extraComment?.trim() || null,
+    email: input.email?.trim() || null
   };
+}
+
+function mergeDraftMetadata(value: unknown, patch: Partial<TelegramDraftMetadata>) {
+  const current = readDraftMetadata(value);
+
+  return buildDraftMetadata({
+    ...current,
+    ...patch,
+    files: patch.files ?? current.files
+  });
 }
 
 function getMessageText(message: TelegramMessage) {
@@ -134,6 +191,37 @@ function getDocument(message: TelegramMessage): TelegramDraftFile | null {
     mimeType: message.document.mime_type || 'application/octet-stream',
     size: message.document.file_size
   };
+}
+
+function getFileExtension(fileName: string) {
+  return fileName.split('.').pop()?.toLowerCase() ?? '';
+}
+
+function isAllowedTelegramFile(file: TelegramDraftFile) {
+  if (file.kind === 'photo') {
+    return true;
+  }
+
+  return ALLOWED_DOCUMENT_EXTENSIONS.includes(getFileExtension(file.fileName));
+}
+
+function isValidVehicleYear(text: string) {
+  const year = Number(text);
+
+  if (!Number.isInteger(year) || year < 1950 || year > 2100) {
+    return null;
+  }
+
+  return year;
+}
+
+function catalogSlug(name: string) {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9а-яіїєґ]+/giu, '-')
+      .replace(/^-|-$/g, '') || 'manufacturer'
+  );
 }
 
 async function getDraft(telegramUserId: string) {
