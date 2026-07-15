@@ -185,7 +185,7 @@ export default function HowItWorksPage() {
             <div className="relative mt-12 lg:mt-16">
               <span
                 aria-hidden="true"
-                className="absolute bottom-0 left-6 top-0 w-px bg-gradient-to-b from-accent/20 via-accent/70 to-accent/20 shadow-[0_0_28px_rgba(200,150,66,0.22)] lg:left-1/2 lg:-translate-x-1/2"
+                className="absolute bottom-0 left-6 top-0 w-0 border-l border-accent/45 shadow-[0_0_28px_rgba(200,150,66,0.28)] lg:left-1/2 lg:-translate-x-1/2"
               />
               <ol className="relative space-y-8 lg:space-y-0">
                 {steps.map((step, index) => {
@@ -262,10 +262,10 @@ export default function HowItWorksPage() {
                 </p>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row lg:min-w-[320px] lg:flex-col lg:justify-self-end xl:flex-row">
+              <div className="flex flex-col gap-3 lg:min-w-[320px] lg:justify-self-end">
                 <Link
                   href="/request"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3.5 text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent xl:w-auto"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3.5 text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   <ActionIcon name="plus" className="h-4 w-4" />
                   Створити заявку
@@ -274,7 +274,7 @@ export default function HowItWorksPage() {
                   href={telegramBotUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-accent/50 bg-primary/45 px-6 py-3.5 text-sm font-bold text-accent transition hover:border-accent/80 hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent xl:w-auto"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-accent/50 bg-primary/45 px-6 py-3.5 text-sm font-bold text-accent transition hover:border-accent/80 hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   <ActionIcon name="telegram" className="h-4 w-4" />
                   Надіслати в Telegram

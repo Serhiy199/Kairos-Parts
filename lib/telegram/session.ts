@@ -2,10 +2,12 @@ import { saveRequestFileBufferLocal } from '@/lib/files/local-storage';
 import { getPhoneLookupTail, normalizePhoneDigits, phoneNumbersMatch } from '@/lib/phone/normalize';
 import { prisma } from '@/lib/prisma';
 import { generatePublicStatusToken, generateRequestNumber } from '@/lib/requests/identifiers';
+import { getSpecificManufacturersForEquipmentType } from '@/lib/vehicles/equipment-manufacturers';
 import { EQUIPMENT_TYPE_OPTIONS } from '@/lib/vehicles/equipment-types';
 
 import { answerCallbackQuery, downloadTelegramFile, getTelegramFile, sendTelegramMessage } from './bot';
 import {
+  buildManufacturerKeyboard,
   buildCreatedMessage,
   buildProfileFoundMessage,
   buildRegistrationKeyboard,
@@ -18,6 +20,7 @@ import {
   createdRequestKeyboard,
   equipmentTypeKeyboard,
   isSkipText,
+  OTHER_MANUFACTURER_TEXT,
   removeKeyboard,
   skipKeyboard,
   TELEGRAM_CALLBACKS
@@ -451,15 +454,29 @@ async function handleTextMessage(message: TelegramMessage, draft: TelegramDraft)
       where: { telegramUserId: draft.telegramUserId },
       data: { equipmentType: text, step: 'ASK_MANUFACTURER' }
     });
-    await sendTelegramMessage(
-      message.chat.id,
-      'Вкажіть виробника або марку техніки.\n\nНаприклад: John Deere, MAN, Claas',
-      { replyMarkup: removeKeyboard }
-    );
+    const manufacturerOptions = getSpecificManufacturersForEquipmentType(text);
+
+    if (manufacturerOptions.length > 0) {
+      await sendTelegramMessage(message.chat.id, 'Оберіть виробника / марку техніки:', {
+        replyMarkup: buildManufacturerKeyboard(manufacturerOptions)
+      });
+      return;
+    }
+
+    await sendTelegramMessage(message.chat.id, 'Введіть виробника або марку техніки.\n\nНаприклад: John Deere, MAN, Claas', {
+      replyMarkup: removeKeyboard
+    });
     return;
   }
 
   if (draft.step === 'ASK_MANUFACTURER') {
+    if (text === OTHER_MANUFACTURER_TEXT) {
+      await sendTelegramMessage(message.chat.id, 'Введіть виробника або марку техніки.\n\nНаприклад: John Deere, MAN, Claas', {
+        replyMarkup: removeKeyboard
+      });
+      return;
+    }
+
     await prisma.telegramDraftRequest.update({
       where: { telegramUserId: draft.telegramUserId },
       data: {
