@@ -328,7 +328,17 @@ export default async function ClientRequestDetailPage({
                     {invoice.paidAt ? <p className="mt-2 text-sm font-semibold text-success">Оплачено {invoice.paidAt.toLocaleDateString('uk-UA')}</p> : null}
                     {invoice.cancelledAt ? <p className="mt-2 text-sm font-semibold text-danger">Скасовано {invoice.cancelledAt.toLocaleDateString('uk-UA')}</p> : null}
                   </div>
-                  <p className="text-lg font-bold text-foreground">{formatMoney(invoice.totalAmount, invoice.currency)}</p>
+                  <div className="flex flex-col gap-2 md:items-end">
+                    <p className="text-lg font-bold text-foreground">{formatMoney(invoice.totalAmount, invoice.currency)}</p>
+                    <Link
+                      href={`/client/invoices/${invoice.id}/print`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted"
+                    >
+                      Друк / PDF
+                    </Link>
+                  </div>
                 </div>
 
                 <div className="mt-4 overflow-x-auto rounded-md border border-border">

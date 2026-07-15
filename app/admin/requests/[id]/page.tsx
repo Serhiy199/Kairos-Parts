@@ -779,6 +779,22 @@ function InvoicesSection({
                     ) : null}
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <Link
+                      href={`/admin/invoices/${invoice.id}/print`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted"
+                    >
+                      Переглянути рахунок
+                    </Link>
+                    <Link
+                      href={`/admin/invoices/${invoice.id}/print`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center rounded-md border border-accent/60 px-4 py-2 text-sm font-bold text-[#8A5B24] transition hover:bg-[#FFF7E0]"
+                    >
+                      Друк / PDF
+                    </Link>
                     {canSend ? (
                       <form action={sendAdminInvoice}>
                         <input type="hidden" name="requestId" value={requestId} />
