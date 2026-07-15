@@ -118,12 +118,36 @@ const serviceCards = [
 ];
 
 const audiences = [
-  { title: 'Фермерські господарства', icon: 'farm' },
-  { title: 'Агрохолдинги', icon: 'field' },
-  { title: 'Транспортні компанії', icon: 'truck' },
-  { title: 'Перевізники', icon: 'driver' },
-  { title: 'Сервісні центри', icon: 'service' },
-  { title: 'Підприємства з власним парком техніки', icon: 'fleet' }
+  {
+    title: 'Фермерські господарства',
+    text: 'Допомагаємо фермерам утримувати техніку в роботі та швидко знаходити потрібні запчастини.',
+    icon: 'tractor'
+  },
+  {
+    title: 'Агрохолдинги',
+    text: 'Комплексно забезпечуємо запчастинами великі підприємства, підрозділи та філії.',
+    icon: 'harvester'
+  },
+  {
+    title: 'Транспортні компанії',
+    text: 'Підбираємо запчастини для вантажного транспорту, причепів і спеціальної техніки.',
+    icon: 'truck'
+  },
+  {
+    title: 'Сервісні центри',
+    text: 'Допомагаємо СТО та майстерням швидко отримувати сумісні деталі для ремонту техніки.',
+    icon: 'tools'
+  },
+  {
+    title: 'Перевізники',
+    text: 'Забезпечуємо оперативне постачання, щоб транспорт не простоював через відсутність деталей.',
+    icon: 'delivery'
+  },
+  {
+    title: 'Підприємства з власним парком техніки',
+    text: 'Зберігаємо техніку, заявки та історію замовлень в одному цифровому просторі.',
+    icon: 'fleet'
+  }
 ];
 
 const channels = [
@@ -292,30 +316,32 @@ function AudienceIcon({ icon }: { icon: string }) {
     viewBox: '0 0 24 24',
     fill: 'none',
     stroke: 'currentColor',
-    strokeWidth: 1.8,
+    strokeWidth: 1.75,
     strokeLinecap: 'round' as const,
     strokeLinejoin: 'round' as const
   };
 
-  if (icon === 'farm') {
+  if (icon === 'tractor') {
     return (
       <svg {...baseProps}>
-        <path d="M4 19h16" />
-        <path d="M6 19V9l6-4 6 4v10" />
-        <path d="M9 19v-6h6v6" />
-        <path d="M7 11h10" />
+        <path d="M4 16h5l2-5h4l3 5h2" />
+        <path d="M8 11h3" />
+        <path d="M14 11V7h3" />
+        <circle cx="7" cy="18" r="3" />
+        <circle cx="18" cy="18" r="2" />
       </svg>
     );
   }
 
-  if (icon === 'field') {
+  if (icon === 'harvester') {
     return (
       <svg {...baseProps}>
-        <path d="M3 18c4-4 14-4 18 0" />
-        <path d="M5 14c3-3 11-3 14 0" />
-        <path d="M8 10c2-2 6-2 8 0" />
-        <path d="M12 4v4" />
-        <path d="M9.5 6h5" />
+        <path d="M4 16h11l2-5h3" />
+        <path d="M5 12h7l2 4" />
+        <path d="M3 20h18" />
+        <path d="M4 16 2 12" />
+        <circle cx="8" cy="18" r="2" />
+        <circle cx="17" cy="18" r="2" />
       </svg>
     );
   }
@@ -331,23 +357,27 @@ function AudienceIcon({ icon }: { icon: string }) {
     );
   }
 
-  if (icon === 'driver') {
+  if (icon === 'tools') {
     return (
       <svg {...baseProps}>
-        <circle cx="12" cy="7" r="3" />
-        <path d="M5 21a7 7 0 0 1 14 0" />
-        <path d="M8 14h8" />
-        <path d="M12 10v4" />
+        <path d="m14.5 6.5 3-3 3 3-3 3" />
+        <path d="m3.5 20.5 7.5-7.5" />
+        <path d="m10 14 4 4" />
+        <path d="m13 11 5.5 5.5" />
+        <circle cx="6.5" cy="17.5" r="2.5" />
       </svg>
     );
   }
 
-  if (icon === 'service') {
+  if (icon === 'delivery') {
     return (
       <svg {...baseProps}>
-        <path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5" />
-        <path d="m15 5 4 4" />
-        <path d="m16 4 4 4" />
+        <path d="M3 8h10v8H3z" />
+        <path d="M13 11h4l4 4v1h-8z" />
+        <path d="M2 12h5" />
+        <path d="M4 5h7" />
+        <circle cx="7" cy="18" r="2" />
+        <circle cx="17" cy="18" r="2" />
       </svg>
     );
   }
@@ -542,22 +572,40 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-[#080808] py-10 text-white">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_72%_14%,rgba(200,150,66,0.12),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.04),transparent_38%)]" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(232,232,232,0.8)_1px,transparent_1px),linear-gradient(90deg,rgba(232,232,232,0.8)_1px,transparent_1px)] [background-size:36px_36px]" />
-        <div className="kp-container relative">
-          <div className="max-w-[640px]">
+      <section className="relative w-full overflow-hidden bg-[#050505] py-12 text-white sm:py-14 lg:py-16">
+        <div className="for-whom-section-bg pointer-events-none absolute inset-0" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(5,7,10,0.96)_0%,rgba(5,7,10,0.84)_35%,rgba(5,7,10,0.68)_70%,rgba(5,7,10,0.56)_100%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.3)_0%,rgba(5,5,5,0.04)_34%,rgba(5,5,5,0.24)_100%)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.04] [background-image:linear-gradient(rgba(232,232,232,0.78)_1px,transparent_1px),linear-gradient(90deg,rgba(232,232,232,0.78)_1px,transparent_1px)] [background-size:40px_40px]" />
+        <div className="kp-container relative z-10">
+          <div className="grid gap-5 lg:grid-cols-[0.9fr_1fr] lg:items-end">
+            <div className="max-w-[660px]">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">Для кого</p>
-            <h2 className="mt-2 text-[24px] font-bold leading-[1.14] text-white sm:text-[30px] lg:text-[34px]">Для компаній, де техніка має працювати, а не чекати</h2>
+              <h2 className="mt-2 text-[28px] font-bold leading-[1.08] text-white sm:text-[34px] lg:text-[38px]">
+                Для компаній, де техніка має працювати, а не чекати
+              </h2>
+            </div>
+            <p className="max-w-[560px] text-sm font-semibold leading-6 text-technical-white/85 sm:text-base sm:leading-7 lg:justify-self-end">
+              Ми працюємо з різними типами бізнесу, де важливі надійність техніки та швидкість постачання запчастин.
+            </p>
           </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {audiences.map((audience) => (
-              <div key={audience.title} className="audience-card">
-                <span className="audience-card__label">{audience.title}</span>
-                <span className="audience-card__icon">
+          <div className="mt-5 h-px w-20 bg-accent" />
+
+          <div className="mt-6 grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {audiences.map((audience, index) => (
+              <article key={audience.title} className="for-whom-card">
+                <div className="for-whom-card__diagonal" />
+                <div className="for-whom-card__icon-wrap">
                   <AudienceIcon icon={audience.icon} />
-                </span>
-              </div>
+                </div>
+                <div className="for-whom-card__content">
+                  <div className="for-whom-card__header">
+                    <span className="for-whom-card__number">{index + 1}</span>
+                    <h3 className="for-whom-card__title">{audience.title}</h3>
+                  </div>
+                  <p className="for-whom-card__description">{audience.text}</p>
+                </div>
+              </article>
             ))}
           </div>
         </div>

@@ -284,24 +284,34 @@ select {
     cover;
 }
 
-.audience-card {
+.for-whom-section-bg {
+  background-image: url("/images/home/for-whom-bg.png");
+  background-position: center center;
+  background-size: cover;
+  opacity: 0.88;
+  filter: saturate(0.92) contrast(1.02);
+}
+
+.for-whom-card {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  display: flex;
-  min-height: 52px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  border: 1px solid rgba(200, 150, 66, 0.7);
-  border-radius: 13px;
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  align-items: flex-start;
+  column-gap: 22px;
+  min-height: 178px;
+  padding: 24px 28px;
+  border: 1px solid rgba(200, 150, 66, 0.88);
+  border-radius: 16px;
   background:
-    radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.72), transparent 30%),
-    linear-gradient(100deg, #f4f2eb 0%, #d8d3c9 42%, #a8a39a 100%);
+    radial-gradient(circle at 34% 16%, rgba(255, 255, 255, 0.66), transparent 35%),
+    linear-gradient(135deg, #f4f0e8 0%, #d8d3c8 48%, #a9a39a 100%);
   box-shadow:
-    0 14px 28px rgba(0, 0, 0, 0.38),
-    inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    inset 0 -1px 0 rgba(94, 70, 35, 0.3);
+    0 18px 34px rgba(0, 0, 0, 0.42),
+    0 3px 8px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.74),
+    inset 0 -1px 0 rgba(94, 70, 35, 0.38);
   color: #101010;
   transition:
     transform 180ms ease,
@@ -309,7 +319,7 @@ select {
     box-shadow 180ms ease;
 }
 
-.audience-card::before {
+.for-whom-card::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -318,8 +328,8 @@ select {
   background:
     repeating-linear-gradient(
       90deg,
-      rgba(255, 255, 255, 0.08) 0,
-      rgba(255, 255, 255, 0.08) 1px,
+      rgba(255, 255, 255, 0.07) 0,
+      rgba(255, 255, 255, 0.07) 1px,
       rgba(0, 0, 0, 0.03) 2px,
       transparent 4px
     );
@@ -327,66 +337,113 @@ select {
   mix-blend-mode: overlay;
 }
 
-.audience-card::after {
+.for-whom-card::after {
   content: "";
   position: absolute;
-  top: 0;
-  right: 46px;
+  right: -34px;
+  bottom: -42px;
   z-index: 0;
-  width: 88px;
+  width: 150px;
+  height: 150px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.34), rgba(120, 120, 120, 0.16));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 0 18px rgba(0, 0, 0, 0.12);
+}
+
+.for-whom-card__diagonal {
+  position: absolute;
+  top: 0;
+  right: 50px;
+  z-index: 0;
+  width: 120px;
   height: 100%;
   pointer-events: none;
   background:
     linear-gradient(
-      115deg,
+      135deg,
       transparent 0%,
-      transparent 44%,
-      rgba(255, 255, 255, 0.34) 45%,
-      rgba(255, 255, 255, 0.16) 100%
+      transparent 48%,
+      rgba(255, 255, 255, 0.24) 49%,
+      rgba(255, 255, 255, 0.14) 100%
     );
 }
 
-.audience-card__label,
-.audience-card__icon {
+.for-whom-card__icon-wrap,
+.for-whom-card__content {
   position: relative;
   z-index: 1;
 }
 
-.audience-card__label {
-  padding: 14px 10px 14px 18px;
-  font-size: 14px;
-  font-weight: 800;
-  line-height: 1.2;
+.for-whom-card__icon-wrap {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: center;
+  color: #8a5b24;
 }
 
-.audience-card__icon {
+.for-whom-card__icon-wrap svg {
+  width: 66px;
+  height: 66px;
+  stroke-width: 1.75;
+  filter:
+    drop-shadow(0 2px 0 rgba(255, 255, 255, 0.48))
+    drop-shadow(0 7px 8px rgba(55, 36, 12, 0.34));
+}
+
+.for-whom-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.for-whom-card__number {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  min-height: 52px;
-  border-left: 1px solid rgba(255, 255, 255, 0.45);
-  background: linear-gradient(180deg, rgba(5, 5, 5, 0.88), rgba(16, 16, 16, 0.72));
-  color: #c89642;
-  box-shadow: inset 1px 0 0 rgba(200, 150, 66, 0.3);
-}
-
-.audience-card__icon svg {
-  width: 24px;
-  height: 24px;
-  filter:
-    drop-shadow(0 1px 0 rgba(255, 255, 255, 0.2))
-    drop-shadow(0 4px 7px rgba(0, 0, 0, 0.38));
-}
-
-.audience-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(216, 177, 94, 0.95);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #d8b15e 0%, #b37a2e 100%);
+  color: #1a1308;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
   box-shadow:
-    0 18px 34px rgba(0, 0, 0, 0.46),
-    inset 0 1px 0 rgba(255, 255, 255, 0.82),
-    inset 0 -1px 0 rgba(94, 70, 35, 0.34);
+    0 4px 8px rgba(99, 62, 18, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.for-whom-card__title {
+  margin: 0;
+  color: #101010;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.18;
+  letter-spacing: 0;
+}
+
+.for-whom-card__description {
+  max-width: 340px;
+  margin: 14px 0 0;
+  color: #151515;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.for-whom-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(216, 177, 94, 0.96);
+  box-shadow:
+    0 22px 42px rgba(0, 0, 0, 0.48),
+    0 4px 10px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -1px 0 rgba(94, 70, 35, 0.42);
 }
 
 .benefit-card {
@@ -570,18 +627,51 @@ select {
       center;
   }
 
-  .audience-card {
-    min-height: 50px;
+  .for-whom-section-bg {
+    background-position: center;
   }
 
-  .audience-card__label {
-    padding-left: 16px;
+  .for-whom-card {
+    grid-template-columns: 58px minmax(0, 1fr);
+    column-gap: 16px;
+    min-height: auto;
+    padding: 22px;
+  }
+
+  .for-whom-card::after {
+    right: -42px;
+    bottom: -44px;
+    width: 120px;
+    height: 120px;
+  }
+
+  .for-whom-card__diagonal {
+    right: 24px;
+    width: 92px;
+  }
+
+  .for-whom-card__icon-wrap {
+    min-height: 58px;
+  }
+
+  .for-whom-card__icon-wrap svg {
+    width: 52px;
+    height: 52px;
+  }
+
+  .for-whom-card__number {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
     font-size: 13px;
   }
 
-  .audience-card__icon {
-    width: 44px;
-    min-height: 50px;
+  .for-whom-card__title {
+    font-size: 16px;
+  }
+
+  .for-whom-card__description {
+    font-size: 13px;
   }
 
   .benefit-card {
