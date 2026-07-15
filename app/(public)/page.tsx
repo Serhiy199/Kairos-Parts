@@ -4,7 +4,19 @@ import { FaClipboardList, FaTractor } from 'react-icons/fa';
 import { FaHandshakeAngle } from 'react-icons/fa6';
 import { GoGear } from 'react-icons/go';
 import { LuBoxes, LuSearchCheck } from 'react-icons/lu';
-import { TbDeviceDesktopAnalytics, TbTools, TbTractor, TbTruck, TbTruckDelivery, TbWheat } from 'react-icons/tb';
+import {
+  TbBrandTelegram,
+  TbCamera,
+  TbClipboardText,
+  TbDeviceDesktopAnalytics,
+  TbFileSpreadsheet,
+  TbTools,
+  TbTractor,
+  TbTruck,
+  TbTruckDelivery,
+  TbUser,
+  TbWheat
+} from 'react-icons/tb';
 
 import { ActionIcon } from '@/components/ui/action-icons';
 
@@ -151,12 +163,37 @@ const audiences = [
   }
 ];
 
-const channels = [
-  { title: 'Форма на сайті', text: 'Структурований запит для менеджера.', href: '/request' },
-  { title: 'Telegram', text: 'Швидкий старт заявки у месенджері.', href: telegramBotUrl },
-  { title: 'Завантаження фото', text: 'Фото шильдика, вузла або пошкодженої деталі.', href: '/request' },
-  { title: 'Excel / PDF / DOC', text: 'Списки позицій для планових закупівель.', href: '/request' },
-  { title: 'Через менеджера', text: 'Для складних або термінових заявок.', href: '/contacts' }
+const requestChannels = [
+  {
+    title: 'Фото запчастини',
+    text: 'Надішліть фото шильдика, вузла або пошкодженої деталі.',
+    href: '/request',
+    icon: TbCamera
+  },
+  {
+    title: 'Telegram',
+    text: 'Швидкий старт заявки у месенджері.',
+    href: telegramBotUrl,
+    icon: TbBrandTelegram
+  },
+  {
+    title: 'Форма на сайті',
+    text: 'Структурований запит для менеджера.',
+    href: '/request',
+    icon: TbClipboardText
+  },
+  {
+    title: 'Excel / PDF / DOC',
+    text: 'Завантажте список позицій для закупівлі.',
+    href: '/request',
+    icon: TbFileSpreadsheet
+  },
+  {
+    title: 'Через менеджера',
+    text: 'Зателефонуйте або напишіть — ми допоможемо.',
+    href: '/contacts',
+    icon: TbUser
+  }
 ];
 
 function ProcessIcon({ icon }: { icon: string }) {
@@ -556,28 +593,46 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="telegram" className="bg-primary py-16 text-white">
+      <section id="telegram" className="border-y border-white/5 bg-primary py-14 text-white sm:py-16">
         <div className="kp-container">
-          <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
-            <div>
-              <p className="text-sm font-bold uppercase text-accent">Способи створення заявки</p>
-              <h2 className="mt-2 text-3xl font-bold">Оберіть зручний канал, менеджер підхопить процес</h2>
-              <p className="mt-4 text-sm leading-6 text-sidebar-text">
-                Telegram-бот приймає заявку, підтверджує номер телефону, збирає опис потреби та передає заявку менеджеру.
-              </p>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] lg:items-end lg:gap-12">
+            <div className="max-w-2xl">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">Способи створення заявки</p>
+              <h2 className="mt-3 text-3xl font-bold leading-tight text-white sm:text-4xl">
+                Оберіть зручний спосіб
+                <br className="hidden sm:block" />
+                та залиште заявку за 5 хвилин
+              </h2>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {channels.map((channel) => (
+            <p className="max-w-xl text-base font-medium leading-7 text-sidebar-text lg:justify-self-end">
+              Ви можете надіслати запит у зручний для вас спосіб, а наш менеджер швидко обробить його та підбере рішення.
+            </p>
+          </div>
+
+          <div className="mt-8 grid gap-4 md:grid-cols-6 min-[1200px]:grid-cols-5">
+            {requestChannels.map((channel, index) => {
+              const Icon = channel.icon;
+              const tabletPosition =
+                index === 3
+                  ? 'md:col-start-2 min-[1200px]:col-start-auto'
+                  : index === 4
+                    ? 'md:col-start-4 min-[1200px]:col-start-auto'
+                    : '';
+
+              return (
                 <Link
                   key={channel.title}
                   href={channel.href}
-                  className="public-card public-interactive-card p-5 text-public-primary"
+                  className={`group flex min-w-0 flex-col items-center rounded-xl border border-white/10 bg-white/[0.035] px-5 py-7 text-center transition-[border-color,background-color,transform] duration-200 hover:-translate-y-0.5 hover:border-accent/45 hover:bg-white/[0.055] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-primary md:col-span-2 min-[1200px]:col-span-1 ${tabletPosition}`}
                 >
-                  <p className="text-sm font-bold">{channel.title}</p>
-                  <p className="mt-2 text-sm leading-6 text-public-muted">{channel.text}</p>
+                  <span className="flex size-16 items-center justify-center text-accent">
+                    <Icon aria-hidden="true" focusable="false" className="size-12 stroke-[1.5] sm:size-14" />
+                  </span>
+                  <h3 className="mt-5 text-lg font-bold leading-tight text-white">{channel.title}</h3>
+                  <p className="mt-3 text-sm font-medium leading-6 text-sidebar-text">{channel.text}</p>
                 </Link>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
       </section>
