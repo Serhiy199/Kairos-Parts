@@ -445,8 +445,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="how-it-works" className="bg-public-section py-16">
-        <div className="kp-container">
+      <section id="how-it-works" className="relative overflow-hidden bg-public-page py-16">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(rgba(152,157,166,0.45)_1px,transparent_1px),linear-gradient(90deg,rgba(152,157,166,0.45)_1px,transparent_1px)] [background-size:28px_28px]" />
+        <div className="kp-container relative">
           <div className="max-w-3xl">
             <p className="text-sm font-bold uppercase text-accent">Як це працює</p>
             <h2 className="public-section-heading mt-2 text-3xl font-bold">Заявка, підбір, узгодження та доставка в одному процесі</h2>

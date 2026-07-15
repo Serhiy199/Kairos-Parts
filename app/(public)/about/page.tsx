@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { TbDatabaseCog, TbGauge, TbHeartHandshake, TbSettingsSearch, TbShieldCheck } from 'react-icons/tb';
 
 import { ActionIcon } from '@/components/ui/action-icons';
 
@@ -27,23 +28,28 @@ const audiences = [
 const principles = [
   {
     title: 'Швидкість',
-    text: 'Мінімізуємо час від заявки до отримання комерційної пропозиції.'
+    text: 'Мінімізуємо час від заявки до отримання комерційної пропозиції.',
+    icon: TbGauge
   },
   {
     title: 'Надійність',
-    text: 'Працюємо лише з перевіреними постачальниками.'
+    text: 'Працюємо лише з перевіреними постачальниками.',
+    icon: TbShieldCheck
   },
   {
     title: 'Професійність',
-    text: 'Підбираємо запчастини з урахуванням каталожних номерів, сумісності та потреб клієнта.'
+    text: 'Підбираємо запчастини з урахуванням каталожних номерів, сумісності та потреб клієнта.',
+    icon: TbSettingsSearch
   },
   {
     title: 'Цифровізація',
-    text: 'Кожне замовлення автоматично формує цифрову історію техніки та компанії.'
+    text: 'Кожне замовлення автоматично формує цифрову історію техніки та компанії.',
+    icon: TbDatabaseCog
   },
   {
     title: 'Довгострокове партнерство',
-    text: 'Будуємо відносини, засновані на сервісі, а не лише на разовому продажі.'
+    text: 'Будуємо відносини, засновані на сервісі, а не лише на разовому продажі.',
+    icon: TbHeartHandshake
   }
 ];
 
@@ -176,19 +182,38 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="bg-public-section py-16">
-        <div className="kp-container">
+      <section className="relative overflow-hidden bg-public-page py-16">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(rgba(152,157,166,0.45)_1px,transparent_1px),linear-gradient(90deg,rgba(152,157,166,0.45)_1px,transparent_1px)] [background-size:28px_28px]" />
+        <div className="kp-container relative">
           <div className="max-w-2xl">
             <p className="text-sm font-bold uppercase text-accent">Наші принципи</p>
             <h2 className="mt-2 text-3xl font-bold text-public-primary">Працюємо як довгостроковий сервісний партнер</h2>
           </div>
-          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            {principles.map((principle) => (
-            <article key={principle.title} className="public-card p-5">
-              <h3 className="text-lg font-bold text-public-primary">{principle.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-public-muted">{principle.text}</p>
-              </article>
-            ))}
+          <div className="mt-10 overflow-hidden rounded-xl border border-public-border bg-public-card">
+            <div className="grid divide-y divide-public-border sm:grid-cols-2 lg:grid-cols-5 lg:divide-x lg:divide-y-0">
+              {principles.map((principle) => {
+                const Icon = principle.icon;
+
+                return (
+                  <article
+                    key={principle.title}
+                    className="min-w-0 px-8 py-10 transition-colors duration-200 hover:bg-public-elevated sm:px-10 lg:px-6"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="shrink-0 text-accent">
+                        <Icon aria-hidden="true" focusable="false" className="size-10 stroke-[1.7] sm:size-12" />
+                      </div>
+                      <h3 className="min-w-0 flex-1 break-words text-left text-xl font-bold leading-tight text-public-primary">
+                        {principle.title}
+                      </h3>
+                    </div>
+                    <p className="mt-5 w-full max-w-56 text-base font-medium leading-7 text-public-muted">
+                      {principle.text}
+                    </p>
+                  </article>
+                );
+              })}
+            </div>
           </div>
           <div className="relative mt-14 overflow-hidden rounded-2xl border border-accent/25 bg-[linear-gradient(135deg,rgba(28,28,28,0.98),rgba(8,8,8,0.98))] px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.38)] sm:px-8 sm:py-10 lg:mt-16 lg:px-10">
             <div
