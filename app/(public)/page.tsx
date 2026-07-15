@@ -12,22 +12,18 @@ const telegramBotUrl = 'https://t.me/kairos_parts_bot';
 const heroFleetHighlights = [
   {
     title: 'Повторне замовлення за секунди',
-    text: 'Платформа памʼятає, що вже купували для кожної машини.',
     icon: 'clock'
   },
   {
     title: 'Уся історія в одному місці',
-    text: 'Заявки, запчастини, каталожні номери й документи зберігаються разом.',
     icon: 'database'
   },
   {
     title: 'Контроль витрат та аналітика',
-    text: 'Легше бачити, що і для якої техніки замовлялось.',
     icon: 'chart'
   },
   {
     title: 'Надійні постачальники і гарантія',
-    text: 'Менеджер працює з перевіреними партнерами та фіксує рішення.',
     icon: 'shield'
   }
 ];
@@ -405,27 +401,29 @@ export default function HomePage() {
           </div>
 
           <div className="mt-10 overflow-hidden rounded-xl border border-white/15 bg-primary/70 shadow-panel backdrop-blur-md">
-            <div className="grid divide-y divide-white/10 md:grid-cols-[1.35fr_repeat(4,1fr)] md:divide-x md:divide-y-0">
-              <div className="flex gap-4 p-5 text-white sm:p-6">
-                <div className="hidden size-16 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-technical-white sm:flex">
+            <div className="grid grid-cols-2 lg:grid-cols-[minmax(340px,2.2fr)_repeat(4,minmax(130px,1fr))]">
+              <div className="col-span-2 flex gap-4 border-b border-white/10 p-4 text-white sm:p-5 lg:col-span-1 lg:border-b-0">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-technical-white sm:size-14">
                   <TrustIcon icon="database" />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold leading-snug sm:text-xl">
                     Кожне замовлення автоматично поповнює цифрову історію вашої техніки.
                   </h2>
-                  <p className="mt-3 text-sm leading-6 text-white/65">
+                  <p className="mt-2 text-sm leading-6 text-white/65">
                     Більше не потрібно шукати, які запчастини вже купували, для якої машини та коли.
                   </p>
                 </div>
               </div>
-              {heroFleetHighlights.map((item) => (
-                <div key={item.title} className="p-5 text-center sm:p-6">
+              {heroFleetHighlights.map((item, index) => (
+                <div
+                  key={item.title}
+                  className={`p-4 text-center sm:p-5 lg:border-l lg:border-white/10 ${index < 2 ? 'border-b border-white/10 lg:border-b-0' : ''} ${index % 2 === 1 ? 'border-l border-white/10' : ''}`}
+                >
                   <div className="mx-auto flex size-12 items-center justify-center text-accent">
                     <TrustIcon icon={item.icon} />
                   </div>
-                  <h3 className="mt-3 text-sm font-bold leading-6 text-white">{item.title}</h3>
-                  <p className="mt-2 text-xs leading-5 text-white/55">{item.text}</p>
+                  <h3 className="mt-2 text-sm font-bold leading-5 text-white sm:leading-6">{item.title}</h3>
                 </div>
               ))}
             </div>
