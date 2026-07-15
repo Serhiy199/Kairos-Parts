@@ -136,6 +136,8 @@ export async function approveClientRequestItemsAction(formData: FormData) {
   ]);
 
   revalidatePath(`/client/requests/${request.id}`);
+  revalidatePath('/client');
+  revalidatePath('/client/requests');
   revalidatePath(`/admin/requests/${request.id}`);
   redirectBack(request.id, 'items-approved');
 }

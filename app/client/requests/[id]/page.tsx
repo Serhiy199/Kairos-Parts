@@ -109,9 +109,16 @@ export default async function ClientRequestDetailPage({
     ['VIN / серійний номер', request.vinOrSerial ?? '—']
   ];
   const message = resultMessage(query.result);
+  const pendingApprovalItems = request.items.filter((item) => !item.approvedByClient);
+
   return (
     <div className="grid gap-6">
       {message ? <div className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">{message}</div> : null}
+      {pendingApprovalItems.length > 0 ? (
+        <div className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">
+          У цій заявці є {pendingApprovalItems.length} {pendingApprovalItems.length === 1 ? 'позиція' : 'позиції'} на погодження. Оберіть потрібні позиції та натисніть “Погодити вибрані позиції”.
+        </div>
+      ) : null}
 
       <div className="rounded-lg border border-border bg-card p-6 shadow-card">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
@@ -152,6 +159,11 @@ export default async function ClientRequestDetailPage({
                 Оберіть позиції, які потрібно включити у рахунок. Якщо щось треба уточнити, натисніть “Редагувати” біля позиції.
               </p>
             </div>
+            {pendingApprovalItems.length > 0 ? (
+              <span className="w-fit rounded-full bg-[#E7F6EC] px-3 py-1 text-xs font-bold text-success">
+                {pendingApprovalItems.length} на погодження
+              </span>
+            ) : null}
             <form id="approve-request-items" action={approveClientRequestItemsAction}>
               <input type="hidden" name="requestId" value={request.id} />
               <button className="inline-flex items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">

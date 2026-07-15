@@ -9,6 +9,7 @@ import { logoutClient, logoutStaff } from '@/app/(auth)/actions';
 type NavItem = {
   href: string;
   label: string;
+  badge?: number;
 };
 
 type LogoutTarget = 'client' | 'staff';
@@ -55,7 +56,16 @@ export function DashboardShell({ children, title, subtitle, navItems, homeHref, 
                     isActive ? 'bg-accent text-foreground' : 'hover:bg-white/10 hover:text-white'
                   }`}
                 >
-                  {item.label}
+                  <span className="inline-flex w-full items-center justify-between gap-3">
+                    <span>{item.label}</span>
+                    {item.badge && item.badge > 0 ? (
+                      <span className={`inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-xs font-bold ${
+                        isActive ? 'bg-foreground text-accent' : 'bg-[#E7F6EC] text-success'
+                      }`}>
+                        {item.badge}
+                      </span>
+                    ) : null}
+                  </span>
                 </Link>
               );
             })}

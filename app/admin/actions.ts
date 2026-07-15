@@ -293,6 +293,8 @@ export async function sendAdminRequestItemsForApproval(formData: FormData) {
   }
 
   revalidatePath(`/admin/requests/${request.id}`);
+  revalidatePath('/client');
+  revalidatePath('/client/requests');
   revalidatePath(`/client/requests/${request.id}`);
   redirectBack(request.id, 'items-sent-for-approval');
 }

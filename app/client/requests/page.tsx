@@ -24,8 +24,20 @@ export default async function ClientRequestsPage() {
   const requests = await prisma.request.findMany({
     where: requestAccessWhere(access),
     orderBy: { createdAt: 'desc' },
-    include: { category: true, company: { select: { name: true } } }
+    include: {
+      category: true,
+      company: { select: { name: true } },
+      items: {
+        where: {
+          visibleToClient: true,
+          approvedByClient: false
+        },
+        select: { id: true }
+      }
+    }
   });
+
+  const pendingApprovalCount = requests.filter((request) => request.items.length > 0).length;
 
   return (
     <div className="rounded-lg border border-border bg-card p-6 shadow-card">
@@ -34,6 +46,11 @@ export default async function ClientRequestsPage() {
           <p className="text-sm font-bold uppercase text-accent">Мої заявки</p>
           <h2 className="mt-2 text-2xl font-bold text-foreground">Історія заявок</h2>
           {access.companyName ? <p className="mt-2 text-sm text-muted">Компанія: {access.companyName}</p> : null}
+          {pendingApprovalCount > 0 ? (
+            <p className="mt-2 text-sm font-semibold text-success">
+              {pendingApprovalCount} {pendingApprovalCount === 1 ? 'заявка очікує' : 'заявки очікують'} погодження підібраних позицій.
+            </p>
+          ) : null}
         </div>
         <Link href="/request?source=client" className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover">
           Створити заявку
@@ -53,9 +70,21 @@ export default async function ClientRequestsPage() {
             </tr>
           </thead>
           <tbody>
-            {requests.map((request) => (
-              <tr key={request.id} className="border-b border-border last:border-0">
-                <td className="px-4 py-3 font-bold text-foreground">{request.requestNumber}</td>
+            {requests.map((request) => {
+              const needsApproval = request.items.length > 0;
+
+              return (
+              <tr key={request.id} className={`border-b border-border last:border-0 ${needsApproval ? 'bg-[#E7F6EC]/55' : ''}`}>
+                <td className="px-4 py-3 font-bold text-foreground">
+                  <div className="flex flex-col gap-2">
+                    <span>{request.requestNumber}</span>
+                    {needsApproval ? (
+                      <span className="w-fit rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success">
+                        Очікує погодження
+                      </span>
+                    ) : null}
+                  </div>
+                </td>
                 <td className="px-4 py-3 text-muted">{request.createdAt.toLocaleDateString('uk-UA')}</td>
                 <td className="px-4 py-3 text-muted">{request.category?.name ?? request.equipmentType ?? '—'}</td>
                 <td className="max-w-xs px-4 py-3 text-muted">{request.description.slice(0, 90)}</td>
@@ -71,7 +100,8 @@ export default async function ClientRequestsPage() {
                   </Link>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
         {requests.length === 0 ? <p className="mt-5 rounded-md border border-dashed border-border p-5 text-sm text-muted">Заявок ще немає.</p> : null}
