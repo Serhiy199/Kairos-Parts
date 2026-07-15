@@ -38,6 +38,7 @@ type InvoicePrintData = {
   request: {
     id: string;
     requestNumber: string;
+    createdAt: Date;
   };
   items: InvoicePrintItem[];
 };
@@ -165,7 +166,7 @@ export function InvoicePrintView({ invoice, backHref, backLabel }: InvoicePrintV
           </div>
           <div className="rounded-md border border-[#d7d9dd] p-4 text-sm">
             <p className="font-bold text-[#050505]">{statusLabel}</p>
-            <p className="mt-2 text-[#4C4F54]">Дата: {formatDate(invoice.createdAt)}</p>
+            <p className="mt-2 text-[#4C4F54]">Створення заявки: {formatDate(invoice.request.createdAt)}</p>
             {invoice.sentAt ? <p className="mt-1 text-[#4C4F54]">Надіслано: {formatDate(invoice.sentAt)}</p> : null}
             {invoice.paidAt ? <p className="mt-1 text-[#1E7A3B]">Оплачено: {formatDate(invoice.paidAt)}</p> : null}
             {invoice.cancelledAt ? <p className="mt-1 text-[#B42318]">Скасовано: {formatDate(invoice.cancelledAt)}</p> : null}

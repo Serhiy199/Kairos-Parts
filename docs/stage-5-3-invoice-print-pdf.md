@@ -64,6 +64,25 @@ The page is designed for A4 printing with:
 
 Stage 5.4 can add optional PDF file generation and attach the generated file as a `RequestDocument` if the business process requires stored invoice files.
 
+## Print layout cleanup
+
+The invoice print routes were cleaned up so the printed document does not include dashboard layout elements.
+
+Updated behavior:
+
+- `/admin/invoices/[invoiceId]/print` renders without CRM sidebar/header.
+- `/client/invoices/[invoiceId]/print` renders without client dashboard sidebar/header.
+- The print document keeps only invoice content and screen-only print/navigation buttons.
+- The buttons are hidden in browser print output through `.no-print`.
+- The status block label `Дата` was replaced with `Створення заявки`.
+- The displayed date now comes from the related request `createdAt`, not from the invoice `createdAt`.
+
+Implementation note:
+
+- Middleware forwards the current pathname as a request header for protected routes.
+- Client/admin layouts use that pathname to return only `{children}` for invoice print routes.
+- Business logic, invoice status transitions, billing snapshots, Prisma schema, and migrations were not changed.
+
 ## Verification
 
 To verify:

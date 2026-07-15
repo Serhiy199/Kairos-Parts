@@ -1,10 +1,21 @@
+import { headers } from 'next/headers';
+
 import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 
+const CLIENT_INVOICE_PRINT_ROUTE = /^\/client\/invoices\/[^/]+\/print$/;
+
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const session = await requireClientSession();
+  const requestHeaders = await headers();
+  const pathname = requestHeaders.get('x-kairos-pathname') ?? '';
+
+  if (CLIENT_INVOICE_PRINT_ROUTE.test(pathname)) {
+    return <>{children}</>;
+  }
+
   let pendingApprovalRequestCount = 0;
 
   if (hasDatabaseUrl()) {

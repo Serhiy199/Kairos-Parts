@@ -240,7 +240,7 @@ export async function getInvoiceForAdmin(invoiceId: string) {
   return prisma.invoice.findUnique({
     where: { id: invoiceId },
     include: {
-      request: { select: { id: true, requestNumber: true } },
+      request: { select: { id: true, requestNumber: true, createdAt: true } },
       createdBy: { select: { name: true, email: true, role: true } },
       items: { orderBy: { createdAt: 'asc' } }
     }
@@ -355,7 +355,7 @@ export async function getInvoiceForClient(invoiceId: string, access: ClientAcces
       request: requestAccessWhere(access)
     },
     include: {
-      request: { select: { id: true, requestNumber: true } },
+      request: { select: { id: true, requestNumber: true, createdAt: true } },
       items: { orderBy: { createdAt: 'asc' } }
     }
   });

@@ -4,6 +4,17 @@ import { getToken } from 'next-auth/jwt';
 import { canAccessPath, defaultRedirectForRole, isPublicPath, requiredRolesForPath } from '@/lib/auth/permissions';
 import type { UserRole } from '@/lib/auth/roles';
 
+function nextWithPathname(request: NextRequest, pathname: string) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-kairos-pathname', pathname);
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders
+    }
+  });
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const requiredRoles = requiredRolesForPath(pathname);
@@ -32,11 +43,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!requiredRoles && isPublicPath(pathname)) {
-    return NextResponse.next();
+    return nextWithPathname(request, pathname);
   }
 
   if (canAccessPath(pathname, role)) {
-    return NextResponse.next();
+    return nextWithPathname(request, pathname);
   }
 
   const redirectUrl = request.nextUrl.clone();
