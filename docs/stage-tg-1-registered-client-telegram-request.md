@@ -36,7 +36,12 @@ Telegram requests can be created only by a client who already has a Kairos Parts
 
 - `Зареєструватися` -> `/register?next=/request`
 - `Увійти` -> `/login?next=/request`
-- `Відкрити кабінет` -> `/client`
+
+## Unregistered phone keyboard cleanup
+
+- Removed the `Відкрити кабінет` button from the unknown-phone Telegram message.
+- Kept only relevant actions: `Зареєструватися` and `Увійти`.
+- Telegram registered client gate business logic was not changed.
 
 ## Database
 

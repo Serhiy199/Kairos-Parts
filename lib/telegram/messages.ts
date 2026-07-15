@@ -44,8 +44,7 @@ export function buildRegistrationKeyboard(baseUrl: string) {
       [
         { text: 'Зареєструватися', url: `${normalizedBaseUrl}/register?next=/request` },
         { text: 'Увійти', url: `${normalizedBaseUrl}/login?next=/request` }
-      ],
-      [{ text: 'Відкрити кабінет', url: `${normalizedBaseUrl}/client` }]
+      ]
     ]
   };
 }
