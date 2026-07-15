@@ -55,7 +55,7 @@ export default async function RequestPage({
         </div>
       </section>
 
-      <section className="bg-background px-4 py-16 sm:px-6 lg:px-8">
+      <section className="bg-public-page px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_0.45fr] lg:items-start">
           <RequestForm
             manufacturerOptions={manufacturerOptions}
@@ -65,9 +65,9 @@ export default async function RequestPage({
             initialSource="client"
             maxSizeMb={maxSizeMb}
           />
-          <aside className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <aside className="public-card p-6">
             <p className="text-sm font-bold uppercase text-accent">Що підготувати</p>
-            <div className="mt-5 grid gap-4 text-sm leading-6 text-muted">
+            <div className="mt-5 grid gap-4 text-sm leading-6 text-public-muted">
               <p>1. Імʼя контактної особи, телефон, email і назву компанії.</p>
               <p>2. Тип техніки, виробника або марку, модель і рік випуску.</p>
               <p>3. VIN або серійний номер техніки.</p>
@@ -75,7 +75,7 @@ export default async function RequestPage({
               <p>5. Фото, PDF, Excel або DOC список, якщо є. Файли можна не додавати.</p>
             </div>
             {clientAccess.mode === 'COMPANY' ? (
-              <div className="mt-6 rounded-md border border-accent/40 bg-[#F7F1E8] p-4 text-sm leading-6 text-foreground">
+              <div className="public-callout mt-6 rounded-md p-4 text-sm leading-6">
                 Заявка буде привʼязана до компанії <span className="font-bold">{clientAccess.companyName}</span> і буде доступна учасникам цієї компанії.
               </div>
             ) : null}
@@ -88,13 +88,13 @@ export default async function RequestPage({
 
 function RequestAuthGate({ isStaff = false, profileMissing = false }: { isStaff?: boolean; profileMissing?: boolean }) {
   return (
-    <section className="bg-background px-4 py-16 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-4xl rounded-lg border border-border bg-card p-6 shadow-card sm:p-8">
+    <section className="bg-public-page px-4 py-16 sm:px-6 lg:px-8">
+      <div className="public-card mx-auto max-w-4xl p-6 sm:p-8">
         <p className="text-sm font-bold uppercase text-accent">Заявка на підбір</p>
-        <h1 className="mt-3 text-3xl font-bold text-foreground sm:text-4xl">
+        <h1 className="mt-3 text-3xl font-bold text-public-primary sm:text-4xl">
           {profileMissing ? 'Профіль клієнта потребує налаштування' : 'Створення заявки доступне після входу'}
         </h1>
-        <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-public-muted sm:text-base">
           {profileMissing
             ? 'Ми не знайшли клієнтський профіль для цього акаунта. Зверніться до менеджера Kairos Parts або увійдіть іншим клієнтським акаунтом.'
             : 'Увійдіть або зареєструйтеся, щоб створити заявку на підбір запчастин, привʼязувати її до техніки та зберігати історію замовлень у кабінеті.'}
@@ -110,14 +110,14 @@ function RequestAuthGate({ isStaff = false, profileMissing = false }: { isStaff?
             'Документи та рахунки в одному кабінеті',
             'Статус заявки онлайн'
           ].map((item) => (
-            <div key={item} className="rounded-md border border-border bg-surface-muted px-4 py-3 text-sm font-semibold text-foreground">
+            <div key={item} className="rounded-md border border-public-border bg-public-elevated px-4 py-3 text-sm font-semibold text-public-secondary">
               {item}
             </div>
           ))}
         </div>
 
         {isStaff ? (
-          <div className="mt-6 rounded-md border border-accent/40 bg-[#F7F1E8] p-4 text-sm leading-6 text-foreground">
+          <div className="public-callout mt-6 rounded-md p-4 text-sm leading-6">
             Ви авторизовані як менеджер або адміністратор. Для створення клієнтської заявки використовуйте CLIENT-акаунт.
           </div>
         ) : null}
@@ -125,14 +125,14 @@ function RequestAuthGate({ isStaff = false, profileMissing = false }: { isStaff?
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link
             href="/login?next=/request"
-            className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover"
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             <ActionIcon name="login" />
             Увійти
           </Link>
           <Link
             href="/register?next=/request"
-            className="inline-flex items-center justify-center gap-2 rounded-md border border-border px-5 py-3 text-sm font-semibold text-foreground transition hover:border-accent hover:bg-surface-muted"
+            className="inline-flex items-center justify-center gap-2 rounded-md border border-public-border px-5 py-3 text-sm font-semibold text-public-primary transition hover:border-public-border-accent-hover hover:bg-public-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             <ActionIcon name="plus" />
             Зареєструватися

@@ -23,27 +23,27 @@ export default function ContactsPage() {
         </div>
       </section>
 
-      <section className="bg-background px-4 py-16 sm:px-6 lg:px-8">
+      <section className="bg-public-page px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {contacts.map((contact) => (
-            <div key={contact.title} className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <div key={contact.title} className="public-card p-6">
               <p className="text-sm font-bold uppercase text-accent">{contact.title}</p>
-              <h2 className="mt-3 text-xl font-bold text-foreground">{contact.value}</h2>
-              <p className="mt-3 text-sm leading-6 text-muted">{contact.note}</p>
+            <h2 className="mt-3 text-xl font-bold text-public-primary">{contact.value}</h2>
+            <p className="mt-3 text-sm leading-6 text-public-muted">{contact.note}</p>
             </div>
           ))}
         </div>
-        <div className="mx-auto mt-8 max-w-7xl rounded-lg border border-border bg-card p-6 shadow-card">
+        <div className="public-card mx-auto mt-8 max-w-7xl p-6">
           <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
-              <h2 className="text-2xl font-bold text-foreground">Найшвидший старт — заявка на підбір</h2>
-              <p className="mt-3 text-sm leading-6 text-muted">
+              <h2 className="text-2xl font-bold text-public-primary">Найшвидший старт — заявка на підбір</h2>
+              <p className="mt-3 text-sm leading-6 text-public-muted">
                 Опишіть техніку, деталь або прикріпіть список позицій на наступному етапі реалізації форми.
               </p>
             </div>
             <Link
               href="/request"
-              className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover"
+              className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               Створити заявку
             </Link>

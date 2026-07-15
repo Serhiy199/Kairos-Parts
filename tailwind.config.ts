@@ -33,7 +33,20 @@ const config: Config = {
         'sidebar-active': '#1A1A1A',
         'sidebar-text': '#E8E8E8',
         'sidebar-muted': '#7D8085',
-        'technical-white': '#E8E8E8'
+        'technical-white': '#E8E8E8',
+        'public-page': 'var(--public-surface-page)',
+        'public-section': 'var(--public-surface-section)',
+        'public-card': 'var(--public-surface-card)',
+        'public-elevated': 'var(--public-surface-elevated)',
+        'public-primary': 'var(--public-text-primary)',
+        'public-secondary': 'var(--public-text-secondary)',
+        'public-muted': 'var(--public-text-muted)',
+        'public-subtle': 'var(--public-text-subtle)',
+        'public-success': 'var(--public-text-success)',
+        'public-danger': 'var(--public-text-danger)',
+        'public-border': 'var(--public-border-subtle)',
+        'public-border-accent': 'var(--public-border-accent)',
+        'public-border-accent-hover': 'var(--public-border-accent-hover)'
       },
       borderRadius: {
         sm: '6px',

@@ -18,46 +18,46 @@ export default function CategoriesPage() {
         </div>
       </section>
 
-      <section className="bg-background px-4 py-16 sm:px-6 lg:px-8">
+      <section className="bg-public-page px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-4 lg:grid-cols-2">
           {catalogCategories.map((category) => (
-            <article key={category.id} className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <article key={category.id} className="public-card p-6">
               <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
                 <div>
-                  <h2 className="text-2xl font-bold text-foreground">{category.name}</h2>
-                  <p className="mt-3 text-sm leading-6 text-muted">{category.description}</p>
+              <h2 className="text-2xl font-bold text-public-primary">{category.name}</h2>
+              <p className="mt-3 text-sm leading-6 text-public-muted">{category.description}</p>
                 </div>
                 <Link
                   href={`/categories/${category.slug}`}
-                  className="rounded-md border border-border px-4 py-2 text-center text-sm font-semibold text-foreground transition hover:border-accent hover:bg-surface-muted"
+                className="rounded-md border border-public-border px-4 py-2 text-center text-sm font-semibold text-public-primary transition hover:border-public-border-accent-hover hover:bg-public-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   Детальніше
                 </Link>
               </div>
               <div className="mt-5">
-                <p className="text-xs font-bold uppercase text-muted">Приклади підкатегорій</p>
+            <p className="text-xs font-bold uppercase text-public-subtle">Приклади підкатегорій</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {category.subcategories.slice(0, 6).map((item) => (
-                    <span key={item} className="rounded-full bg-surface-muted px-3 py-1 text-xs font-semibold text-foreground">
+                <span key={item} className="rounded-full bg-public-elevated px-3 py-1 text-xs font-semibold text-public-secondary">
                       {item}
                     </span>
                   ))}
                 </div>
               </div>
               <div className="mt-5">
-                <p className="text-xs font-bold uppercase text-muted">Виробники</p>
-                <p className="mt-2 text-sm leading-6 text-foreground">{category.manufacturers.slice(0, 5).join(', ')}</p>
+            <p className="text-xs font-bold uppercase text-public-subtle">Виробники</p>
+            <p className="mt-2 text-sm leading-6 text-public-secondary">{category.manufacturers.slice(0, 5).join(', ')}</p>
               </div>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href="/request"
-                  className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover"
+                className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   Створити заявку
                 </Link>
                 <Link
                   href={`/categories/${category.slug}`}
-                  className="rounded-md border border-border px-5 py-3 text-center text-sm font-semibold text-foreground transition hover:border-accent hover:bg-surface-muted"
+                className="rounded-md border border-public-border px-5 py-3 text-center text-sm font-semibold text-public-primary transition hover:border-public-border-accent-hover hover:bg-public-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   Переглянути напрям
                 </Link>

@@ -49,32 +49,32 @@ export default function HowItWorksPage() {
         </div>
       </section>
 
-      <section className="bg-background py-16">
+      <section className="bg-public-page py-16">
         <div className="kp-container">
           <div className="grid gap-4 lg:grid-cols-2">
             {steps.map((step, index) => (
-              <article key={step.title} className="rounded-lg border border-border bg-card p-6 shadow-card">
+            <article key={step.title} className="public-card p-6">
                 <div className="flex items-start gap-4">
-                  <span className="grid size-11 shrink-0 place-items-center rounded-md bg-primary font-display text-sm font-bold text-accent">
+              <span className="grid size-11 shrink-0 place-items-center rounded-md border border-public-border-accent bg-public-page font-display text-sm font-bold text-accent">
                     {index + 1}
                   </span>
                   <div>
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">Крок {index + 1}</p>
-                    <h2 className="mt-2 text-xl font-bold text-foreground">{step.title}</h2>
-                    <p className="mt-3 text-sm leading-6 text-muted">{step.text}</p>
+                <h2 className="mt-2 text-xl font-bold text-public-primary">{step.title}</h2>
+                <p className="mt-3 text-sm leading-6 text-public-muted">{step.text}</p>
                   </div>
                 </div>
               </article>
             ))}
           </div>
-          <div className="mt-10 rounded-lg border border-border bg-card p-6 text-center shadow-card">
-            <h2 className="text-2xl font-bold text-foreground">Почніть із одного запиту</h2>
-            <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted">
+        <div className="public-card mt-10 p-6 text-center">
+          <h2 className="text-2xl font-bold text-public-primary">Почніть із одного запиту</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-public-muted">
               Опишіть потребу у зручному форматі. Менеджер Kairos Parts звʼяжеться для уточнення деталей.
             </p>
             <Link
               href="/request"
-              className="mt-6 inline-flex rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover"
+            className="mt-6 inline-flex rounded-md bg-accent px-5 py-3 text-sm font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               Створити заявку
             </Link>

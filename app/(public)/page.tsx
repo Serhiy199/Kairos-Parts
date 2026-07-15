@@ -433,34 +433,34 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="how-it-works" className="bg-[#F7F7F5] py-16">
+      <section id="how-it-works" className="bg-public-section py-16">
         <div className="kp-container">
           <div className="max-w-3xl">
             <p className="text-sm font-bold uppercase text-accent">Як це працює</p>
-            <h2 className="mt-2 text-3xl font-bold text-foreground">Заявка, підбір, узгодження та доставка в одному процесі</h2>
-            <p className="mt-4 text-sm leading-6 text-muted sm:text-base sm:leading-7">
+            <h2 className="public-section-heading mt-2 text-3xl font-bold">Заявка, підбір, узгодження та доставка в одному процесі</h2>
+            <p className="public-section-copy mt-4 text-sm leading-6 sm:text-base sm:leading-7">
               Менеджер веде заявку поетапно: від первинного опису потреби до погодження рішення та супроводу постачання.
             </p>
           </div>
           <div className="relative mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <div className="pointer-events-none absolute left-8 right-8 top-6 hidden h-px bg-gradient-to-r from-transparent via-accent/35 to-transparent xl:block" />
             {processSteps.map((step, index) => (
-              <div key={step.title} className="relative flex min-h-[300px] flex-col rounded-lg border border-accent/20 bg-card p-6 shadow-card transition hover:border-accent/45 hover:shadow-panel">
+              <div key={step.title} className="public-card relative flex min-h-[300px] flex-col p-6">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex size-12 items-center justify-center rounded-md border border-accent/25 bg-primary text-accent shadow-card">
+                  <div className="flex size-12 items-center justify-center rounded-md border border-public-border-accent bg-public-page text-accent">
                     <ProcessIcon icon={step.icon} />
                   </div>
                   <span className="font-display text-sm font-bold tracking-[0.16em] text-accent/80">Крок {index + 1}</span>
                 </div>
                 <div className="flex flex-1 flex-col">
-                  <h3 className="mt-5 text-xl font-bold text-foreground">{step.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-muted">{step.text}</p>
+                  <h3 className="mt-5 text-xl font-bold text-public-primary">{step.title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-public-muted">{step.text}</p>
                 </div>
                 <div className="mt-6 grid grid-cols-5 gap-1.5" aria-hidden="true">
                   {processSteps.map((segment, segmentIndex) => (
                     <span
                       key={`${step.title}-${segment.title}`}
-                      className={`h-1.5 rounded-full ${segmentIndex <= index ? 'bg-accent' : 'bg-border/80'}`}
+                      className={`h-1.5 rounded-full ${segmentIndex <= index ? 'bg-accent' : 'bg-public-elevated'}`}
                     />
                   ))}
                 </div>
@@ -514,27 +514,27 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-background py-14">
-        <div className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(76,79,84,0.65)_1px,transparent_1px),linear-gradient(90deg,rgba(76,79,84,0.65)_1px,transparent_1px)] [background-size:28px_28px]" />
+      <section className="relative overflow-hidden bg-public-page py-16">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(rgba(152,157,166,0.45)_1px,transparent_1px),linear-gradient(90deg,rgba(152,157,166,0.45)_1px,transparent_1px)] [background-size:28px_28px]" />
         <div className="kp-container relative">
           <div className="max-w-3xl">
             <p className="text-sm font-bold uppercase text-accent">Сервіс</p>
-            <h2 className="mt-2 max-w-3xl text-3xl font-bold leading-tight text-foreground sm:text-4xl">
+            <h2 className="mt-2 max-w-3xl text-3xl font-bold leading-tight text-public-primary sm:text-4xl">
               Все для ефективного обслуговування вашої техніки — в одній платформі
             </h2>
-            <p className="mt-4 max-w-3xl text-base font-medium leading-7 text-foreground/80 sm:text-lg sm:leading-8">
+            <p className="mt-4 max-w-3xl text-base font-medium leading-7 text-public-secondary sm:text-lg sm:leading-8">
               Kairos не лише знаходить запчастини серед перевірених постачальників, а й автоматично формує цифрову історію кожної одиниці вашої техніки.
             </p>
           </div>
-          <div className="mt-10 overflow-hidden rounded-xl border border-[rgba(125,128,133,0.24)] bg-card shadow-card">
-            <div className="grid divide-y divide-border/80 sm:grid-cols-2 lg:grid-cols-5 lg:divide-x lg:divide-y-0">
+          <div className="mt-10 overflow-hidden rounded-xl border border-public-border bg-public-card">
+            <div className="grid divide-y divide-public-border sm:grid-cols-2 lg:grid-cols-5 lg:divide-x lg:divide-y-0">
               {serviceCards.map((stat) => (
-                <div key={stat.title} className="min-h-72 px-8 py-10 sm:px-10 lg:px-8 xl:px-10">
+                <div key={stat.title} className="min-h-72 px-8 py-10 transition-colors duration-200 hover:bg-public-elevated sm:px-10 lg:px-8 xl:px-10">
                   <div className="text-accent">
                     <TrustIcon icon={stat.icon} />
                   </div>
-                  <h3 className="mt-9 max-w-52 text-xl font-bold leading-tight text-foreground">{stat.title}</h3>
-                  <p className="mt-5 max-w-56 text-base font-medium leading-7 text-muted">{stat.text}</p>
+                  <h3 className="mt-9 max-w-52 text-xl font-bold leading-tight text-public-primary">{stat.title}</h3>
+                  <p className="mt-5 max-w-56 text-base font-medium leading-7 text-public-muted">{stat.text}</p>
                 </div>
               ))}
             </div>
@@ -578,10 +578,10 @@ export default function HomePage() {
                 <Link
                   key={channel.title}
                   href={channel.href}
-                  className="rounded-lg border border-white/10 bg-white/95 p-5 text-foreground shadow-panel transition hover:-translate-y-0.5 hover:border-accent"
+                  className="public-card public-interactive-card p-5 text-public-primary"
                 >
                   <p className="text-sm font-bold">{channel.title}</p>
-                  <p className="mt-2 text-sm leading-6 text-muted">{channel.text}</p>
+                  <p className="mt-2 text-sm leading-6 text-public-muted">{channel.text}</p>
                 </Link>
               ))}
             </div>

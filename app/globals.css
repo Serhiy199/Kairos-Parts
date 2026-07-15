@@ -27,6 +27,19 @@
   --color-sidebar-text: #e8e8e8;
   --color-sidebar-muted: #7d8085;
   --color-technical-white: #e8e8e8;
+  --public-surface-page: #0b0e14;
+  --public-surface-section: #10141c;
+  --public-surface-card: #151a23;
+  --public-surface-elevated: #1b212c;
+  --public-text-primary: #f5f3ee;
+  --public-text-secondary: #d4d6da;
+  --public-text-muted: #989da6;
+  --public-text-subtle: #737984;
+  --public-text-success: #86efac;
+  --public-text-danger: #fca5a5;
+  --public-border-subtle: rgba(255, 255, 255, 0.1);
+  --public-border-accent: rgba(200, 150, 66, 0.35);
+  --public-border-accent-hover: rgba(200, 150, 66, 0.75);
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 10px;
@@ -97,6 +110,148 @@ select {
   max-width: 1280px;
   margin-inline: auto;
   padding-inline: 16px;
+}
+
+@layer components {
+  .public-section-heading {
+    color: var(--public-text-primary);
+  }
+
+  .public-section-copy {
+    color: var(--public-text-muted);
+  }
+
+  .public-card {
+    border: 1px solid var(--public-border-subtle);
+    border-radius: var(--radius-lg);
+    background: var(--public-surface-card);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
+    transition:
+      transform 180ms ease,
+      background-color 180ms ease,
+      border-color 180ms ease;
+  }
+
+  .public-card:hover {
+    border-color: var(--public-border-accent-hover);
+    background: var(--public-surface-elevated);
+    transform: translateY(-2px);
+  }
+
+  .public-interactive-card:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+
+  .public-field {
+    border: 1px solid var(--public-border-subtle);
+    background: var(--public-surface-elevated);
+    color: var(--public-text-primary);
+  }
+
+  .public-field::placeholder {
+    color: var(--public-text-subtle);
+  }
+
+  .public-field:focus-visible {
+    border-color: var(--public-border-accent-hover);
+    outline: 2px solid rgba(200, 150, 66, 0.28);
+    outline-offset: 1px;
+  }
+
+  .public-callout {
+    border: 1px solid var(--public-border-accent);
+    background: rgba(200, 150, 66, 0.08);
+    color: var(--public-text-secondary);
+  }
+}
+
+@layer utilities {
+  .bg-public-page {
+    background-color: var(--public-surface-page);
+  }
+
+  .bg-public-section {
+    background-color: var(--public-surface-section);
+  }
+
+  .bg-public-card {
+    background-color: var(--public-surface-card);
+  }
+
+  .bg-public-elevated {
+    background-color: var(--public-surface-elevated);
+  }
+
+  .text-public-primary {
+    color: var(--public-text-primary);
+  }
+
+  .text-public-secondary {
+    color: var(--public-text-secondary);
+  }
+
+  .text-public-muted {
+    color: var(--public-text-muted);
+  }
+
+  .text-public-subtle {
+    color: var(--public-text-subtle);
+  }
+
+  .text-public-success {
+    color: var(--public-text-success);
+  }
+
+  .text-public-danger {
+    color: var(--public-text-danger);
+  }
+
+  .border-public-border {
+    border-color: var(--public-border-subtle);
+  }
+
+  .border-public-border-accent {
+    border-color: var(--public-border-accent);
+  }
+
+  .divide-public-border > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--public-border-subtle);
+  }
+
+  .hover\:bg-public-elevated:hover {
+    background-color: var(--public-surface-elevated);
+  }
+
+  .hover\:text-public-primary:hover {
+    color: var(--public-text-primary);
+  }
+
+  .hover\:border-public-border-accent-hover:hover {
+    border-color: var(--public-border-accent-hover);
+  }
+}
+
+.public-field::file-selector-button {
+  margin-right: 16px;
+  border: 1px solid var(--public-border-accent);
+  border-radius: var(--radius-md);
+  background: var(--public-surface-card);
+  padding: 8px 16px;
+  color: var(--color-accent);
+  font-size: 14px;
+  font-weight: 700;
+  transition: background-color 180ms ease;
+}
+
+.public-field:hover::file-selector-button {
+  background: var(--public-surface-elevated);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-card {
+    transition: none;
+  }
 }
 
 @media (min-width: 768px) {

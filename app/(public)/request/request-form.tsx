@@ -156,16 +156,16 @@ export function RequestForm({
 
   if (submitState.status === 'success') {
     return (
-      <div className="rounded-lg border border-border bg-card p-6 shadow-card">
-        <p className="text-sm font-bold uppercase text-success">Заявку створено</p>
-        <h2 className="mt-2 text-3xl font-bold text-foreground">Номер заявки: {submitState.requestNumber}</h2>
-        <p className="mt-4 text-sm leading-6 text-muted">
+    <div className="public-card p-6">
+      <p className="text-sm font-bold uppercase text-public-success">Заявку створено</p>
+      <h2 className="mt-2 text-3xl font-bold text-public-primary">Номер заявки: {submitState.requestNumber}</h2>
+      <p className="mt-4 text-sm leading-6 text-public-muted">
           Менеджер Kairos Parts зв&apos;яжеться з вами для уточнення деталей. Збережіть посилання на статус заявки.
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link
             href={submitState.publicStatusUrl}
-            className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover"
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             <ActionIcon name="search" />
             Переглянути статус
@@ -173,14 +173,14 @@ export function RequestForm({
           <button
             type="button"
             onClick={() => setSubmitState({ status: 'idle' })}
-            className="inline-flex items-center justify-center gap-2 rounded-md border border-border px-5 py-3 text-sm font-semibold text-foreground transition hover:border-accent hover:bg-surface-muted"
+          className="inline-flex items-center justify-center gap-2 rounded-md border border-public-border px-5 py-3 text-sm font-semibold text-public-primary transition hover:border-public-border-accent-hover hover:bg-public-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             <ActionIcon name="plus" />
             Створити ще одну заявку
           </button>
           <Link
             href="/"
-            className="rounded-md border border-border px-5 py-3 text-center text-sm font-semibold text-foreground transition hover:border-accent hover:bg-surface-muted"
+          className="rounded-md border border-public-border px-5 py-3 text-center text-sm font-semibold text-public-primary transition hover:border-public-border-accent-hover hover:bg-public-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             Перейти на головну
           </Link>
@@ -190,17 +190,17 @@ export function RequestForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-card p-6 shadow-card">
+  <form onSubmit={handleSubmit} className="public-card p-6">
       <div>
         <p className="text-sm font-bold uppercase text-accent">Створити заявку</p>
-        <h2 className="mt-2 text-3xl font-bold text-foreground">Заявка на підбір запчастин</h2>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
+      <h2 className="mt-2 text-3xl font-bold text-public-primary">Заявка на підбір запчастин</h2>
+      <p className="mt-3 max-w-2xl text-sm leading-6 text-public-muted">
           Опишіть техніку, потрібні запчастини та додайте фото або файл. Менеджер перевірить сумісність і запропонує рішення.
         </p>
       </div>
 
       {initialMode === 'file' ? (
-        <div className="mt-5 rounded-lg border border-accent/40 bg-[#F7F1E8] p-4 text-sm leading-6 text-foreground">
+        <div className="public-callout mt-5 rounded-lg p-4 text-sm leading-6">
           Додайте файл або фото у блоці нижче та коротко опишіть потребу. Форма працює в єдиному детальному форматі заявки.
         </div>
       ) : null}
@@ -210,58 +210,58 @@ export function RequestForm({
       {initialRequest?.vehicleId ? <input type="hidden" name="vehicleId" value={initialRequest.vehicleId} /> : null}
 
       <div className="mt-6 grid gap-5 md:grid-cols-2">
-        <label className="grid gap-2 text-sm font-semibold text-foreground">
+        <label className="grid gap-2 text-sm font-semibold text-public-secondary">
           Імʼя контактної особи *
           <input
             name="contactName"
             required
             defaultValue={initialContact?.contactName}
-            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+          className="public-field h-11 rounded-md px-3 text-sm transition"
             placeholder="Іваненко Іван"
           />
         </label>
-        <label className="grid gap-2 text-sm font-semibold text-foreground">
+        <label className="grid gap-2 text-sm font-semibold text-public-secondary">
           Телефон *
           <input
             name="phone"
             required
             defaultValue={initialContact?.phone}
-            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+          className="public-field h-11 rounded-md px-3 text-sm transition"
             placeholder="+38 (067) 123 45 67"
           />
         </label>
-        <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
+        <label className="grid gap-2 text-sm font-semibold text-public-secondary md:col-span-2">
           Компанія *
           <input
             name="companyName"
             required
             defaultValue={initialContact?.companyName}
-            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+          className="public-field h-11 rounded-md px-3 text-sm transition"
             placeholder="ТОВ Агро-Тех"
           />
         </label>
-        <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
+        <label className="grid gap-2 text-sm font-semibold text-public-secondary md:col-span-2">
           Email *
           <input
             name="email"
             type="email"
             required
             defaultValue={initialContact?.email}
-            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+          className="public-field h-11 rounded-md px-3 text-sm transition"
             placeholder="name@company.ua"
           />
         </label>
       </div>
 
       <div className="mt-6 grid gap-5 md:grid-cols-2">
-        <label className="grid gap-2 text-sm font-semibold text-foreground">
+        <label className="grid gap-2 text-sm font-semibold text-public-secondary">
           Тип техніки *
           <select
             name="equipmentType"
             value={equipmentType}
             required
             onChange={(event) => setEquipmentType(event.target.value)}
-            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+          className="public-field h-11 rounded-md px-3 text-sm transition"
           >
             <option value="">Оберіть тип техніки</option>
             {initialRequest?.equipmentType && !EQUIPMENT_TYPE_GROUPS.some((group) => group.options.includes(initialRequest.equipmentType ?? '')) ? (
@@ -278,14 +278,14 @@ export function RequestForm({
             ))}
           </select>
         </label>
-        <label className="grid gap-2 text-sm font-semibold text-foreground">
+        <label className="grid gap-2 text-sm font-semibold text-public-secondary">
           Виробник / марка *
           <input
             name="manufacturer"
             list="manufacturer-options"
             required
             defaultValue={initialRequest?.manufacturer}
-            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+          className="public-field h-11 rounded-md px-3 text-sm transition"
             placeholder="Наприклад: John Deere, MAN, Claas"
           />
           <datalist id="manufacturer-options">
@@ -294,17 +294,17 @@ export function RequestForm({
             ))}
           </datalist>
         </label>
-        <label className="grid gap-2 text-sm font-semibold text-foreground">
+        <label className="grid gap-2 text-sm font-semibold text-public-secondary">
           Модель *
           <input
             name="model"
             required
             defaultValue={initialRequest?.model}
-            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+          className="public-field h-11 rounded-md px-3 text-sm transition"
             placeholder="Наприклад: MAN TGX 18.440, John Deere 8430"
           />
         </label>
-        <label className="grid gap-2 text-sm font-semibold text-foreground">
+        <label className="grid gap-2 text-sm font-semibold text-public-secondary">
           Рік випуску *
           <input
             name="vehicleYear"
@@ -313,45 +313,45 @@ export function RequestForm({
             max="2100"
             required
             defaultValue={initialRequest?.vehicleYear ?? ''}
-            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+          className="public-field h-11 rounded-md px-3 text-sm transition"
             placeholder="Наприклад: 2018"
           />
         </label>
-        <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
+        <label className="grid gap-2 text-sm font-semibold text-public-secondary md:col-span-2">
           VIN / серійний номер *
           <input
             name="vinOrSerial"
             required
             defaultValue={initialRequest?.vinOrSerial}
-            className="h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+          className="public-field h-11 rounded-md px-3 text-sm transition"
             placeholder="VIN, серійний номер або номер шасі"
           />
         </label>
       </div>
 
-      <label className="mt-6 grid gap-2 text-sm font-semibold text-foreground">
+      <label className="mt-6 grid gap-2 text-sm font-semibold text-public-secondary">
         Опис / коментар *
         <textarea
           name="description"
           required
           defaultValue={initialRequest?.description}
-          className="min-h-32 rounded-md border border-border bg-white px-3 py-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+        className="public-field min-h-32 rounded-md px-3 py-3 text-sm transition"
           placeholder="Опишіть, яку запчастину потрібно підібрати, для якої техніки, що відомо про вузол або проблему."
         />
       </label>
 
-      <label className="mt-6 grid gap-2 text-sm font-semibold text-foreground">
+      <label className="mt-6 grid gap-2 text-sm font-semibold text-public-secondary">
         Додатковий коментар
         <textarea
           name="comment"
           defaultValue={initialRequest?.comment}
-          className="min-h-24 rounded-md border border-border bg-white px-3 py-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
+        className="public-field min-h-24 rounded-md px-3 py-3 text-sm transition"
           placeholder="Додаткові побажання, терміновість, аналоги, умови доставки."
         />
       </label>
 
-      <div className="mt-6 rounded-lg border border-dashed border-border bg-surface-muted p-5">
-        <label className="grid gap-3 text-sm font-semibold text-foreground">
+      <div className="mt-6 rounded-lg border border-dashed border-public-border bg-public-elevated p-5">
+        <label className="grid gap-3 text-sm font-semibold text-public-secondary">
           Додайте фото, список або документ
           <input
             name="files"
@@ -359,19 +359,19 @@ export function RequestForm({
             multiple
             accept={ALLOWED_UPLOAD_EXTENSIONS.join(',')}
             onChange={handleFileChange}
-            className="block w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-muted file:mr-4 file:rounded-md file:border file:border-accent file:bg-white file:px-4 file:py-2 file:text-sm file:font-bold file:text-[#8A5B24] file:transition hover:file:bg-accent/10"
+          className="public-field block w-full rounded-md px-3 py-2 text-sm text-public-muted"
           />
         </label>
-        <p className="mt-3 text-sm leading-6 text-foreground">
+        <p className="mt-3 text-sm leading-6 text-public-secondary">
           Можна прикріпити фото деталі, список позицій, PDF, Excel або документ із артикулами.
         </p>
-        <p className="mt-1 text-xs leading-5 text-muted">
+        <p className="mt-1 text-xs leading-5 text-public-muted">
           Дозволені формати: JPG, PNG, PDF, XLS, XLSX, CSV, DOC, DOCX. Максимальний розмір одного файлу: {maxSizeMb} MB.
         </p>
         {selectedFiles.length > 0 ? (
           <div className="mt-4 grid gap-2">
             {selectedFiles.map((file) => (
-              <div key={`${file.name}-${file.size}`} className="rounded-md border border-border bg-card px-3 py-2 text-xs text-muted">
+            <div key={`${file.name}-${file.size}`} className="rounded-md border border-public-border bg-public-card px-3 py-2 text-xs text-public-muted">
                 {file.name} - {(file.size / 1024 / 1024).toFixed(2)} MB
               </div>
             ))}
@@ -380,7 +380,7 @@ export function RequestForm({
       </div>
 
       {submitState.status === 'error' ? (
-        <div className="mt-5 rounded-lg border border-danger/30 bg-[#FEF3F2] p-4 text-sm leading-6 text-danger">
+        <div className="mt-5 rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm leading-6 text-public-danger">
           <p className="font-bold">{submitState.message}</p>
           {submitState.errors?.length ? (
             <ul className="mt-2 list-inside list-disc">
@@ -395,7 +395,7 @@ export function RequestForm({
       <button
         type="submit"
         disabled={submitState.status === 'submitting'}
-        className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+        className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
         <ActionIcon name={submitState.status === 'submitting' ? 'refresh' : 'send'} />
         {submitState.status === 'submitting' ? 'Створюємо заявку...' : 'Створити заявку'}

@@ -14,7 +14,7 @@ export function PublicMobileMenu({ navItems }: { navItems: NavItem[] }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden">
       <button
         type="button"
         aria-expanded={isOpen}
@@ -36,7 +36,7 @@ export function PublicMobileMenu({ navItems }: { navItems: NavItem[] }) {
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsOpen(false)}
-                className="rounded-md px-3 py-2 transition hover:bg-white/10 hover:text-white"
+                className="rounded-md px-3 py-2 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 {item.label}
               </Link>
@@ -44,7 +44,7 @@ export function PublicMobileMenu({ navItems }: { navItems: NavItem[] }) {
             <Link
               href="/login"
               onClick={() => setIsOpen(false)}
-              className="inline-flex items-center gap-2 rounded-md px-3 py-2 font-semibold text-white transition hover:bg-white/10"
+              className="inline-flex items-center gap-2 rounded-md px-3 py-2 font-semibold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               <ActionIcon name="login" />
               Увійти
@@ -52,7 +52,7 @@ export function PublicMobileMenu({ navItems }: { navItems: NavItem[] }) {
             <Link
               href="/request"
               onClick={() => setIsOpen(false)}
-              className="brand-action mt-2 inline-flex items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 text-center font-bold text-foreground transition hover:bg-accent-hover"
+              className="brand-action mt-2 inline-flex items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 text-center font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               <ActionIcon name="plus" />
               Створити заявку

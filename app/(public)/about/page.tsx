@@ -61,24 +61,24 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="bg-background py-16">
+      <section className="bg-public-page py-16">
         <div className="kp-container grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <article className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <article className="public-card p-6">
             <p className="text-sm font-bold uppercase text-accent">Наша місія</p>
-            <h2 className="mt-2 text-3xl font-bold text-foreground">Спростити обслуговування техніки</h2>
-            <p className="mt-4 text-sm leading-6 text-muted">
+            <h2 className="mt-2 text-3xl font-bold text-public-primary">Спростити обслуговування техніки</h2>
+            <p className="mt-4 text-sm leading-6 text-public-muted">
               Наша мета — зробити процес закупівлі запчастин швидким, прозорим та системним, щоб підприємства
               витрачали менше часу на пошук деталей і більше — на свою основну діяльність.
             </p>
-            <p className="mt-4 text-sm leading-6 text-muted">
+            <p className="mt-4 text-sm leading-6 text-public-muted">
               Ми надаємо підприємствам єдину платформу для оперативного підбору, закупівлі та накопичення
               історії запчастин по кожній одиниці техніки.
             </p>
           </article>
-          <article className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <article className="public-card p-6">
             <p className="text-sm font-bold uppercase text-accent">Що ми робимо</p>
-            <h2 className="mt-2 text-3xl font-bold text-foreground">Не магазин, а центр підбору</h2>
-            <p className="mt-4 text-sm leading-6 text-muted">
+            <h2 className="mt-2 text-3xl font-bold text-public-primary">Не магазин, а центр підбору</h2>
+            <p className="mt-4 text-sm leading-6 text-public-muted">
               Kairos Parts працює як центр підбору та постачання запчастин, де клієнт створює одну заявку,
               а наша команда знаходить оптимальне рішення серед перевірених постачальників.
             </p>
@@ -86,16 +86,16 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="bg-card py-16">
+      <section className="bg-public-section py-16">
         <div className="kp-container">
           <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
             <div>
               <p className="text-sm font-bold uppercase text-accent">Платформа обʼєднує</p>
-              <h2 className="mt-2 text-3xl font-bold text-foreground">Один процес замість десятків ручних дій</h2>
+            <h2 className="mt-2 text-3xl font-bold text-public-primary">Один процес замість десятків ручних дій</h2>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {platformItems.map((item) => (
-                <div key={item} className="rounded-md border border-border bg-surface-muted px-4 py-3 text-sm font-semibold text-foreground">
+              <div key={item} className="rounded-md border border-public-border bg-public-card px-4 py-3 text-sm font-semibold text-public-secondary">
                   {item}
                 </div>
               ))}
@@ -104,21 +104,21 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="bg-background py-16">
+      <section className="bg-public-page py-16">
         <div className="kp-container grid gap-6 lg:grid-cols-2">
-          <article className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <article className="public-card p-6">
             <p className="text-sm font-bold uppercase text-accent">Чому це працює</p>
-            <h2 className="mt-2 text-3xl font-bold text-foreground">Кожне замовлення створює цінність на майбутнє</h2>
-            <p className="mt-4 text-sm leading-6 text-muted">
+            <h2 className="mt-2 text-3xl font-bold text-public-primary">Кожне замовлення створює цінність на майбутнє</h2>
+            <p className="mt-4 text-sm leading-6 text-public-muted">
               Платформа автоматично накопичує історію придбаних запчастин для кожної одиниці техніки,
               зареєстрованої в особистому кабінеті. З кожним новим замовленням підприємство отримує
               структуровану базу даних свого парку без додаткового введення інформації.
             </p>
           </article>
-          <article className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <article className="public-card p-6">
             <p className="text-sm font-bold uppercase text-accent">Наш підхід</p>
-            <h2 className="mt-2 text-3xl font-bold text-foreground">Сервіс навколо потреб клієнта</h2>
-            <p className="mt-4 text-sm leading-6 text-muted">
+            <h2 className="mt-2 text-3xl font-bold text-public-primary">Сервіс навколо потреб клієнта</h2>
+            <p className="mt-4 text-sm leading-6 text-public-muted">
               Ми не змушуємо шукати запчастини серед тисяч товарів, самостійно перевіряти сумісність
               або повторно вводити однакові дані. Ми беремо на себе підбір, комунікацію з постачальниками
               та організацію поставки, а платформа систематизує інформацію про кожне замовлення.
@@ -145,28 +145,28 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="bg-background py-16">
+      <section className="bg-public-section py-16">
         <div className="kp-container">
           <div className="max-w-2xl">
             <p className="text-sm font-bold uppercase text-accent">Наші принципи</p>
-            <h2 className="mt-2 text-3xl font-bold text-foreground">Працюємо як довгостроковий сервісний партнер</h2>
+            <h2 className="mt-2 text-3xl font-bold text-public-primary">Працюємо як довгостроковий сервісний партнер</h2>
           </div>
           <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             {principles.map((principle) => (
-              <article key={principle.title} className="rounded-lg border border-border bg-card p-5 shadow-card">
-                <h3 className="text-lg font-bold text-foreground">{principle.title}</h3>
-                <p className="mt-3 text-sm leading-6 text-muted">{principle.text}</p>
+            <article key={principle.title} className="public-card p-5">
+              <h3 className="text-lg font-bold text-public-primary">{principle.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-public-muted">{principle.text}</p>
               </article>
             ))}
           </div>
-          <div className="mt-10 rounded-lg border border-border bg-card p-6 text-center shadow-card">
-            <h2 className="text-2xl font-bold text-foreground">Почніть із заявки</h2>
-            <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted">
+        <div className="public-card mt-10 p-6 text-center">
+          <h2 className="text-2xl font-bold text-public-primary">Почніть із заявки</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-public-muted">
               Опишіть потребу, а Kairos Parts підбере рішення і збереже історію для наступних звернень.
             </p>
             <Link
               href="/request"
-              className="mt-6 inline-flex rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover"
+            className="mt-6 inline-flex rounded-md bg-accent px-5 py-3 text-sm font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               Створити заявку
             </Link>
