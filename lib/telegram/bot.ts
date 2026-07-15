@@ -1,4 +1,4 @@
-import type { TelegramSendMessageOptions } from './types';
+import type { TelegramSendDocumentOptions, TelegramSendMessageOptions } from './types';
 
 type TelegramApiResponse<T> = {
   ok: boolean;
@@ -39,6 +39,21 @@ async function telegramApi<T>(method: string, body: Record<string, unknown>): Pr
   return payload.result;
 }
 
+async function telegramMultipartApi<T>(method: string, formData: FormData): Promise<T> {
+  const token = getBotToken();
+  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+    method: 'POST',
+    body: formData
+  });
+  const payload = (await response.json()) as TelegramApiResponse<T>;
+
+  if (!response.ok || !payload.ok || payload.result === undefined) {
+    throw new Error(payload.description || `Telegram API ${method} failed.`);
+  }
+
+  return payload.result;
+}
+
 export async function sendTelegramMessage(chatId: string | number, text: string, options: TelegramSendMessageOptions = {}) {
   return telegramApi('sendMessage', {
     chat_id: chatId,
@@ -46,6 +61,34 @@ export async function sendTelegramMessage(chatId: string | number, text: string,
     parse_mode: options.parseMode,
     reply_markup: options.replyMarkup
   });
+}
+
+export async function sendTelegramDocument({
+  chatId,
+  buffer,
+  filename,
+  caption,
+  options = {}
+}: {
+  chatId: string | number;
+  buffer: Buffer;
+  filename: string;
+  caption?: string;
+  options?: TelegramSendDocumentOptions;
+}) {
+  const formData = new FormData();
+  formData.append('chat_id', String(chatId));
+  formData.append('document', new Blob([new Uint8Array(buffer)], { type: 'application/pdf' }), filename);
+
+  if (caption || options.caption) {
+    formData.append('caption', caption ?? options.caption ?? '');
+  }
+
+  if (options.replyMarkup) {
+    formData.append('reply_markup', JSON.stringify(options.replyMarkup));
+  }
+
+  return telegramMultipartApi('sendDocument', formData);
 }
 
 export async function answerCallbackQuery(callbackQueryId: string, text?: string) {

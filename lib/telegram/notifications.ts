@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
-import { sendTelegramMessage } from '@/lib/telegram/bot';
+import { formatInvoiceMoney, generateInvoicePdfBuffer, resolveInvoiceTotalAmount } from '@/lib/invoices/pdf';
+import { sendTelegramDocument, sendTelegramMessage } from '@/lib/telegram/bot';
 
 type TelegramRecipient = {
   chatId: string;
@@ -44,19 +45,6 @@ export function buildInvoiceRequestUrl(requestId: string) {
   return buildClientLoginUrl(`/client/requests/${requestId}`);
 }
 
-function formatInvoiceAmount(amount: { toString: () => string }, currency: string) {
-  const numericAmount = Number(amount.toString());
-
-  if (!Number.isFinite(numericAmount)) {
-    return `${amount.toString()} ${currency}`;
-  }
-
-  return `${numericAmount.toLocaleString('uk-UA', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })} ${currency}`;
-}
-
 export function buildInvoiceSentMessage({
   requestNumber,
   invoiceNumber,
@@ -71,9 +59,26 @@ export function buildInvoiceSentMessage({
   return [
     `По вашій заявці ${requestNumber} сформовано рахунок ${invoiceNumber}.`,
     '',
-    `Сума до оплати: ${formatInvoiceAmount(totalAmount, currency)}.`,
+    `Сума до оплати: ${formatInvoiceMoney(totalAmount, currency)}.`,
     '',
     'Переглянути рахунок можна в особистому кабінеті Kairos Parts.'
+  ].join('\n');
+}
+
+function buildInvoicePdfCaption({
+  requestNumber,
+  invoiceNumber,
+  totalAmount,
+  currency
+}: {
+  requestNumber: string;
+  invoiceNumber: string;
+  totalAmount: { toString: () => string };
+  currency: string;
+}) {
+  return [
+    `Рахунок ${invoiceNumber} по заявці ${requestNumber}`,
+    `Сума до оплати: ${formatInvoiceMoney(totalAmount, currency)}`
   ].join('\n');
 }
 
@@ -204,6 +209,13 @@ export async function sendTelegramInvoiceSentNotification({
       invoiceNumber: true,
       currency: true,
       totalAmount: true,
+      items: {
+        select: {
+          quantity: true,
+          price: true,
+          total: true
+        }
+      },
       request: {
         select: {
           id: true,
@@ -247,10 +259,14 @@ export async function sendTelegramInvoiceSentNotification({
     return { status: 'skipped-no-recipient' };
   }
 
+  const totalAmount = resolveInvoiceTotalAmount({
+    totalAmount: invoice.totalAmount,
+    items: invoice.items
+  });
   const message = buildInvoiceSentMessage({
     requestNumber: invoice.request.requestNumber,
     invoiceNumber: invoice.invoiceNumber,
-    totalAmount: invoice.totalAmount,
+    totalAmount,
     currency: invoice.currency
   });
   const notification = await prisma.notification.create({
@@ -276,8 +292,6 @@ export async function sendTelegramInvoiceSentNotification({
       where: { id: notification.id },
       data: { status: 'SENT', sentAt: new Date() }
     });
-
-    return { status: 'sent', notificationId: notification.id };
   } catch {
     await prisma.notification.update({
       where: { id: notification.id },
@@ -289,4 +303,48 @@ export async function sendTelegramInvoiceSentNotification({
 
     return { status: 'failed', notificationId: notification.id };
   }
+
+  const pdfCaption = buildInvoicePdfCaption({
+    requestNumber: invoice.request.requestNumber,
+    invoiceNumber: invoice.invoiceNumber,
+    totalAmount,
+    currency: invoice.currency
+  });
+  const pdfNotification = await prisma.notification.create({
+    data: {
+      requestId: invoice.request.id,
+      userId: recipient.userId,
+      channel: 'TELEGRAM',
+      status: 'PENDING',
+      message: `${pdfCaption}\n\nPDF document pending.`
+    }
+  });
+
+  try {
+    const pdf = await generateInvoicePdfBuffer(invoice.id);
+    await sendTelegramDocument({
+      chatId: recipient.chatId,
+      buffer: pdf.buffer,
+      filename: pdf.filename,
+      caption: pdfCaption
+    });
+    await prisma.notification.update({
+      where: { id: pdfNotification.id },
+      data: {
+        status: 'SENT',
+        sentAt: new Date(),
+        message: `${pdfCaption}\n\nPDF document sent: ${pdf.filename}`
+      }
+    });
+  } catch {
+    await prisma.notification.update({
+      where: { id: pdfNotification.id },
+      data: {
+        status: 'FAILED',
+        message: `${pdfCaption}\n\nPDF document delivery failed.`
+      }
+    });
+  }
+
+  return { status: 'sent', notificationId: notification.id };
 }

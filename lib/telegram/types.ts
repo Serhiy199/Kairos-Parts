@@ -77,3 +77,8 @@ export type TelegramSendMessageOptions = {
   replyMarkup?: Record<string, unknown>;
   parseMode?: 'HTML';
 };
+
+export type TelegramSendDocumentOptions = {
+  caption?: string;
+  replyMarkup?: Record<string, unknown>;
+};
