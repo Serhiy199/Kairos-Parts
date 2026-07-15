@@ -80,14 +80,14 @@ export function DashboardShell({ children, title, subtitle, navItems, homeHref, 
           </form>
         </div>
       </aside>
-      <div className="min-w-0 w-full lg:ml-64 lg:w-auto">
+      <div className="min-w-0 max-w-full w-full lg:ml-64 lg:w-auto">
         <header className="border-b border-border bg-card">
           <div className="px-4 py-5 sm:px-6 lg:px-8">
             <p className="text-sm font-semibold text-muted">{subtitle}</p>
             <h1 className="mt-1 text-2xl font-bold text-foreground">{title}</h1>
           </div>
         </header>
-        <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="min-w-0 max-w-full px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>
   );

@@ -180,7 +180,7 @@ export default async function ClientRequestDetailPage({
       </div>
 
       {request.items.length > 0 ? (
-        <div className="rounded-lg border border-border bg-card p-6 shadow-card">
+        <div className="min-w-0 rounded-lg border border-border bg-card p-6 shadow-card">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <h3 className="text-lg font-bold text-foreground">Підібрані позиції</h3>
@@ -200,12 +200,12 @@ export default async function ClientRequestDetailPage({
               </button>
             </form>
           </div>
-          <div className="mt-4 grid gap-3">
+          <div className="mt-4 grid min-w-0 gap-3">
             {request.items.map((item) => (
-              <details key={item.id} className="group rounded-md border border-border p-4">
+              <details key={item.id} className="group min-w-0 rounded-md border border-border p-4">
                 <summary className="cursor-pointer list-none">
-                  <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr_0.6fr_0.9fr_0.8fr_auto] lg:items-start">
-                    <div>
+                  <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,auto)] lg:items-start">
+                    <div className="min-w-0">
                       <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
                       <p className="mt-2 font-bold text-foreground">{item.name}</p>
                       <p className="mt-1 text-xs text-muted">{item.brand ?? 'Виробник уточнюється'}</p>
@@ -341,7 +341,7 @@ export default async function ClientRequestDetailPage({
                   </div>
                 </div>
 
-                <div className="mt-4 overflow-x-auto rounded-md border border-border">
+                <div className="mt-4 max-w-full overflow-x-auto rounded-md border border-border">
                   <table className="w-full min-w-[760px] border-collapse text-left text-sm">
                     <thead>
                       <tr className="border-b border-border bg-surface-muted text-muted">

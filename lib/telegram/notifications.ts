@@ -19,14 +19,18 @@ type InvoiceSentNotificationResult =
   | { status: 'skipped-no-recipient' }
   | { status: 'skipped-invoice-not-found' };
 
-function buildClientLoginUrl(nextPath: string) {
+function getClientBaseUrl() {
   const baseUrl = process.env.APP_BASE_URL || process.env.NEXTAUTH_URL || 'https://kairos-parts.vercel.app';
 
-  return `${baseUrl.replace(/\/$/, '')}/login?next=${encodeURIComponent(nextPath)}`;
+  return baseUrl.replace(/\/$/, '');
+}
+
+function buildClientDirectUrl(path: string) {
+  return `${getClientBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
 export function buildRequestItemsApprovalUrl(requestId: string) {
-  return buildClientLoginUrl(`/client/requests/${requestId}`);
+  return buildClientDirectUrl(`/client/requests/${requestId}`);
 }
 
 export function buildRequestItemsApprovalMessage(requestNumber: string) {
@@ -38,11 +42,19 @@ export function buildRequestItemsApprovalMessage(requestNumber: string) {
 }
 
 export function buildInvoicePrintUrl(invoiceId: string) {
-  return buildClientLoginUrl(`/client/invoices/${invoiceId}/print`);
+  return buildClientDirectUrl(`/client/invoices/${invoiceId}/print`);
 }
 
 export function buildInvoiceRequestUrl(requestId: string) {
-  return buildClientLoginUrl(`/client/requests/${requestId}`);
+  return buildClientDirectUrl(`/client/requests/${requestId}`);
+}
+
+function safeErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message) {
+    return error.message.slice(0, 500);
+  }
+
+  return 'Unknown error';
 }
 
 export function buildInvoiceSentMessage({
@@ -184,12 +196,19 @@ export async function sendTelegramRequestItemsApprovalNotification({
     });
 
     return { status: 'sent', notificationId: notification.id };
-  } catch {
+  } catch (error) {
+    const errorMessage = safeErrorMessage(error);
+    console.warn('Telegram request items approval notification failed', {
+      requestId: request.id,
+      requestNumber: request.requestNumber,
+      chatIdExists: true,
+      error: errorMessage
+    });
     await prisma.notification.update({
       where: { id: notification.id },
       data: {
         status: 'FAILED',
-        message: `${message}\n\nTelegram delivery failed.`
+        message: `${message}\n\nTelegram delivery failed: ${errorMessage}`
       }
     });
 
@@ -292,12 +311,20 @@ export async function sendTelegramInvoiceSentNotification({
       where: { id: notification.id },
       data: { status: 'SENT', sentAt: new Date() }
     });
-  } catch {
+  } catch (error) {
+    const errorMessage = safeErrorMessage(error);
+    console.warn('Telegram invoice text notification failed', {
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      requestId: invoice.request.id,
+      chatIdExists: true,
+      error: errorMessage
+    });
     await prisma.notification.update({
       where: { id: notification.id },
       data: {
         status: 'FAILED',
-        message: `${message}\n\nTelegram delivery failed.`
+        message: `${message}\n\nTelegram delivery failed: ${errorMessage}`
       }
     });
 
@@ -322,6 +349,15 @@ export async function sendTelegramInvoiceSentNotification({
 
   try {
     const pdf = await generateInvoicePdfBuffer(invoice.id);
+    console.info('Telegram invoice PDF generated', {
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      requestId: invoice.request.id,
+      chatIdExists: true,
+      pdfGenerated: true,
+      pdfBufferSize: pdf.buffer.length,
+      pdfFilename: pdf.filename
+    });
     await sendTelegramDocument({
       chatId: recipient.chatId,
       buffer: pdf.buffer,
@@ -333,15 +369,46 @@ export async function sendTelegramInvoiceSentNotification({
       data: {
         status: 'SENT',
         sentAt: new Date(),
-        message: `${pdfCaption}\n\nPDF document sent: ${pdf.filename}`
+        message: [
+          pdfCaption,
+          '',
+          'PDF document sent.',
+          `event=INVOICE_PDF_SENT`,
+          `invoiceId=${invoice.id}`,
+          `invoiceNumber=${invoice.invoiceNumber}`,
+          `requestId=${invoice.request.id}`,
+          `chatIdExists=true`,
+          `pdfGenerated=true`,
+          `pdfBufferSize=${pdf.buffer.length}`,
+          `pdfFilename=${pdf.filename}`,
+          `documentSent=true`
+        ].join('\n')
       }
     });
-  } catch {
+  } catch (error) {
+    const errorMessage = safeErrorMessage(error);
+    console.warn('Telegram invoice PDF delivery failed', {
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      requestId: invoice.request.id,
+      chatIdExists: true,
+      error: errorMessage
+    });
     await prisma.notification.update({
       where: { id: pdfNotification.id },
       data: {
         status: 'FAILED',
-        message: `${pdfCaption}\n\nPDF document delivery failed.`
+        message: [
+          pdfCaption,
+          '',
+          'PDF document delivery failed.',
+          `event=INVOICE_PDF_FAILED`,
+          `invoiceId=${invoice.id}`,
+          `invoiceNumber=${invoice.invoiceNumber}`,
+          `requestId=${invoice.request.id}`,
+          `chatIdExists=true`,
+          `error=${errorMessage}`
+        ].join('\n')
       }
     });
   }

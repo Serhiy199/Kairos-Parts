@@ -186,7 +186,7 @@ export default async function AdminRequestDetailPage({
             {REQUEST_SOURCE_LABELS[request.source]} · створено {request.createdAt.toLocaleString('uk-UA')} · оновлено {request.updatedAt.toLocaleString('uk-UA')}
           </p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[420px]">
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:w-[420px] xl:max-w-full">
           <div className="rounded-md border border-border p-4">
             <p className="text-xs font-bold uppercase text-muted">Статус</p>
             <div className="mt-2"><StatusBadge status={request.status} /></div>
@@ -200,8 +200,8 @@ export default async function AdminRequestDetailPage({
 
       {message ? <div className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">{message}</div> : null}
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-        <main className="grid gap-6">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <main className="grid min-w-0 gap-6">
           <section className="rounded-lg border border-border bg-card p-6 shadow-card">
             <p className="text-sm font-bold uppercase text-accent">Контактні дані</p>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -261,7 +261,7 @@ export default async function AdminRequestDetailPage({
             <p className="mt-2 text-sm leading-6 text-muted">
               Тут відображаються фото, списки, документи або інші файли, які клієнт додав під час створення заявки, через кабінет або Telegram.
             </p>
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-2">
               <FileList title="Файли заявки" description="Матеріали, які клієнт передав для підбору запчастин." items={request.files.map((file) => ({ id: file.id, fileName: file.fileName, mimeType: file.mimeType, size: file.size, url: file.fileUrl ?? `/api/admin/files/${file.id}` }))} />
               <FileList title="Додаткові файли від клієнта" description="Документи або вкладення клієнта, які збережені в його профілі чи заявці." items={request.documents.map((document) => ({ id: document.id, fileName: document.fileName, mimeType: document.mimeType, size: document.size, url: document.fileUrl }))} />
             </div>
@@ -355,8 +355,8 @@ export default async function AdminRequestDetailPage({
           {request.client ? (
             <section className="rounded-lg border border-border bg-card p-6 shadow-card">
               <p className="text-sm font-bold uppercase text-accent">Клієнтська база</p>
-              <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                <div>
+              <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-2">
+                <div className="min-w-0">
                   <h3 className="font-bold text-foreground">Техніка клієнта</h3>
                   <div className="mt-3 grid gap-2">
                     {request.client.vehicles.length === 0 ? <p className="text-sm text-muted">Техніки немає.</p> : request.client.vehicles.map((vehicle) => (
@@ -366,7 +366,7 @@ export default async function AdminRequestDetailPage({
                     ))}
                   </div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="font-bold text-foreground">Документи клієнта</h3>
                   <div className="mt-3 grid gap-2">
                     {request.client.documents.length === 0 ? <p className="text-sm text-muted">Документів немає.</p> : request.client.documents.map((document) => (
@@ -401,7 +401,7 @@ export default async function AdminRequestDetailPage({
           </section>
         </main>
 
-        <aside className="grid h-fit gap-6">
+        <aside className="grid h-fit min-w-0 gap-6">
           <section className="rounded-lg border border-border bg-card p-6 shadow-card">
             <p className="text-sm font-bold uppercase text-accent">Дії</p>
             <form action={updateAdminRequestStatus} className="mt-4 grid gap-3">
@@ -604,7 +604,7 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
             Додавайте позиції як внутрішню чернетку. Коли список готовий, відправте позиції клієнту на погодження.
           </p>
         </div>
-        <div className="grid gap-3 sm:min-w-[280px]">
+        <div className="grid min-w-0 gap-3 sm:min-w-[280px]">
           <span className="w-fit rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{items.length} позицій</span>
           <form action={sendAdminRequestItemsForApproval}>
             <input type="hidden" name="requestId" value={requestId} />
@@ -621,11 +621,11 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 rounded-md border border-border p-4">
+      <div className="mt-5 grid min-w-0 gap-3 rounded-md border border-border p-4">
         {items.map((item) => (
-          <article key={item.id} className="rounded-md border border-border bg-card p-4">
-            <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr_0.6fr_0.9fr_0.8fr_0.8fr]">
-              <div>
+          <article key={item.id} className="min-w-0 rounded-md border border-border bg-card p-4">
+            <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]">
+              <div className="min-w-0">
                 <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
                 <p className="mt-2 font-bold text-foreground">{item.name}</p>
                 <p className="mt-1 text-xs text-muted">{item.brand ?? 'Виробник не вказано'}</p>
@@ -839,7 +839,7 @@ function InvoicesSection({
 
                 <details className="mt-4 rounded-md border border-border bg-surface-muted p-4" open>
                   <summary className="cursor-pointer text-sm font-bold text-foreground">Переглянути позиції рахунку</summary>
-                  <div className="mt-4 overflow-x-auto rounded-md border border-border bg-card">
+                  <div className="mt-4 max-w-full overflow-x-auto rounded-md border border-border bg-card">
                     <table className="w-full min-w-[860px] border-collapse text-left text-sm">
                       <thead>
                         <tr className="border-b border-border bg-surface-muted text-muted">
@@ -1021,7 +1021,7 @@ function RequestDocumentsSection({ requestId, documents }: { requestId: string; 
         <span className="rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{documents.length} документів</span>
       </div>
 
-      <div className="mt-5 overflow-x-auto rounded-md border border-border">
+      <div className="mt-5 max-w-full overflow-x-auto rounded-md border border-border">
         <table className="w-full min-w-[1040px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-border bg-surface-muted text-muted">
