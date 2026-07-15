@@ -209,6 +209,7 @@ model ClientProfile {
   requests    Request[]
   vehicles    Vehicle[]
   documents   Document[]
+  billingDetails ClientBillingDetails?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 }
@@ -269,6 +270,24 @@ model CompanyBillingDetails {
   vatPayer      Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model ClientBillingDetails {
+  id              String        @id @default(cuid())
+  clientProfileId String        @unique
+  clientProfile   ClientProfile @relation(fields: [clientProfileId], references: [id], onDelete: Cascade)
+  legalName       String?
+  edrpou          String?
+  ipn             String?
+  iban            String?
+  bankName        String?
+  legalAddress    String?
+  contactPerson   String?
+  phone           String?
+  email           String?
+  vatPayer        Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model ChangeRequest {

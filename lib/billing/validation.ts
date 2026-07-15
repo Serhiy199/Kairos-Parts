@@ -25,6 +25,7 @@ export type CompanyBillingInput = {
   vatPayer: boolean;
 };
 
+export type ClientBillingInput = CompanyBillingInput;
 export type SellerBillingSnapshot = SellerBillingInput;
 export type BuyerBillingSnapshot = CompanyBillingInput;
 
@@ -83,6 +84,38 @@ export function parseCompanyBillingInput(formData: FormData): { ok: true; data: 
 
   if (!legalName) {
     errors.push('Вкажіть юридичну назву покупця.');
+  }
+
+  validateEmail(email, errors);
+
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
+
+  return {
+    ok: true,
+    data: {
+      legalName,
+      edrpou: optional(readString(formData, 'edrpou')),
+      ipn: optional(readString(formData, 'ipn')),
+      iban: optional(readString(formData, 'iban')),
+      bankName: optional(readString(formData, 'bankName')),
+      legalAddress: optional(readString(formData, 'legalAddress')),
+      contactPerson: optional(readString(formData, 'contactPerson')),
+      phone: optional(readString(formData, 'phone')),
+      email: optional(email),
+      vatPayer: formData.get('vatPayer') === 'on'
+    }
+  };
+}
+
+export function parseClientBillingInput(formData: FormData): { ok: true; data: ClientBillingInput } | { ok: false; errors: string[] } {
+  const errors: string[] = [];
+  const legalName = readString(formData, 'legalName');
+  const email = readString(formData, 'email');
+
+  if (!legalName) {
+    errors.push('Вкажіть назву компанії / юридичну назву.');
   }
 
   validateEmail(email, errors);

@@ -2,7 +2,7 @@ import { Prisma, UserRole } from '@prisma/client';
 
 import type { ClientAccessContext } from '@/lib/client/access';
 import { requestAccessWhere } from '@/lib/client/access';
-import { buyerBillingSnapshot, sellerBillingSnapshot, type CompanyBillingInput } from '@/lib/billing/validation';
+import { buyerBillingSnapshot, sellerBillingSnapshot, type ClientBillingInput, type CompanyBillingInput } from '@/lib/billing/validation';
 import { prisma } from '@/lib/prisma';
 
 const crmRoles: UserRole[] = ['MANAGER', 'ADMIN'];
@@ -16,13 +16,6 @@ function isCrmRole(role: UserRole) {
 }
 
 function fallbackBuyerSnapshot(request: {
-  company: {
-    name: string;
-    edrpou: string | null;
-    phone: string | null;
-    email: string | null;
-    legalAddress: string | null;
-  } | null;
   client: {
     companyName: string | null;
     taxId: string | null;
@@ -32,19 +25,77 @@ function fallbackBuyerSnapshot(request: {
     user: { name: string | null; email: string | null; phone: string | null };
   } | null;
 }): CompanyBillingInput {
-  const legalName = request.company?.name ?? request.client?.companyName ?? request.client?.contactName ?? request.client?.user.name ?? 'Покупець не вказаний';
+  const legalName = request.client?.companyName ?? request.client?.contactName ?? request.client?.user.name ?? 'Покупець не вказаний';
 
   return {
     legalName,
-    edrpou: request.company?.edrpou ?? request.client?.taxId ?? null,
+    edrpou: request.client?.taxId ?? null,
     ipn: null,
     iban: null,
     bankName: null,
-    legalAddress: request.company?.legalAddress ?? null,
+    legalAddress: null,
     contactPerson: request.client?.contactName ?? request.client?.user.name ?? null,
-    phone: request.company?.phone ?? request.client?.phone ?? request.client?.user.phone ?? null,
-    email: request.company?.email ?? request.client?.email ?? request.client?.user.email ?? null,
+    phone: request.client?.phone ?? request.client?.user.phone ?? null,
+    email: request.client?.email ?? request.client?.user.email ?? null,
     vatPayer: false
+  };
+}
+
+function hasBuyerBillingDetails(details: { legalName: string | null } | null | undefined) {
+  return Boolean(details?.legalName);
+}
+
+function companyBillingDetailsSnapshot(request: {
+  company: {
+    name: string;
+    billingDetails: {
+      legalName: string | null;
+      edrpou: string | null;
+      ipn: string | null;
+      iban: string | null;
+      bankName: string | null;
+      legalAddress: string | null;
+      contactPerson: string | null;
+      phone: string | null;
+      email: string | null;
+      vatPayer: boolean;
+    } | null;
+  } | null;
+}): CompanyBillingInput | null {
+  if (!hasBuyerBillingDetails(request.company?.billingDetails)) {
+    return null;
+  }
+
+  return {
+    legalName: request.company?.billingDetails?.legalName ?? request.company?.name ?? 'Покупець не вказаний',
+    edrpou: request.company?.billingDetails?.edrpou ?? null,
+    ipn: request.company?.billingDetails?.ipn ?? null,
+    iban: request.company?.billingDetails?.iban ?? null,
+    bankName: request.company?.billingDetails?.bankName ?? null,
+    legalAddress: request.company?.billingDetails?.legalAddress ?? null,
+    contactPerson: request.company?.billingDetails?.contactPerson ?? null,
+    phone: request.company?.billingDetails?.phone ?? null,
+    email: request.company?.billingDetails?.email ?? null,
+    vatPayer: request.company?.billingDetails?.vatPayer ?? false
+  };
+}
+
+function clientBillingDetailsSnapshot(details: (Omit<ClientBillingInput, 'legalName'> & { legalName: string | null }) | null | undefined): CompanyBillingInput | null {
+  if (!details?.legalName) {
+    return null;
+  }
+
+  return {
+    legalName: details.legalName,
+    edrpou: details.edrpou ?? null,
+    ipn: details.ipn ?? null,
+    iban: details.iban ?? null,
+    bankName: details.bankName ?? null,
+    legalAddress: details.legalAddress ?? null,
+    contactPerson: details.contactPerson ?? null,
+    phone: details.phone ?? null,
+    email: details.email ?? null,
+    vatPayer: details.vatPayer
   };
 }
 
@@ -98,6 +149,7 @@ export async function createInvoiceFromApprovedRequestItems({
           contactName: true,
           phone: true,
           email: true,
+          billingDetails: true,
           user: { select: { name: true, email: true, phone: true } }
         }
       },
@@ -129,20 +181,9 @@ export async function createInvoiceFromApprovedRequestItems({
     return { ok: false as const, status: 'invoice-seller-details-required' };
   }
 
-  const buyerDetails: CompanyBillingInput = request.company?.billingDetails
-    ? {
-        legalName: request.company.billingDetails.legalName ?? request.company.name,
-        edrpou: request.company.billingDetails.edrpou,
-        ipn: request.company.billingDetails.ipn,
-        iban: request.company.billingDetails.iban,
-        bankName: request.company.billingDetails.bankName,
-        legalAddress: request.company.billingDetails.legalAddress,
-        contactPerson: request.company.billingDetails.contactPerson,
-        phone: request.company.billingDetails.phone,
-        email: request.company.billingDetails.email,
-        vatPayer: request.company.billingDetails.vatPayer
-      }
-    : fallbackBuyerSnapshot(request);
+  const buyerDetails: CompanyBillingInput = companyBillingDetailsSnapshot(request)
+    ?? clientBillingDetailsSnapshot(request.client?.billingDetails)
+    ?? fallbackBuyerSnapshot(request);
 
   const invoiceNumber = await generateInvoiceNumber(request.id);
   const createItems = request.items.map((item) => {
