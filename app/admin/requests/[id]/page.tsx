@@ -173,6 +173,7 @@ export default async function AdminRequestDetailPage({
   const email = request.client?.email ?? request.guestEmail ?? '—';
   const selectedRequestStatus = normalizeRequestStatusForSelection(request.status);
   const approvedInvoiceItemCount = request.items.filter((item) => item.visibleToClient && item.approvedByClient && item.includeInInvoice).length;
+  const ocrImageFiles = request.files.filter((file) => file.mimeType.startsWith('image/'));
 
   return (
     <div className="grid gap-6">
@@ -256,12 +257,15 @@ export default async function AdminRequestDetailPage({
           <RequestDocumentsSection requestId={request.id} documents={request.requestDocuments} />
 
           <section className="rounded-lg border border-border bg-card p-6 shadow-card">
-            <p className="text-sm font-bold uppercase text-accent">Файли і документи</p>
+            <p className="text-sm font-bold uppercase text-accent">Файли, надані клієнтом</p>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Тут відображаються фото, списки, документи або інші файли, які клієнт додав під час створення заявки, через кабінет або Telegram.
+            </p>
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              <FileList title="Файли заявки" items={request.files.map((file) => ({ id: file.id, fileName: file.fileName, mimeType: file.mimeType, size: file.size, url: file.fileUrl ?? `/api/admin/files/${file.id}` }))} />
-              <FileList title="Документи заявки" items={request.documents.map((document) => ({ id: document.id, fileName: document.fileName, mimeType: document.mimeType, size: document.size, url: document.fileUrl }))} />
+              <FileList title="Файли заявки" description="Матеріали, які клієнт передав для підбору запчастин." items={request.files.map((file) => ({ id: file.id, fileName: file.fileName, mimeType: file.mimeType, size: file.size, url: file.fileUrl ?? `/api/admin/files/${file.id}` }))} />
+              <FileList title="Додаткові файли від клієнта" description="Документи або вкладення клієнта, які збережені в його профілі чи заявці." items={request.documents.map((document) => ({ id: document.id, fileName: document.fileName, mimeType: document.mimeType, size: document.size, url: document.fileUrl }))} />
             </div>
-            <p className="mt-4 text-xs text-muted">Private storage paths не показуються. Файли заявки відкриваються через захищений CRM download route.</p>
+            <p className="mt-4 text-xs text-muted">Файли захищені: менеджер відкриває їх через CRM, без доступу до приватних шляхів зберігання.</p>
           </section>
 
           <section className="rounded-lg border border-border bg-card p-6 shadow-card">
@@ -269,18 +273,18 @@ export default async function AdminRequestDetailPage({
               <div>
                 <p className="text-sm font-bold uppercase text-accent">OCR-підказки</p>
                 <p className="mt-2 text-sm leading-6 text-muted">
-                  OCR допомагає менеджеру побачити текст або номери з фото. Результат є підказкою і потребує перевірки.
+                  {ocrImageFiles.length === 0
+                    ? 'Фото або документи для розпізнавання ще не додані.'
+                    : 'OCR допомагає менеджеру побачити текст, артикули або каталожні номери з фото чи документа. Результат є підказкою і потребує перевірки.'}
                 </p>
               </div>
             </div>
 
-            <div className="mt-5 rounded-md border border-border bg-surface-muted p-4">
-              <h3 className="font-bold text-foreground">Запустити OCR для фото</h3>
-              <div className="mt-3 grid gap-2">
-                {request.files.filter((file) => file.mimeType.startsWith('image/')).length === 0 ? (
-                  <p className="text-sm text-muted">Фото для OCR немає.</p>
-                ) : (
-                  request.files.filter((file) => file.mimeType.startsWith('image/')).map((file) => (
+            {ocrImageFiles.length > 0 ? (
+              <div className="mt-5 rounded-md border border-border bg-surface-muted p-4">
+                <h3 className="font-bold text-foreground">Запустити OCR</h3>
+                <div className="mt-3 grid gap-2">
+                  {ocrImageFiles.map((file) => (
                     <form key={file.id} action={runAdminRequestOcr} className="flex flex-col gap-3 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
                       <input type="hidden" name="requestId" value={request.id} />
                       <input type="hidden" name="fileId" value={file.id} />
@@ -293,14 +297,16 @@ export default async function AdminRequestDetailPage({
                         Запустити OCR
                       </button>
                     </form>
-                  ))
-                )}
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : null}
 
             <div className="mt-5 grid gap-4">
               {request.ocrResults.length === 0 ? (
-                <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted">OCR ще не виконано.</p>
+                ocrImageFiles.length > 0 ? (
+                  <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted">OCR ще не виконано.</p>
+                ) : null
               ) : (
                 request.ocrResults.map((result) => (
                   <article key={result.id} className="rounded-md border border-border p-4">
@@ -1006,10 +1012,10 @@ function RequestDocumentsSection({ requestId, documents }: { requestId: string; 
     <section className="rounded-lg border border-border bg-card p-6 shadow-card">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-sm font-bold uppercase text-accent">Документи заявки</p>
-          <h3 className="mt-2 text-xl font-bold text-foreground">Пропозиції, рахунки та вкладення для клієнта</h3>
+          <p className="text-sm font-bold uppercase text-accent">Документи та вкладення заявки</p>
+          <h3 className="mt-2 text-xl font-bold text-foreground">Додаткові файли, які менеджер додає до заявки</h3>
           <p className="mt-2 text-sm leading-6 text-muted">
-            Завантажуйте зовнішньо підготовлені PDF, Word, Excel або зображення. Клієнт побачить тільки документи з позначкою видимості.
+            Завантажуйте додаткові файли до заявки: специфікації, договори, акти, PDF, Word, Excel, зображення або інші вкладення. Клієнт побачить тільки файли з позначкою видимості.
           </p>
         </div>
         <span className="rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{documents.length} документів</span>
@@ -1072,7 +1078,7 @@ function RequestDocumentsSection({ requestId, documents }: { requestId: string; 
         </table>
         {documents.length === 0 ? (
           <p className="border-t border-border p-5 text-sm text-muted">
-            Документи ще не додані. Додайте комерційну пропозицію, рахунок або інший файл до цієї заявки.
+            Документи ще не додані. Додайте зовнішній файл до заявки, якщо менеджеру потрібно передати клієнту специфікацію, договір, акт або інше вкладення.
           </p>
         ) : null}
       </div>
@@ -1163,10 +1169,19 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function FileList({ title, items }: { title: string; items: Array<{ id: string; fileName: string; mimeType: string; size: number; url: string | null }> }) {
+function FileList({
+  title,
+  description,
+  items
+}: {
+  title: string;
+  description?: string;
+  items: Array<{ id: string; fileName: string; mimeType: string; size: number; url: string | null }>;
+}) {
   return (
     <div className="rounded-md border border-border p-4">
       <h3 className="font-bold text-foreground">{title}</h3>
+      {description ? <p className="mt-2 text-sm leading-6 text-muted">{description}</p> : null}
       <div className="mt-3 grid gap-2">
         {items.length === 0 ? <p className="text-sm text-muted">Немає файлів.</p> : items.map((item) => (
           <div key={item.id} className="rounded-md bg-surface-muted p-3 text-sm text-muted">
