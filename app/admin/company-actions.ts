@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { notFound, redirect } from 'next/navigation';
 
 import { requireCrmSession } from '@/lib/admin/access';
+import { parseCompanyBillingInput } from '@/lib/billing/validation';
 import { parseCompanyInput, readCompanyMemberInput } from '@/lib/companies/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
@@ -83,6 +84,39 @@ export async function updateCompany(formData: FormData) {
   revalidatePath('/admin/companies');
   revalidatePath(`/admin/companies/${companyId}`);
   redirectCompany(companyId, 'updated');
+}
+
+export async function updateCompanyBillingDetails(formData: FormData) {
+  await requireCrmSession();
+
+  const companyId = readString(formData, 'companyId');
+  const parsed = parseCompanyBillingInput(formData);
+
+  if (!hasDatabaseUrl() || !companyId || !parsed.ok) {
+    redirectCompany(companyId, 'billing-validation');
+  }
+
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { id: true }
+  });
+
+  if (!company) {
+    notFound();
+  }
+
+  await prisma.companyBillingDetails.upsert({
+    where: { companyId },
+    update: parsed.data,
+    create: {
+      companyId,
+      ...parsed.data
+    }
+  });
+
+  revalidatePath('/admin/companies');
+  revalidatePath(`/admin/companies/${companyId}`);
+  redirectCompany(companyId, 'billing-updated');
 }
 
 export async function addCompanyMember(formData: FormData) {

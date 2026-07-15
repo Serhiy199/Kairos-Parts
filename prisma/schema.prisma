@@ -229,9 +229,46 @@ model Company {
   changeRequests ChangeRequest[]
   auditLogs    AuditLog[]
   invoices     Invoice[]
+  billingDetails CompanyBillingDetails?
 
   @@unique([name, edrpou])
   @@index([edrpou])
+}
+
+model SellerBillingDetails {
+  id           String   @id @default(cuid())
+  legalName    String
+  edrpou       String?
+  ipn          String?
+  iban         String?
+  bankName     String?
+  mfo          String?
+  phone        String?
+  email        String?
+  legalAddress String?
+  isDefault    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isDefault])
+}
+
+model CompanyBillingDetails {
+  id            String   @id @default(cuid())
+  companyId     String   @unique
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  legalName     String?
+  edrpou        String?
+  ipn           String?
+  iban          String?
+  bankName      String?
+  legalAddress  String?
+  contactPerson String?
+  phone         String?
+  email         String?
+  vatPayer      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model ChangeRequest {
@@ -503,6 +540,8 @@ model Invoice {
   totalAmount    Decimal       @default(0) @db.Decimal(12, 2)
   managerComment String?
   clientComment  String?
+  sellerSnapshot Json?
+  buyerSnapshot  Json?
   createdById    String?
   createdBy      User?         @relation("InvoiceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   sentAt         DateTime?

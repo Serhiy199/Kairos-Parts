@@ -2,6 +2,7 @@ import { Prisma, UserRole } from '@prisma/client';
 
 import type { ClientAccessContext } from '@/lib/client/access';
 import { requestAccessWhere } from '@/lib/client/access';
+import { buyerBillingSnapshot, sellerBillingSnapshot, type CompanyBillingInput } from '@/lib/billing/validation';
 import { prisma } from '@/lib/prisma';
 
 const crmRoles: UserRole[] = ['MANAGER', 'ADMIN'];
@@ -12,6 +13,39 @@ function calculateLineTotal(quantity: number, price: Prisma.Decimal.Value) {
 
 function isCrmRole(role: UserRole) {
   return crmRoles.includes(role);
+}
+
+function fallbackBuyerSnapshot(request: {
+  company: {
+    name: string;
+    edrpou: string | null;
+    phone: string | null;
+    email: string | null;
+    legalAddress: string | null;
+  } | null;
+  client: {
+    companyName: string | null;
+    taxId: string | null;
+    contactName: string | null;
+    phone: string | null;
+    email: string | null;
+    user: { name: string | null; email: string | null; phone: string | null };
+  } | null;
+}): CompanyBillingInput {
+  const legalName = request.company?.name ?? request.client?.companyName ?? request.client?.contactName ?? request.client?.user.name ?? 'Покупець не вказаний';
+
+  return {
+    legalName,
+    edrpou: request.company?.edrpou ?? request.client?.taxId ?? null,
+    ipn: null,
+    iban: null,
+    bankName: null,
+    legalAddress: request.company?.legalAddress ?? null,
+    contactPerson: request.client?.contactName ?? request.client?.user.name ?? null,
+    phone: request.company?.phone ?? request.client?.phone ?? request.client?.user.phone ?? null,
+    email: request.company?.email ?? request.client?.email ?? request.client?.user.email ?? null,
+    vatPayer: false
+  };
 }
 
 export async function generateInvoiceNumber(requestId: string) {
@@ -46,7 +80,27 @@ export async function createInvoiceFromApprovedRequestItems({
     select: {
       id: true,
       companyId: true,
-      client: { select: { userId: true } },
+      company: {
+        select: {
+          name: true,
+          edrpou: true,
+          phone: true,
+          email: true,
+          legalAddress: true,
+          billingDetails: true
+        }
+      },
+      client: {
+        select: {
+          userId: true,
+          companyName: true,
+          taxId: true,
+          contactName: true,
+          phone: true,
+          email: true,
+          user: { select: { name: true, email: true, phone: true } }
+        }
+      },
       items: {
         where: {
           approvedByClient: true,
@@ -65,6 +119,30 @@ export async function createInvoiceFromApprovedRequestItems({
   if (request.items.length === 0) {
     return { ok: false as const, status: 'invoice-no-approved-items' };
   }
+
+  const sellerDetails = await prisma.sellerBillingDetails.findFirst({
+    where: { isDefault: true },
+    orderBy: { createdAt: 'asc' }
+  });
+
+  if (!sellerDetails) {
+    return { ok: false as const, status: 'invoice-seller-details-required' };
+  }
+
+  const buyerDetails: CompanyBillingInput = request.company?.billingDetails
+    ? {
+        legalName: request.company.billingDetails.legalName ?? request.company.name,
+        edrpou: request.company.billingDetails.edrpou,
+        ipn: request.company.billingDetails.ipn,
+        iban: request.company.billingDetails.iban,
+        bankName: request.company.billingDetails.bankName,
+        legalAddress: request.company.billingDetails.legalAddress,
+        contactPerson: request.company.billingDetails.contactPerson,
+        phone: request.company.billingDetails.phone,
+        email: request.company.billingDetails.email,
+        vatPayer: request.company.billingDetails.vatPayer
+      }
+    : fallbackBuyerSnapshot(request);
 
   const invoiceNumber = await generateInvoiceNumber(request.id);
   const createItems = request.items.map((item) => {
@@ -95,6 +173,8 @@ export async function createInvoiceFromApprovedRequestItems({
       currency: 'UAH',
       subtotal,
       totalAmount: subtotal,
+      sellerSnapshot: sellerBillingSnapshot(sellerDetails),
+      buyerSnapshot: buyerBillingSnapshot(buyerDetails),
       createdById,
       items: { create: createItems }
     },

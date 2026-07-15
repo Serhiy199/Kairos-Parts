@@ -7,7 +7,8 @@ import {
   assignVehicleToCompany,
   removeCompanyMember,
   setPrimaryCompanyMember,
-  updateCompany
+  updateCompany,
+  updateCompanyBillingDetails
 } from '@/app/admin/company-actions';
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
@@ -31,7 +32,9 @@ function resultMessage(result?: string) {
     'primary-updated': 'Primary contact оновлено.',
     'request-assigned': 'Заявку привʼязано до компанії.',
     'vehicle-assigned': 'Техніку привʼязано до компанії.',
-    'assign-validation': 'Оберіть запис для привʼязки.'
+    'assign-validation': 'Оберіть запис для привʼязки.',
+    'billing-updated': 'Реквізити покупця збережено.',
+    'billing-validation': 'Перевірте реквізити покупця.'
   };
 
   return result ? messages[result] : null;
@@ -69,7 +72,8 @@ export default async function AdminCompanyDetailPage({
           orderBy: { createdAt: 'desc' },
           take: 12,
           include: { client: true }
-        }
+        },
+        billingDetails: true
       }
     }),
     prisma.user.findMany({
@@ -131,6 +135,67 @@ export default async function AdminCompanyDetailPage({
           <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">Юридична адреса<input name="legalAddress" defaultValue={company.legalAddress ?? ''} className={inputClass} /></label>
         </div>
         <button className="w-fit rounded-md border border-border px-5 py-3 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">Зберегти</button>
+      </form>
+
+      <form action={updateCompanyBillingDetails} className="grid gap-4 rounded-lg border border-border bg-card p-6 shadow-card">
+        <input type="hidden" name="companyId" value={company.id} />
+        <div>
+          <p className="text-sm font-bold uppercase text-accent">Реквізити покупця</p>
+          <h2 className="mt-2 text-lg font-bold text-foreground">Дані для рахунків</h2>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Ці реквізити автоматично підтягнуться у snapshot нового рахунку. Якщо їх змінити пізніше, старі рахунки не зміняться.
+          </p>
+          {!company.billingDetails ? (
+            <p className="mt-4 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm font-semibold text-[#8A5B24]">
+              Реквізити покупця ще не заповнені. Заповніть їх, щоб вони автоматично підтягувалися у рахунки.
+            </p>
+          ) : null}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="grid gap-2 text-sm font-semibold text-foreground">
+            Компанія / юридична назва *
+            <input name="legalName" required defaultValue={company.billingDetails?.legalName ?? company.name} className={inputClass} />
+          </label>
+          <label className="grid gap-2 text-sm font-semibold text-foreground">
+            ЄДРПОУ
+            <input name="edrpou" defaultValue={company.billingDetails?.edrpou ?? company.edrpou ?? ''} className={inputClass} />
+          </label>
+          <label className="grid gap-2 text-sm font-semibold text-foreground">
+            ІПН
+            <input name="ipn" defaultValue={company.billingDetails?.ipn ?? ''} className={inputClass} />
+          </label>
+          <label className="grid gap-2 text-sm font-semibold text-foreground">
+            IBAN
+            <input name="iban" defaultValue={company.billingDetails?.iban ?? ''} className={inputClass} />
+          </label>
+          <label className="grid gap-2 text-sm font-semibold text-foreground">
+            Банк
+            <input name="bankName" defaultValue={company.billingDetails?.bankName ?? ''} className={inputClass} />
+          </label>
+          <label className="grid gap-2 text-sm font-semibold text-foreground">
+            Контактна особа
+            <input name="contactPerson" defaultValue={company.billingDetails?.contactPerson ?? company.members.find((member) => member.isPrimaryContact)?.user.clientProfile?.contactName ?? ''} className={inputClass} />
+          </label>
+          <label className="grid gap-2 text-sm font-semibold text-foreground">
+            Телефон
+            <input name="phone" defaultValue={company.billingDetails?.phone ?? company.phone ?? ''} className={inputClass} />
+          </label>
+          <label className="grid gap-2 text-sm font-semibold text-foreground">
+            Email
+            <input name="email" type="email" defaultValue={company.billingDetails?.email ?? company.email ?? ''} className={inputClass} />
+          </label>
+          <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
+            Юридична адреса
+            <input name="legalAddress" defaultValue={company.billingDetails?.legalAddress ?? company.legalAddress ?? ''} className={inputClass} />
+          </label>
+          <label className="flex items-center gap-2 text-sm font-semibold text-foreground md:col-span-2">
+            <input name="vatPayer" type="checkbox" defaultChecked={company.billingDetails?.vatPayer ?? false} className="h-4 w-4 accent-[var(--accent)]" />
+            Платник ПДВ
+          </label>
+        </div>
+        <button className="w-fit rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+          Зберегти реквізити покупця
+        </button>
       </form>
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">

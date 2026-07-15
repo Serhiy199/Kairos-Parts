@@ -25,6 +25,7 @@ export const ADMIN_ROUTES = [
   '/admin',
   '/admin/requests',
   '/admin/requests/[id]',
+  '/admin/billing-settings',
   '/admin/clients',
   '/admin/categories',
   '/admin/manufacturers',

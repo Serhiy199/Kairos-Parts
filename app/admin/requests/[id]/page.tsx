@@ -1,5 +1,6 @@
 ﻿import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import type { Prisma } from '@prisma/client';
 
 import {
   assignAdminRequestManager,
@@ -77,6 +78,7 @@ function resultMessage(result?: string) {
     'invoice-invalid-transition': 'Некоректна зміна статусу рахунку.',
     'invoice-empty': 'Не можна надіслати порожній рахунок.',
     'invoice-forbidden': 'Недостатньо прав для роботи з рахунком.',
+    'invoice-seller-details-required': 'Спочатку заповніть реквізити продавця.',
     'invoice-error': 'Не вдалося обробити рахунок.'
   };
 
@@ -513,6 +515,8 @@ type InvoiceView = {
   totalAmount: { toString: () => string };
   managerComment: string | null;
   clientComment: string | null;
+  sellerSnapshot: Prisma.JsonValue | null;
+  buyerSnapshot: Prisma.JsonValue | null;
   sentAt: Date | null;
   paidAt: Date | null;
   cancelledAt: Date | null;
@@ -520,6 +524,66 @@ type InvoiceView = {
   createdBy: { name: string | null; email: string | null; role: string } | null;
   items: InvoiceItemView[];
 };
+
+type BillingSnapshotView = {
+  legalName?: string | null;
+  edrpou?: string | null;
+  ipn?: string | null;
+  iban?: string | null;
+  bankName?: string | null;
+  mfo?: string | null;
+  legalAddress?: string | null;
+  contactPerson?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  vatPayer?: boolean | null;
+};
+
+function asBillingSnapshot(value: Prisma.JsonValue | null): BillingSnapshotView | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as BillingSnapshotView;
+}
+
+function BillingSnapshotCard({ title, snapshot, buyer = false }: { title: string; snapshot: BillingSnapshotView | null; buyer?: boolean }) {
+  if (!snapshot) {
+    return (
+      <div className="rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm font-semibold text-[#8A5B24]">
+        {title}: реквізити не збережені у snapshot цього рахунку.
+      </div>
+    );
+  }
+
+  const rows = [
+    ['Назва', snapshot.legalName],
+    ['ЄДРПОУ', snapshot.edrpou],
+    ['ІПН', snapshot.ipn],
+    ['IBAN', snapshot.iban],
+    ['Банк', snapshot.bankName],
+    ['МФО', snapshot.mfo],
+    ['Юридична адреса', snapshot.legalAddress],
+    ['Контактна особа', snapshot.contactPerson],
+    ['Телефон', snapshot.phone],
+    ['Email', snapshot.email],
+    ...(buyer ? [['Платник ПДВ', snapshot.vatPayer ? 'Так' : 'Ні']] : [])
+  ].filter(([, value]) => value !== undefined);
+
+  return (
+    <div className="rounded-md border border-border bg-card p-4">
+      <p className="text-xs font-bold uppercase text-accent">{title}</p>
+      <div className="mt-3 grid gap-2 text-sm">
+        {rows.map(([label, value]) => (
+          <div key={label} className="grid gap-1 sm:grid-cols-[150px_1fr]">
+            <span className="font-semibold text-muted">{label}</span>
+            <span className="text-foreground">{value || '—'}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function RequestItemsSection({ requestId, items }: { requestId: string; items: RequestItemView[] }) {
   const hiddenItemCount = items.filter((item) => !item.visibleToClient).length;
@@ -708,6 +772,11 @@ function InvoicesSection({
                     {invoice.sentAt ? <p className="mt-1 text-xs text-muted">Надіслано: {invoice.sentAt.toLocaleString('uk-UA')}</p> : null}
                     {invoice.paidAt ? <p className="mt-1 text-xs text-success">Оплачено: {invoice.paidAt.toLocaleString('uk-UA')}</p> : null}
                     {invoice.cancelledAt ? <p className="mt-1 text-xs text-danger">Скасовано: {invoice.cancelledAt.toLocaleString('uk-UA')}</p> : null}
+                    {!invoice.buyerSnapshot ? (
+                      <p className="mt-2 rounded-md border border-warning/30 bg-[#FFF7E0] px-3 py-2 text-xs font-semibold text-[#8A5B24]">
+                        Реквізити покупця не заповнені у snapshot.
+                      </p>
+                    ) : null}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {canSend ? (
@@ -739,6 +808,11 @@ function InvoicesSection({
                       </form>
                     ) : null}
                   </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                  <BillingSnapshotCard title="Дані продавця" snapshot={asBillingSnapshot(invoice.sellerSnapshot)} />
+                  <BillingSnapshotCard title="Дані покупця" snapshot={asBillingSnapshot(invoice.buyerSnapshot)} buyer />
                 </div>
 
                 <details className="mt-4 rounded-md border border-border bg-surface-muted p-4" open>
