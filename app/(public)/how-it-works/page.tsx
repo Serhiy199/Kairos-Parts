@@ -187,7 +187,7 @@ export default function HowItWorksPage() {
                 aria-hidden="true"
                 className="absolute bottom-0 left-6 top-0 w-px bg-gradient-to-b from-accent/20 via-accent/70 to-accent/20 shadow-[0_0_28px_rgba(200,150,66,0.22)] lg:left-1/2 lg:-translate-x-1/2"
               />
-              <ol className="relative space-y-8 pl-16 lg:space-y-0 lg:pl-0">
+              <ol className="relative space-y-8 lg:space-y-0">
                 {steps.map((step, index) => {
                   const Icon = step.icon;
                   const isLeft = index % 2 === 0;
@@ -195,13 +195,13 @@ export default function HowItWorksPage() {
                   return (
                     <li
                       key={step.label}
-                      className={`relative lg:grid lg:grid-cols-[minmax(0,1fr)_88px_minmax(0,1fr)] lg:items-center lg:gap-0 ${
+                      className={`relative pl-16 md:pl-20 lg:grid lg:grid-cols-[minmax(0,1fr)_88px_minmax(0,1fr)] lg:items-center lg:gap-0 lg:pl-0 ${
                         index > 0 ? 'lg:-mt-2' : ''
                       }`}
                     >
                       <div
                         aria-hidden="true"
-                        className={`absolute left-6 top-9 hidden h-px w-10 bg-gradient-to-r from-accent/70 to-accent/10 lg:block ${
+                        className={`absolute left-12 top-11 h-px w-4 bg-gradient-to-r from-accent/70 to-accent/10 md:w-8 lg:left-6 lg:top-9 lg:w-10 ${
                           isLeft ? 'lg:left-[calc(50%-84px)]' : 'lg:left-[calc(50%+44px)]'
                         }`}
                       />
