@@ -44,7 +44,7 @@ Shared source:
 lib/vehicles/equipment-manufacturers.ts
 ```
 
-The mapping was expanded for the existing web equipment types so Telegram can show relevant manufacturer suggestions after the client selects the equipment type.
+The existing shared mapping is now used by Telegram so the bot can show relevant manufacturer suggestions after the client selects the equipment type.
 
 The web-form still uses `getManufacturersForEquipmentType()` for datalist suggestions.
 
@@ -111,16 +111,19 @@ This stage does not add:
 
 ## Checks
 
-Run after implementation:
+Executed:
 
 ```text
-npx.cmd prisma validate
-npx.cmd prisma generate
-npm.cmd run typecheck
-npm.cmd run lint
-npm.cmd run build
-git diff --check
+npx.cmd prisma validate: passed
+npx.cmd prisma generate: failed with Windows EPERM while renaming Prisma query_engine DLL
+npx.cmd prisma generate --no-engine: passed
+npm.cmd run typecheck: passed
+npm.cmd run lint: passed
+npm.cmd run build: first run failed with transient Next /_document cache error, second run passed
+git diff --check: passed with Windows LF -> CRLF warnings only
 ```
+
+Prisma schema was not changed. No migration was created.
 
 ## Manual smoke notes
 
