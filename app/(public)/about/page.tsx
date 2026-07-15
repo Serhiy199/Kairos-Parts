@@ -1,4 +1,7 @@
+import Image from 'next/image';
 import Link from 'next/link';
+
+import { ActionIcon } from '@/components/ui/action-icons';
 
 const platformItems = [
   'професійний підбір запчастин',
@@ -45,18 +48,44 @@ const principles = [
 export default function AboutPage() {
   return (
     <>
-      <section className="bg-primary py-16 text-white">
-        <div className="kp-container">
-          <div className="max-w-4xl">
-            <p className="text-sm font-bold uppercase text-accent">Про Kairos Parts</p>
-            <h1 className="mt-3 text-4xl font-bold leading-tight sm:text-5xl">
-              Ми створюємо новий стандарт закупівлі запчастин для аграрного сектору та комерційного транспорту
-            </h1>
-            <p className="mt-5 text-base leading-7 text-sidebar-text">
-              Kairos Parts — українська технологічна компанія, заснована у 2026 році, яка поєднує професійний
-              підбір запчастин, широку мережу постачальників та цифрові інструменти управління парком техніки
-              в єдиній платформі.
+      <section className="relative isolate min-h-[620px] overflow-hidden bg-primary text-white sm:min-h-[640px] lg:min-h-[680px]">
+        <Image
+          src="/images/about/hero-bg.png"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-[66%_center] sm:object-[62%_center] lg:object-center"
+        />
+        <div className="absolute inset-0 bg-primary/25" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,7,10,0.95)_0%,rgba(5,7,10,0.88)_62%,rgba(5,7,10,0.68)_100%)] md:bg-[linear-gradient(90deg,rgba(5,7,10,0.94)_0%,rgba(5,7,10,0.82)_44%,rgba(5,7,10,0.42)_72%,rgba(5,7,10,0.18)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,7,10,0.08)_55%,rgba(5,7,10,0.88)_100%)]" />
+
+        <div className="kp-container relative flex min-h-[620px] items-center py-16 sm:min-h-[640px] sm:py-20 lg:min-h-[680px]">
+          <div className="max-w-[760px]">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent sm:text-sm">
+              Про Kairos Parts
             </p>
+            <h1 className="mt-5 text-4xl font-bold leading-[1.06] sm:text-5xl lg:text-[56px]">
+              Будуємо новий стандарт
+              <span className="mt-1 block">
+                підбору запчастин <span className="text-accent">для бізнесу</span>
+              </span>
+            </h1>
+            <p className="mt-6 max-w-2xl text-lg font-semibold leading-8 text-white/90 sm:text-xl">
+              Єдиний сервіс для підбору, погодження та постачання запчастин.
+            </p>
+            <p className="mt-3 max-w-2xl text-base leading-7 text-white/75 sm:text-lg sm:leading-8">
+              Kairos Parts об’єднує професійний підбір, роботу з перевіреними постачальниками та цифрову
+              історію техніки в одному B2B-процесі.
+            </p>
+            <Link
+              href="/request"
+              className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3.5 text-center text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
+            >
+              <ActionIcon name="plus" />
+              Створити заявку
+            </Link>
           </div>
         </div>
       </section>
