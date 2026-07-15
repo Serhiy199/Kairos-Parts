@@ -205,6 +205,8 @@ model ClientProfile {
   firstName   String?
   lastName    String?
   phone       String?
+  telegramUserId String?     @unique
+  telegramChatId String?     @unique
   email       String?
   requests    Request[]
   vehicles    Vehicle[]

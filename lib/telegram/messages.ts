@@ -36,6 +36,20 @@ export const createdRequestKeyboard = {
   inline_keyboard: [[{ text: 'Створити ще одну заявку', callback_data: TELEGRAM_CALLBACKS.restart }]]
 };
 
+export function buildRegistrationKeyboard(baseUrl: string) {
+  const normalizedBaseUrl = baseUrl.replace(/\/$/, '');
+
+  return {
+    inline_keyboard: [
+      [
+        { text: 'Зареєструватися', url: `${normalizedBaseUrl}/register?next=/request` },
+        { text: 'Увійти', url: `${normalizedBaseUrl}/login?next=/request` }
+      ],
+      [{ text: 'Відкрити кабінет', url: `${normalizedBaseUrl}/client` }]
+    ]
+  };
+}
+
 export function isSkipText(text: string) {
   return ['пропустити', 'skip', 'немає', 'нет', '-'].includes(text.trim().toLowerCase());
 }
@@ -47,6 +61,14 @@ export function buildStartMessage() {
     'Бот допоможе створити заявку на підбір запчастин для аграрної, вантажної або спеціальної техніки.',
     '',
     'Щоб почати, підтвердьте ваш номер телефону через кнопку нижче.'
+  ].join('\n');
+}
+
+export function buildRegistrationRequiredMessage() {
+  return [
+    'Ми не знайшли клієнтський кабінет із цим номером телефону.',
+    '',
+    'Щоб створити заявку через Telegram, спочатку зареєструйтеся або увійдіть у кабінет Kairos Parts.'
   ].join('\n');
 }
 

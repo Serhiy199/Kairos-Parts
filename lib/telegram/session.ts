@@ -1,10 +1,13 @@
 import { saveRequestFileBufferLocal } from '@/lib/files/local-storage';
+import { getPhoneLookupTail, normalizePhoneDigits, phoneNumbersMatch } from '@/lib/phone/normalize';
 import { prisma } from '@/lib/prisma';
 import { generatePublicStatusToken, generateRequestNumber } from '@/lib/requests/identifiers';
 
 import { answerCallbackQuery, downloadTelegramFile, getTelegramFile, sendTelegramMessage } from './bot';
 import {
   buildCreatedMessage,
+  buildRegistrationKeyboard,
+  buildRegistrationRequiredMessage,
   buildStartMessage,
   buildSummary,
   confirmationKeyboard,
@@ -90,13 +93,13 @@ function getMessageText(message: TelegramMessage) {
   return message.text?.trim() ?? '';
 }
 
-function buildStatusUrl(publicStatusToken: string) {
-  const baseUrl = process.env.APP_BASE_URL || process.env.NEXTAUTH_URL || '';
-  const path = `/request/status/${publicStatusToken}`;
+function getAppBaseUrl() {
+  return process.env.APP_BASE_URL || process.env.NEXTAUTH_URL || 'https://kairos-parts.vercel.app';
+}
 
-  if (!baseUrl) {
-    return path;
-  }
+function buildStatusUrl(publicStatusToken: string) {
+  const baseUrl = getAppBaseUrl();
+  const path = `/request/status/${publicStatusToken}`;
 
   return `${baseUrl.replace(/\/$/, '')}${path}`;
 }
@@ -197,6 +200,7 @@ async function showConfirmation(draft: TelegramDraft) {
 
 async function handleContact(message: TelegramMessage) {
   const telegramUserId = toStringId(message.from?.id ?? message.chat.id);
+  const chatId = toStringId(message.chat.id);
   const contact = message.contact;
 
   if (!contact) {
@@ -212,21 +216,42 @@ async function handleContact(message: TelegramMessage) {
     return;
   }
 
+  const clientProfile = await findClientProfileByPhone(contact.phone_number);
+
+  if (!clientProfile) {
+    await prisma.telegramDraftRequest.deleteMany({ where: { telegramUserId } });
+    await sendTelegramMessage(
+      message.chat.id,
+      buildRegistrationRequiredMessage(),
+      { replyMarkup: buildRegistrationKeyboard(getAppBaseUrl()) }
+    );
+    return;
+  }
+
+  await linkTelegramClient({
+    clientProfileId: clientProfile.id,
+    telegramUserId,
+    chatId,
+    phone: contact.phone_number
+  });
+
   await prisma.telegramDraftRequest.upsert({
     where: { telegramUserId },
     create: {
       telegramUserId,
-      chatId: toStringId(message.chat.id),
+      chatId,
       step: 'ASK_NAME',
-      phone: contact.phone_number,
-      contactName: [contact.first_name, contact.last_name].filter(Boolean).join(' ') || null,
+      phone: normalizePhoneDigits(contact.phone_number),
+      contactName: clientProfile.contactName ?? getContactNameFromMessage(message) ?? clientProfile.user.name,
+      companyName: clientProfile.companyName ?? clientProfile.user.companyMemberships[0]?.company.name ?? null,
       fileMetadata: buildDraftMetadata({ files: [] })
     },
     update: {
-      chatId: toStringId(message.chat.id),
+      chatId,
       step: 'ASK_NAME',
-      phone: contact.phone_number,
-      contactName: [contact.first_name, contact.last_name].filter(Boolean).join(' ') || null
+      phone: normalizePhoneDigits(contact.phone_number),
+      contactName: clientProfile.contactName ?? getContactNameFromMessage(message) ?? clientProfile.user.name,
+      companyName: clientProfile.companyName ?? clientProfile.user.companyMemberships[0]?.company.name ?? null
     }
   });
 
@@ -389,13 +414,8 @@ async function handleTextMessage(message: TelegramMessage, draft: TelegramDraft)
   }
 }
 
-function normalizePhone(phone: string) {
-  return phone.replace(/\D/g, '');
-}
-
 async function findClientProfileByPhone(phone: string) {
-  const normalizedPhone = normalizePhone(phone);
-  const phoneTail = normalizedPhone.length >= 9 ? normalizedPhone.slice(-9) : normalizedPhone;
+  const phoneTail = getPhoneLookupTail(phone);
 
   if (!phoneTail) {
     return null;
@@ -414,17 +434,81 @@ async function findClientProfileByPhone(phone: string) {
         }
       ]
     },
-    include: { user: true },
-    take: 20
+    include: {
+      user: {
+        include: {
+          companyMemberships: {
+            take: 1,
+            orderBy: { createdAt: 'asc' },
+            include: { company: { select: { id: true, name: true } } }
+          }
+        }
+      }
+    },
+    take: 50
   });
 
-  return (
-    candidates.find((candidate) => {
-      const profilePhone = candidate.phone ? normalizePhone(candidate.phone) : '';
-      const userPhone = candidate.user.phone ? normalizePhone(candidate.user.phone) : '';
-      return profilePhone.endsWith(phoneTail) || userPhone.endsWith(phoneTail);
-    }) ?? null
-  );
+  const profile = candidates.find((candidate) => (
+    candidate.user.role === 'CLIENT' &&
+    (phoneNumbersMatch(candidate.phone, phone) || phoneNumbersMatch(candidate.user.phone, phone))
+  ));
+
+  if (profile) {
+    return profile;
+  }
+
+  const users = await prisma.user.findMany({
+    where: {
+      role: 'CLIENT',
+      phone: { contains: phoneTail }
+    },
+    include: { clientProfile: true },
+    take: 20
+  });
+  const user = users.find((candidate) => phoneNumbersMatch(candidate.phone, phone));
+
+  if (!user) {
+    return null;
+  }
+
+  const createdProfile = user.clientProfile ?? await prisma.clientProfile.create({
+    data: {
+      userId: user.id,
+      phone: user.phone,
+      contactName: user.name,
+      email: user.email
+    }
+  });
+
+  return prisma.clientProfile.findUnique({
+    where: { id: createdProfile.id },
+    include: {
+      user: {
+        include: {
+          companyMemberships: {
+            take: 1,
+            orderBy: { createdAt: 'asc' },
+            include: { company: { select: { id: true, name: true } } }
+          }
+        }
+      }
+    }
+  });
+}
+
+async function linkTelegramClient(input: { clientProfileId: string; telegramUserId: string; chatId: string; phone: string }) {
+  await prisma.clientProfile.update({
+    where: { id: input.clientProfileId },
+    data: {
+      telegramUserId: input.telegramUserId,
+      telegramChatId: input.chatId,
+      phone: normalizePhoneDigits(input.phone)
+    }
+  });
+}
+
+function getContactNameFromMessage(message: TelegramMessage) {
+  return [message.contact?.first_name, message.contact?.last_name].filter(Boolean).join(' ') || null;
 }
 
 function buildTelegramRequestDescription(input: {
@@ -496,10 +580,16 @@ async function createTelegramRequest(draft: TelegramDraft) {
   }
 
   const clientProfile = await findClientProfileByPhone(draft.phone);
+
+  if (!clientProfile) {
+    throw new Error('Registered client profile is required for Telegram request.');
+  }
+
   const requestNumber = generateRequestNumber();
   const publicStatusToken = generatePublicStatusToken();
   const metadata = readDraftMetadata(draft.fileMetadata);
   const files = metadata.files;
+  const company = clientProfile.user.companyMemberships[0]?.company ?? null;
   const description = buildTelegramRequestDescription({
     equipmentType: draft.equipmentType,
     partsText: metadata.partsText,
@@ -512,10 +602,11 @@ async function createTelegramRequest(draft: TelegramDraft) {
       publicStatusToken,
       source: 'TELEGRAM',
       status: 'NEW',
-      clientId: clientProfile?.id,
-      guestName: clientProfile ? null : draft.contactName,
-      guestPhone: clientProfile ? null : draft.phone,
-      companyName: draft.companyName ?? clientProfile?.companyName ?? draft.contactName,
+      clientId: clientProfile.id,
+      companyId: company?.id ?? null,
+      guestName: null,
+      guestPhone: null,
+      companyName: draft.companyName ?? clientProfile.companyName ?? company?.name ?? draft.contactName,
       equipmentType: draft.equipmentType,
       description,
       statusHistory: {
@@ -585,16 +676,31 @@ async function handleCallback(callbackQuery: TelegramCallbackQuery) {
     return;
   }
 
-  const createdRequest = await createTelegramRequest(draft);
-  await answerCallbackQuery(callbackQuery.id, 'Заявку створено.');
-  await sendTelegramMessage(
-    chatId,
-    buildCreatedMessage({
-      requestNumber: createdRequest.requestNumber,
-      statusUrl: buildStatusUrl(createdRequest.publicStatusToken)
-    }),
-    { replyMarkup: createdRequestKeyboard }
-  );
+  try {
+    const createdRequest = await createTelegramRequest(draft);
+    await answerCallbackQuery(callbackQuery.id, 'Заявку створено.');
+    await sendTelegramMessage(
+      chatId,
+      buildCreatedMessage({
+        requestNumber: createdRequest.requestNumber,
+        statusUrl: buildStatusUrl(createdRequest.publicStatusToken)
+      }),
+      { replyMarkup: createdRequestKeyboard }
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Registered client profile is required for Telegram request.') {
+      await prisma.telegramDraftRequest.deleteMany({ where: { telegramUserId } });
+      await answerCallbackQuery(callbackQuery.id, 'Потрібен клієнтський кабінет.');
+      await sendTelegramMessage(
+        chatId,
+        buildRegistrationRequiredMessage(),
+        { replyMarkup: buildRegistrationKeyboard(getAppBaseUrl()) }
+      );
+      return;
+    }
+
+    throw error;
+  }
 }
 
 async function handleMessage(message: TelegramMessage) {
