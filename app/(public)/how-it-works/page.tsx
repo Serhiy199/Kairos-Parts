@@ -1,9 +1,33 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { TbGauge, TbReportMoney, TbShieldCheck, TbTruckDelivery } from 'react-icons/tb';
 
 import { ActionIcon } from '@/components/ui/action-icons';
 
 const telegramBotUrl = 'https://t.me/kairos_parts_bot';
+
+const processHighlights = [
+  {
+    title: 'Швидко',
+    text: 'Оперативно опрацьовуємо заявку та підбираємо рішення.',
+    icon: TbGauge
+  },
+  {
+    title: 'Надійно',
+    text: 'Працюємо з перевіреними постачальниками.',
+    icon: TbShieldCheck
+  },
+  {
+    title: 'Прозоро',
+    text: 'Ціни, строки та умови погоджуємо до замовлення.',
+    icon: TbReportMoney
+  },
+  {
+    title: 'Оперативна доставка',
+    text: 'Організовуємо доставку запчастин по всій Україні.',
+    icon: TbTruckDelivery
+  }
+];
 
 const steps = [
   {
@@ -52,7 +76,7 @@ export default function HowItWorksPage() {
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,7,10,0.94)_0%,rgba(5,7,10,0.86)_48%,rgba(5,7,10,0.62)_78%,rgba(5,7,10,0.46)_100%)] md:bg-[linear-gradient(90deg,rgba(5,7,10,0.90)_0%,rgba(5,7,10,0.76)_42%,rgba(5,7,10,0.44)_72%,rgba(5,7,10,0.24)_100%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,7,10,0.08)_60%,rgba(5,7,10,0.52)_100%)]" />
 
-        <div className="kp-container relative flex min-h-[600px] items-center py-14 sm:min-h-[640px] sm:py-16 lg:min-h-[680px] lg:py-20">
+        <div className="kp-container relative flex min-h-[600px] flex-col justify-center py-14 sm:min-h-[640px] sm:py-16 lg:min-h-[680px] lg:py-20">
           <div className="max-w-[760px]">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent sm:text-sm">Як це працює</p>
             <h1 className="mt-4 text-4xl font-bold leading-[1.08] sm:text-5xl lg:text-[52px]">
@@ -81,6 +105,35 @@ export default function HowItWorksPage() {
                 Надіслати заявку в Telegram
               </Link>
             </div>
+          </div>
+
+          <div
+            role="list"
+            aria-label="Переваги процесу"
+            className="mt-8 grid grid-cols-1 overflow-hidden rounded-xl border border-white/15 bg-primary/70 shadow-panel backdrop-blur-md sm:mt-10 sm:grid-cols-2 lg:mt-12 lg:grid-cols-4"
+          >
+            {processHighlights.map((highlight, index) => {
+              const Icon = highlight.icon;
+              const mobileBorders = index < processHighlights.length - 1 ? 'border-b border-white/10' : '';
+              const tabletBorders = `${index === 2 ? 'sm:border-b-0' : ''} ${index % 2 === 0 ? 'sm:border-r sm:border-white/10' : 'sm:border-r-0'}`;
+              const desktopBorders = index < processHighlights.length - 1 ? 'lg:border-r lg:border-b-0 lg:border-white/10' : 'lg:border-0';
+
+              return (
+                <div
+                  key={highlight.title}
+                  role="listitem"
+                  className={`flex min-w-0 items-center gap-3 px-4 py-3 sm:p-5 lg:px-5 lg:py-4 ${mobileBorders} ${tabletBorders} ${desktopBorders}`}
+                >
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full border border-accent/25 bg-accent/10 text-accent">
+                    <Icon aria-hidden="true" focusable="false" className="size-7 stroke-[1.5]" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-base font-bold leading-snug text-white">{highlight.title}</p>
+                    <p className="mt-1.5 text-sm leading-relaxed text-white/75">{highlight.text}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
