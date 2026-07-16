@@ -199,11 +199,11 @@ export default function AboutPage() {
                     key={principle.title}
                     className="min-w-0 px-8 py-10 transition-colors duration-200 hover:bg-public-elevated sm:px-10 lg:px-6"
                   >
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-3 lg:flex-col">
                       <div className="shrink-0 text-accent">
                         <Icon aria-hidden="true" focusable="false" className="size-10 stroke-[1.7] sm:size-12" />
                       </div>
-                      <h3 className="min-w-0 flex-1 break-words text-left text-xl font-bold leading-tight text-public-primary">
+                      <h3 className="min-w-0 flex-1 break-normal whitespace-normal hyphens-none text-left text-xl font-bold leading-tight text-public-primary lg:text-base xl:text-xl">
                         {principle.title}
                       </h3>
                     </div>

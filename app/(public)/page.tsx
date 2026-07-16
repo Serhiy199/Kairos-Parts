@@ -543,11 +543,11 @@ export default function HomePage() {
             <div className="grid divide-y divide-public-border sm:grid-cols-2 lg:grid-cols-5 lg:divide-x lg:divide-y-0">
               {serviceCards.map((stat) => (
                 <div key={stat.title} className="min-w-0 px-8 py-10 transition-colors duration-200 hover:bg-public-elevated sm:px-10 lg:px-6">
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 lg:flex-col">
                     <div className="shrink-0 text-accent">
                       <TrustIcon icon={stat.icon} />
                     </div>
-                    <h3 className="min-w-0 flex-1 break-words text-left text-xl font-bold leading-tight text-public-primary">{stat.title}</h3>
+                    <h3 className="min-w-0 flex-1 break-normal whitespace-normal hyphens-none text-left text-xl font-bold leading-tight text-public-primary lg:text-base xl:text-xl">{stat.title}</h3>
                   </div>
                   <p className="mt-5 w-full max-w-56 text-base font-medium leading-7 text-public-muted">{stat.text}</p>
                 </div>
@@ -594,7 +594,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="telegram" className="border-y border-white/5 bg-primary py-14 text-white sm:py-16">
+      <section id="telegram" className="border-y border-white/5 bg-public-page py-14 text-white sm:py-16">
         <div className="kp-container">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] lg:items-end lg:gap-12">
             <div className="max-w-2xl">
