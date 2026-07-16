@@ -24,12 +24,12 @@ type InvoicePdfColumn = {
 
 const REGULAR_FONT_PATH = path.join(process.cwd(), 'node_modules/prisma/build/public/assets/inter-all-400-normal.4c1f8a0d.woff');
 const BOLD_FONT_PATH = path.join(process.cwd(), 'node_modules/prisma/build/public/assets/inter-all-600-normal.d0a7c8a9.woff');
-const PAGE_MARGIN = 34;
-const SECTION_GAP = 14;
-const TABLE_HEADER_HEIGHT = 22;
-const TABLE_MIN_ROW_HEIGHT = 34;
-const BODY_FONT_SIZE = 8.5;
-const TABLE_FONT_SIZE = 7.4;
+const PAGE_MARGIN = 30;
+const SECTION_GAP = 9;
+const TABLE_HEADER_HEIGHT = 18;
+const TABLE_MIN_ROW_HEIGHT = 28;
+const BODY_FONT_SIZE = 8;
+const TABLE_FONT_SIZE = 7.2;
 const TABLE_HEADER_FONT_SIZE = 7.2;
 
 function asBillingSnapshot(snapshot: unknown): BillingSnapshot | null {
@@ -117,15 +117,15 @@ function measureText(
 }
 
 function addSectionTitle(doc: PDFKit.PDFDocument, title: string, currentY: number) {
-  const y = ensureSpace(doc, currentY + SECTION_GAP, 28);
+  const y = ensureSpace(doc, currentY + SECTION_GAP, 22);
   writeText(doc, title.toUpperCase(), PAGE_MARGIN, y, getContentWidth(doc), {
     bold: true,
-    size: 10,
+    size: 8.8,
     color: '#8A5B24',
     characterSpacing: 1
   });
 
-  return y + 18;
+  return y + 15;
 }
 
 function addKeyValueRows(doc: PDFKit.PDFDocument, rows: Array<[string, string]>, currentY: number) {
@@ -157,14 +157,14 @@ function addKeyValueRows(doc: PDFKit.PDFDocument, rows: Array<[string, string]>,
 
 function addPartyDetailsBlock(doc: PDFKit.PDFDocument, title: string, snapshot: BillingSnapshot | null, currentY: number, includeVatPayer = false) {
   const contentWidth = getContentWidth(doc);
-  const titleHeight = 13;
-  const paddingX = 12;
-  const paddingY = 10;
+  const titleHeight = 11;
+  const paddingX = 10;
+  const paddingY = 8;
   const details =
     buildInvoicePartyDetails(snapshot, { includeVatPayer }) ?? 'Реквізити не збережені у snapshot цього рахунку.';
   const paragraphWidth = contentWidth - paddingX * 2;
-  const paragraphHeight = measureText(doc, details, paragraphWidth, { size: BODY_FONT_SIZE, lineGap: 2 });
-  const blockHeight = paddingY * 2 + titleHeight + 6 + paragraphHeight;
+  const paragraphHeight = measureText(doc, details, paragraphWidth, { size: BODY_FONT_SIZE, lineGap: 1 });
+  const blockHeight = paddingY * 2 + titleHeight + 4 + paragraphHeight;
   const y = ensureSpace(doc, currentY + SECTION_GAP, blockHeight);
 
   doc
@@ -173,14 +173,14 @@ function addPartyDetailsBlock(doc: PDFKit.PDFDocument, title: string, snapshot: 
 
   writeText(doc, title.toUpperCase(), PAGE_MARGIN + paddingX, y + paddingY, paragraphWidth, {
     bold: true,
-    size: 8.5,
+    size: 8.2,
     color: '#8A5B24',
     characterSpacing: 1
   });
-  writeText(doc, details, PAGE_MARGIN + paddingX, y + paddingY + titleHeight + 6, paragraphWidth, {
+  writeText(doc, details, PAGE_MARGIN + paddingX, y + paddingY + titleHeight + 4, paragraphWidth, {
     size: BODY_FONT_SIZE,
     color: '#101010',
-    lineGap: 2
+    lineGap: 1
   });
 
   return y + blockHeight;
@@ -330,7 +330,8 @@ function addInvoiceTotalsBlock(doc: PDFKit.PDFDocument, totals: InvoiceTotals, c
   const labelWidth = 115;
   const valueWidth = blockWidth - labelWidth;
   const x = PAGE_MARGIN + getContentWidth(doc) - blockWidth;
-  let y = ensureSpace(doc, currentY + 12, 66);
+  const requiredHeight = 50;
+  let y = ensureSpace(doc, currentY + 8, requiredHeight);
   const rows: Array<[string, DecimalLike, boolean]> = [
     ['Разом:', totals.subtotalWithoutVat, false],
     ['Сума ПДВ:', totals.vatAmount, false],
@@ -343,17 +344,17 @@ function addInvoiceTotalsBlock(doc: PDFKit.PDFDocument, totals: InvoiceTotals, c
     }
     writeText(doc, label, x, y, labelWidth, {
       bold,
-      size: bold ? 9.5 : 8.5,
+      size: bold ? 9.5 : 8,
       color: bold ? '#050505' : '#4C4F54',
       align: 'right'
     });
     writeText(doc, formatInvoiceMoney(value, currency), x + labelWidth, y, valueWidth, {
       bold,
-      size: bold ? 10 : 8.5,
+      size: bold ? 10 : 8,
       color: '#050505',
       align: 'right'
     });
-    y += bold ? 18 : 15;
+    y += bold ? 16 : 13;
   });
 
   return y;
@@ -362,11 +363,11 @@ function addInvoiceTotalsBlock(doc: PDFKit.PDFDocument, totals: InvoiceTotals, c
 function addSignatureBlock(doc: PDFKit.PDFDocument, currentY: number) {
   const contentWidth = getContentWidth(doc);
   const columnWidth = (contentWidth - 60) / 2;
-  let y = ensureSpace(doc, currentY + 18, 58);
+  let y = ensureSpace(doc, currentY + 10, 42);
 
-  writeText(doc, 'Виконавець', PAGE_MARGIN, y, columnWidth, { bold: true, size: 9, color: '#050505' });
-  writeText(doc, 'Замовник', PAGE_MARGIN + columnWidth + 60, y, columnWidth, { bold: true, size: 9, color: '#050505' });
-  y += 26;
+  writeText(doc, 'Виконавець', PAGE_MARGIN, y, columnWidth, { bold: true, size: 8.8, color: '#050505' });
+  writeText(doc, 'Замовник', PAGE_MARGIN + columnWidth + 60, y, columnWidth, { bold: true, size: 8.8, color: '#050505' });
+  y += 20;
   doc
     .strokeColor('#101010')
     .lineWidth(0.8)
@@ -376,7 +377,7 @@ function addSignatureBlock(doc: PDFKit.PDFDocument, currentY: number) {
     .lineTo(PAGE_MARGIN + columnWidth + 60 + columnWidth, y)
     .stroke();
 
-  return y + 12;
+  return y + 8;
 }
 
 export async function generateInvoicePdfBuffer(invoiceId: string): Promise<{ buffer: Buffer; filename: string }> {
@@ -416,24 +417,24 @@ export async function generateInvoicePdfBuffer(invoiceId: string): Promise<{ buf
 
   writeText(doc, 'KAIROS PARTS', PAGE_MARGIN, y, contentWidth, {
     bold: true,
-    size: 9.5,
+    size: 9,
     color: '#C89642',
     characterSpacing: 1.4
   });
-  y += 18;
+  y += 15;
 
   writeText(doc, `Рахунок ${invoice.invoiceNumber}`, PAGE_MARGIN, y, contentWidth, {
     bold: true,
-    size: 21,
+    size: 19,
     color: '#050505'
   });
-  y += 28;
+  y += 24;
 
   writeText(doc, `Заявка: ${invoice.request.requestNumber}`, PAGE_MARGIN, y, contentWidth, {
-    size: 9,
+    size: 8.8,
     color: '#4C4F54'
   });
-  y += 22;
+  y += 17;
 
   y = addKeyValueRows(doc, [
     ['Створення заявки', formatDate(invoice.request.createdAt)],
@@ -450,7 +451,7 @@ export async function generateInvoicePdfBuffer(invoiceId: string): Promise<{ buf
   y = addInvoiceTotalsBlock(doc, totals, invoice.currency, y);
   y = addSignatureBlock(doc, y);
 
-  y = ensureSpace(doc, y, 30);
+  y = ensureSpace(doc, y + 6, 24);
   writeText(
     doc,
     'PDF сформовано Kairos Parts на основі погоджених клієнтом позицій.',
