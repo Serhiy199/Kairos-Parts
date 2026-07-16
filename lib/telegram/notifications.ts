@@ -62,14 +62,16 @@ function safeTelegramErrorDetails(error: unknown) {
     return {
       telegramErrorCode: error.errorCode ?? null,
       telegramErrorDescription: error.description?.slice(0, 500) ?? null,
-      telegramHttpStatus: error.status
+      telegramHttpStatus: error.status,
+      telegramResponsePreview: error.responsePreview?.slice(0, 300) ?? null
     };
   }
 
   return {
     telegramErrorCode: null,
     telegramErrorDescription: null,
-    telegramHttpStatus: null
+    telegramHttpStatus: null,
+    telegramResponsePreview: null
   };
 }
 
@@ -474,6 +476,7 @@ export async function sendTelegramInvoiceSentNotification({
           `telegramErrorCode=${telegramError.telegramErrorCode ?? ''}`,
           `telegramHttpStatus=${telegramError.telegramHttpStatus ?? ''}`,
           `telegramErrorDescription=${telegramError.telegramErrorDescription ?? ''}`,
+          `telegramResponsePreview=${telegramError.telegramResponsePreview ?? ''}`,
           `error=${errorMessage}`
         ].join('\n')
       }

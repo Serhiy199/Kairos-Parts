@@ -20,17 +20,20 @@ export class TelegramApiError extends Error {
   status: number;
   errorCode?: number;
   description?: string;
+  responsePreview?: string;
 
   constructor({
     method,
     status,
     errorCode,
-    description
+    description,
+    responsePreview
   }: {
     method: string;
     status: number;
     errorCode?: number;
     description?: string;
+    responsePreview?: string;
   }) {
     super(description || `Telegram API ${method} failed.`);
     this.name = 'TelegramApiError';
@@ -38,6 +41,7 @@ export class TelegramApiError extends Error {
     this.status = status;
     this.errorCode = errorCode;
     this.description = description;
+    this.responsePreview = responsePreview;
   }
 }
 
@@ -73,14 +77,39 @@ async function telegramApi<T>(method: string, body: Record<string, unknown>): Pr
 }
 
 async function parseTelegramResponse<T>(method: string, response: Response): Promise<T> {
-  const payload = (await response.json()) as TelegramApiResponse<T>;
+  const responseText = await response.text();
+  const responsePreview = responseText.slice(0, 300);
+  let payload: TelegramApiResponse<T> | null = null;
+
+  if (responseText.trim().length > 0) {
+    try {
+      payload = JSON.parse(responseText) as TelegramApiResponse<T>;
+    } catch {
+      throw new TelegramApiError({
+        method,
+        status: response.status,
+        description: responsePreview || response.statusText || 'Telegram API returned a non-JSON response.',
+        responsePreview
+      });
+    }
+  }
+
+  if (!payload) {
+    throw new TelegramApiError({
+      method,
+      status: response.status,
+      description: 'Telegram sendDocument returned empty response body.',
+      responsePreview
+    });
+  }
 
   if (!response.ok || !payload.ok || payload.result === undefined) {
     throw new TelegramApiError({
       method,
       status: response.status,
       errorCode: payload.error_code,
-      description: payload.description
+      description: payload.description || responsePreview || response.statusText,
+      responsePreview
     });
   }
 

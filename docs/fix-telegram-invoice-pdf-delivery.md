@@ -183,3 +183,56 @@ Expected absent errors:
 Helvetica.afm
 ENOENT
 ```
+
+## sendDocument response parsing failure
+
+After the font fix, production logs confirmed that PDF generation works:
+
+```text
+pdfGenerated: true
+pdfBufferSize: 19200
+sendDocumentAttempted: true
+```
+
+The next failure was:
+
+```text
+Unexpected end of JSON input
+```
+
+That means the invoice PDF buffer was created and `sendDocument` was attempted, but the Telegram response parser still used direct JSON parsing. If Telegram or an intermediate runtime returned an empty or non-JSON response body, `response.json()` threw before diagnostics could capture the real HTTP status or response text.
+
+### Fix
+
+`lib/telegram/bot.ts` now parses `sendDocument` responses defensively:
+
+- reads the response body with `response.text()`;
+- keeps a 300-character safe preview;
+- runs `JSON.parse` only when the response body is not empty;
+- converts empty/non-JSON responses into a controlled `TelegramApiError`;
+- preserves Telegram `error_code`, `description`, and HTTP status when Telegram returns `{ ok: false }`;
+- treats success only as an HTTP response with Telegram payload `{ ok: true, result: ... }`.
+
+`lib/telegram/notifications.ts` now records `telegramResponsePreview` in the PDF failure diagnostics. This should prevent future diagnostics like:
+
+```text
+telegramHttpStatus: null
+telegramErrorDescription: null
+error: "Unexpected end of JSON input"
+```
+
+Expected diagnostics after redeploy:
+
+- success: `sendDocumentOk=true`;
+- failure: `telegramHttpStatus`, `telegramErrorDescription`, and `telegramResponsePreview` show the actual Telegram/API response.
+
+### What to check after redeploy
+
+1. Send a new or DRAFT invoice to a Telegram-linked client.
+2. Confirm the text notification still arrives.
+3. Confirm the PDF document arrives.
+4. If the PDF still fails, inspect `INVOICE_PDF_FAILED` diagnostics for:
+   - `telegramHttpStatus`;
+   - `telegramErrorCode`;
+   - `telegramErrorDescription`;
+   - `telegramResponsePreview`.
