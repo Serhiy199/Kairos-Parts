@@ -8,6 +8,7 @@ import {
   TbHeartHandshake,
   TbSettingsSearch,
   TbShieldCheck,
+  TbTargetArrow,
   TbTools,
   TbTractor,
   TbTruck,
@@ -134,28 +135,85 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="bg-public-page py-16">
-        <div className="kp-container grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <article className="public-card p-6">
-            <p className="text-sm font-bold uppercase text-accent">Наша місія</p>
-            <h2 className="mt-2 text-3xl font-bold text-public-primary">Спростити обслуговування техніки</h2>
-            <p className="mt-4 text-sm leading-6 text-public-muted">
-              Наша мета — зробити процес закупівлі запчастин швидким, прозорим та системним, щоб підприємства
-              витрачали менше часу на пошук деталей і більше — на свою основну діяльність.
+      <section className="relative overflow-hidden bg-public-page py-16 text-white sm:py-20 lg:py-24">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_12%,rgba(200,150,66,0.12),transparent_30%),linear-gradient(135deg,rgba(16,18,22,0.98),rgba(7,9,13,1))]" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.03] [background-image:linear-gradient(rgba(232,232,232,0.55)_1px,transparent_1px),linear-gradient(90deg,rgba(232,232,232,0.55)_1px,transparent_1px)] [background-size:36px_36px]" />
+
+        <div className="kp-container relative">
+          <div className="max-w-[760px]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">Про компанію</p>
+            <h2 className="mt-3 text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-[42px]">
+              Сервіс, створений навколо потреб бізнесу
+            </h2>
+            <p className="mt-4 max-w-[720px] text-base font-medium leading-7 text-white/72 sm:text-lg sm:leading-8">
+              Ми поєднуємо професійний підбір запчастин, роботу з постачальниками та цифрові інструменти для
+              управління історією техніки.
             </p>
-            <p className="mt-4 text-sm leading-6 text-public-muted">
-              Ми надаємо підприємствам єдину платформу для оперативного підбору, закупівлі та накопичення
-              історії запчастин по кожній одиниці техніки.
-            </p>
-          </article>
-          <article className="public-card p-6">
-            <p className="text-sm font-bold uppercase text-accent">Що ми робимо</p>
-            <h2 className="mt-2 text-3xl font-bold text-public-primary">Не магазин, а центр підбору</h2>
-            <p className="mt-4 text-sm leading-6 text-public-muted">
-              Kairos Parts працює як центр підбору та постачання запчастин, де клієнт створює одну заявку,
-              а наша команда знаходить оптимальне рішення серед перевірених постачальників.
-            </p>
-          </article>
+            <div className="mt-5 h-px w-20 bg-accent" />
+          </div>
+
+          <div className="mt-10 grid overflow-hidden rounded-[22px] border border-accent/25 bg-[linear-gradient(135deg,rgba(24,27,32,0.96),rgba(10,12,16,0.98))] shadow-[0_24px_70px_rgba(0,0,0,0.38)] lg:grid-cols-[minmax(0,1.15fr)_minmax(380px,0.85fr)] lg:items-stretch">
+            <div className="relative min-h-[320px] overflow-hidden border-b border-accent/20 sm:min-h-[400px] lg:col-start-2 lg:row-start-1 lg:min-h-[620px] lg:border-b-0 lg:border-l">
+              <Image
+                src="/images/about/mission-bg.png"
+                alt=""
+                fill
+                sizes="(min-width: 1024px) 42vw, 100vw"
+                className="object-cover object-[58%_center] sm:object-[62%_center] lg:object-[57%_center]"
+              />
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,7,10,0.04),rgba(5,7,10,0.28))] lg:bg-[linear-gradient(90deg,rgba(5,7,10,0.34),rgba(5,7,10,0.02)_32%,rgba(5,7,10,0.12))]" />
+            </div>
+
+            <div className="px-6 py-9 sm:px-10 sm:py-11 lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:justify-center lg:px-12 lg:py-14">
+              <article>
+                <div className="flex items-start gap-4">
+                  <TbTargetArrow
+                    aria-hidden="true"
+                    focusable="false"
+                    className="size-10 shrink-0 stroke-[1.6] text-accent sm:size-12"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Наша місія</p>
+                    <h3 className="mt-2 break-normal text-2xl font-bold leading-tight text-white sm:text-[28px]">
+                      Спростити обслуговування техніки
+                    </h3>
+                  </div>
+                </div>
+                <div className="mt-5 space-y-4 text-base leading-7 text-white/72 sm:text-[17px] sm:leading-8">
+                  <p>
+                    Наша мета — зробити процес закупівлі запчастин швидким, прозорим та системним, щоб
+                    підприємства витрачали менше часу на пошук деталей і більше — на свою основну діяльність.
+                  </p>
+                  <p>
+                    Ми надаємо підприємствам єдину платформу для оперативного підбору, закупівлі та накопичення
+                    історії запчастин по кожній одиниці техніки.
+                  </p>
+                </div>
+              </article>
+
+              <div className="my-8 h-px bg-gradient-to-r from-accent/70 via-accent/25 to-transparent sm:my-10" />
+
+              <article>
+                <div className="flex items-start gap-4">
+                  <TbSettingsSearch
+                    aria-hidden="true"
+                    focusable="false"
+                    className="size-10 shrink-0 stroke-[1.6] text-accent sm:size-12"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Що ми робимо</p>
+                    <h3 className="mt-2 break-normal text-2xl font-bold leading-tight text-white sm:text-[28px]">
+                      Не магазин, а центр підбору
+                    </h3>
+                  </div>
+                </div>
+                <p className="mt-5 text-base leading-7 text-white/72 sm:text-[17px] sm:leading-8">
+                  Kairos Parts працює як центр підбору та постачання запчастин, де клієнт створює одну заявку, а
+                  наша команда знаходить оптимальне рішення серед перевірених постачальників.
+                </p>
+              </article>
+            </div>
+          </div>
         </div>
       </section>
 
