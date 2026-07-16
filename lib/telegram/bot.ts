@@ -1,5 +1,5 @@
 import type { TelegramSendDocumentOptions, TelegramSendMessageOptions } from './types';
-import { randomUUID } from 'node:crypto';
+import FormData from 'form-data';
 
 type TelegramApiResponse<T> = {
   ok: boolean;
@@ -120,51 +120,6 @@ function sanitizeMultipartFilename(filename: string) {
   return filename.replace(/[\r\n"]/g, '-');
 }
 
-function buildMultipartBody({
-  fields,
-  file
-}: {
-  fields: Record<string, string>;
-  file: {
-    fieldName: string;
-    filename: string;
-    contentType: string;
-    buffer: Buffer;
-  };
-}) {
-  const boundary = `kairos-parts-${randomUUID()}`;
-  const chunks: Buffer[] = [];
-
-  Object.entries(fields).forEach(([name, value]) => {
-    chunks.push(
-      Buffer.from(
-        `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
-        'utf8'
-      )
-    );
-  });
-
-  chunks.push(
-    Buffer.from(
-      [
-        `--${boundary}`,
-        `Content-Disposition: form-data; name="${file.fieldName}"; filename="${sanitizeMultipartFilename(file.filename)}"`,
-        `Content-Type: ${file.contentType}`,
-        '',
-        ''
-      ].join('\r\n'),
-      'utf8'
-    )
-  );
-  chunks.push(file.buffer);
-  chunks.push(Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8'));
-
-  return {
-    boundary,
-    body: Buffer.concat(chunks)
-  };
-}
-
 async function telegramDocumentApi<T>({
   chatId,
   buffer,
@@ -191,22 +146,21 @@ async function telegramDocumentApi<T>({
     fields.reply_markup = JSON.stringify(replyMarkup);
   }
 
-  const multipart = buildMultipartBody({
-    fields,
-    file: {
-      fieldName: 'document',
-      filename,
-      contentType: 'application/pdf',
-      buffer
-    }
+  const form = new FormData();
+
+  Object.entries(fields).forEach(([name, value]) => {
+    form.append(name, value);
   });
+  form.append('document', buffer, {
+    filename: sanitizeMultipartFilename(filename),
+    contentType: 'application/pdf',
+    knownLength: buffer.length
+  });
+
   const response = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, {
     method: 'POST',
-    headers: {
-      'Content-Type': `multipart/form-data; boundary=${multipart.boundary}`,
-      'Content-Length': String(multipart.body.length)
-    },
-    body: multipart.body
+    headers: form.getHeaders(),
+    body: form as unknown as BodyInit
   });
 
   return parseTelegramResponse<T>('sendDocument', response);

@@ -236,3 +236,80 @@ Expected diagnostics after redeploy:
    - `telegramErrorCode`;
    - `telegramErrorDescription`;
    - `telegramResponsePreview`.
+
+## Multipart upload 400 with empty Telegram response
+
+After safe response parsing was deployed, production diagnostics showed that `sendDocument` was no longer failing because of JSON parsing. The request reached Telegram, but Telegram returned:
+
+```text
+telegramHttpStatus: 400
+telegramErrorDescription: "Telegram sendDocument returned empty response body."
+telegramResponsePreview: ""
+```
+
+At that point the confirmed state was:
+
+- text notification arrives;
+- invoice PDF generation works;
+- PDF buffer is created, around 19 KB;
+- `sendDocument` is attempted;
+- Telegram rejects the upload with HTTP 400 and no response body.
+
+### Root suspicion
+
+The remaining high-risk area was the manually assembled multipart body in `lib/telegram/bot.ts`:
+
+- custom boundary;
+- custom CRLF chunks;
+- manual `Content-Type`;
+- manual `Content-Length`;
+- raw binary concatenation.
+
+Telegram expects `document` as a standard multipart file field. A fragile manual multipart body can cause Telegram to reject the request before returning a useful JSON error.
+
+### Fix
+
+`sendDocument` now uses the Node `form-data` package instead of manual multipart construction.
+
+The upload now appends:
+
+- `chat_id`;
+- optional `caption`;
+- optional `reply_markup`;
+- `document` with:
+  - sanitized filename;
+  - `Content-Type: application/pdf`;
+  - `knownLength` matching the PDF buffer length.
+
+Headers are taken from:
+
+```ts
+form.getHeaders()
+```
+
+The code intentionally does not manually set multipart `Content-Type`, boundary, or `Content-Length` for the first stabilized version.
+
+### What did not change
+
+- PDF generation;
+- font loading;
+- invoice status logic;
+- Telegram text notification;
+- Telegram inline buttons;
+- Prisma schema;
+- migrations.
+
+### What to test after redeploy
+
+1. Send a new or DRAFT invoice to a Telegram-linked client.
+2. Confirm the text notification still arrives.
+3. Confirm the PDF document arrives.
+4. Expected logs:
+
+```text
+pdfGenerated: true
+sendDocumentAttempted: true
+sendDocumentOk: true
+```
+
+If Telegram still returns HTTP 400, keep the current diagnostics and consider the next fallback: write the PDF to `/tmp` and append `fs.createReadStream(tmpFilePath)` to the same `form-data` upload.
