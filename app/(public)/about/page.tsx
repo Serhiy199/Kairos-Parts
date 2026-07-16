@@ -1,6 +1,18 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { TbDatabaseCog, TbGauge, TbHeartHandshake, TbSettingsSearch, TbShieldCheck } from 'react-icons/tb';
+import {
+  TbBuildingFactory2,
+  TbDatabaseCog,
+  TbDeviceDesktopAnalytics,
+  TbGauge,
+  TbHeartHandshake,
+  TbSettingsSearch,
+  TbShieldCheck,
+  TbTools,
+  TbTractor,
+  TbTruck,
+  TbWheat
+} from 'react-icons/tb';
 
 import { ActionIcon } from '@/components/ui/action-icons';
 
@@ -17,12 +29,36 @@ const platformItems = [
 ];
 
 const audiences = [
-  'аграрні підприємства',
-  'фермерські господарства',
-  'транспортні компанії',
-  'будівельні підприємства',
-  'сервісні центри',
-  'підприємства з власним парком техніки'
+  {
+    title: 'Аграрні підприємства',
+    text: 'Допомагаємо підтримувати трактори, комбайни та іншу сільськогосподарську техніку в робочому стані протягом сезону.',
+    icon: TbTractor
+  },
+  {
+    title: 'Фермерські господарства',
+    text: 'Швидко підбираємо потрібні запчастини, щоб зменшити простої техніки під час критичних польових робіт.',
+    icon: TbWheat
+  },
+  {
+    title: 'Транспортні компанії',
+    text: 'Підбираємо деталі для вантажного транспорту, причепів і комерційної техніки з урахуванням сумісності.',
+    icon: TbTruck
+  },
+  {
+    title: 'Будівельні підприємства',
+    text: 'Допомагаємо знаходити запчастини для спеціальної та будівельної техніки, яка щодня працює на об’єктах.',
+    icon: TbBuildingFactory2
+  },
+  {
+    title: 'Сервісні центри',
+    text: 'Забезпечуємо СТО та ремонтні майстерні сумісними деталями для швидкого обслуговування техніки клієнтів.',
+    icon: TbTools
+  },
+  {
+    title: 'Підприємства з власним парком техніки',
+    text: 'Об’єднуємо техніку, заявки, запчастини, документи та історію замовлень в одному цифровому просторі.',
+    icon: TbDeviceDesktopAnalytics
+  }
 ];
 
 const principles = [
@@ -164,20 +200,55 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="bg-primary py-16 text-white">
-        <div className="kp-container">
-          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-            <div>
-              <p className="text-sm font-bold uppercase text-accent">Для кого створено Kairos Parts</p>
-              <h2 className="mt-2 text-3xl font-bold">Для компаній із технікою, яка має працювати щодня</h2>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {audiences.map((item) => (
-                <div key={item} className="rounded-md border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-sidebar-text">
-                  {item}
-                </div>
-              ))}
-            </div>
+      <section className="relative isolate w-full overflow-hidden bg-[#050505] py-12 text-white sm:py-14 lg:py-16">
+        <Image
+          src="/images/about/for-companies-bg.png"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover object-[64%_center] opacity-80 saturate-[0.88] sm:object-[58%_center] lg:object-center"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-primary/30" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(5,5,5,0.84)_0%,rgba(5,5,5,0.66)_52%,rgba(5,5,5,0.52)_100%)] sm:bg-[linear-gradient(90deg,rgba(5,5,5,0.78)_0%,rgba(5,5,5,0.58)_58%,rgba(5,5,5,0.4)_100%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.38)_0%,rgba(5,5,5,0.08)_32%,rgba(5,5,5,0.3)_78%,rgba(5,5,5,0.58)_100%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_36%,rgba(200,150,66,0.1),transparent_34%)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(232,232,232,0.75)_1px,transparent_1px),linear-gradient(90deg,rgba(232,232,232,0.75)_1px,transparent_1px)] [background-size:42px_42px]" />
+
+        <div className="kp-container relative z-10">
+          <div className="max-w-[900px]">
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent">
+              Для кого створено Kairos Parts
+            </p>
+            <h2 className="mt-2 max-w-[820px] text-[28px] font-bold leading-[1.08] text-white sm:text-[34px] lg:text-[38px]">
+              Для компаній із технікою, яка має працювати щодня
+            </h2>
+            <p className="mt-3 max-w-[820px] text-sm font-semibold leading-6 text-technical-white sm:text-base sm:leading-7">
+              Kairos Parts допомагає бізнесу швидко знаходити сумісні запчастини, зменшувати простої техніки та
+              зберігати історію замовлень в одному цифровому просторі.
+            </p>
+            <div className="mt-5 h-px w-20 bg-accent" />
+          </div>
+
+          <div className="mt-6 grid items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {audiences.map((audience, index) => {
+              const Icon = audience.icon;
+
+              return (
+                <article key={audience.title} className="benefit-card">
+                  <div className="benefit-card__diagonal" />
+                  <div className="benefit-card__icon-wrap">
+                    <Icon aria-hidden="true" focusable="false" />
+                  </div>
+                  <div className="benefit-card__content">
+                    <div className="benefit-card__header">
+                      <span className="benefit-card__number">{index + 1}</span>
+                      <h3 className="benefit-card__title">{audience.title}</h3>
+                    </div>
+                    <p className="benefit-card__description">{audience.text}</p>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </div>
       </section>
