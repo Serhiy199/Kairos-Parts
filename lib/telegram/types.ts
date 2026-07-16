@@ -7,7 +7,6 @@ export type TelegramDraftStep =
   | 'ASK_YEAR'
   | 'ASK_VIN'
   | 'ASK_DESCRIPTION'
-  | 'ASK_EXTRA_COMMENT'
   | 'ASK_FILES'
   | 'CONFIRM';
 

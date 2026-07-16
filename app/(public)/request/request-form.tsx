@@ -396,7 +396,7 @@ export function RequestForm({
           required
           defaultValue={initialRequest?.description}
         className="public-field min-h-32 rounded-md px-3 py-3 text-sm transition"
-          placeholder="Опишіть, яку запчастину потрібно підібрати, для якої техніки, що відомо про вузол або проблему."
+          placeholder={"Вкажіть каталожний номер та назву запчастини, яку шукаєте.\nЯкщо позицій декілька — напишіть їх одним повідомленням."}
         />
       </label>
 

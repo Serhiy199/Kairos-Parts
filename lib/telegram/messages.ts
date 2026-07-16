@@ -140,7 +140,6 @@ export function buildSummary(input: {
   vehicleYear?: number | null;
   vinOrSerial?: string | null;
   description?: string | null;
-  extraComment?: string | null;
   files: TelegramDraftFile[];
 }) {
   const fileNames = input.files.length ? input.files.map((file) => `- ${file.fileName}`).join('\n') : 'не додано';
@@ -161,9 +160,6 @@ export function buildSummary(input: {
     '',
     'Опис / коментар:',
     input.description || '—',
-    '',
-    'Додатковий коментар:',
-    input.extraComment || '—',
     '',
     'Файл:',
     fileNames,

@@ -36,7 +36,6 @@ type TelegramDraftMetadata = {
   model: string | null;
   vehicleYear: number | null;
   vinOrSerial: string | null;
-  extraComment: string | null;
   email: string | null;
 };
 
@@ -76,7 +75,6 @@ function readDraftMetadata(value: unknown): TelegramDraftMetadata {
       model: null,
       vehicleYear: null,
       vinOrSerial: null,
-      extraComment: null,
       email: null
     };
   }
@@ -89,7 +87,6 @@ function readDraftMetadata(value: unknown): TelegramDraftMetadata {
       model: null,
       vehicleYear: null,
       vinOrSerial: null,
-      extraComment: null,
       email: null
     };
   }
@@ -101,7 +98,6 @@ function readDraftMetadata(value: unknown): TelegramDraftMetadata {
     model?: unknown;
     vehicleYear?: unknown;
     vinOrSerial?: unknown;
-    extraComment?: unknown;
     email?: unknown;
   };
   const vehicleYear = typeof candidate.vehicleYear === 'number' && Number.isInteger(candidate.vehicleYear) ? candidate.vehicleYear : null;
@@ -113,7 +109,6 @@ function readDraftMetadata(value: unknown): TelegramDraftMetadata {
     model: typeof candidate.model === 'string' && candidate.model.trim() ? candidate.model.trim() : null,
     vehicleYear,
     vinOrSerial: typeof candidate.vinOrSerial === 'string' && candidate.vinOrSerial.trim() ? candidate.vinOrSerial.trim() : null,
-    extraComment: typeof candidate.extraComment === 'string' && candidate.extraComment.trim() ? candidate.extraComment.trim() : null,
     email: typeof candidate.email === 'string' && candidate.email.trim() ? candidate.email.trim() : null
   };
 }
@@ -126,7 +121,6 @@ function buildDraftMetadata(input: Partial<TelegramDraftMetadata> & { files: Tel
     model: input.model?.trim() || null,
     vehicleYear: input.vehicleYear ?? null,
     vinOrSerial: input.vinOrSerial?.trim() || null,
-    extraComment: input.extraComment?.trim() || null,
     email: input.email?.trim() || null
   };
 }
@@ -281,7 +275,6 @@ async function showConfirmation(draft: TelegramDraft) {
       vehicleYear: metadata.vehicleYear,
       vinOrSerial: metadata.vinOrSerial,
       description: updatedDraft.description,
-      extraComment: metadata.extraComment,
       files: metadata.files
     }),
     { replyMarkup: confirmationKeyboard }
@@ -529,7 +522,7 @@ async function handleTextMessage(message: TelegramMessage, draft: TelegramDraft)
     });
     await sendTelegramMessage(
       message.chat.id,
-      'Опишіть, яку запчастину потрібно підібрати, для якої техніки, що відомо про вузол або проблему.'
+      'Вкажіть каталожний номер та назву запчастини, яку шукаєте.\n\nЯкщо позицій декілька — напишіть їх одним повідомленням.'
     );
     return;
   }
@@ -544,23 +537,7 @@ async function handleTextMessage(message: TelegramMessage, draft: TelegramDraft)
       where: { telegramUserId: draft.telegramUserId },
       data: {
         description: text,
-        step: 'ASK_EXTRA_COMMENT'
-      }
-    });
-    await sendTelegramMessage(
-      message.chat.id,
-      'Додатковий коментар\n\nМожете вказати побажання, терміновість, аналоги або умови доставки.',
-      { replyMarkup: skipKeyboard }
-    );
-    return;
-  }
-
-  if (draft.step === 'ASK_EXTRA_COMMENT') {
-    await prisma.telegramDraftRequest.update({
-      where: { telegramUserId: draft.telegramUserId },
-      data: {
-        step: 'ASK_FILES',
-        fileMetadata: mergeDraftMetadata(draft.fileMetadata, { extraComment: isSkipText(text) ? null : text })
+        step: 'ASK_FILES'
       }
     });
     await sendTelegramMessage(
@@ -706,16 +683,8 @@ function buildTelegramRequestDescription(input: {
   vehicleYear: number;
   vinOrSerial: string;
   description?: string | null;
-  extraComment?: string | null;
 }) {
-  const description = input.description?.trim() || 'Не вказано';
-  const extraComment = input.extraComment?.trim();
-
-  if (!extraComment) {
-    return description;
-  }
-
-  return `${description}\n\nДодатковий коментар клієнта:\n${extraComment}`;
+  return input.description?.trim() || 'Не вказано';
 }
 
 async function attachTelegramFiles(requestId: string, files: TelegramDraftFile[]) {
@@ -803,8 +772,7 @@ async function createTelegramRequest(draft: TelegramDraft) {
     model: metadata.model,
     vehicleYear: metadata.vehicleYear,
     vinOrSerial: metadata.vinOrSerial,
-    description: draft.description,
-    extraComment: metadata.extraComment
+    description: draft.description
   });
 
   const createdRequest = await prisma.request.create({
