@@ -9,8 +9,8 @@ import { prisma } from '@/lib/prisma';
 type BillingSnapshot = Record<string, unknown>;
 type DecimalLike = Prisma.Decimal.Value | { toString: () => string };
 
-const REGULAR_FONT_PATH = path.join(process.cwd(), 'node_modules/prisma/build/public/assets/inter-cyrillic-400-normal.ac97a49e.woff2');
-const BOLD_FONT_PATH = path.join(process.cwd(), 'node_modules/prisma/build/public/assets/inter-cyrillic-600-normal.2c917f10.woff2');
+const REGULAR_FONT_PATH = path.join(process.cwd(), 'node_modules/prisma/build/public/assets/inter-all-400-normal.4c1f8a0d.woff');
+const BOLD_FONT_PATH = path.join(process.cwd(), 'node_modules/prisma/build/public/assets/inter-all-600-normal.d0a7c8a9.woff');
 
 function asBillingSnapshot(snapshot: unknown): BillingSnapshot | null {
   if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
@@ -140,7 +140,7 @@ export async function generateInvoicePdfBuffer(invoiceId: string): Promise<{ buf
   });
   const sellerSnapshot = asBillingSnapshot(invoice.sellerSnapshot);
   const buyerSnapshot = asBillingSnapshot(invoice.buyerSnapshot);
-  const doc = new PDFDocument({ size: 'A4', margin: 38, bufferPages: true });
+  const doc = new PDFDocument({ size: 'A4', margin: 38, bufferPages: true, font: REGULAR_FONT_PATH });
   const bufferPromise = collectPdfBuffer(doc);
 
   doc.registerFont('Inter', REGULAR_FONT_PATH);
