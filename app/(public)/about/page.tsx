@@ -2,16 +2,21 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   TbBuildingFactory2,
+  TbBuildingWarehouse,
   TbDatabaseCog,
   TbDeviceDesktopAnalytics,
   TbGauge,
   TbHeartHandshake,
+  TbLayoutDashboard,
+  TbSearch,
   TbSettingsSearch,
   TbShieldCheck,
   TbTargetArrow,
   TbTools,
   TbTractor,
   TbTruck,
+  TbTruckDelivery,
+  TbUserCheck,
   TbWheat
 } from 'react-icons/tb';
 
@@ -20,13 +25,41 @@ import { ActionIcon } from '@/components/ui/action-icons';
 const telegramBotUrl = 'https://t.me/kairos_parts_bot';
 
 const platformItems = [
-  'професійний підбір запчастин',
-  'пошук оригіналів і аналогів',
-  'роботу з кількома постачальниками одночасно',
-  'консолідовану доставку',
-  'персональний супровід менеджера',
-  'особистий кабінет компанії',
-  'цифрову історію парку техніки'
+  {
+    title: 'Професійний підбір запчастин',
+    text: 'Перевіряємо каталожні номери, сумісність і технічні параметри.',
+    icon: TbSettingsSearch
+  },
+  {
+    title: 'Пошук оригіналів і аналогів',
+    text: 'Порівнюємо доступні оригінальні деталі та перевірені альтернативи.',
+    icon: TbSearch
+  },
+  {
+    title: 'Робота з кількома постачальниками',
+    text: 'Одночасно опрацьовуємо пропозиції від різних партнерів.',
+    icon: TbBuildingWarehouse
+  },
+  {
+    title: 'Консолідована доставка',
+    text: 'Об’єднуємо позиції в одне погоджене відправлення.',
+    icon: TbTruckDelivery
+  },
+  {
+    title: 'Персональний супровід менеджера',
+    text: 'Один менеджер веде заявку від уточнення до передачі замовлення.',
+    icon: TbUserCheck
+  },
+  {
+    title: 'Особистий кабінет компанії',
+    text: 'Заявки, документи та техніка зібрані в одному робочому просторі.',
+    icon: TbLayoutDashboard
+  },
+  {
+    title: 'Цифрова історія парку техніки',
+    text: 'Замовлення, запчастини та документи зберігаються по кожній машині.',
+    icon: TbDatabaseCog
+  }
 ];
 
 const audiences = [
@@ -217,21 +250,61 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="bg-public-section py-16">
+      <section className="bg-public-page py-16 text-white sm:py-20">
         <div className="kp-container">
-          <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
-            <div>
-              <p className="text-sm font-bold uppercase text-accent">Платформа обʼєднує</p>
-            <h2 className="mt-2 text-3xl font-bold text-public-primary">Один процес замість десятків ручних дій</h2>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {platformItems.map((item) => (
-              <div key={item} className="rounded-md border border-public-border bg-public-card px-4 py-3 text-sm font-semibold text-public-secondary">
-                  {item}
-                </div>
-              ))}
-            </div>
+          <div className="max-w-[760px]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">Платформа обʼєднує</p>
+            <h2 className="mt-3 max-w-[740px] text-3xl font-bold leading-tight text-white sm:text-4xl">
+              Один процес замість десятків ручних дій
+            </h2>
+            <p className="mt-4 max-w-[740px] text-base font-medium leading-7 text-white/72 sm:text-lg sm:leading-8">
+              Kairos Parts об’єднує підбір, роботу з постачальниками, супровід, доставку та цифрову історію
+              техніки в одному процесі.
+            </p>
+            <div className="mt-5 h-px w-20 bg-accent" />
           </div>
+
+          <ul className="mt-10 grid grid-cols-12 overflow-hidden rounded-2xl border border-public-border bg-public-card">
+            {platformItems.map((item, index) => {
+              const Icon = item.icon;
+              const spanClasses =
+                index < 4
+                  ? 'col-span-12 md:col-span-6 xl:col-span-3'
+                  : index < 6
+                    ? 'col-span-12 md:col-span-6 xl:col-span-4'
+                    : 'col-span-12 xl:col-span-4';
+              const dividerClasses = `${index < 6 ? 'border-b border-public-border' : ''} ${
+                index % 2 === 0 && index < 6 ? 'md:border-r md:border-public-border' : ''
+              } ${index >= 4 ? 'xl:border-b-0' : ''} ${
+                index === 0 || index === 1 || index === 2 || index === 4 || index === 5
+                  ? 'xl:border-r xl:border-public-border'
+                  : 'xl:border-r-0'
+              }`;
+
+              return (
+                <li
+                  key={item.title}
+                  className={`${spanClasses} ${dividerClasses} min-w-0 px-5 py-6 transition-colors duration-200 hover:bg-public-elevated sm:px-7 sm:py-8 xl:px-8`}
+                >
+                  <div className="flex items-start gap-4">
+                    <Icon
+                      aria-hidden="true"
+                      focusable="false"
+                      className="size-8 shrink-0 stroke-[1.65] text-accent sm:size-9"
+                    />
+                    <div className="min-w-0">
+                      <h3 className="break-normal whitespace-normal hyphens-none text-lg font-bold leading-snug text-white xl:text-xl">
+                        {item.title}
+                      </h3>
+                      <p className="mt-3 text-[15px] font-medium leading-6 text-white/65 sm:text-base sm:leading-7">
+                        {item.text}
+                      </p>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </section>
 
