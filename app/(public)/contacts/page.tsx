@@ -163,50 +163,6 @@ export default function ContactsPage() {
           </div>
         </div>
       </section>
-
-      <section className="relative overflow-hidden bg-public-page py-16 text-white sm:py-20">
-        <div className="kp-container relative">
-          <div className="relative mt-14 overflow-hidden rounded-2xl border border-accent/25 bg-[linear-gradient(135deg,rgba(28,28,28,0.98),rgba(8,8,8,0.98))] px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.38)] sm:px-8 sm:py-10 lg:mt-16 lg:px-10">
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(200,150,66,0.18),transparent_38%)]"
-            />
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-accent/30 via-accent to-accent/30"
-            />
-            <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.8fr)] lg:items-center lg:gap-10">
-              <div className="max-w-3xl">
-                <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">
-                  Готові передати нам запит?
-                </h2>
-                <p className="mt-4 text-base leading-7 text-white/75 sm:text-lg sm:leading-8">
-                  Надішліть артикул, список, фото або короткий опис потреби. Менеджер уточнить деталі та
-                  запропонує сумісне рішення.
-                </p>
-              </div>
-              <div className="flex flex-col gap-3 lg:min-w-[320px] lg:justify-self-end">
-                <Link
-                  href="/request"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3.5 text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                >
-                  <ActionIcon name="plus" className="h-4 w-4" />
-                  Створити заявку
-                </Link>
-                <a
-                  href={telegramBotUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-accent/50 bg-primary/45 px-6 py-3.5 text-sm font-bold text-accent transition hover:border-accent/80 hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                >
-                  <ActionIcon name="telegram" className="h-4 w-4" />
-                  Надіслати в Telegram
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
     </>
   );
 }
