@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { ActionIcon } from '@/components/ui/action-icons';
 
+import { PublicDesktopNavigation } from './public-desktop-navigation';
 import { PublicMobileMenu } from './public-mobile-menu';
 
 const telegramBotUrl = 'https://t.me/kairos_parts_bot';
@@ -11,7 +12,7 @@ const navItems = [
   { href: '/about', label: 'Про нас' },
   { href: '/how-it-works', label: 'Як це працює' },
   { href: '/used-equipment', label: 'Майданчик БВ техніки' },
-  { href: '/#benefits', label: 'Переваги' },
+  { href: '/advantages', label: 'Переваги' },
   { href: '/contacts', label: 'Контакти' }
 ];
 
@@ -31,13 +32,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
               className="h-12 w-auto rounded-md object-contain"
             />
           </Link>
-          <nav className="hidden items-center gap-6 text-sm text-sidebar-text lg:flex">
-            {navItems.map((item) => (
-              <Link key={item.href} href={item.href} className="transition hover:text-white">
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <PublicDesktopNavigation navItems={navItems} />
           <div className="hidden items-center gap-2 lg:flex">
             <Link
               href="/login"

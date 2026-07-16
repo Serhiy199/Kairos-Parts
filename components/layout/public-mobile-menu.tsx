@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
 import { ActionIcon } from '@/components/ui/action-icons';
@@ -12,6 +13,7 @@ type NavItem = {
 
 export function PublicMobileMenu({ navItems }: { navItems: NavItem[] }) {
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <div className="lg:hidden">
@@ -31,16 +33,23 @@ export function PublicMobileMenu({ navItems }: { navItems: NavItem[] }) {
           className="absolute inset-x-4 top-16 z-30 rounded-lg border border-white/10 bg-primary p-3 shadow-panel"
         >
           <nav className="grid gap-1 text-sm text-sidebar-text">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-                className="rounded-md px-3 py-2 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              >
-                {item.label}
-              </Link>
-            ))}
+            {navItems.map((item) => {
+              const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`));
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={isActive ? 'page' : undefined}
+                  onClick={() => setIsOpen(false)}
+                  className={`rounded-md px-3 py-2 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                    isActive ? 'bg-white/10 font-semibold text-accent' : ''
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
             <Link
               href="/login"
               onClick={() => setIsOpen(false)}
