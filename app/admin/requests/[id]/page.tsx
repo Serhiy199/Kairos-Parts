@@ -25,6 +25,7 @@ import { StatusBadge } from '@/components/client/status-badge';
 import { ActionIcon } from '@/components/ui/action-icons';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { calculateInvoiceLineTotal, calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
 import { INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 import { PART_MANUFACTURERS } from '@/lib/parts/part-manufacturers';
 import { prisma } from '@/lib/prisma';
@@ -39,7 +40,7 @@ function formatSize(size: number) {
 }
 
 function formatMoney(value: { toString: () => string } | null, currency: string) {
-  return value ? `${value.toString()} ${currency}` : '—';
+  return value ? formatInvoiceMoney(value, currency) : '—';
 }
 
 function resultMessage(result?: string) {
@@ -619,9 +620,12 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
       </div>
 
       <div className="mt-5 grid min-w-0 gap-3 rounded-md border border-border p-4">
-        {items.map((item) => (
+        {items.map((item) => {
+          const itemTotal = item.salePrice ? calculateInvoiceLineTotal(item.quantity, item.salePrice) : null;
+
+          return (
           <article key={item.id} className="min-w-0 rounded-md border border-border bg-card p-4">
-            <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]">
+            <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.8fr)]">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
                 <p className="mt-2 font-bold text-foreground">{item.name}</p>
@@ -641,8 +645,12 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
                 <p className="mt-2">{item.availability ?? '—'}</p>
               </div>
               <div className="text-sm text-muted">
-                <p className="text-xs font-bold uppercase text-muted">Ціна</p>
+                <p className="text-xs font-bold uppercase text-muted">Ціна без ПДВ</p>
                 <p className="mt-2 font-semibold text-foreground">{formatMoney(item.salePrice, item.currency)}</p>
+              </div>
+              <div className="text-sm text-muted">
+                <p className="text-xs font-bold uppercase text-muted">Сума без ПДВ</p>
+                <p className="mt-2 font-semibold text-foreground">{formatMoney(itemTotal, item.currency)}</p>
               </div>
               <div>
                 <p className="text-xs font-bold uppercase text-muted">Клієнт</p>
@@ -683,7 +691,8 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
               </form>
             </div>
           </article>
-        ))}
+          );
+        })}
         {items.length === 0 ? (
           <p className="p-5 text-sm text-muted">
             Позиції ще не додані. Додайте першу позицію, щоб зберегти номенклатуру та каталожні номери по цій заявці.
@@ -754,6 +763,7 @@ function InvoicesSection({
             const canSend = invoice.status === 'DRAFT';
             const canCancel = invoice.status === 'DRAFT' || invoice.status === 'SENT';
             const canMarkPaid = invoice.status === 'SENT';
+            const invoiceTotals = calculateInvoiceTotals(invoice.items);
 
             return (
               <article key={invoice.id} className="rounded-md border border-border p-4">
@@ -765,9 +775,6 @@ function InvoicesSection({
                     </div>
                     <p className="mt-2 text-sm text-muted">
                       Створено {invoice.createdAt.toLocaleString('uk-UA')} · {invoice.createdBy?.name ?? invoice.createdBy?.email ?? 'CRM'}
-                    </p>
-                    <p className="mt-2 text-sm font-bold text-foreground">
-                      Загальна сума: {formatMoney(invoice.totalAmount, invoice.currency)}
                     </p>
                     <p className="mt-1 text-xs text-muted">{invoice.items.length} позицій</p>
                     {invoice.sentAt ? <p className="mt-1 text-xs text-muted">Надіслано: {invoice.sentAt.toLocaleString('uk-UA')}</p> : null}
@@ -835,7 +842,7 @@ function InvoicesSection({
                 <details className="mt-4 rounded-md border border-border bg-surface-muted p-4" open>
                   <summary className="cursor-pointer text-sm font-bold text-foreground">Переглянути позиції рахунку</summary>
                   <div className="mt-4 max-w-full overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full min-w-[860px] border-collapse text-left text-sm">
+                    <table className="w-full min-w-[940px] border-collapse text-left text-sm">
                       <thead>
                         <tr className="border-b border-border bg-surface-muted text-muted">
                           <th className="px-4 py-3 font-bold">№</th>
@@ -844,8 +851,8 @@ function InvoicesSection({
                           <th className="px-4 py-3 font-bold">Артикул / каталог</th>
                           <th className="px-4 py-3 font-bold">Кількість</th>
                           <th className="px-4 py-3 font-bold">Од.</th>
-                          <th className="px-4 py-3 font-bold">Ціна</th>
-                          <th className="px-4 py-3 font-bold">Сума</th>
+                          <th className="px-4 py-3 text-right font-bold">Ціна без ПДВ</th>
+                          <th className="px-4 py-3 text-right font-bold">Сума без ПДВ</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -862,12 +869,22 @@ function InvoicesSection({
                             </td>
                             <td className="px-4 py-3 font-semibold text-foreground">{item.quantity}</td>
                             <td className="px-4 py-3 text-foreground">{item.unit ?? 'шт'}</td>
-                            <td className="px-4 py-3 text-foreground">{formatMoney(item.price, invoice.currency)}</td>
-                            <td className="px-4 py-3 font-bold text-foreground">{formatMoney(item.total, invoice.currency)}</td>
+                            <td className="px-4 py-3 text-right text-foreground">{formatMoney(item.price, invoice.currency)}</td>
+                            <td className="px-4 py-3 text-right font-bold text-foreground">{formatMoney(item.total, invoice.currency)}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                  <div className="ml-auto mt-4 w-full max-w-sm rounded-md border border-border bg-card p-4 text-sm">
+                    <div className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2">
+                      <span className="text-right font-semibold text-muted">Разом:</span>
+                      <span className="text-right font-bold text-foreground">{formatMoney(invoiceTotals.subtotalWithoutVat, invoice.currency)}</span>
+                      <span className="text-right font-semibold text-muted">Сума ПДВ:</span>
+                      <span className="text-right font-bold text-foreground">{formatMoney(invoiceTotals.vatAmount, invoice.currency)}</span>
+                      <span className="border-t border-accent pt-2 text-right font-bold text-foreground">Усього з ПДВ:</span>
+                      <span className="border-t border-accent pt-2 text-right text-base font-bold text-foreground">{formatMoney(invoiceTotals.totalWithVat, invoice.currency)}</span>
+                    </div>
                   </div>
                 </details>
               </article>
@@ -916,7 +933,7 @@ function RequestItemForm({
         <TextField name="quantity" label="Кількість" type="number" min="1" defaultValue={String(item?.quantity ?? 1)} />
         <TextField name="unit" label="Одиниця" defaultValue={item?.unit ?? 'шт'} />
         <TextField name="availability" label="Наявність" defaultValue={item?.availability} />
-        <TextField name="salePrice" label="Ціна" type="number" min="0" step="0.01" defaultValue={item?.salePrice?.toString()} />
+        <TextField name="salePrice" label="Ціна без ПДВ" type="number" min="0" step="0.01" defaultValue={item?.salePrice?.toString()} />
         <TextField name="currency" label="Валюта" defaultValue={item?.currency ?? 'UAH'} />
       </div>
       <label className="grid gap-2 text-sm font-semibold text-foreground">

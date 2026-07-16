@@ -4,6 +4,12 @@ import path from 'node:path';
 import { Prisma } from '@prisma/client';
 import PDFDocument from 'pdfkit';
 
+import {
+  calculateInvoiceTotals,
+  formatInvoiceMoney,
+  resolveInvoiceLineTotal,
+  type InvoiceTotals
+} from '@/lib/invoices/totals';
 import { prisma } from '@/lib/prisma';
 
 type BillingSnapshot = Record<string, unknown>;
@@ -17,7 +23,7 @@ type InvoicePdfColumn = {
 
 const REGULAR_FONT_PATH = path.join(process.cwd(), 'node_modules/prisma/build/public/assets/inter-all-400-normal.4c1f8a0d.woff');
 const BOLD_FONT_PATH = path.join(process.cwd(), 'node_modules/prisma/build/public/assets/inter-all-600-normal.d0a7c8a9.woff');
-const PAGE_MARGIN = 40;
+const PAGE_MARGIN = 34;
 const SECTION_GAP = 14;
 const TABLE_HEADER_HEIGHT = 22;
 const TABLE_MIN_ROW_HEIGHT = 34;
@@ -47,41 +53,7 @@ function formatDate(value: Date | null | undefined) {
   return value ? value.toLocaleDateString('uk-UA') : '—';
 }
 
-function decimal(value: DecimalLike) {
-  return new Prisma.Decimal(value.toString());
-}
-
-export function resolveInvoiceTotalAmount({
-  totalAmount,
-  items
-}: {
-  totalAmount: DecimalLike;
-  items: Array<{ quantity: number; price: DecimalLike; total: DecimalLike }>;
-}) {
-  const storedTotal = decimal(totalAmount);
-
-  if (!storedTotal.isZero()) {
-    return storedTotal;
-  }
-
-  return items.reduce((sum, item) => {
-    const itemTotal = decimal(item.total);
-    return sum.add(itemTotal.isZero() ? decimal(item.price).mul(item.quantity) : itemTotal);
-  }, new Prisma.Decimal(0));
-}
-
-export function formatInvoiceMoney(value: DecimalLike, currency: string) {
-  const numericAmount = Number(decimal(value).toString());
-
-  if (!Number.isFinite(numericAmount)) {
-    return `${decimal(value).toString()} ${currency}`;
-  }
-
-  return `${numericAmount.toLocaleString('uk-UA', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })} ${currency}`;
-}
+export { formatInvoiceMoney };
 
 function cleanFilenamePart(value: string) {
   return value.replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, '-');
@@ -279,18 +251,18 @@ function addInvoiceItemsTable(
     { title: '№', width: 22, align: 'center' },
     { title: 'Назва', width: 125 },
     { title: 'Виробник', width: 70 },
-    { title: 'Артикул', width: 105 },
+    { title: 'Артикул / каталог', width: 110 },
     { title: 'К-сть', width: 45, align: 'right' },
     { title: 'Од.', width: 35 },
-    { title: 'Ціна', width: 55, align: 'right' },
-    { title: 'Сума', width: 58, align: 'right', bold: true }
+    { title: 'Ціна без ПДВ', width: 70, align: 'right' },
+    { title: 'Сума без ПДВ', width: 76, align: 'right', bold: true }
   ], getContentWidth(doc));
   const contentWidth = getContentWidth(doc);
   let y = ensureSpace(doc, currentY, TABLE_HEADER_HEIGHT + TABLE_MIN_ROW_HEIGHT);
   y = addTableHeader(doc, columns, y);
 
   items.forEach((item, index) => {
-    const itemTotal = decimal(item.total).isZero() ? decimal(item.price).mul(item.quantity) : decimal(item.total);
+    const itemTotal = resolveInvoiceLineTotal(item);
     const nameText = [item.name, item.comment].filter(Boolean).join('\n');
     const catalogText = `Каталог: ${item.catalogNumber ?? '—'}`;
     const values = [
@@ -331,6 +303,60 @@ function addInvoiceItemsTable(
   return y;
 }
 
+function addInvoiceTotalsBlock(doc: PDFKit.PDFDocument, totals: InvoiceTotals, currency: string, currentY: number) {
+  const blockWidth = 230;
+  const labelWidth = 115;
+  const valueWidth = blockWidth - labelWidth;
+  const x = PAGE_MARGIN + getContentWidth(doc) - blockWidth;
+  let y = ensureSpace(doc, currentY + 12, 66);
+  const rows: Array<[string, DecimalLike, boolean]> = [
+    ['Разом:', totals.subtotalWithoutVat, false],
+    ['Сума ПДВ:', totals.vatAmount, false],
+    ['Усього з ПДВ:', totals.totalWithVat, true]
+  ];
+
+  rows.forEach(([label, value, bold], index) => {
+    if (index === 2) {
+      doc.strokeColor('#C89642').lineWidth(0.8).moveTo(x, y - 3).lineTo(x + blockWidth, y - 3).stroke();
+    }
+    writeText(doc, label, x, y, labelWidth, {
+      bold,
+      size: bold ? 9.5 : 8.5,
+      color: bold ? '#050505' : '#4C4F54',
+      align: 'right'
+    });
+    writeText(doc, formatInvoiceMoney(value, currency), x + labelWidth, y, valueWidth, {
+      bold,
+      size: bold ? 10 : 8.5,
+      color: '#050505',
+      align: 'right'
+    });
+    y += bold ? 18 : 15;
+  });
+
+  return y;
+}
+
+function addSignatureBlock(doc: PDFKit.PDFDocument, currentY: number) {
+  const contentWidth = getContentWidth(doc);
+  const columnWidth = (contentWidth - 60) / 2;
+  let y = ensureSpace(doc, currentY + 18, 58);
+
+  writeText(doc, 'Виконавець', PAGE_MARGIN, y, columnWidth, { bold: true, size: 9, color: '#050505' });
+  writeText(doc, 'Замовник', PAGE_MARGIN + columnWidth + 60, y, columnWidth, { bold: true, size: 9, color: '#050505' });
+  y += 26;
+  doc
+    .strokeColor('#101010')
+    .lineWidth(0.8)
+    .moveTo(PAGE_MARGIN, y)
+    .lineTo(PAGE_MARGIN + columnWidth, y)
+    .moveTo(PAGE_MARGIN + columnWidth + 60, y)
+    .lineTo(PAGE_MARGIN + columnWidth + 60 + columnWidth, y)
+    .stroke();
+
+  return y + 12;
+}
+
 export async function generateInvoicePdfBuffer(invoiceId: string): Promise<{ buffer: Buffer; filename: string }> {
   const invoice = await prisma.invoice.findUnique({
     where: { id: invoiceId },
@@ -348,14 +374,12 @@ export async function generateInvoicePdfBuffer(invoiceId: string): Promise<{ buf
     throw new Error('invoice_pdf_font_not_found');
   }
 
-  const totalAmount = resolveInvoiceTotalAmount({
-    totalAmount: invoice.totalAmount,
-    items: invoice.items
-  });
+  const totals = calculateInvoiceTotals(invoice.items);
   const sellerSnapshot = asBillingSnapshot(invoice.sellerSnapshot);
   const buyerSnapshot = asBillingSnapshot(invoice.buyerSnapshot);
   const doc = new PDFDocument({
     size: 'A4',
+    layout: 'landscape',
     margin: PAGE_MARGIN,
     bufferPages: true,
     font: REGULAR_FONT_PATH
@@ -392,8 +416,7 @@ export async function generateInvoicePdfBuffer(invoiceId: string): Promise<{ buf
   y = addKeyValueRows(doc, [
     ['Створення заявки', formatDate(invoice.request.createdAt)],
     ['Надіслано', formatDate(invoice.sentAt)],
-    ['Валюта', invoice.currency],
-    ['Загальна сума', formatInvoiceMoney(totalAmount, invoice.currency)]
+    ['Валюта', invoice.currency]
   ], y);
 
   y = addSectionTitle(doc, 'Дані продавця', y);
@@ -426,14 +449,8 @@ export async function generateInvoicePdfBuffer(invoiceId: string): Promise<{ buf
   y = addSectionTitle(doc, 'Позиції', y);
   y = addInvoiceItemsTable(doc, invoice.items, invoice.currency, y);
 
-  y = ensureSpace(doc, y + 14, 48);
-  writeText(doc, `Загальна сума: ${formatInvoiceMoney(totalAmount, invoice.currency)}`, PAGE_MARGIN, y, contentWidth, {
-    bold: true,
-    size: 13,
-    color: '#050505',
-    align: 'right'
-  });
-  y += 34;
+  y = addInvoiceTotalsBlock(doc, totals, invoice.currency, y);
+  y = addSignatureBlock(doc, y);
 
   y = ensureSpace(doc, y, 30);
   writeText(

@@ -6,6 +6,7 @@ import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
 import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { calculateInvoiceLineTotal, calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
 import { CLIENT_INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 import { prisma } from '@/lib/prisma';
 import { REQUEST_DOCUMENT_TYPE_LABELS } from '@/lib/request-documents/validation';
@@ -13,7 +14,7 @@ import { REQUEST_DOCUMENT_TYPE_LABELS } from '@/lib/request-documents/validation
 export const dynamic = 'force-dynamic';
 
 function formatMoney(value: { toString: () => string } | null, currency: string) {
-  return value ? `${value.toString()} ${currency}` : null;
+  return value ? formatInvoiceMoney(value, currency) : null;
 }
 
 function formatSize(size: number | null) {
@@ -198,9 +199,12 @@ export default async function ClientRequestDetailPage({
             </form>
           </div>
           <div className="mt-4 grid min-w-0 gap-3">
-            {request.items.map((item) => (
+            {request.items.map((item) => {
+              const itemTotal = item.salePrice ? calculateInvoiceLineTotal(item.quantity, item.salePrice) : null;
+
+              return (
               <article key={item.id} className="min-w-0 rounded-md border border-border p-4">
-                  <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,auto)] lg:items-start">
+                  <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,auto)] lg:items-start">
                     <div className="min-w-0">
                       <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
                       <p className="mt-2 font-bold text-foreground">{item.name}</p>
@@ -220,8 +224,12 @@ export default async function ClientRequestDetailPage({
                       <p className="mt-2">{item.availability ?? 'Уточнюється'}</p>
                     </div>
                     <div>
-                      <p className="text-xs font-bold uppercase text-muted">Ціна</p>
+                      <p className="text-xs font-bold uppercase text-muted">Ціна без ПДВ</p>
                       <p className="mt-2 font-semibold text-foreground">{formatMoney(item.salePrice, item.currency) ?? 'Уточнюється'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase text-muted">Сума без ПДВ</p>
+                      <p className="mt-2 font-semibold text-foreground">{formatMoney(itemTotal, item.currency) ?? 'Уточнюється'}</p>
                     </div>
                     <div className="grid gap-2">
                       <label className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">
@@ -248,7 +256,8 @@ export default async function ClientRequestDetailPage({
                     </div>
                   </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : null}
@@ -258,7 +267,10 @@ export default async function ClientRequestDetailPage({
           <h3 className="text-lg font-bold text-foreground">Рахунки</h3>
           <p className="mt-2 text-sm text-muted">Тут показані рахунки, які менеджер виставив за погодженими позиціями.</p>
           <div className="mt-4 grid gap-4">
-            {request.invoices.map((invoice) => (
+            {request.invoices.map((invoice) => {
+              const invoiceTotals = calculateInvoiceTotals(invoice.items);
+
+              return (
               <article key={invoice.id} className="rounded-md border border-border p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div>
@@ -274,7 +286,8 @@ export default async function ClientRequestDetailPage({
                     {invoice.cancelledAt ? <p className="mt-2 text-sm font-semibold text-danger">Скасовано {invoice.cancelledAt.toLocaleDateString('uk-UA')}</p> : null}
                   </div>
                   <div className="flex flex-col gap-2 md:items-end">
-                    <p className="text-lg font-bold text-foreground">{formatMoney(invoice.totalAmount, invoice.currency)}</p>
+                    <p className="text-sm font-semibold text-muted">Усього з ПДВ</p>
+                    <p className="text-lg font-bold text-foreground">{formatMoney(invoiceTotals.totalWithVat, invoice.currency)}</p>
                     <Link
                       href={`/client/invoices/${invoice.id}/print`}
                       target="_blank"
@@ -287,14 +300,14 @@ export default async function ClientRequestDetailPage({
                 </div>
 
                 <div className="mt-4 max-w-full overflow-x-auto rounded-md border border-border">
-                  <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+                    <table className="w-full min-w-[860px] border-collapse text-left text-sm">
                     <thead>
                       <tr className="border-b border-border bg-surface-muted text-muted">
                         <th className="px-4 py-3 font-bold">Позиція</th>
                         <th className="px-4 py-3 font-bold">Номери</th>
                         <th className="px-4 py-3 font-bold">К-сть</th>
-                        <th className="px-4 py-3 font-bold">Ціна</th>
-                        <th className="px-4 py-3 font-bold">Сума</th>
+                        <th className="px-4 py-3 text-right font-bold">Ціна без ПДВ</th>
+                        <th className="px-4 py-3 text-right font-bold">Сума без ПДВ</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -309,15 +322,26 @@ export default async function ClientRequestDetailPage({
                             <p>Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
                           </td>
                           <td className="px-4 py-3 font-semibold text-foreground">{item.quantity} {item.unit ?? 'шт'}</td>
-                          <td className="px-4 py-3 text-foreground">{formatMoney(item.price, invoice.currency)}</td>
-                          <td className="px-4 py-3 font-bold text-foreground">{formatMoney(item.total, invoice.currency)}</td>
+                          <td className="px-4 py-3 text-right text-foreground">{formatMoney(item.price, invoice.currency)}</td>
+                          <td className="px-4 py-3 text-right font-bold text-foreground">{formatMoney(item.total, invoice.currency)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+                <div className="ml-auto mt-4 w-full max-w-sm rounded-md border border-border bg-surface-muted p-4 text-sm">
+                  <div className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2">
+                    <span className="text-right font-semibold text-muted">Разом:</span>
+                    <span className="text-right font-bold text-foreground">{formatMoney(invoiceTotals.subtotalWithoutVat, invoice.currency)}</span>
+                    <span className="text-right font-semibold text-muted">Сума ПДВ:</span>
+                    <span className="text-right font-bold text-foreground">{formatMoney(invoiceTotals.vatAmount, invoice.currency)}</span>
+                    <span className="border-t border-accent pt-2 text-right font-bold text-foreground">Усього з ПДВ:</span>
+                    <span className="border-t border-accent pt-2 text-right text-base font-bold text-foreground">{formatMoney(invoiceTotals.totalWithVat, invoice.currency)}</span>
+                  </div>
+                </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : null}

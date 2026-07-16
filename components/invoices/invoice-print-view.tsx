@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import { PrintButton } from '@/components/invoices/print-button';
+import { calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
 import { INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 
 type MoneyLike = {
@@ -69,7 +70,7 @@ function booleanField(snapshot: BillingSnapshot | null, key: string) {
 }
 
 function formatMoney(value: MoneyLike | null, currency: string) {
-  return value ? `${value.toString()} ${currency}` : '—';
+  return value ? formatInvoiceMoney(value, currency) : '—';
 }
 
 function formatDate(value: Date | null) {
@@ -114,13 +115,14 @@ export function InvoicePrintView({ invoice, backHref, backLabel }: InvoicePrintV
   const sellerSnapshot = asBillingSnapshot(invoice.sellerSnapshot);
   const buyerSnapshot = asBillingSnapshot(invoice.buyerSnapshot);
   const statusLabel = INVOICE_STATUS_LABELS[invoice.status];
+  const totals = calculateInvoiceTotals(invoice.items);
 
   return (
     <main className="min-h-screen bg-[#f3f4f6] px-4 py-6 text-[#101010] print:bg-white print:p-0">
       <style>{`
         @page {
-          size: A4;
-          margin: 14mm;
+          size: A4 landscape;
+          margin: 12mm;
         }
 
         @media print {
@@ -180,7 +182,7 @@ export function InvoicePrintView({ invoice, backHref, backLabel }: InvoicePrintV
         <section className="mt-8">
           <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-[#8A5B24]">Позиції рахунку</h2>
           <div className="mt-4 overflow-x-auto rounded-md border border-[#d7d9dd]">
-            <table className="w-full min-w-[860px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[980px] border-collapse text-left text-sm print:min-w-0 print:text-[11px]">
               <thead>
                 <tr className="border-b border-[#d7d9dd] bg-[#f6f7f8] text-[#4C4F54]">
                   <th className="px-3 py-3 font-bold">№</th>
@@ -189,8 +191,8 @@ export function InvoicePrintView({ invoice, backHref, backLabel }: InvoicePrintV
                   <th className="px-3 py-3 font-bold">Артикул / каталог</th>
                   <th className="px-3 py-3 font-bold">К-сть</th>
                   <th className="px-3 py-3 font-bold">Од.</th>
-                  <th className="px-3 py-3 font-bold">Ціна</th>
-                  <th className="px-3 py-3 font-bold">Сума</th>
+                  <th className="px-3 py-3 text-right font-bold">Ціна без ПДВ</th>
+                  <th className="px-3 py-3 text-right font-bold">Сума без ПДВ</th>
                 </tr>
               </thead>
               <tbody>
@@ -207,20 +209,22 @@ export function InvoicePrintView({ invoice, backHref, backLabel }: InvoicePrintV
                     </td>
                     <td className="px-3 py-3 font-semibold">{item.quantity}</td>
                     <td className="px-3 py-3">{item.unit ?? 'шт'}</td>
-                    <td className="px-3 py-3">{formatMoney(item.price, invoice.currency)}</td>
-                    <td className="px-3 py-3 font-bold">{formatMoney(item.total, invoice.currency)}</td>
+                    <td className="px-3 py-3 text-right">{formatMoney(item.price, invoice.currency)}</td>
+                    <td className="px-3 py-3 text-right font-bold">{formatMoney(item.total, invoice.currency)}</td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-[#C89642] bg-[#fbf7ef]">
-                  <td colSpan={7} className="px-3 py-4 text-right font-bold">
-                    Разом
-                  </td>
-                  <td className="px-3 py-4 text-lg font-bold">{formatMoney(invoice.totalAmount, invoice.currency)}</td>
-                </tr>
-              </tfoot>
             </table>
+          </div>
+          <div className="ml-auto mt-5 w-full max-w-sm rounded-md border border-[#d7d9dd] bg-[#fbf7ef] p-4 text-sm">
+            <div className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2">
+              <span className="text-right font-semibold text-[#4C4F54]">Разом:</span>
+              <span className="text-right font-bold text-[#050505]">{formatMoney(totals.subtotalWithoutVat, invoice.currency)}</span>
+              <span className="text-right font-semibold text-[#4C4F54]">Сума ПДВ:</span>
+              <span className="text-right font-bold text-[#050505]">{formatMoney(totals.vatAmount, invoice.currency)}</span>
+              <span className="border-t border-[#C89642] pt-2 text-right text-base font-bold text-[#050505]">Усього з ПДВ:</span>
+              <span className="border-t border-[#C89642] pt-2 text-right text-base font-bold text-[#050505]">{formatMoney(totals.totalWithVat, invoice.currency)}</span>
+            </div>
           </div>
         </section>
 
@@ -240,6 +244,17 @@ export function InvoicePrintView({ invoice, backHref, backLabel }: InvoicePrintV
             ) : null}
           </section>
         ) : null}
+
+        <section className="mt-10 grid gap-10 border-t border-[#d7d9dd] pt-8 sm:grid-cols-2 print-break-inside-avoid">
+          <div>
+            <p className="text-sm font-bold text-[#050505]">Виконавець</p>
+            <div className="mt-8 border-b border-[#101010]" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-[#050505]">Замовник</p>
+            <div className="mt-8 border-b border-[#101010]" />
+          </div>
+        </section>
 
         <footer className="mt-8 border-t border-[#d7d9dd] pt-4 text-xs leading-5 text-[#4C4F54]">
           <p>Цей друкований перегляд сформовано в Kairos Parts на основі погоджених клієнтом позицій.</p>

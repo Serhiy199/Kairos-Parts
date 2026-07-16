@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
-import { formatInvoiceMoney, generateInvoicePdfBuffer, resolveInvoiceTotalAmount } from '@/lib/invoices/pdf';
+import { generateInvoicePdfBuffer } from '@/lib/invoices/pdf';
+import { calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
 import { sendTelegramDocument, sendTelegramMessage, TelegramApiError } from '@/lib/telegram/bot';
 
 type TelegramRecipient = {
@@ -296,10 +297,7 @@ export async function sendTelegramInvoiceSentNotification({
     return { status: 'skipped-no-recipient' };
   }
 
-  const totalAmount = resolveInvoiceTotalAmount({
-    totalAmount: invoice.totalAmount,
-    items: invoice.items
-  });
+  const totalAmount = calculateInvoiceTotals(invoice.items).totalWithVat;
   const message = buildInvoiceSentMessage({
     requestNumber: invoice.request.requestNumber,
     invoiceNumber: invoice.invoiceNumber,

@@ -3,14 +3,11 @@ import { Prisma, UserRole } from '@prisma/client';
 import type { ClientAccessContext } from '@/lib/client/access';
 import { requestAccessWhere } from '@/lib/client/access';
 import { buyerBillingSnapshot, sellerBillingSnapshot, type ClientBillingInput, type CompanyBillingInput } from '@/lib/billing/validation';
+import { calculateInvoiceLineTotal } from '@/lib/invoices/totals';
 import { prisma } from '@/lib/prisma';
 import { sendTelegramInvoiceSentNotification } from '@/lib/telegram/notifications';
 
 const crmRoles: UserRole[] = ['MANAGER', 'ADMIN'];
-
-function calculateLineTotal(quantity: number, price: Prisma.Decimal.Value) {
-  return new Prisma.Decimal(price).mul(quantity);
-}
 
 function isCrmRole(role: UserRole) {
   return crmRoles.includes(role);
@@ -189,7 +186,7 @@ export async function createInvoiceFromApprovedRequestItems({
   const invoiceNumber = await generateInvoiceNumber(request.id);
   const createItems = request.items.map((item) => {
     const price = item.salePrice ?? new Prisma.Decimal(0);
-    const total = calculateLineTotal(item.quantity, price);
+    const total = calculateInvoiceLineTotal(item.quantity, price);
 
     return {
       requestItemId: item.id,
