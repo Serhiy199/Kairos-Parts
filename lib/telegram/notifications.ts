@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { formatInvoiceMoney, generateInvoicePdfBuffer, resolveInvoiceTotalAmount } from '@/lib/invoices/pdf';
-import { sendTelegramDocument, sendTelegramMessage } from '@/lib/telegram/bot';
+import { sendTelegramDocument, sendTelegramMessage, TelegramApiError } from '@/lib/telegram/bot';
 
 type TelegramRecipient = {
   chatId: string;
@@ -55,6 +55,22 @@ function safeErrorMessage(error: unknown) {
   }
 
   return 'Unknown error';
+}
+
+function safeTelegramErrorDetails(error: unknown) {
+  if (error instanceof TelegramApiError) {
+    return {
+      telegramErrorCode: error.errorCode ?? null,
+      telegramErrorDescription: error.description?.slice(0, 500) ?? null,
+      telegramHttpStatus: error.status
+    };
+  }
+
+  return {
+    telegramErrorCode: null,
+    telegramErrorDescription: null,
+    telegramHttpStatus: null
+  };
 }
 
 export function buildInvoiceSentMessage({
@@ -347,22 +363,56 @@ export async function sendTelegramInvoiceSentNotification({
     }
   });
 
+  let pdfGenerated = false;
+  let pdfBufferSize: number | null = null;
+  let pdfFilename: string | null = null;
+  let sendDocumentAttempted = false;
+
   try {
     const pdf = await generateInvoicePdfBuffer(invoice.id);
+    pdfGenerated = true;
+    pdfBufferSize = pdf.buffer.length;
+    pdfFilename = pdf.filename;
+
+    if (pdf.buffer.length === 0) {
+      throw new Error('invoice_pdf_empty_buffer');
+    }
+
     console.info('Telegram invoice PDF generated', {
       invoiceId: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
       requestId: invoice.request.id,
       chatIdExists: true,
       pdfGenerated: true,
-      pdfBufferSize: pdf.buffer.length,
-      pdfFilename: pdf.filename
+      pdfBufferSize,
+      pdfFilename
     });
-    await sendTelegramDocument({
+    console.info('Telegram invoice PDF sendDocument attempt', {
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      requestId: invoice.request.id,
+      chatIdExists: true,
+      pdfGenerated: true,
+      pdfBufferSize,
+      pdfFilename,
+      sendDocumentAttempted: true
+    });
+    sendDocumentAttempted = true;
+    const documentResult = await sendTelegramDocument({
       chatId: recipient.chatId,
       buffer: pdf.buffer,
       filename: pdf.filename,
       caption: pdfCaption
+    });
+    console.info('Telegram invoice PDF sendDocument success', {
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      requestId: invoice.request.id,
+      chatIdExists: true,
+      sendDocumentAttempted: true,
+      sendDocumentOk: true,
+      telegramFileIdExists: Boolean(documentResult.file_id),
+      telegramFileSize: documentResult.file_size ?? null
     });
     await prisma.notification.update({
       where: { id: pdfNotification.id },
@@ -379,19 +429,29 @@ export async function sendTelegramInvoiceSentNotification({
           `requestId=${invoice.request.id}`,
           `chatIdExists=true`,
           `pdfGenerated=true`,
-          `pdfBufferSize=${pdf.buffer.length}`,
-          `pdfFilename=${pdf.filename}`,
-          `documentSent=true`
+          `pdfBufferSize=${pdfBufferSize}`,
+          `pdfFilename=${pdfFilename}`,
+          `sendDocumentAttempted=true`,
+          `sendDocumentOk=true`,
+          `documentSent=true`,
+          `telegramFileIdExists=${Boolean(documentResult.file_id)}`,
+          `telegramFileSize=${documentResult.file_size ?? ''}`
         ].join('\n')
       }
     });
   } catch (error) {
     const errorMessage = safeErrorMessage(error);
+    const telegramError = safeTelegramErrorDetails(error);
     console.warn('Telegram invoice PDF delivery failed', {
       invoiceId: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
       requestId: invoice.request.id,
       chatIdExists: true,
+      pdfGenerated,
+      pdfBufferSize,
+      pdfFilename,
+      sendDocumentAttempted,
+      ...telegramError,
       error: errorMessage
     });
     await prisma.notification.update({
@@ -407,6 +467,13 @@ export async function sendTelegramInvoiceSentNotification({
           `invoiceNumber=${invoice.invoiceNumber}`,
           `requestId=${invoice.request.id}`,
           `chatIdExists=true`,
+          `pdfGenerated=${pdfGenerated}`,
+          `pdfBufferSize=${pdfBufferSize ?? ''}`,
+          `pdfFilename=${pdfFilename ?? ''}`,
+          `sendDocumentAttempted=${sendDocumentAttempted}`,
+          `telegramErrorCode=${telegramError.telegramErrorCode ?? ''}`,
+          `telegramHttpStatus=${telegramError.telegramHttpStatus ?? ''}`,
+          `telegramErrorDescription=${telegramError.telegramErrorDescription ?? ''}`,
           `error=${errorMessage}`
         ].join('\n')
       }

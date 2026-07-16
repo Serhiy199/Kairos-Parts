@@ -1,8 +1,10 @@
 import type { TelegramSendDocumentOptions, TelegramSendMessageOptions } from './types';
+import { randomUUID } from 'node:crypto';
 
 type TelegramApiResponse<T> = {
   ok: boolean;
   result?: T;
+  error_code?: number;
   description?: string;
 };
 
@@ -12,6 +14,32 @@ type TelegramFileResult = {
   file_size?: number;
   file_path?: string;
 };
+
+export class TelegramApiError extends Error {
+  method: string;
+  status: number;
+  errorCode?: number;
+  description?: string;
+
+  constructor({
+    method,
+    status,
+    errorCode,
+    description
+  }: {
+    method: string;
+    status: number;
+    errorCode?: number;
+    description?: string;
+  }) {
+    super(description || `Telegram API ${method} failed.`);
+    this.name = 'TelegramApiError';
+    this.method = method;
+    this.status = status;
+    this.errorCode = errorCode;
+    this.description = description;
+  }
+}
 
 function getBotToken() {
   const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -33,25 +61,126 @@ async function telegramApi<T>(method: string, body: Record<string, unknown>): Pr
   const payload = (await response.json()) as TelegramApiResponse<T>;
 
   if (!response.ok || !payload.ok || payload.result === undefined) {
-    throw new Error(payload.description || `Telegram API ${method} failed.`);
+    throw new TelegramApiError({
+      method,
+      status: response.status,
+      errorCode: payload.error_code,
+      description: payload.description
+    });
   }
 
   return payload.result;
 }
 
-async function telegramMultipartApi<T>(method: string, formData: FormData): Promise<T> {
-  const token = getBotToken();
-  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-    method: 'POST',
-    body: formData
-  });
+async function parseTelegramResponse<T>(method: string, response: Response): Promise<T> {
   const payload = (await response.json()) as TelegramApiResponse<T>;
 
   if (!response.ok || !payload.ok || payload.result === undefined) {
-    throw new Error(payload.description || `Telegram API ${method} failed.`);
+    throw new TelegramApiError({
+      method,
+      status: response.status,
+      errorCode: payload.error_code,
+      description: payload.description
+    });
   }
 
   return payload.result;
+}
+
+function sanitizeMultipartFilename(filename: string) {
+  return filename.replace(/[\r\n"]/g, '-');
+}
+
+function buildMultipartBody({
+  fields,
+  file
+}: {
+  fields: Record<string, string>;
+  file: {
+    fieldName: string;
+    filename: string;
+    contentType: string;
+    buffer: Buffer;
+  };
+}) {
+  const boundary = `kairos-parts-${randomUUID()}`;
+  const chunks: Buffer[] = [];
+
+  Object.entries(fields).forEach(([name, value]) => {
+    chunks.push(
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
+        'utf8'
+      )
+    );
+  });
+
+  chunks.push(
+    Buffer.from(
+      [
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="${file.fieldName}"; filename="${sanitizeMultipartFilename(file.filename)}"`,
+        `Content-Type: ${file.contentType}`,
+        '',
+        ''
+      ].join('\r\n'),
+      'utf8'
+    )
+  );
+  chunks.push(file.buffer);
+  chunks.push(Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8'));
+
+  return {
+    boundary,
+    body: Buffer.concat(chunks)
+  };
+}
+
+async function telegramDocumentApi<T>({
+  chatId,
+  buffer,
+  filename,
+  caption,
+  replyMarkup
+}: {
+  chatId: string | number;
+  buffer: Buffer;
+  filename: string;
+  caption?: string;
+  replyMarkup?: Record<string, unknown>;
+}): Promise<T> {
+  const token = getBotToken();
+  const fields: Record<string, string> = {
+    chat_id: String(chatId)
+  };
+
+  if (caption) {
+    fields.caption = caption;
+  }
+
+  if (replyMarkup) {
+    fields.reply_markup = JSON.stringify(replyMarkup);
+  }
+
+  const multipart = buildMultipartBody({
+    fields,
+    file: {
+      fieldName: 'document',
+      filename,
+      contentType: 'application/pdf',
+      buffer
+    }
+  });
+  const response = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': `multipart/form-data; boundary=${multipart.boundary}`,
+      'Content-Length': String(multipart.body.length)
+    },
+    body: multipart.body
+  });
+
+  return parseTelegramResponse<T>('sendDocument', response);
 }
 
 export async function sendTelegramMessage(chatId: string | number, text: string, options: TelegramSendMessageOptions = {}) {
@@ -76,19 +205,13 @@ export async function sendTelegramDocument({
   caption?: string;
   options?: TelegramSendDocumentOptions;
 }) {
-  const formData = new FormData();
-  formData.append('chat_id', String(chatId));
-  formData.append('document', new Blob([new Uint8Array(buffer)], { type: 'application/pdf' }), filename);
-
-  if (caption || options.caption) {
-    formData.append('caption', caption ?? options.caption ?? '');
-  }
-
-  if (options.replyMarkup) {
-    formData.append('reply_markup', JSON.stringify(options.replyMarkup));
-  }
-
-  return telegramMultipartApi('sendDocument', formData);
+  return telegramDocumentApi<TelegramFileResult>({
+    chatId,
+    buffer,
+    filename,
+    caption: caption ?? options.caption,
+    replyMarkup: options.replyMarkup
+  });
 }
 
 export async function answerCallbackQuery(callbackQueryId: string, text?: string) {
