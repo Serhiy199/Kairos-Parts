@@ -21,7 +21,6 @@ export type CommercialOfferItemInput = {
   quantity: number;
   price: string;
   availability: string | null;
-  deliveryTime: string | null;
   comment: string | null;
 };
 
@@ -99,7 +98,6 @@ export function parseCommercialOfferItemInput(source: InputSource) {
       quantity,
       price: price.value,
       availability: optionalText(source, 'availability'),
-      deliveryTime: optionalText(source, 'deliveryTime'),
       comment: optionalText(source, 'comment')
     } satisfies CommercialOfferItemInput
   };

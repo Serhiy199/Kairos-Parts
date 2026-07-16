@@ -2,12 +2,10 @@ export type RequestItemInput = {
   name: string;
   brand: string | null;
   catalogNumber: string | null;
-  analogNumber: string | null;
   quantity: number;
   unit: string;
   supplierName: string | null;
   availability: string | null;
-  deliveryTime: string | null;
   purchasePrice: string | null;
   salePrice: string | null;
   currency: string;
@@ -93,12 +91,10 @@ export function parseRequestItemInput(source: InputSource): RequestItemValidatio
       name,
       brand: optionalText(source, 'brand'),
       catalogNumber: optionalText(source, 'catalogNumber'),
-      analogNumber: optionalText(source, 'analogNumber'),
       quantity,
       unit: optionalText(source, 'unit') ?? 'шт',
       supplierName: optionalText(source, 'supplierName'),
       availability: optionalText(source, 'availability'),
-      deliveryTime: optionalText(source, 'deliveryTime'),
       purchasePrice: purchasePrice.value,
       salePrice: salePrice.value,
       currency: optionalText(source, 'currency') ?? 'UAH',

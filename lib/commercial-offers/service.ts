@@ -81,13 +81,11 @@ export async function createCommercialOfferFromRequest(requestId: string, create
       name: item.name,
       brand: item.brand,
       catalogNumber: item.catalogNumber,
-      analogNumber: item.analogNumber,
       quantity: item.quantity,
       unit: item.unit,
       price,
       total,
       availability: item.availability,
-      deliveryTime: item.deliveryTime,
       comment: item.comment
     };
   });
@@ -137,7 +135,7 @@ export async function updateCommercialOfferMetadata(
 export async function updateCommercialOfferItem(
   offerId: string,
   itemId: string,
-  data: { quantity: number; price: string; availability: string | null; deliveryTime: string | null; comment: string | null }
+  data: { quantity: number; price: string; availability: string | null; comment: string | null }
 ) {
   const item = await prisma.commercialOfferItem.findFirst({
     where: { id: itemId, offerId },

@@ -1,10 +1,7 @@
 ﻿import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import {
-  approveClientRequestItemsAction,
-  createClientRequestItemEditAction
-} from '@/app/client/actions';
+import { approveClientRequestItemsAction } from '@/app/client/actions';
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
 import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
@@ -185,7 +182,7 @@ export default async function ClientRequestDetailPage({
             <div>
               <h3 className="text-lg font-bold text-foreground">Підібрані позиції</h3>
               <p className="mt-2 text-sm text-muted">
-                Оберіть позиції, які потрібно включити у рахунок. Якщо щось треба уточнити, натисніть “Редагувати” біля позиції.
+                Оберіть позиції, які потрібно включити у рахунок.
               </p>
             </div>
             {pendingApprovalItems.length > 0 ? (
@@ -202,8 +199,7 @@ export default async function ClientRequestDetailPage({
           </div>
           <div className="mt-4 grid min-w-0 gap-3">
             {request.items.map((item) => (
-              <details key={item.id} className="group min-w-0 rounded-md border border-border p-4">
-                <summary className="cursor-pointer list-none">
+              <article key={item.id} className="min-w-0 rounded-md border border-border p-4">
                   <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,auto)] lg:items-start">
                     <div className="min-w-0">
                       <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
@@ -214,7 +210,6 @@ export default async function ClientRequestDetailPage({
                     <div className="text-sm text-muted">
                       <p className="text-xs font-bold uppercase text-muted">Номери</p>
                       <p className="mt-2">Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
-                      <p className="mt-1">Аналог: <span className="font-semibold text-foreground">{item.analogNumber ?? '—'}</span></p>
                     </div>
                     <div>
                       <p className="text-xs font-bold uppercase text-muted">К-сть</p>
@@ -223,7 +218,6 @@ export default async function ClientRequestDetailPage({
                     <div className="text-sm text-muted">
                       <p className="text-xs font-bold uppercase text-muted">Наявність</p>
                       <p className="mt-2">{item.availability ?? 'Уточнюється'}</p>
-                      <p className="mt-1 text-xs">{item.deliveryTime ?? 'Орієнтовний термін уточнюється'}</p>
                     </div>
                     <div>
                       <p className="text-xs font-bold uppercase text-muted">Ціна</p>
@@ -241,9 +235,6 @@ export default async function ClientRequestDetailPage({
                         />
                         Включити у рахунок
                       </label>
-                      <span className="inline-flex h-10 items-center justify-center rounded-md border border-border px-4 text-sm font-bold text-foreground transition group-hover:border-accent group-hover:bg-surface-muted">
-                        Редагувати
-                      </span>
                       <div className="flex flex-wrap gap-2">
                         {item.approvedByClient ? (
                           <span className="rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success">Погоджено</span>
@@ -256,53 +247,7 @@ export default async function ClientRequestDetailPage({
                       </div>
                     </div>
                   </div>
-                </summary>
-                <div className="mt-4 border-t border-border pt-4">
-                  <form action={createClientRequestItemEditAction} className="grid gap-4 rounded-md border border-border bg-surface-muted p-4">
-                    <input type="hidden" name="requestId" value={request.id} />
-                    <input type="hidden" name="itemId" value={item.id} />
-                    <div>
-                      <p className="text-sm font-bold uppercase text-accent">Редагування позиції</p>
-                      <h4 className="mt-1 font-bold text-foreground">Надіслати уточнення менеджеру</h4>
-                      <p className="mt-2 text-sm leading-6 text-muted">
-                        Ваше уточнення буде передано менеджеру. Після перевірки менеджер оновить позицію.
-                      </p>
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <label className="grid gap-2 text-sm font-semibold text-foreground">
-                        Що потрібно змінити?
-                        <select name="fieldName" className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25">
-                          <option value="name">Назва запчастини</option>
-                          <option value="catalogNumber">Каталожний номер</option>
-                          <option value="analogNumber">Аналоговий номер</option>
-                          <option value="quantity">Кількість</option>
-                          <option value="comment">Коментар</option>
-                        </select>
-                      </label>
-                      <label className="grid gap-2 text-sm font-semibold text-foreground">
-                        Нове значення
-                        <input
-                          name="newValue"
-                          className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
-                          placeholder="Вкажіть нове значення"
-                        />
-                      </label>
-                    </div>
-                    <label className="grid gap-2 text-sm font-semibold text-foreground">
-                      Причина / коментар
-                      <textarea
-                        name="reason"
-                        rows={3}
-                        className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
-                        placeholder="Коротко поясніть, що потрібно уточнити"
-                      />
-                    </label>
-                    <button className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
-                      Надіслати
-                    </button>
-                  </form>
-                </div>
-              </details>
+              </article>
             ))}
           </div>
         </div>
@@ -362,7 +307,6 @@ export default async function ClientRequestDetailPage({
                           </td>
                           <td className="px-4 py-3 text-muted">
                             <p>Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
-                            <p className="mt-1">Аналог: <span className="font-semibold text-foreground">{item.analogNumber ?? '—'}</span></p>
                           </td>
                           <td className="px-4 py-3 font-semibold text-foreground">{item.quantity} {item.unit ?? 'шт'}</td>
                           <td className="px-4 py-3 text-foreground">{formatMoney(item.price, invoice.currency)}</td>

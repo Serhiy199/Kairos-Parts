@@ -234,7 +234,7 @@ export default async function AdminClientDetailPage({
                           {item.request.createdAt.toLocaleDateString('uk-UA')} · {item.brand ?? 'Виробник —'} · {item.catalogNumber ?? 'Каталог —'} · {item.quantity} {item.unit}
                         </p>
                         <p className="mt-1 text-xs text-muted">
-                          {item.availability ?? 'Наявність —'}{item.deliveryTime ? ` · ${item.deliveryTime}` : ''}{item.supplierName ? ` · ${item.supplierName}` : ''}
+                          {item.availability ?? 'Наявність —'}{item.supplierName ? ` · ${item.supplierName}` : ''}
                         </p>
                       </div>
                     ))

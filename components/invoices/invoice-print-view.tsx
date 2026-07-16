@@ -12,7 +12,6 @@ type InvoicePrintItem = {
   name: string;
   brand: string | null;
   catalogNumber: string | null;
-  analogNumber: string | null;
   quantity: number;
   unit: string | null;
   price: MoneyLike;
@@ -205,7 +204,6 @@ export function InvoicePrintView({ invoice, backHref, backLabel }: InvoicePrintV
                     <td className="px-3 py-3">{item.brand ?? '—'}</td>
                     <td className="px-3 py-3 text-[#4C4F54]">
                       <p>Каталог: <span className="font-semibold text-[#101010]">{item.catalogNumber ?? '—'}</span></p>
-                      <p className="mt-1">Аналог: <span className="font-semibold text-[#101010]">{item.analogNumber ?? '—'}</span></p>
                     </td>
                     <td className="px-3 py-3 font-semibold">{item.quantity}</td>
                     <td className="px-3 py-3">{item.unit ?? 'шт'}</td>

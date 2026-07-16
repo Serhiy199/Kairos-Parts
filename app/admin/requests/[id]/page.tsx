@@ -483,12 +483,10 @@ type RequestItemView = {
   name: string;
   brand: string | null;
   catalogNumber: string | null;
-  analogNumber: string | null;
   quantity: number;
   unit: string;
   supplierName: string | null;
   availability: string | null;
-  deliveryTime: string | null;
   purchasePrice: { toString: () => string } | null;
   salePrice: { toString: () => string } | null;
   currency: string;
@@ -504,7 +502,6 @@ type InvoiceItemView = {
   name: string;
   brand: string | null;
   catalogNumber: string | null;
-  analogNumber: string | null;
   quantity: number;
   unit: string | null;
   price: { toString: () => string };
@@ -634,7 +631,6 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
               <div className="text-sm text-muted">
                 <p className="text-xs font-bold uppercase text-muted">Номери</p>
                 <p className="mt-2">Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
-                <p className="mt-1">Аналог: <span className="font-semibold text-foreground">{item.analogNumber ?? '—'}</span></p>
               </div>
               <div>
                 <p className="text-xs font-bold uppercase text-muted">К-сть</p>
@@ -643,7 +639,6 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
               <div className="text-sm text-muted">
                 <p className="text-xs font-bold uppercase text-muted">Наявність</p>
                 <p className="mt-2">{item.availability ?? '—'}</p>
-                <p className="mt-1 text-xs">{item.deliveryTime ?? 'Орієнтовний термін не вказано'}</p>
               </div>
               <div className="text-sm text-muted">
                 <p className="text-xs font-bold uppercase text-muted">Ціна</p>
@@ -864,7 +859,6 @@ function InvoicesSection({
                             <td className="px-4 py-3 text-foreground">{item.brand ?? '—'}</td>
                             <td className="px-4 py-3 text-muted">
                               <p>Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
-                              <p className="mt-1">Аналог: <span className="font-semibold text-foreground">{item.analogNumber ?? '—'}</span></p>
                             </td>
                             <td className="px-4 py-3 font-semibold text-foreground">{item.quantity}</td>
                             <td className="px-4 py-3 text-foreground">{item.unit ?? 'шт'}</td>
@@ -915,15 +909,13 @@ function RequestItemForm({
     <form action={action} className="grid gap-4">
       <input type="hidden" name="requestId" value={requestId} />
       {item ? <input type="hidden" name="itemId" value={item.id} /> : null}
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         <TextField name="name" label="Назва запчастини" required defaultValue={item?.name} />
         <PartManufacturerField defaultValue={item?.brand} listId={`part-manufacturer-${item?.id ?? 'new'}`} />
         <TextField name="catalogNumber" label="Каталожний номер" defaultValue={item?.catalogNumber} />
-        <TextField name="analogNumber" label="Аналоговий номер" defaultValue={item?.analogNumber} />
         <TextField name="quantity" label="Кількість" type="number" min="1" defaultValue={String(item?.quantity ?? 1)} />
         <TextField name="unit" label="Одиниця" defaultValue={item?.unit ?? 'шт'} />
         <TextField name="availability" label="Наявність" defaultValue={item?.availability} />
-        <TextField name="deliveryTime" label="Орієнтовний термін" defaultValue={item?.deliveryTime} />
         <TextField name="salePrice" label="Ціна" type="number" min="0" step="0.01" defaultValue={item?.salePrice?.toString()} />
         <TextField name="currency" label="Валюта" defaultValue={item?.currency ?? 'UAH'} />
       </div>

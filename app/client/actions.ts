@@ -19,7 +19,7 @@ function redirectBack(requestId: string, result: string): never {
   redirect(`/client/requests/${requestId}?result=${result}`);
 }
 
-const CLIENT_REQUEST_ITEM_EDIT_FIELDS = new Set(['name', 'catalogNumber', 'analogNumber', 'quantity', 'comment']);
+const CLIENT_REQUEST_ITEM_EDIT_FIELDS = new Set(['name', 'catalogNumber', 'quantity', 'comment']);
 
 function readItemIds(formData: FormData) {
   return formData
@@ -180,7 +180,6 @@ export async function createClientRequestItemEditAction(formData: FormData) {
       requestId: true,
       name: true,
       catalogNumber: true,
-      analogNumber: true,
       quantity: true,
       comment: true
     }

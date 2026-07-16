@@ -176,8 +176,8 @@ export default async function ClientVehicleDetailPage({
                     <h4 className="mt-2 font-bold text-foreground">
                       {item.name}{item.brand ? ` — ${item.brand}` : ''}{item.catalogNumber ? ` ${item.catalogNumber}` : ''}
                     </h4>
-                    <p className="mt-1 text-sm text-muted">{item.quantity} {item.unit}{item.analogNumber ? ` · Аналог: ${item.analogNumber}` : ''}</p>
-                    <p className="mt-1 text-sm text-muted">{item.availability ?? 'Наявність уточнюється'}{item.deliveryTime ? ` · ${item.deliveryTime}` : ''}</p>
+                    <p className="mt-1 text-sm text-muted">{item.quantity} {item.unit}</p>
+                    <p className="mt-1 text-sm text-muted">{item.availability ?? 'Наявність уточнюється'}</p>
                     {item.comment ? <p className="mt-2 text-sm leading-6 text-muted">{item.comment}</p> : null}
                   </div>
                   <StatusBadge status={item.request.status} />

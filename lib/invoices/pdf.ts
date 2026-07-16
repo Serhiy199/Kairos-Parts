@@ -266,7 +266,6 @@ function addInvoiceItemsTable(
     name: string;
     brand: string | null;
     catalogNumber: string | null;
-    analogNumber: string | null;
     quantity: number;
     unit: string | null;
     price: DecimalLike;
@@ -293,7 +292,7 @@ function addInvoiceItemsTable(
   items.forEach((item, index) => {
     const itemTotal = decimal(item.total).isZero() ? decimal(item.price).mul(item.quantity) : decimal(item.total);
     const nameText = [item.name, item.comment].filter(Boolean).join('\n');
-    const catalogText = [`Каталог: ${item.catalogNumber ?? '—'}`, `Аналог: ${item.analogNumber ?? '—'}`].join('\n');
+    const catalogText = `Каталог: ${item.catalogNumber ?? '—'}`;
     const values = [
       String(index + 1),
       nameText,

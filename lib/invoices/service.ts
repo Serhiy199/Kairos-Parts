@@ -196,7 +196,6 @@ export async function createInvoiceFromApprovedRequestItems({
       name: item.name,
       brand: item.brand,
       catalogNumber: item.catalogNumber,
-      analogNumber: item.analogNumber,
       quantity: item.quantity,
       unit: item.unit,
       price,
