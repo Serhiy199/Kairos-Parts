@@ -7,6 +7,7 @@ import {
   TbDeviceDesktopAnalytics,
   TbGauge,
   TbHeartHandshake,
+  TbHistory,
   TbLayoutDashboard,
   TbSearch,
   TbSettingsSearch,
@@ -59,6 +60,11 @@ const platformItems = [
     title: 'Цифрова історія парку техніки',
     text: 'Замовлення, запчастини та документи зберігаються по кожній машині.',
     icon: TbDatabaseCog
+  },
+  {
+    title: 'Повторне замовлення за історією',
+    text: 'Попередні запчастини та каталожні номери доступні для швидкого повторного запиту.',
+    icon: TbHistory
   }
 ];
 
@@ -264,27 +270,19 @@ export default function AboutPage() {
             <div className="mt-5 h-px w-20 bg-accent" />
           </div>
 
-          <ul className="mt-10 grid grid-cols-12 overflow-hidden rounded-2xl border border-public-border bg-public-card">
+          <ul className="relative mt-10 grid grid-cols-1 overflow-hidden rounded-2xl border border-public-border bg-public-card md:grid-cols-2 xl:auto-rows-fr xl:grid-cols-4">
             {platformItems.map((item, index) => {
               const Icon = item.icon;
-              const spanClasses =
-                index < 4
-                  ? 'col-span-12 md:col-span-6 xl:col-span-3'
-                  : index < 6
-                    ? 'col-span-12 md:col-span-6 xl:col-span-4'
-                    : 'col-span-12 xl:col-span-4';
-              const dividerClasses = `${index < 6 ? 'border-b border-public-border' : ''} ${
-                index % 2 === 0 && index < 6 ? 'md:border-r md:border-public-border' : ''
-              } ${index >= 4 ? 'xl:border-b-0' : ''} ${
-                index === 0 || index === 1 || index === 2 || index === 4 || index === 5
-                  ? 'xl:border-r xl:border-public-border'
-                  : 'xl:border-r-0'
+              const dividerClasses = `${index < 7 ? 'border-b border-public-border' : ''} ${
+                index % 2 === 0 ? 'md:border-r md:border-public-border' : ''
+              } ${index >= 6 ? 'md:border-b-0' : ''} ${index < 4 ? 'xl:border-b xl:border-public-border' : 'xl:border-b-0'} ${
+                index % 4 !== 3 ? 'xl:border-r xl:border-public-border' : 'xl:border-r-0'
               }`;
 
               return (
                 <li
                   key={item.title}
-                  className={`${spanClasses} ${dividerClasses} min-w-0 px-5 py-6 transition-colors duration-200 hover:bg-public-elevated sm:px-7 sm:py-8 xl:px-8`}
+                  className={`${dividerClasses} min-w-0 px-5 py-6 transition-colors duration-200 hover:bg-public-elevated sm:px-7 sm:py-8 xl:px-8`}
                 >
                   <div className="flex items-start gap-4">
                     <Icon
@@ -304,6 +302,14 @@ export default function AboutPage() {
                 </li>
               );
             })}
+            {[25, 50, 75].map((position) => (
+              <span
+                key={position}
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1/2 z-10 hidden size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#1a1308]/40 bg-accent shadow-[0_1px_4px_rgba(0,0,0,0.35)] xl:block"
+                style={{ left: `${position}%` }}
+              />
+            ))}
           </ul>
         </div>
       </section>
