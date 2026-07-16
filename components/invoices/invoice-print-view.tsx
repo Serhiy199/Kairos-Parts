@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import { PrintButton } from '@/components/invoices/print-button';
+import { buildInvoicePartyDetails } from '@/lib/invoices/party-details';
 import { calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
 import { INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 
@@ -43,31 +44,11 @@ type InvoicePrintData = {
   items: InvoicePrintItem[];
 };
 
-type BillingSnapshot = Record<string, unknown>;
-
 type InvoicePrintViewProps = {
   invoice: InvoicePrintData;
   backHref: string;
   backLabel: string;
 };
-
-function asBillingSnapshot(snapshot: unknown): BillingSnapshot | null {
-  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
-    return null;
-  }
-
-  return snapshot as BillingSnapshot;
-}
-
-function stringField(snapshot: BillingSnapshot | null, key: string) {
-  const value = snapshot?.[key];
-  return typeof value === 'string' && value.trim() ? value : null;
-}
-
-function booleanField(snapshot: BillingSnapshot | null, key: string) {
-  const value = snapshot?.[key];
-  return typeof value === 'boolean' ? (value ? 'Так' : 'Ні') : null;
-}
 
 function formatMoney(value: MoneyLike | null, currency: string) {
   return value ? formatInvoiceMoney(value, currency) : '—';
@@ -77,43 +58,22 @@ function formatDate(value: Date | null) {
   return value ? value.toLocaleDateString('uk-UA') : '—';
 }
 
-function SnapshotBlock({ title, snapshot, buyer = false }: { title: string; snapshot: BillingSnapshot | null; buyer?: boolean }) {
-  const rows = [
-    ['Назва', stringField(snapshot, 'legalName')],
-    ['ЄДРПОУ', stringField(snapshot, 'edrpou')],
-    ['ІПН', stringField(snapshot, 'ipn')],
-    ['IBAN', stringField(snapshot, 'iban')],
-    ['Банк', stringField(snapshot, 'bankName')],
-    ['МФО', stringField(snapshot, 'mfo')],
-    ['Юридична адреса', stringField(snapshot, 'legalAddress')],
-    ['Контактна особа', stringField(snapshot, 'contactPerson')],
-    ['Телефон', stringField(snapshot, 'phone')],
-    ['Email', stringField(snapshot, 'email')],
-    ...(buyer ? [['Платник ПДВ', booleanField(snapshot, 'vatPayer')]] : [])
-  ].filter(([, value]) => value !== null);
+function SnapshotBlock({ title, snapshot, buyer = false }: { title: string; snapshot: unknown; buyer?: boolean }) {
+  const details = buildInvoicePartyDetails(snapshot, { includeVatPayer: buyer });
 
   return (
-    <section className="rounded-md border border-[#d7d9dd] p-5">
+    <section className="rounded-md border border-[#d7d9dd] p-4 print-break-inside-avoid">
       <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-[#8A5B24]">{title}</h2>
-      {snapshot ? (
-        <dl className="mt-4 grid gap-2 text-sm">
-          {rows.map(([label, value]) => (
-            <div key={label} className="grid gap-1 sm:grid-cols-[150px_1fr]">
-              <dt className="font-semibold text-[#4C4F54]">{label}</dt>
-              <dd className="text-[#101010]">{value}</dd>
-            </div>
-          ))}
-        </dl>
+      {details ? (
+        <p className="mt-3 text-sm leading-6 text-[#101010] [overflow-wrap:anywhere]">{details}</p>
       ) : (
-        <p className="mt-4 text-sm text-[#4C4F54]">Реквізити не збережені у snapshot цього рахунку.</p>
+        <p className="mt-3 text-sm text-[#4C4F54]">Реквізити не збережені у snapshot цього рахунку.</p>
       )}
     </section>
   );
 }
 
 export function InvoicePrintView({ invoice, backHref, backLabel }: InvoicePrintViewProps) {
-  const sellerSnapshot = asBillingSnapshot(invoice.sellerSnapshot);
-  const buyerSnapshot = asBillingSnapshot(invoice.buyerSnapshot);
   const statusLabel = INVOICE_STATUS_LABELS[invoice.status];
   const totals = calculateInvoiceTotals(invoice.items);
 
@@ -174,9 +134,9 @@ export function InvoicePrintView({ invoice, backHref, backLabel }: InvoicePrintV
           </div>
         </header>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <SnapshotBlock title="Дані продавця" snapshot={sellerSnapshot} />
-          <SnapshotBlock title="Дані покупця" snapshot={buyerSnapshot} buyer />
+        <div className="mt-6 grid gap-4">
+          <SnapshotBlock title="Дані продавця" snapshot={invoice.sellerSnapshot} />
+          <SnapshotBlock title="Дані покупця" snapshot={invoice.buyerSnapshot} buyer />
         </div>
 
         <section className="mt-8">

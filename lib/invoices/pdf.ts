@@ -4,6 +4,7 @@ import path from 'node:path';
 import { Prisma } from '@prisma/client';
 import PDFDocument from 'pdfkit';
 
+import { buildInvoicePartyDetails } from '@/lib/invoices/party-details';
 import {
   calculateInvoiceTotals,
   formatInvoiceMoney,
@@ -37,16 +38,6 @@ function asBillingSnapshot(snapshot: unknown): BillingSnapshot | null {
   }
 
   return snapshot as BillingSnapshot;
-}
-
-function stringField(snapshot: BillingSnapshot | null, key: string) {
-  const value = snapshot?.[key];
-  return typeof value === 'string' && value.trim() ? value : '—';
-}
-
-function booleanField(snapshot: BillingSnapshot | null, key: string) {
-  const value = snapshot?.[key];
-  return typeof value === 'boolean' ? (value ? 'Так' : 'Ні') : '—';
 }
 
 function formatDate(value: Date | null | undefined) {
@@ -162,6 +153,37 @@ function addKeyValueRows(doc: PDFKit.PDFDocument, rows: Array<[string, string]>,
   });
 
   return y;
+}
+
+function addPartyDetailsBlock(doc: PDFKit.PDFDocument, title: string, snapshot: BillingSnapshot | null, currentY: number, includeVatPayer = false) {
+  const contentWidth = getContentWidth(doc);
+  const titleHeight = 13;
+  const paddingX = 12;
+  const paddingY = 10;
+  const details =
+    buildInvoicePartyDetails(snapshot, { includeVatPayer }) ?? 'Реквізити не збережені у snapshot цього рахунку.';
+  const paragraphWidth = contentWidth - paddingX * 2;
+  const paragraphHeight = measureText(doc, details, paragraphWidth, { size: BODY_FONT_SIZE, lineGap: 2 });
+  const blockHeight = paddingY * 2 + titleHeight + 6 + paragraphHeight;
+  const y = ensureSpace(doc, currentY + SECTION_GAP, blockHeight);
+
+  doc
+    .roundedRect(PAGE_MARGIN, y, contentWidth, blockHeight, 6)
+    .fillAndStroke('#ffffff', '#d7d9dd');
+
+  writeText(doc, title.toUpperCase(), PAGE_MARGIN + paddingX, y + paddingY, paragraphWidth, {
+    bold: true,
+    size: 8.5,
+    color: '#8A5B24',
+    characterSpacing: 1
+  });
+  writeText(doc, details, PAGE_MARGIN + paddingX, y + paddingY + titleHeight + 6, paragraphWidth, {
+    size: BODY_FONT_SIZE,
+    color: '#101010',
+    lineGap: 2
+  });
+
+  return y + blockHeight;
 }
 
 function scaleColumns(columns: InvoicePdfColumn[], targetWidth: number) {
@@ -419,32 +441,8 @@ export async function generateInvoicePdfBuffer(invoiceId: string): Promise<{ buf
     ['Валюта', invoice.currency]
   ], y);
 
-  y = addSectionTitle(doc, 'Дані продавця', y);
-  y = addKeyValueRows(doc, [
-    ['Назва', stringField(sellerSnapshot, 'legalName')],
-    ['ЄДРПОУ', stringField(sellerSnapshot, 'edrpou')],
-    ['ІПН', stringField(sellerSnapshot, 'ipn')],
-    ['IBAN', stringField(sellerSnapshot, 'iban')],
-    ['Банк', stringField(sellerSnapshot, 'bankName')],
-    ['МФО', stringField(sellerSnapshot, 'mfo')],
-    ['Юридична адреса', stringField(sellerSnapshot, 'legalAddress')],
-    ['Телефон', stringField(sellerSnapshot, 'phone')],
-    ['Email', stringField(sellerSnapshot, 'email')]
-  ], y);
-
-  y = addSectionTitle(doc, 'Дані покупця', y);
-  y = addKeyValueRows(doc, [
-    ['Назва', stringField(buyerSnapshot, 'legalName')],
-    ['ЄДРПОУ', stringField(buyerSnapshot, 'edrpou')],
-    ['ІПН', stringField(buyerSnapshot, 'ipn')],
-    ['IBAN', stringField(buyerSnapshot, 'iban')],
-    ['Банк', stringField(buyerSnapshot, 'bankName')],
-    ['Юридична адреса', stringField(buyerSnapshot, 'legalAddress')],
-    ['Контактна особа', stringField(buyerSnapshot, 'contactPerson')],
-    ['Телефон', stringField(buyerSnapshot, 'phone')],
-    ['Email', stringField(buyerSnapshot, 'email')],
-    ['Платник ПДВ', booleanField(buyerSnapshot, 'vatPayer')]
-  ], y);
+  y = addPartyDetailsBlock(doc, 'Дані продавця', sellerSnapshot, y);
+  y = addPartyDetailsBlock(doc, 'Дані покупця', buyerSnapshot, y, true);
 
   y = addSectionTitle(doc, 'Позиції', y);
   y = addInvoiceItemsTable(doc, invoice.items, invoice.currency, y);
