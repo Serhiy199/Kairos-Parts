@@ -29,37 +29,43 @@ const advantages = [
     title: 'Консолідована видача замовлень',
     intro: 'Позиції від різних постачальників проходять через один погоджений процес.',
     details: ['Менше окремих відправлень', 'Простіше приймання', 'Один центр координації'],
-    icon: TbPackages
+    icon: TbPackages,
+    image: '/images/advantages/benefit-1.png'
   },
   {
     title: 'Професійний підбір запчастин',
     intro: 'Перевіряємо каталожні номери, технічні параметри та сумісність.',
     details: ['Оригінали та перевірені аналоги', 'Менше ризику помилки', 'Підбір під конкретну техніку'],
-    icon: TbSettingsSearch
+    icon: TbSettingsSearch,
+    image: '/images/advantages/benefit-2.png'
   },
   {
     title: 'Один договір — один партнер',
     intro: 'Клієнт працює з одним сервісним партнером замість десятків окремих контактів.',
     details: ['Менше документів', 'Один менеджер', 'Зрозуміла комунікація'],
-    icon: TbHeartHandshake
+    icon: TbHeartHandshake,
+    image: '/images/advantages/benefit-3.png'
   },
   {
     title: 'Зручні умови для бізнесу',
     intro: 'Процес адаптований до потреб юридичних осіб і регулярних закупівель.',
     details: ['Робота з ПДВ', 'Різні форми розрахунку', 'Документи та погодження'],
-    icon: TbFileInvoice
+    icon: TbFileInvoice,
+    image: '/images/advantages/benefit-4.png'
   },
   {
     title: 'Майданчик перевіреної техніки',
     intro: 'Працюємо з аграрною, вантажною та спеціальною технікою в одному B2B-середовищі.',
     details: ['Рішення для різних типів техніки', 'Перевірені партнери', 'Підтримка купівлі та продажу техніки'],
-    icon: TbTractor
+    icon: TbTractor,
+    image: '/images/advantages/benefit-5.png'
   },
   {
     title: 'Цифровий парк техніки',
     intro: 'Кожне замовлення автоматично доповнює історію конкретної машини.',
     details: ['Заявки та запчастини', 'Рахунки й документи', 'Каталожні номери та повторні замовлення'],
-    icon: TbDatabaseCog
+    icon: TbDatabaseCog,
+    image: '/images/advantages/benefit-6.png'
   }
 ];
 
@@ -133,10 +139,8 @@ export default function AdvantagesPage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-primary py-16 text-white sm:py-20">
-        <div className="benefits-section-bg pointer-events-none absolute inset-0 opacity-50 saturate-[0.82]" />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-primary/45 via-primary/80 to-primary" />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-primary/45 via-transparent to-primary/70" />
+      <section className="relative overflow-hidden bg-public-page py-16 text-white sm:py-20">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(currentColor_1px,transparent_1px),linear-gradient(90deg,currentColor_1px,transparent_1px)] [background-size:32px_32px] text-public-muted" />
         <div className="kp-container relative z-10">
           <div className="max-w-4xl">
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent sm:text-sm">Ключові переваги</p>
@@ -150,37 +154,86 @@ export default function AdvantagesPage() {
             <div className="mt-5 h-px w-20 bg-accent" />
           </div>
 
-          <div className="mt-10 grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <ol className="mt-10 grid gap-5 sm:mt-12 lg:gap-6">
             {advantages.map((advantage, index) => {
               const Icon = advantage.icon;
+              const contentFirst = index % 2 === 0;
 
               return (
-                <article key={advantage.title} className="benefit-card h-full">
-                  <div className="benefit-card__diagonal" aria-hidden="true" />
-                  <div className="benefit-card__icon-wrap">
-                    <Icon aria-hidden="true" focusable="false" />
-                  </div>
-                  <div className="benefit-card__content">
-                    <div className="benefit-card__header">
-                      <span className="benefit-card__number" aria-hidden="true">{index + 1}</span>
-                      <h3 className="benefit-card__title break-normal whitespace-normal hyphens-none">
-                        {advantage.title}
-                      </h3>
+                <li key={advantage.title}>
+                  <article className="grid overflow-hidden rounded-2xl border border-public-border bg-public-card shadow-[0_18px_50px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:border-public-border-accent-hover lg:min-h-[420px] lg:grid-cols-2">
+                    <div
+                      className={`relative order-1 h-[250px] min-w-0 sm:h-[300px] lg:h-auto lg:min-h-[420px] ${
+                        contentFirst ? 'lg:order-2' : 'lg:order-1'
+                      }`}
+                    >
+                      <Image
+                        src={advantage.image}
+                        alt=""
+                        fill
+                        sizes="(min-width: 1024px) 50vw, 100vw"
+                        className="object-cover"
+                      />
+                      <div
+                        aria-hidden="true"
+                        className={`pointer-events-none absolute inset-0 hidden lg:block ${
+                          contentFirst
+                            ? 'bg-gradient-to-r from-public-card/55 via-transparent to-transparent'
+                            : 'bg-gradient-to-l from-public-card/55 via-transparent to-transparent'
+                        }`}
+                      />
                     </div>
-                    <p className="benefit-card__description">{advantage.intro}</p>
-                    <ul className="mt-4 space-y-2 text-sm font-semibold leading-5 text-secondary">
-                      {advantage.details.map((detail) => (
-                        <li key={detail} className="flex items-start gap-2.5">
-                          <TbCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 stroke-[2.2] text-bronze" />
-                          <span>{detail}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </article>
+
+                    <div
+                      className={`relative order-2 flex min-w-0 flex-col justify-center bg-gradient-to-br from-public-card to-public-section p-6 sm:p-8 lg:p-10 xl:p-12 ${
+                        contentFirst ? 'lg:order-1' : 'lg:order-2'
+                      }`}
+                    >
+                      <div
+                        aria-hidden="true"
+                        className={`pointer-events-none absolute inset-y-10 hidden w-px bg-gradient-to-b from-transparent via-accent/75 to-transparent lg:block ${
+                          contentFirst ? 'right-0' : 'left-0'
+                        }`}
+                      />
+
+                      <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+                        <span
+                          aria-hidden="true"
+                          className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-sm font-extrabold leading-none text-primary shadow-sm"
+                        >
+                          {index + 1}
+                        </span>
+                        <Icon
+                          aria-hidden="true"
+                          focusable="false"
+                          className="size-10 shrink-0 stroke-[1.65] text-accent sm:size-11"
+                        />
+                        <h3 className="min-w-0 break-normal whitespace-normal hyphens-none text-xl font-bold leading-tight text-public-primary sm:text-2xl lg:text-[28px]">
+                          {advantage.title}
+                        </h3>
+                      </div>
+
+                      <p className="mt-6 max-w-xl text-base leading-7 text-public-muted sm:text-lg sm:leading-8">
+                        {advantage.intro}
+                      </p>
+                      <div className="mt-5 h-px w-10 bg-accent" aria-hidden="true" />
+                      <ul className="mt-5 grid gap-3 text-sm font-semibold leading-6 text-public-secondary sm:text-base">
+                        {advantage.details.map((detail) => (
+                          <li key={detail} className="flex items-start gap-3">
+                            <TbCheck
+                              aria-hidden="true"
+                              className="mt-0.5 size-5 shrink-0 stroke-[2.2] text-accent"
+                            />
+                            <span className="min-w-0 break-normal whitespace-normal hyphens-none">{detail}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </article>
+                </li>
               );
             })}
-          </div>
+          </ol>
         </div>
       </section>
 
