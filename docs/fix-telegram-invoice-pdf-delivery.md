@@ -313,3 +313,69 @@ sendDocumentOk: true
 ```
 
 If Telegram still returns HTTP 400, keep the current diagnostics and consider the next fallback: write the PDF to `/tmp` and append `fs.createReadStream(tmpFilePath)` to the same `form-data` upload.
+
+## Switch from custom multipart upload to node-telegram-bot-api
+
+The `form-data` upload still produced the same production symptom:
+
+```text
+telegramHttpStatus: 400
+telegramErrorDescription: "Telegram sendDocument returned empty response body."
+telegramResponsePreview: ""
+```
+
+By this point, the confirmed state was:
+
+- Telegram text notification works;
+- inline buttons work;
+- PDF generation works;
+- PDF buffer is created;
+- `sendDocument` is attempted;
+- custom multipart upload is still rejected by Telegram on Vercel.
+
+### Root suspicion
+
+The remaining likely cause is runtime compatibility or request-shape fragility in the custom `fetch` multipart upload path on Vercel/Next.js. The file exists and is small enough, but Telegram still rejects the multipart request before returning a useful JSON body.
+
+### Fix
+
+`lib/telegram/bot.ts` now uses `node-telegram-bot-api` for document upload instead of any custom multipart builder.
+
+The implementation:
+
+- keeps the existing `fetch` JSON helper for text notifications;
+- creates a cached Telegram bot client with `polling: false`;
+- sends the invoice PDF with `bot.sendDocument(chatId, buffer, options, fileOptions)`;
+- passes the PDF `Buffer` directly;
+- passes sanitized `filename`;
+- sets `contentType: application/pdf`;
+- preserves caption support;
+- normalizes library errors into the existing `TelegramApiError` diagnostics.
+
+The direct `form-data` dependency was removed because it is no longer used by project code after this switch.
+
+### What did not change
+
+- PDF generation;
+- font loading;
+- invoice status logic;
+- Telegram text notification;
+- Telegram inline buttons;
+- request flow;
+- Prisma schema;
+- migrations.
+
+### What to test after redeploy
+
+1. Send a new or DRAFT invoice to a Telegram-linked client.
+2. Confirm Telegram receives the text notification.
+3. Confirm Telegram receives the PDF document.
+4. Expected logs:
+
+```text
+pdfGenerated: true
+sendDocumentAttempted: true
+sendDocumentOk: true
+```
+
+If the library Buffer upload still fails on Vercel, the next fallback is to write the PDF into `/tmp/{filename}` and call the same library with the temporary file path.

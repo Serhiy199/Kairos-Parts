@@ -1,5 +1,5 @@
 import type { TelegramSendDocumentOptions, TelegramSendMessageOptions } from './types';
-import FormData from 'form-data';
+import TelegramBot, { type ReplyMarkup } from 'node-telegram-bot-api';
 
 type TelegramApiResponse<T> = {
   ok: boolean;
@@ -13,6 +13,13 @@ type TelegramFileResult = {
   file_unique_id?: string;
   file_size?: number;
   file_path?: string;
+};
+
+type TelegramLibraryErrorDetails = {
+  httpStatus: number | null;
+  errorCode: number | null;
+  description: string | null;
+  responsePreview: string | null;
 };
 
 export class TelegramApiError extends Error {
@@ -55,6 +62,18 @@ function getBotToken() {
   return token;
 }
 
+let telegramBotClient: TelegramBot | null = null;
+
+function getTelegramBotClient() {
+  if (!telegramBotClient) {
+    telegramBotClient = new TelegramBot(getBotToken(), {
+      polling: false
+    });
+  }
+
+  return telegramBotClient;
+}
+
 async function telegramApi<T>(method: string, body: Record<string, unknown>): Promise<T> {
   const token = getBotToken();
   const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
@@ -76,48 +95,54 @@ async function telegramApi<T>(method: string, body: Record<string, unknown>): Pr
   return payload.result;
 }
 
-async function parseTelegramResponse<T>(method: string, response: Response): Promise<T> {
-  const responseText = await response.text();
-  const responsePreview = responseText.slice(0, 300);
-  let payload: TelegramApiResponse<T> | null = null;
-
-  if (responseText.trim().length > 0) {
-    try {
-      payload = JSON.parse(responseText) as TelegramApiResponse<T>;
-    } catch {
-      throw new TelegramApiError({
-        method,
-        status: response.status,
-        description: responsePreview || response.statusText || 'Telegram API returned a non-JSON response.',
-        responsePreview
-      });
-    }
-  }
-
-  if (!payload) {
-    throw new TelegramApiError({
-      method,
-      status: response.status,
-      description: 'Telegram sendDocument returned empty response body.',
-      responsePreview
-    });
-  }
-
-  if (!response.ok || !payload.ok || payload.result === undefined) {
-    throw new TelegramApiError({
-      method,
-      status: response.status,
-      errorCode: payload.error_code,
-      description: payload.description || responsePreview || response.statusText,
-      responsePreview
-    });
-  }
-
-  return payload.result;
-}
-
 function sanitizeMultipartFilename(filename: string) {
   return filename.replace(/[\r\n"]/g, '-');
+}
+
+function readStringProperty(source: unknown, key: string) {
+  if (!source || typeof source !== 'object' || !(key in source)) {
+    return null;
+  }
+
+  const value = (source as Record<string, unknown>)[key];
+  return typeof value === 'string' ? value : null;
+}
+
+function readNumberProperty(source: unknown, key: string) {
+  if (!source || typeof source !== 'object' || !(key in source)) {
+    return null;
+  }
+
+  const value = (source as Record<string, unknown>)[key];
+  return typeof value === 'number' ? value : null;
+}
+
+function normalizeTelegramLibraryError(error: unknown): TelegramLibraryErrorDetails {
+  const response = error && typeof error === 'object' && 'response' in error
+    ? (error as { response?: unknown }).response
+    : null;
+  const responseBody = response && typeof response === 'object' && 'body' in response
+    ? (response as { body?: unknown }).body
+    : null;
+  const responseStatus = response && typeof response === 'object'
+    ? readNumberProperty(response, 'status') ?? readNumberProperty(response, 'statusCode')
+    : null;
+  const bodyStatus = readNumberProperty(responseBody, 'status') ?? readNumberProperty(responseBody, 'statusCode');
+  const errorCode = readNumberProperty(responseBody, 'error_code') ?? readNumberProperty(responseBody, 'errorCode');
+  const description =
+    readStringProperty(responseBody, 'description') ??
+    readStringProperty(responseBody, 'message') ??
+    (error instanceof Error ? error.message : null);
+  const responsePreview = responseBody
+    ? JSON.stringify(responseBody).slice(0, 300)
+    : readStringProperty(response, 'body')?.slice(0, 300) ?? null;
+
+  return {
+    httpStatus: responseStatus ?? bodyStatus ?? null,
+    errorCode,
+    description,
+    responsePreview
+  };
 }
 
 async function telegramDocumentApi<T>({
@@ -133,37 +158,37 @@ async function telegramDocumentApi<T>({
   caption?: string;
   replyMarkup?: Record<string, unknown>;
 }): Promise<T> {
-  const token = getBotToken();
-  const fields: Record<string, string> = {
-    chat_id: String(chatId)
-  };
+  try {
+    const result = await getTelegramBotClient().sendDocument(
+      chatId,
+      buffer,
+      {
+        caption,
+        reply_markup: replyMarkup as ReplyMarkup | undefined
+      },
+      {
+        filename: sanitizeMultipartFilename(filename),
+        contentType: 'application/pdf'
+      }
+    );
 
-  if (caption) {
-    fields.caption = caption;
+    return {
+      file_id: result.document?.file_id ?? '',
+      file_unique_id: result.document?.file_unique_id,
+      file_size: result.document?.file_size,
+      file_path: undefined
+    } as T;
+  } catch (error) {
+    const normalizedError = normalizeTelegramLibraryError(error);
+
+    throw new TelegramApiError({
+      method: 'sendDocument',
+      status: normalizedError.httpStatus ?? 0,
+      errorCode: normalizedError.errorCode ?? undefined,
+      description: normalizedError.description ?? 'Telegram sendDocument failed.',
+      responsePreview: normalizedError.responsePreview ?? undefined
+    });
   }
-
-  if (replyMarkup) {
-    fields.reply_markup = JSON.stringify(replyMarkup);
-  }
-
-  const form = new FormData();
-
-  Object.entries(fields).forEach(([name, value]) => {
-    form.append(name, value);
-  });
-  form.append('document', buffer, {
-    filename: sanitizeMultipartFilename(filename),
-    contentType: 'application/pdf',
-    knownLength: buffer.length
-  });
-
-  const response = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, {
-    method: 'POST',
-    headers: form.getHeaders(),
-    body: form as unknown as BodyInit
-  });
-
-  return parseTelegramResponse<T>('sendDocument', response);
 }
 
 export async function sendTelegramMessage(chatId: string | number, text: string, options: TelegramSendMessageOptions = {}) {
