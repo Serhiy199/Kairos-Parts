@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { ActionIcon } from '@/components/ui/action-icons';
+import { SearchableCombobox, type SearchableComboboxOption } from '@/components/ui/searchable-combobox';
 import { ALLOWED_UPLOAD_EXTENSIONS, ALLOWED_UPLOAD_MIME_TYPES } from '@/lib/files/upload-policy';
 import { getManufacturersForEquipmentType } from '@/lib/vehicles/equipment-manufacturers';
 import { EQUIPMENT_TYPE_GROUPS } from '@/lib/vehicles/equipment-types';
@@ -37,6 +38,17 @@ type SubmitState =
   | { status: 'success'; requestNumber: string; publicStatusUrl: string }
   | { status: 'error'; message: string; errors?: string[] };
 
+type FieldErrors = {
+  equipmentType?: string;
+  manufacturer?: string;
+};
+
+function uniqueSortedOptions(values: string[]): SearchableComboboxOption[] {
+  return Array.from(new Set(values.filter(Boolean)))
+    .sort((left, right) => left.localeCompare(right, 'uk'))
+    .map((value) => ({ value, label: value }));
+}
+
 export function RequestForm({
   manufacturerOptions,
   initialContact,
@@ -47,13 +59,58 @@ export function RequestForm({
 }: RequestFormProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [equipmentType, setEquipmentType] = useState(initialRequest?.equipmentType ?? '');
+  const [manufacturer, setManufacturer] = useState(initialRequest?.manufacturer ?? '');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
-  const manufacturerDatalist = useMemo(() => {
+
+  const equipmentTypeOptions = useMemo(() => {
+    const values = EQUIPMENT_TYPE_GROUPS.flatMap((group) => group.options);
+
+    if (initialRequest?.equipmentType && !values.includes(initialRequest.equipmentType)) {
+      values.push(initialRequest.equipmentType);
+    }
+
+    return uniqueSortedOptions(values);
+  }, [initialRequest?.equipmentType]);
+
+  const manufacturerComboboxOptions = useMemo(() => {
     const suggestions = getManufacturersForEquipmentType(equipmentType);
     const options = equipmentType ? suggestions : [...suggestions, ...manufacturerOptions];
 
-    return Array.from(new Set(options.filter(Boolean))).sort((left, right) => left.localeCompare(right, 'uk'));
-  }, [equipmentType, manufacturerOptions]);
+    if (initialRequest?.manufacturer && !options.includes(initialRequest.manufacturer)) {
+      options.push(initialRequest.manufacturer);
+    }
+
+    return uniqueSortedOptions(options);
+  }, [equipmentType, initialRequest?.manufacturer, manufacturerOptions]);
+
+  useEffect(() => {
+    if (!manufacturer) {
+      return;
+    }
+
+    if (!manufacturerComboboxOptions.some((option) => option.value === manufacturer)) {
+      setManufacturer('');
+    }
+  }, [manufacturer, manufacturerComboboxOptions]);
+
+  function handleEquipmentTypeChange(value: string) {
+    setEquipmentType(value);
+    setFieldErrors((current) => ({ ...current, equipmentType: undefined }));
+
+    if (submitState.status === 'error') {
+      setSubmitState({ status: 'idle' });
+    }
+  }
+
+  function handleManufacturerChange(value: string) {
+    setManufacturer(value);
+    setFieldErrors((current) => ({ ...current, manufacturer: undefined }));
+
+    if (submitState.status === 'error') {
+      setSubmitState({ status: 'idle' });
+    }
+  }
 
   function validateFiles(files: File[]) {
     const maxSizeBytes = maxSizeMb * 1024 * 1024;
@@ -99,6 +156,25 @@ export function RequestForm({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
+    const nextFieldErrors: FieldErrors = {};
+
+    if (!equipmentType) {
+      nextFieldErrors.equipmentType = 'Оберіть тип техніки зі списку.';
+    }
+
+    if (!manufacturer) {
+      nextFieldErrors.manufacturer = 'Оберіть виробника або марку зі списку.';
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      setSubmitState({
+        status: 'error',
+        message: 'Заповніть обовʼязкові поля зі списку.'
+      });
+      return;
+    }
+
     const fileErrors = validateFiles(selectedFiles);
 
     if (fileErrors.length > 0) {
@@ -140,6 +216,8 @@ export function RequestForm({
       form.reset();
       setSelectedFiles([]);
       setEquipmentType('');
+      setManufacturer('');
+      setFieldErrors({});
       setSubmitState({
         status: 'success',
         requestNumber: payload.requestNumber ?? '',
@@ -254,46 +332,28 @@ export function RequestForm({
       </div>
 
       <div className="mt-6 grid gap-5 md:grid-cols-2">
-        <label className="grid gap-2 text-sm font-semibold text-public-secondary">
-          Тип техніки *
-          <select
-            name="equipmentType"
-            value={equipmentType}
-            required
-            onChange={(event) => setEquipmentType(event.target.value)}
-          className="public-field h-11 rounded-md px-3 text-sm transition"
-          >
-            <option value="">Оберіть тип техніки</option>
-            {initialRequest?.equipmentType && !EQUIPMENT_TYPE_GROUPS.some((group) => group.options.includes(initialRequest.equipmentType ?? '')) ? (
-              <option value={initialRequest.equipmentType}>{initialRequest.equipmentType}</option>
-            ) : null}
-            {EQUIPMENT_TYPE_GROUPS.map((group) => (
-              <optgroup key={group.label} label={group.label}>
-                {group.options.map((option) => (
-                  <option key={`${group.label}-${option}`} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-2 text-sm font-semibold text-public-secondary">
-          Виробник / марка *
-          <input
-            name="manufacturer"
-            list="manufacturer-options"
-            required
-            defaultValue={initialRequest?.manufacturer}
-          className="public-field h-11 rounded-md px-3 text-sm transition"
-            placeholder="Наприклад: John Deere, MAN, Claas"
-          />
-          <datalist id="manufacturer-options">
-            {manufacturerDatalist.map((manufacturer) => (
-              <option key={manufacturer} value={manufacturer} />
-            ))}
-          </datalist>
-        </label>
+        <SearchableCombobox
+          name="equipmentType"
+          label="Тип техніки"
+          value={equipmentType}
+          options={equipmentTypeOptions}
+          onChange={handleEquipmentTypeChange}
+          required
+          placeholder="Оберіть тип техніки"
+          emptyMessage="Нічого не знайдено"
+          error={fieldErrors.equipmentType}
+        />
+        <SearchableCombobox
+          name="manufacturer"
+          label="Виробник / марка"
+          value={manufacturer}
+          options={manufacturerComboboxOptions}
+          onChange={handleManufacturerChange}
+          required
+          placeholder="Наприклад: John Deere, MAN, Claas"
+          emptyMessage="Нічого не знайдено"
+          error={fieldErrors.manufacturer}
+        />
         <label className="grid gap-2 text-sm font-semibold text-public-secondary">
           Модель *
           <input
