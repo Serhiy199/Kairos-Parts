@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { FaPaperPlane, FaTimes } from 'react-icons/fa';
 
 import { createUsedEquipmentInquiry, type UsedEquipmentInquiryFormState } from '@/app/(public)/used-equipment/actions';
@@ -229,6 +230,56 @@ export function UsedEquipmentInquiryDialog({
     };
   }, [isOpen]);
 
+  const dialog = isOpen ? (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-3 py-6 sm:px-4" role="presentation">
+      <button
+        type="button"
+        aria-label="Закрити форму"
+        className="absolute inset-0 cursor-default bg-black/65"
+        onClick={closeDialog}
+      />
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        className="relative max-h-[calc(100dvh-48px)] w-full max-w-lg overflow-y-auto rounded-lg border border-public-border bg-card p-5 shadow-2xl outline-none sm:p-6"
+        tabIndex={-1}
+      >
+        <button
+          type="button"
+          onClick={closeDialog}
+          aria-label="Закрити форму"
+          className="absolute right-4 top-4 inline-flex size-9 items-center justify-center rounded-md border border-public-border text-public-muted transition hover:border-accent hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          <FaTimes aria-hidden="true" className="size-3" />
+        </button>
+
+        <div className="pr-10">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">БВ техніка</p>
+          <h2 id={titleId} className="mt-2 text-2xl font-bold text-public-primary">
+            Запит на перегляд техніки
+          </h2>
+          <p className="mt-2 text-sm font-bold text-public-secondary">{equipmentTitle}</p>
+          <p id={descriptionId} className="mt-3 text-sm leading-6 text-public-muted">
+            Залиште ім’я та номер телефону. Менеджер зв’яжеться з вами, щоб уточнити деталі.
+          </p>
+        </div>
+
+        <div className="mt-5">
+          <InquiryForm
+            key={formKey}
+            usedEquipmentId={usedEquipmentId}
+            equipmentTitle={equipmentTitle}
+            source={source}
+            onClose={closeDialog}
+          />
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <>
       <button
@@ -242,56 +293,7 @@ export function UsedEquipmentInquiryDialog({
       >
         {trigger}
       </button>
-
-      {isOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-3 py-6 sm:px-4" role="presentation">
-          <button
-            type="button"
-            aria-label="Закрити форму"
-            className="absolute inset-0 cursor-default bg-black/65"
-            onClick={closeDialog}
-          />
-          <div
-            ref={dialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            aria-describedby={descriptionId}
-            className="relative max-h-[calc(100vh-48px)] w-full max-w-lg overflow-y-auto rounded-lg border border-public-border bg-card p-5 shadow-2xl outline-none sm:p-6"
-            tabIndex={-1}
-          >
-            <button
-              type="button"
-              onClick={closeDialog}
-              aria-label="Закрити форму"
-              className="absolute right-4 top-4 inline-flex size-9 items-center justify-center rounded-md border border-public-border text-public-muted transition hover:border-accent hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            >
-              <FaTimes aria-hidden="true" className="size-3" />
-            </button>
-
-            <div className="pr-10">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">БВ техніка</p>
-              <h2 id={titleId} className="mt-2 text-2xl font-bold text-public-primary">
-                Запит на перегляд техніки
-              </h2>
-              <p className="mt-2 text-sm font-bold text-public-secondary">{equipmentTitle}</p>
-              <p id={descriptionId} className="mt-3 text-sm leading-6 text-public-muted">
-                Залиште ім’я та номер телефону. Менеджер зв’яжеться з вами, щоб уточнити деталі.
-              </p>
-            </div>
-
-            <div className="mt-5">
-              <InquiryForm
-                key={formKey}
-                usedEquipmentId={usedEquipmentId}
-                equipmentTitle={equipmentTitle}
-                source={source}
-                onClose={closeDialog}
-              />
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {dialog ? createPortal(dialog, document.body) : null}
     </>
   );
 }
