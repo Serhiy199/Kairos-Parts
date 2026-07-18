@@ -48,6 +48,7 @@ export async function updateContactMessageStatus(
 
     revalidatePath('/admin/contact-messages');
     revalidatePath(`/admin/contact-messages/${contactMessageId}`);
+    revalidatePath('/admin', 'layout');
 
     return { status: 'success', message: 'Статус звернення оновлено.', submissionId };
   } catch (error) {
