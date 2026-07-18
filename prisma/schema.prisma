@@ -876,3 +876,34 @@ model Notification {
   @@index([userId])
   @@index([status])
 }
+
+enum ContactMessageTopic {
+  PARTS_REQUEST
+  COMMERCIAL_OFFER
+  REQUEST_QUESTION
+  PARTNERSHIP
+  OTHER
+}
+
+enum ContactMessageStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+  SPAM
+}
+
+model ContactMessage {
+  id        String               @id @default(cuid())
+  name      String
+  company   String?
+  phone     String?
+  email     String?
+  topic     ContactMessageTopic
+  message   String
+  status    ContactMessageStatus @default(NEW)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}

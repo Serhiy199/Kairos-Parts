@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { TbTractor } from 'react-icons/tb';
+import { TbMessages, TbTractor } from 'react-icons/tb';
 
 import { logoutClient, logoutStaff } from '@/app/(auth)/actions';
 
@@ -11,7 +11,7 @@ type NavItem = {
   href: string;
   label: string;
   badge?: number;
-  icon?: 'tractor';
+  icon?: 'messages' | 'tractor';
   activePrefix?: string;
 };
 
@@ -62,6 +62,7 @@ export function DashboardShell({ children, title, subtitle, navItems, homeHref, 
                 >
                   <span className="inline-flex w-full items-center justify-between gap-3">
                     <span className="inline-flex items-center gap-2">
+                      {item.icon === 'messages' ? <TbMessages aria-hidden="true" className="size-4 shrink-0" /> : null}
                       {item.icon === 'tractor' ? <TbTractor aria-hidden="true" className="size-4 shrink-0" /> : null}
                       <span>{item.label}</span>
                     </span>

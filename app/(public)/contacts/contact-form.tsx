@@ -1,20 +1,34 @@
 'use client';
 
-import { type FormEvent, useRef, useState } from 'react';
+import { type FormEvent, useActionState, useEffect, useRef, useState } from 'react';
 
-type FieldName = 'name' | 'phone' | 'email' | 'subject' | 'message' | 'consent';
-type FieldErrors = Partial<Record<FieldName, string>>;
+import { submitContactMessage, type ContactFormActionState } from './actions';
+import {
+  CONTACT_MESSAGE_TOPIC_LABELS,
+  CONTACT_MESSAGE_TOPICS,
+  type ContactMessageField,
+  type ContactMessageFieldErrors,
+  parseContactMessageFormData
+} from '@/lib/contact-messages';
 
 const fieldBaseClassName =
   'public-field h-[52px] w-full rounded-xl px-4 text-base text-public-primary placeholder:text-public-subtle';
 
-const subjects = [
-  'Підбір запчастин',
-  'Комерційна пропозиція',
-  'Питання щодо заявки',
-  'Співпраця',
-  'Інше'
-];
+const initialState: ContactFormActionState = {
+  status: 'idle',
+  message: '',
+  fieldErrors: {},
+  values: {
+    name: '',
+    company: '',
+    phone: '',
+    email: '',
+    topic: '',
+    message: '',
+    consent: false
+  },
+  submissionId: 0
+};
 
 function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
@@ -28,52 +42,42 @@ function FieldError({ id, message }: { id: string; message?: string }) {
 
 export function ContactForm() {
   const formRef = useRef<HTMLFormElement>(null);
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [submissionError, setSubmissionError] = useState('');
+  const [state, formAction, isPending] = useActionState(submitContactMessage, initialState);
+  const [errors, setErrors] = useState<ContactMessageFieldErrors>({});
+
+  useEffect(() => {
+    if (state.submissionId === 0) return;
+
+    setErrors(state.fieldErrors);
+
+    if (state.status === 'success') return;
+
+    const firstInvalidField = Object.keys(state.fieldErrors)[0] as ContactMessageField | undefined;
+    if (!firstInvalidField) return;
+
+    const field = formRef.current?.elements.namedItem(firstInvalidField);
+    if (field instanceof HTMLElement) field.focus();
+  }, [state]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSubmissionError('');
+    const parsed = parseContactMessageFormData(new FormData(event.currentTarget));
 
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const values = {
-      name: String(formData.get('name') ?? '').trim(),
-      phone: String(formData.get('phone') ?? '').trim(),
-      email: String(formData.get('email') ?? '').trim(),
-      subject: String(formData.get('subject') ?? '').trim(),
-      message: String(formData.get('message') ?? '').trim(),
-      consent: formData.get('consent') === 'on'
-    };
-    const nextErrors: FieldErrors = {};
-
-    if (!values.name) nextErrors.name = 'Вкажіть ім’я.';
-    if (!values.phone && !values.email) {
-      nextErrors.phone = 'Вкажіть телефон або email.';
-      nextErrors.email = 'Вкажіть email або телефон.';
-    }
-    if (values.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
-      nextErrors.email = 'Вкажіть коректну email-адресу.';
-    }
-    if (!values.subject) nextErrors.subject = 'Оберіть тему звернення.';
-    if (!values.message) nextErrors.message = 'Опишіть ваше питання.';
-    if (!values.consent) nextErrors.consent = 'Потрібна згода на обробку персональних даних.';
-
-    setErrors(nextErrors);
-
-    const firstInvalidField = Object.keys(nextErrors)[0] as FieldName | undefined;
-    if (firstInvalidField) {
-      const field = form.elements.namedItem(firstInvalidField);
-      if (field instanceof HTMLElement) field.focus();
+    if (parsed.ok || parsed.isHoneypot) {
+      setErrors({});
       return;
     }
 
-    setSubmissionError(
-      'Зараз ця форма не може доставити повідомлення. Створіть структуровану заявку або напишіть у Telegram.'
-    );
+    event.preventDefault();
+    setErrors(parsed.errors);
+
+    const firstInvalidField = Object.keys(parsed.errors)[0] as ContactMessageField | undefined;
+    if (!firstInvalidField) return;
+
+    const field = event.currentTarget.elements.namedItem(firstInvalidField);
+    if (field instanceof HTMLElement) field.focus();
   }
 
-  function fieldClassName(field: FieldName) {
+  function fieldClassName(field: ContactMessageField) {
     return `${fieldBaseClassName} ${errors[field] ? 'border-danger/60' : ''}`;
   }
 
@@ -84,7 +88,12 @@ export function ContactForm() {
         Опишіть питання або залиште контактні дані. Менеджер зв’яжеться з вами для уточнення.
       </p>
 
-      <form ref={formRef} className="mt-8" noValidate onSubmit={handleSubmit}>
+      <form key={state.submissionId} ref={formRef} action={formAction} className="mt-8" noValidate onSubmit={handleSubmit}>
+        <div aria-hidden="true" className="absolute left-[-10000px] top-auto h-px w-px overflow-hidden">
+          <label htmlFor="contact-website">Вебсайт</label>
+          <input id="contact-website" name="website" type="text" tabIndex={-1} autoComplete="off" />
+        </div>
+
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
             <label htmlFor="contact-name" className="mb-2 block text-sm font-semibold text-public-primary">
@@ -95,6 +104,9 @@ export function ContactForm() {
               name="name"
               type="text"
               autoComplete="name"
+              minLength={2}
+              maxLength={100}
+              defaultValue={state.values.name}
               required
               aria-invalid={Boolean(errors.name)}
               aria-describedby={errors.name ? 'contact-name-error' : undefined}
@@ -112,8 +124,13 @@ export function ContactForm() {
               name="company"
               type="text"
               autoComplete="organization"
-              className={fieldBaseClassName}
+              maxLength={150}
+              defaultValue={state.values.company}
+              aria-invalid={Boolean(errors.company)}
+              aria-describedby={errors.company ? 'contact-company-error' : undefined}
+              className={fieldClassName('company')}
             />
+            <FieldError id="contact-company-error" message={errors.company} />
           </div>
 
           <div>
@@ -126,6 +143,8 @@ export function ContactForm() {
               type="tel"
               inputMode="tel"
               autoComplete="tel"
+              maxLength={50}
+              defaultValue={state.values.phone}
               aria-invalid={Boolean(errors.phone)}
               aria-describedby={errors.phone ? 'contact-phone-error' : 'contact-details-hint'}
               className={fieldClassName('phone')}
@@ -142,6 +161,8 @@ export function ContactForm() {
               name="email"
               type="email"
               autoComplete="email"
+              maxLength={254}
+              defaultValue={state.values.email}
               aria-invalid={Boolean(errors.email)}
               aria-describedby={errors.email ? 'contact-email-error' : 'contact-details-hint'}
               className={fieldClassName('email')}
@@ -155,28 +176,28 @@ export function ContactForm() {
         </p>
 
         <div className="mt-5">
-          <label htmlFor="contact-subject" className="mb-2 block text-sm font-semibold text-public-primary">
+          <label htmlFor="contact-topic" className="mb-2 block text-sm font-semibold text-public-primary">
             Тема звернення <span className="text-accent">*</span>
           </label>
           <select
-            id="contact-subject"
-            name="subject"
+            id="contact-topic"
+            name="topic"
             required
-            defaultValue=""
-            aria-invalid={Boolean(errors.subject)}
-            aria-describedby={errors.subject ? 'contact-subject-error' : undefined}
-            className={fieldClassName('subject')}
+            defaultValue={state.values.topic}
+            aria-invalid={Boolean(errors.topic)}
+            aria-describedby={errors.topic ? 'contact-topic-error' : undefined}
+            className={fieldClassName('topic')}
           >
             <option value="" disabled>
               Оберіть тему
             </option>
-            {subjects.map((subject) => (
-              <option key={subject} value={subject}>
-                {subject}
+            {CONTACT_MESSAGE_TOPICS.map((topic) => (
+              <option key={topic} value={topic}>
+                {CONTACT_MESSAGE_TOPIC_LABELS[topic]}
               </option>
             ))}
           </select>
-          <FieldError id="contact-subject-error" message={errors.subject} />
+          <FieldError id="contact-topic-error" message={errors.topic} />
         </div>
 
         <div className="mt-5">
@@ -187,6 +208,9 @@ export function ContactForm() {
             id="contact-message"
             name="message"
             required
+            minLength={10}
+            maxLength={5000}
+            defaultValue={state.values.message}
             rows={6}
             aria-invalid={Boolean(errors.message)}
             aria-describedby={errors.message ? 'contact-message-error' : undefined}
@@ -201,6 +225,7 @@ export function ContactForm() {
               id="contact-consent"
               name="consent"
               type="checkbox"
+              defaultChecked={state.values.consent}
               required
               aria-invalid={Boolean(errors.consent)}
               aria-describedby={errors.consent ? 'contact-consent-error' : undefined}
@@ -215,15 +240,21 @@ export function ContactForm() {
 
         <button
           type="submit"
-          className="mt-7 inline-flex w-full items-center justify-center rounded-lg bg-accent px-6 py-3.5 text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
+          disabled={isPending}
+          className="mt-7 inline-flex w-full items-center justify-center rounded-lg bg-accent px-6 py-3.5 text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-65 sm:w-auto"
         >
-          Надіслати повідомлення
+          {isPending ? 'Надсилаємо…' : 'Надіслати повідомлення'}
         </button>
 
         <div aria-live="polite">
-          {submissionError ? (
-            <p role="alert" className="mt-4 max-w-2xl text-sm leading-6 text-public-danger">
-              {submissionError}
+          {state.message ? (
+            <p
+              role={state.status === 'error' ? 'alert' : 'status'}
+              className={`mt-4 max-w-2xl text-sm leading-6 ${
+                state.status === 'success' ? 'text-public-success' : 'text-public-danger'
+              }`}
+            >
+              {state.message}
             </p>
           ) : null}
         </div>
