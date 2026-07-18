@@ -127,34 +127,52 @@ enum AuditAction {
   ENTITY_UPDATED
 }
 
+enum UsedEquipmentStatus {
+  DRAFT
+  PUBLISHED
+  RESERVED
+  SOLD
+  ARCHIVED
+}
+
+enum UsedEquipmentInquiryStatus {
+  NEW
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 model User {
-  id               String                 @id @default(cuid())
-  name             String?
-  email            String?                @unique
-  emailVerified    DateTime?
-  image            String?
-  phone            String?                @unique
-  passwordHash     String?
-  role             UserRole               @default(CLIENT)
-  accounts         Account[]
-  sessions         Session[]
-  clientProfile    ClientProfile?
-  managerProfile   ManagerProfile?
-  companyMemberships CompanyMember[]
-  assignedRequests Request[]              @relation("AssignedManager")
-  statusChanges    RequestStatusHistory[] @relation("StatusChangedBy")
-  comments         RequestComment[]       @relation("RequestCommentAuthor")
-  uploadedDocuments RequestDocument[]      @relation("RequestDocumentUploadedBy")
-  createdCommercialOffers CommercialOffer[] @relation("CommercialOfferCreatedBy")
-  clientInvoices    Invoice[]              @relation("InvoiceClient")
-  createdInvoices   Invoice[]              @relation("InvoiceCreatedBy")
-  changeRequestsRequested ChangeRequest[]   @relation("ChangeRequestRequestedBy")
-  changeRequestsReviewed  ChangeRequest[]   @relation("ChangeRequestReviewedBy")
-  archivedVehicles Vehicle[]              @relation("VehicleArchivedBy")
-  auditLogs       AuditLog[]             @relation("AuditLogActor")
-  notifications    Notification[]
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
+  id                      String                 @id @default(cuid())
+  name                    String?
+  email                   String?                @unique
+  emailVerified           DateTime?
+  image                   String?
+  phone                   String?                @unique
+  passwordHash            String?
+  role                    UserRole               @default(CLIENT)
+  accounts                Account[]
+  sessions                Session[]
+  clientProfile           ClientProfile?
+  managerProfile          ManagerProfile?
+  companyMemberships      CompanyMember[]
+  assignedRequests        Request[]              @relation("AssignedManager")
+  statusChanges           RequestStatusHistory[] @relation("StatusChangedBy")
+  comments                RequestComment[]       @relation("RequestCommentAuthor")
+  uploadedDocuments       RequestDocument[]      @relation("RequestDocumentUploadedBy")
+  createdCommercialOffers CommercialOffer[]      @relation("CommercialOfferCreatedBy")
+  clientInvoices          Invoice[]              @relation("InvoiceClient")
+  createdInvoices         Invoice[]              @relation("InvoiceCreatedBy")
+  changeRequestsRequested ChangeRequest[]        @relation("ChangeRequestRequestedBy")
+  changeRequestsReviewed  ChangeRequest[]        @relation("ChangeRequestReviewedBy")
+  archivedVehicles        Vehicle[]              @relation("VehicleArchivedBy")
+  auditLogs               AuditLog[]             @relation("AuditLogActor")
+  usedEquipmentCreated    UsedEquipment[]        @relation("UsedEquipmentCreatedBy")
+  usedEquipmentUpdated    UsedEquipment[]        @relation("UsedEquipmentUpdatedBy")
+  usedEquipmentInquiries  UsedEquipmentInquiry[] @relation("UsedEquipmentInquiryAssignee")
+  notifications           Notification[]
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
 }
 
 model Account {
@@ -195,43 +213,43 @@ model VerificationToken {
 }
 
 model ClientProfile {
-  id          String     @id @default(cuid())
-  userId      String     @unique
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clientType  ClientType @default(BUSINESS)
-  companyName String?
-  taxId       String?
-  contactName String?
-  firstName   String?
-  lastName    String?
-  phone       String?
-  telegramUserId String?     @unique
-  telegramChatId String?     @unique
-  email       String?
-  requests    Request[]
-  vehicles    Vehicle[]
-  documents   Document[]
+  id             String                @id @default(cuid())
+  userId         String                @unique
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientType     ClientType            @default(BUSINESS)
+  companyName    String?
+  taxId          String?
+  contactName    String?
+  firstName      String?
+  lastName       String?
+  phone          String?
+  telegramUserId String?               @unique
+  telegramChatId String?               @unique
+  email          String?
+  requests       Request[]
+  vehicles       Vehicle[]
+  documents      Document[]
   billingDetails ClientBillingDetails?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
 }
 
 model Company {
-  id           String          @id @default(cuid())
-  name         String
-  edrpou       String?
-  phone        String?
-  email        String?
-  legalAddress String?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  members      CompanyMember[]
-  requests     Request[]
-  vehicles     Vehicle[]
-  documents    Document[]
+  id             String                 @id @default(cuid())
+  name           String
+  edrpou         String?
+  phone          String?
+  email          String?
+  legalAddress   String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  members        CompanyMember[]
+  requests       Request[]
+  vehicles       Vehicle[]
+  documents      Document[]
   changeRequests ChangeRequest[]
-  auditLogs    AuditLog[]
-  invoices     Invoice[]
+  auditLogs      AuditLog[]
+  invoices       Invoice[]
   billingDetails CompanyBillingDetails?
 
   @@unique([name, edrpou])
@@ -439,32 +457,32 @@ model RequestFile {
 }
 
 model RequestItem {
-  id               String   @id @default(cuid())
-  requestId        String
-  request          Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  vehicleId        String?
-  vehicle          Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  name             String
-  brand            String?
-  catalogNumber    String?
-  analogNumber     String?
-  quantity         Int      @default(1)
-  unit             String   @default("шт")
-  supplierName     String?
-  availability     String?
-  deliveryTime     String?
-  purchasePrice    Decimal? @db.Decimal(12, 2)
-  salePrice        Decimal? @db.Decimal(12, 2)
-  currency         String   @default("UAH")
-  comment          String?
-  visibleToClient  Boolean  @default(false)
-  approvedByClient Boolean  @default(false)
-  includeInInvoice Boolean  @default(false)
-  approvedAt       DateTime?
+  id                   String                @id @default(cuid())
+  requestId            String
+  request              Request               @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  vehicleId            String?
+  vehicle              Vehicle?              @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  name                 String
+  brand                String?
+  catalogNumber        String?
+  analogNumber         String?
+  quantity             Int                   @default(1)
+  unit                 String                @default("шт")
+  supplierName         String?
+  availability         String?
+  deliveryTime         String?
+  purchasePrice        Decimal?              @db.Decimal(12, 2)
+  salePrice            Decimal?              @db.Decimal(12, 2)
+  currency             String                @default("UAH")
+  comment              String?
+  visibleToClient      Boolean               @default(false)
+  approvedByClient     Boolean               @default(false)
+  includeInInvoice     Boolean               @default(false)
+  approvedAt           DateTime?
   commercialOfferItems CommercialOfferItem[]
-  invoiceItems     InvoiceItem[]
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  invoiceItems         InvoiceItem[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 
   @@index([requestId])
   @@index([vehicleId])
@@ -726,20 +744,100 @@ model Subcategory {
 }
 
 model Manufacturer {
-  id            String       @id @default(cuid())
+  id            String          @id @default(cuid())
   categoryId    String?
-  category      Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   subcategoryId String?
-  subcategory   Subcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  subcategory   Subcategory?    @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
   name          String
   slug          String
   requests      Request[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  usedEquipment UsedEquipment[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   @@unique([categoryId, subcategoryId, slug])
   @@index([categoryId])
   @@index([subcategoryId])
+}
+
+model UsedEquipment {
+  id               String                 @id @default(cuid())
+  slug             String                 @unique
+  title            String
+  equipmentType    String
+  manufacturerId   String?
+  manufacturer     Manufacturer?          @relation(fields: [manufacturerId], references: [id], onDelete: SetNull)
+  manufacturerName String
+  model            String?
+  year             Int?
+  description      String                 @db.Text
+  internalComment  String?                @db.Text
+  status           UsedEquipmentStatus    @default(DRAFT)
+  createdById      String
+  createdBy        User                   @relation("UsedEquipmentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById      String?
+  updatedBy        User?                  @relation("UsedEquipmentUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  publishedAt      DateTime?
+  reservedAt       DateTime?
+  soldAt           DateTime?
+  archivedAt       DateTime?
+  images           UsedEquipmentImage[]
+  inquiries        UsedEquipmentInquiry[]
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  @@index([status])
+  @@index([manufacturerId])
+  @@index([createdAt])
+  @@index([publishedAt])
+  @@index([status, publishedAt])
+}
+
+model UsedEquipmentImage {
+  id                 String        @id @default(cuid())
+  usedEquipmentId    String
+  usedEquipment      UsedEquipment @relation(fields: [usedEquipmentId], references: [id], onDelete: Cascade)
+  url                String
+  cloudinaryPublicId String
+  sortOrder          Int           @default(0)
+  isPrimary          Boolean       @default(false)
+  alt                String?
+  width              Int?
+  height             Int?
+  format             String?
+  bytes              Int?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([usedEquipmentId])
+  @@index([usedEquipmentId, sortOrder])
+  @@index([usedEquipmentId, isPrimary])
+}
+
+model UsedEquipmentInquiry {
+  id                String                     @id @default(cuid())
+  usedEquipmentId   String
+  usedEquipment     UsedEquipment              @relation(fields: [usedEquipmentId], references: [id], onDelete: Restrict)
+  equipmentTitle    String
+  name              String
+  phone             String
+  normalizedPhone   String?
+  status            UsedEquipmentInquiryStatus @default(NEW)
+  assignedManagerId String?
+  assignedManager   User?                      @relation("UsedEquipmentInquiryAssignee", fields: [assignedManagerId], references: [id], onDelete: SetNull)
+  internalComment   String?                    @db.Text
+  source            String?
+  processedAt       DateTime?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  @@index([usedEquipmentId])
+  @@index([status])
+  @@index([assignedManagerId])
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([normalizedPhone])
 }
 
 model OCRResult {
