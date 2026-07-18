@@ -1,5 +1,7 @@
 # Stage Used Equipment 11 - Notifications and final stabilization
 
+> Historical note: the manager Telegram notification described in this report was removed by the later fix `Remove used equipment manager Telegram notifications`. CRM inquiry creation, the NEW badge, and centralized revalidation remain active.
+
 ## 1. Scope
 
 Stage 11 adds a best-effort internal Telegram notification for each newly created used-equipment inquiry and consolidates CRM inquiry badge revalidation.

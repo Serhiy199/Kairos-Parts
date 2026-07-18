@@ -1,7 +1,6 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { notifyManagerAboutUsedEquipmentInquiry } from '@/lib/telegram/manager-notifications';
 import { revalidateUsedEquipmentInquiryAdminPaths } from '@/lib/used-equipment/revalidation';
 import { canSubmitUsedEquipmentInquiry } from '@/lib/used-equipment/status';
 import {
@@ -114,11 +113,7 @@ export async function createUsedEquipmentInquiry(
         source: validation.data.source
       },
       select: {
-        id: true,
-        equipmentTitle: true,
-        name: true,
-        phone: true,
-        source: true
+        id: true
       }
     });
 
@@ -131,14 +126,6 @@ export async function createUsedEquipmentInquiry(
         error: error instanceof Error ? error.message.slice(0, 500) : 'Unknown error'
       });
     }
-
-    await notifyManagerAboutUsedEquipmentInquiry({
-      inquiryId: inquiry.id,
-      equipmentTitle: inquiry.equipmentTitle,
-      customerName: inquiry.name,
-      phone: inquiry.phone,
-      source: validation.data.source
-    });
 
     return {
       status: 'success',
