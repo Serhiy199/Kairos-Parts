@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { TbTractor } from 'react-icons/tb';
 
 import { logoutClient, logoutStaff } from '@/app/(auth)/actions';
 
@@ -10,6 +11,8 @@ type NavItem = {
   href: string;
   label: string;
   badge?: number;
+  icon?: 'tractor';
+  activePrefix?: string;
 };
 
 type LogoutTarget = 'client' | 'staff';
@@ -46,7 +49,8 @@ export function DashboardShell({ children, title, subtitle, navItems, homeHref, 
         <div className="flex gap-1 overflow-x-auto px-3 pb-3 text-sm lg:flex-1 lg:flex-col lg:overflow-visible lg:pb-4">
           <nav className="flex gap-1 lg:flex-1 lg:flex-col">
             {navItems.map((item) => {
-              const isActive = pathname === item.href || (item.href !== homeHref && pathname.startsWith(`${item.href}/`));
+              const activeTarget = item.activePrefix ?? item.href;
+              const isActive = pathname === item.href || (activeTarget !== homeHref && pathname.startsWith(`${activeTarget}/`)) || (activeTarget !== homeHref && pathname === activeTarget);
 
               return (
                 <Link
@@ -57,7 +61,10 @@ export function DashboardShell({ children, title, subtitle, navItems, homeHref, 
                   }`}
                 >
                   <span className="inline-flex w-full items-center justify-between gap-3">
-                    <span>{item.label}</span>
+                    <span className="inline-flex items-center gap-2">
+                      {item.icon === 'tractor' ? <TbTractor aria-hidden="true" className="size-4 shrink-0" /> : null}
+                      <span>{item.label}</span>
+                    </span>
                     {item.badge && item.badge > 0 ? (
                       <span className={`inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-xs font-bold ${
                         isActive ? 'bg-foreground text-accent' : 'bg-[#E7F6EC] text-success'

@@ -10,6 +10,7 @@ const ADMIN_INVOICE_PRINT_ROUTE = /^\/admin\/invoices\/[^/]+\/print$/;
 const adminNavItems = [
   { href: '/admin', label: 'Панель' },
   { href: '/admin/requests', label: 'Заявки' },
+  { href: '/admin/used-equipment/items', label: 'БВ техніка', icon: 'tractor' as const, activePrefix: '/admin/used-equipment' },
   { href: '/admin/clients', label: 'Клієнти' },
   { href: '/admin/companies', label: 'Компанії' },
   { href: '/admin/change-requests', label: 'Запити змін' },
