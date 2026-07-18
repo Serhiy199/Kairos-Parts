@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { FaTractor } from 'react-icons/fa';
 
+import { UsedEquipmentInquiryDialog } from '@/components/used-equipment/used-equipment-inquiry-dialog';
 import { getUsedEquipmentDescriptionExcerpt } from '@/lib/used-equipment/description';
 import type { PublicUsedEquipmentListItem } from '@/lib/used-equipment/queries';
 import { getUsedEquipmentPublicStatusLabel } from '@/lib/used-equipment/status';
@@ -86,13 +87,20 @@ export function PublicUsedEquipmentCard({ item }: { item: PublicUsedEquipmentLis
 
           {description ? <p className="mt-4 line-clamp-4 text-sm leading-6 text-public-muted">{description}</p> : null}
 
-          <div className="mt-auto pt-5">
+          <div className="mt-auto flex flex-col gap-2 pt-5 sm:flex-row">
             <Link
               href={href}
-              className="inline-flex h-10 items-center justify-center rounded-md border border-public-border px-4 text-sm font-bold text-public-primary transition hover:border-accent hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="inline-flex h-10 flex-1 items-center justify-center rounded-md border border-public-border px-4 text-sm font-bold text-public-primary transition hover:border-accent hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               Детальніше
             </Link>
+            <UsedEquipmentInquiryDialog
+              usedEquipmentId={item.id}
+              equipmentTitle={item.title}
+              source="CATALOG_CARD"
+              trigger="Запит на перегляд техніки"
+              triggerClassName="inline-flex h-10 flex-1 items-center justify-center rounded-md bg-accent px-4 text-sm font-bold text-foreground transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            />
           </div>
         </div>
       </div>

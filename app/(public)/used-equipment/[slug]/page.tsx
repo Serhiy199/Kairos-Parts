@@ -6,6 +6,7 @@ import type { ComponentType } from 'react';
 import { FaCalendarAlt, FaIndustry, FaTractor } from 'react-icons/fa';
 
 import { PublicUsedEquipmentGallery } from '@/components/used-equipment/public-used-equipment-gallery';
+import { UsedEquipmentInquiryDialog } from '@/components/used-equipment/used-equipment-inquiry-dialog';
 import { SafeRichText } from '@/components/ui/safe-rich-text';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { buildAbsoluteUrl } from '@/lib/site-url';
@@ -164,7 +165,7 @@ export default async function UsedEquipmentDetailPage({ params }: PageProps) {
             <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${statusClassName}`}>{statusLabel}</span>
             <h1 className="mt-4 break-words text-3xl font-bold leading-tight text-public-primary sm:text-4xl">{item.title}</h1>
             <p className="mt-4 text-sm leading-6 text-public-muted">
-              Детальна інформація про одиницю техніки. Форма запиту на перегляд буде додана окремим етапом.
+              Залиште контактні дані, і менеджер Kairos Parts зв’яжеться з вами щодо перегляду або уточнення деталей цієї техніки.
             </p>
 
             <div className="mt-6 grid gap-3">
@@ -176,8 +177,15 @@ export default async function UsedEquipmentDetailPage({ params }: PageProps) {
             <div className="mt-6 rounded-lg border border-public-border bg-surface-muted p-4">
               <p className="text-xs font-bold uppercase text-public-subtle">Наступна дія</p>
               <p className="mt-2 text-sm leading-6 text-public-muted">
-                На цьому етапі сторінка працює як публічна картка техніки без форми заявки на перегляд.
+                Надішліть короткий запит. Потрібні лише ім’я та телефон для зв’язку.
               </p>
+              <UsedEquipmentInquiryDialog
+                usedEquipmentId={item.id}
+                equipmentTitle={item.title}
+                source="DETAIL_PAGE"
+                trigger="Запит на перегляд техніки"
+                triggerClassName="mt-4 inline-flex h-11 w-full items-center justify-center rounded-md bg-accent px-5 text-sm font-bold text-foreground transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              />
             </div>
           </aside>
         </article>
