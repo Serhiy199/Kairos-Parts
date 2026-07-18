@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { FaClipboardList, FaTractor } from 'react-icons/fa';
-import { FaHandshakeAngle } from 'react-icons/fa6';
+import { FaGear, FaHandshakeAngle } from 'react-icons/fa6';
 import { GoGear } from 'react-icons/go';
 import { LuBoxes, LuSearchCheck } from 'react-icons/lu';
 import {
@@ -335,6 +335,10 @@ function BenefitIcon({ icon }: { icon: string }) {
 
   if (icon === 'tractor') {
     return <FaTractor aria-hidden="true" className="size-12 sm:size-16" />;
+  }
+
+  if (icon === 'fleet') {
+    return <FaGear aria-hidden="true" className="size-12 sm:size-16" />;
   }
 
   return (
