@@ -448,7 +448,7 @@ export default function HomePage() {
       <section id="how-it-works" className="relative overflow-hidden bg-public-page py-16">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-70 [background-image:linear-gradient(180deg,var(--public-surface-page)_0%,transparent_18%,transparent_82%,var(--public-surface-page)_100%),radial-gradient(ellipse_at_16%_10%,rgba(200,150,66,0.13),transparent_38%),radial-gradient(ellipse_at_88%_92%,rgba(27,33,44,0.62),transparent_48%),linear-gradient(112deg,rgba(16,20,28,0.48),transparent_46%,rgba(7,9,13,0.42))] sm:opacity-90 lg:opacity-100"
+          className="pointer-events-none absolute inset-0 opacity-[0.82] [background-image:radial-gradient(ellipse_at_16%_10%,rgba(200,150,66,0.24),transparent_48%),radial-gradient(ellipse_at_88%_92%,rgba(27,33,44,0.82),transparent_58%),linear-gradient(112deg,rgba(16,20,28,0.66),transparent_44%,rgba(7,9,13,0.58)),linear-gradient(180deg,rgba(11,14,20,0.24),transparent_24%,transparent_76%,rgba(11,14,20,0.28))] sm:opacity-[0.92] lg:opacity-100"
         />
         <div
           aria-hidden="true"
@@ -537,7 +537,7 @@ export default function HomePage() {
       <section className="relative overflow-hidden bg-public-page py-16">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.65] [background-image:linear-gradient(180deg,var(--public-surface-page)_0%,transparent_16%,transparent_84%,var(--public-surface-page)_100%),radial-gradient(ellipse_at_86%_14%,rgba(200,150,66,0.12),transparent_36%),radial-gradient(ellipse_at_8%_78%,rgba(24,27,32,0.58),transparent_44%),linear-gradient(96deg,rgba(7,9,13,0.58),rgba(16,18,22,0.24)_52%,rgba(28,22,14,0.3))] sm:opacity-[0.85] lg:opacity-100"
+          className="pointer-events-none absolute inset-0 opacity-[0.82] [background-image:radial-gradient(ellipse_at_86%_14%,rgba(200,150,66,0.22),transparent_48%),radial-gradient(ellipse_at_8%_78%,rgba(24,27,32,0.76),transparent_54%),linear-gradient(96deg,rgba(7,9,13,0.68),rgba(16,18,22,0.38)_50%,rgba(48,34,18,0.48)),linear-gradient(180deg,rgba(11,14,20,0.22),transparent_22%,transparent_78%,rgba(11,14,20,0.3))] sm:opacity-[0.92] lg:opacity-100"
         />
         <div
           aria-hidden="true"
@@ -611,7 +611,7 @@ export default function HomePage() {
       <section id="telegram" className="relative overflow-hidden border-y border-white/5 bg-public-page py-14 text-white sm:py-16">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.65] [background-image:linear-gradient(180deg,var(--public-surface-page)_0%,rgba(11,14,20,0.12)_24%,rgba(11,14,20,0.08)_72%,var(--public-surface-page)_100%),radial-gradient(ellipse_at_24%_104%,rgba(200,150,66,0.14),transparent_42%),radial-gradient(ellipse_at_92%_6%,rgba(146,96,38,0.1),transparent_34%),linear-gradient(180deg,rgba(18,22,30,0.34),rgba(7,9,13,0.46))] sm:opacity-[0.85] lg:opacity-100"
+          className="pointer-events-none absolute inset-0 opacity-[0.82] [background-image:radial-gradient(ellipse_at_24%_104%,rgba(200,150,66,0.26),transparent_54%),radial-gradient(ellipse_at_92%_6%,rgba(146,96,38,0.2),transparent_44%),linear-gradient(180deg,rgba(18,22,30,0.5),rgba(7,9,13,0.64)),linear-gradient(180deg,rgba(11,14,20,0.18),transparent_22%,transparent_76%,rgba(11,14,20,0.24))] sm:opacity-[0.92] lg:opacity-100"
         />
         <div className="kp-container relative z-10">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] lg:items-end lg:gap-12">
