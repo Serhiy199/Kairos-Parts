@@ -4,10 +4,12 @@ import { FaArrowLeft, FaTractor } from 'react-icons/fa';
 
 import { updateUsedEquipment } from '@/app/admin/used-equipment/items/actions';
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
+import { SafeRichText } from '@/components/ui/safe-rich-text';
 import { UsedEquipmentForm } from '@/components/used-equipment/used-equipment-form';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import { normalizeUsedEquipmentDescriptionForEditor } from '@/lib/used-equipment/description';
 import { getUsedEquipmentStatusLabel } from '@/lib/used-equipment/status';
 import type { UsedEquipmentFormValues } from '@/lib/used-equipment/validation';
 
@@ -91,7 +93,7 @@ export default async function AdminUsedEquipmentEditPage({ params }: PageProps) 
     equipmentType: item.equipmentType,
     manufacturerId: item.manufacturerId ?? '',
     year: item.year ? String(item.year) : '',
-    description: item.description,
+    description: normalizeUsedEquipmentDescriptionForEditor(item.description),
     internalComment: item.internalComment ?? '',
     status: item.status
   };
@@ -126,6 +128,13 @@ export default async function AdminUsedEquipmentEditPage({ params }: PageProps) 
               Заявки: <span className="font-bold text-foreground">{item._count.inquiries}</span>
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+        <p className="text-sm font-bold uppercase text-accent">Попередній перегляд опису</p>
+        <div className="mt-4 rounded-md border border-border bg-surface-muted p-4">
+          <SafeRichText html={item.description} />
         </div>
       </section>
 

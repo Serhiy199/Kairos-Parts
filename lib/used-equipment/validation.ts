@@ -1,5 +1,6 @@
 import type { UsedEquipmentStatus } from '@prisma/client';
 
+import { validateAndSanitizeUsedEquipmentDescription } from '@/lib/used-equipment/description';
 import { EQUIPMENT_TYPE_OPTIONS } from '@/lib/vehicles/equipment-types';
 
 export const USED_EQUIPMENT_ALLOWED_FORM_STATUSES = ['DRAFT', 'PUBLISHED', 'RESERVED', 'SOLD', 'ARCHIVED'] as const satisfies UsedEquipmentStatus[];
@@ -99,10 +100,9 @@ export function validateUsedEquipmentForm(values: UsedEquipmentFormValues, optio
     }
   }
 
-  if (description.length < 10) {
-    fieldErrors.description = 'Додайте опис техніки мінімум на 10 символів.';
-  } else if (description.length > 20000) {
-    fieldErrors.description = 'Опис має бути не довшим за 20000 символів.';
+  const descriptionValidation = validateAndSanitizeUsedEquipmentDescription(description);
+  if (!descriptionValidation.ok) {
+    fieldErrors.description = descriptionValidation.message;
   }
 
   if (internalComment.length > 5000) {
@@ -124,7 +124,7 @@ export function validateUsedEquipmentForm(values: UsedEquipmentFormValues, optio
       equipmentType,
       manufacturerId,
       year,
-      description,
+      description: descriptionValidation.ok ? descriptionValidation.html : '',
       internalComment: internalComment || null,
       status: options.allowStatusEdit ? values.status : 'DRAFT'
     } satisfies ValidUsedEquipmentInput

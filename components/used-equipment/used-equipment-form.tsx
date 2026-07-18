@@ -4,6 +4,7 @@ import type { UsedEquipmentStatus } from '@prisma/client';
 import { useActionState, useEffect, useMemo, useState } from 'react';
 import { FaSave } from 'react-icons/fa';
 
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { SearchableCombobox, type SearchableComboboxOption } from '@/components/ui/searchable-combobox';
 import { UsedEquipmentImageManager, type UsedEquipmentExistingImage } from '@/components/used-equipment/used-equipment-image-manager';
 import { USED_EQUIPMENT_STATUS_LABELS } from '@/lib/used-equipment/status';
@@ -62,11 +63,13 @@ export function UsedEquipmentForm({
   const values = state.values ?? initialValues;
   const [equipmentType, setEquipmentType] = useState(values.equipmentType);
   const [manufacturerId, setManufacturerId] = useState(values.manufacturerId);
+  const [description, setDescription] = useState(values.description);
 
   useEffect(() => {
     if (state.values) {
       setEquipmentType(state.values.equipmentType);
       setManufacturerId(state.values.manufacturerId);
+      setDescription(state.values.description);
     }
   }, [state.values]);
 
@@ -182,8 +185,16 @@ export function UsedEquipmentForm({
 
         <label className="grid gap-2 text-sm font-semibold text-foreground lg:col-span-2">
           Опис *
-          <textarea name="description" defaultValue={values.description} className={textareaClass(state.fieldErrors?.description)} />
-          <FieldError error={state.fieldErrors?.description} />
+          <RichTextEditor
+            value={description}
+            onChange={setDescription}
+            error={state.fieldErrors?.description}
+            describedBy={state.fieldErrors?.description ? 'used-equipment-description-error' : undefined}
+          />
+          <input type="hidden" name="description" value={description} />
+          <div id="used-equipment-description-error">
+            <FieldError error={state.fieldErrors?.description} />
+          </div>
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-foreground lg:col-span-2">
