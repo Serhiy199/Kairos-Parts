@@ -78,6 +78,22 @@ function EditLink({ itemId }: { itemId: string }) {
   );
 }
 
+function ModuleNav() {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Link href="/admin/used-equipment/items" className="rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground">
+        Техніка
+      </Link>
+      <Link
+        href="/admin/used-equipment/inquiries"
+        className="rounded-md border border-border bg-card px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:text-accent"
+      >
+        Заявки на перегляд
+      </Link>
+    </div>
+  );
+}
+
 function Pagination({ page, totalPages, totalCount }: { page: number; totalPages: number; totalCount: number }) {
   if (totalCount === 0) {
     return null;
@@ -159,10 +175,13 @@ export default async function AdminUsedEquipmentItemsPage({
               Керуйте технікою, яка буде опублікована на публічному майданчику після наповнення фото й перевірки даних.
             </p>
           </div>
-          <Link href="/admin/used-equipment/items/new" className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-accent px-5 text-sm font-bold text-foreground transition hover:bg-accent-hover">
-            <FaPlus aria-hidden="true" className="size-3" />
-            Додати техніку
-          </Link>
+          <div className="grid gap-3 sm:justify-items-end">
+            <ModuleNav />
+            <Link href="/admin/used-equipment/items/new" className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-accent px-5 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+              <FaPlus aria-hidden="true" className="size-3" />
+              Додати техніку
+            </Link>
+          </div>
         </div>
       </section>
 

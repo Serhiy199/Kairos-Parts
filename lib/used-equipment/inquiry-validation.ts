@@ -1,10 +1,12 @@
 import { normalizePhoneDigits } from '@/lib/phone/normalize';
+import type { UsedEquipmentInquiryStatus } from '@prisma/client';
 
 export const USED_EQUIPMENT_INQUIRY_SOURCES = ['CATALOG_CARD', 'DETAIL_PAGE'] as const;
 
 export type UsedEquipmentInquirySource = (typeof USED_EQUIPMENT_INQUIRY_SOURCES)[number];
 
 export type UsedEquipmentInquiryField = 'name' | 'phone' | 'usedEquipmentId' | 'source';
+export type UsedEquipmentInquiryUpdateField = 'inquiryId' | 'status' | 'assignedManagerId' | 'internalComment';
 
 export type UsedEquipmentInquiryValues = {
   usedEquipmentId: string;
@@ -26,6 +28,30 @@ export type ValidUsedEquipmentInquiryInput = {
 export type UsedEquipmentInquiryValidationResult =
   | { ok: true; data: ValidUsedEquipmentInquiryInput }
   | { ok: false; values: UsedEquipmentInquiryValues; fieldErrors: Partial<Record<UsedEquipmentInquiryField, string>> };
+
+export type UsedEquipmentInquiryUpdateValues = {
+  inquiryId: string;
+  status: string;
+  assignedManagerId: string;
+  internalComment: string;
+};
+
+export type ValidUsedEquipmentInquiryUpdateInput = {
+  inquiryId: string;
+  status: UsedEquipmentInquiryStatus;
+  assignedManagerId: string | null;
+  internalComment: string | null;
+};
+
+export type UsedEquipmentInquiryUpdateValidationResult =
+  | { ok: true; data: ValidUsedEquipmentInquiryUpdateInput }
+  | {
+      ok: false;
+      values: UsedEquipmentInquiryUpdateValues;
+      fieldErrors: Partial<Record<UsedEquipmentInquiryUpdateField, string>>;
+    };
+
+export const USED_EQUIPMENT_INQUIRY_UPDATE_STATUSES = ['NEW', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const satisfies readonly UsedEquipmentInquiryStatus[];
 
 function readString(formData: FormData, key: string, maxLength = 500) {
   const value = formData.get(key);
@@ -82,6 +108,46 @@ export function parseUsedEquipmentInquiryFormData(formData: FormData): UsedEquip
       phone: values.phone,
       normalizedPhone,
       website: values.website
+    }
+  };
+}
+
+export function isUsedEquipmentInquiryStatus(value: string): value is UsedEquipmentInquiryStatus {
+  return USED_EQUIPMENT_INQUIRY_UPDATE_STATUSES.includes(value as UsedEquipmentInquiryStatus);
+}
+
+export function parseUsedEquipmentInquiryUpdateFormData(formData: FormData): UsedEquipmentInquiryUpdateValidationResult {
+  const values: UsedEquipmentInquiryUpdateValues = {
+    inquiryId: readString(formData, 'inquiryId', 120),
+    status: readString(formData, 'status', 40),
+    assignedManagerId: readString(formData, 'assignedManagerId', 120),
+    internalComment: readString(formData, 'internalComment', 10000)
+  };
+  const fieldErrors: Partial<Record<UsedEquipmentInquiryUpdateField, string>> = {};
+
+  if (!values.inquiryId) {
+    fieldErrors.inquiryId = 'Не вдалося визначити заявку на перегляд.';
+  }
+
+  if (!isUsedEquipmentInquiryStatus(values.status)) {
+    fieldErrors.status = 'Оберіть коректний статус.';
+  }
+
+  if (values.internalComment.length > 5000) {
+    fieldErrors.internalComment = 'Коментар має бути не довшим за 5000 символів.';
+  }
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return { ok: false, values, fieldErrors };
+  }
+
+  return {
+    ok: true,
+    data: {
+      inquiryId: values.inquiryId,
+      status: values.status as UsedEquipmentInquiryStatus,
+      assignedManagerId: values.assignedManagerId || null,
+      internalComment: values.internalComment || null
     }
   };
 }

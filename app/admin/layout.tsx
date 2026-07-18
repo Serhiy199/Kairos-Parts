@@ -5,6 +5,7 @@ import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import { getNewUsedEquipmentInquiryCount } from '@/lib/used-equipment/queries';
 
 const ADMIN_INVOICE_PRINT_ROUTE = /^\/admin\/invoices\/[^/]+\/print$/;
 
@@ -48,16 +49,23 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     return <>{children}</>;
   }
 
-  const [newRequestsCount, newContactMessagesCount] = hasDatabaseUrl()
+  const [newRequestsCount, newContactMessagesCount, newUsedEquipmentInquiryCount] = hasDatabaseUrl()
     ? await Promise.all([
         prisma.request.count({
           where: {
             status: 'NEW'
           }
         }),
-        getNewContactMessagesCount()
+        getNewContactMessagesCount(),
+        getNewUsedEquipmentInquiryCount().catch((error) => {
+          console.error('Used equipment inquiries navigation count failed.', {
+            errorType: error instanceof Error ? error.name : 'UnknownError'
+          });
+
+          return 0;
+        })
       ])
-    : [0, 0];
+    : [0, 0, 0];
 
   const navItems = session.user.role === 'ADMIN'
     ? adminNavItems
@@ -69,6 +77,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
     if (item.href === '/admin/contact-messages') {
       return { ...item, badge: newContactMessagesCount };
+    }
+
+    if (item.href === '/admin/used-equipment/items') {
+      return { ...item, badge: newUsedEquipmentInquiryCount };
     }
 
     return item;

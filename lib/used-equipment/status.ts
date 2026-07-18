@@ -17,6 +17,11 @@ export const USED_EQUIPMENT_INQUIRY_STATUS_LABELS: Record<UsedEquipmentInquirySt
   CANCELLED: 'Скасована'
 };
 
+export const USED_EQUIPMENT_INQUIRY_SOURCE_LABELS: Record<string, string> = {
+  CATALOG_CARD: 'Картка в каталозі',
+  DETAIL_PAGE: 'Сторінка техніки'
+};
+
 export const USED_EQUIPMENT_PUBLIC_STATUS_LABELS: Record<UsedEquipmentPublicStatus, string> = {
   PUBLISHED: 'Доступно'
 };
@@ -31,6 +36,10 @@ export function getUsedEquipmentPublicStatusLabel(status: UsedEquipmentStatus) {
 
 export function getUsedEquipmentInquiryStatusLabel(status: UsedEquipmentInquiryStatus) {
   return USED_EQUIPMENT_INQUIRY_STATUS_LABELS[status];
+}
+
+export function getUsedEquipmentInquirySourceLabel(source?: string | null) {
+  return source ? USED_EQUIPMENT_INQUIRY_SOURCE_LABELS[source] ?? 'Не визначено' : 'Не визначено';
 }
 
 export function isUsedEquipmentPublic(status: UsedEquipmentStatus) {
