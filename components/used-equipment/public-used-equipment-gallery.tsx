@@ -26,7 +26,7 @@ export function PublicUsedEquipmentGallery({ title, images }: PublicUsedEquipmen
 
   if (!activeImage) {
     return (
-      <div className="flex aspect-[4/3] min-h-[280px] w-full items-center justify-center rounded-lg border border-dashed border-public-border bg-[linear-gradient(135deg,#f7f4ed,#ece7dd)] text-accent shadow-card">
+      <div className="flex aspect-[4/3] min-h-[280px] w-full items-center justify-center rounded-lg border border-dashed border-accent/30 bg-[linear-gradient(145deg,#151d29,#0b111a)] text-accent shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
         <FaTractor aria-hidden="true" className="size-16 opacity-85" />
         <span className="sr-only">Фото тимчасово відсутнє</span>
       </div>
@@ -35,7 +35,7 @@ export function PublicUsedEquipmentGallery({ title, images }: PublicUsedEquipmen
 
   return (
     <section aria-label="Галерея фото техніки" className="grid gap-3">
-      <div className="relative aspect-[4/3] overflow-hidden rounded-lg border border-public-border bg-surface-muted shadow-card">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-lg border border-accent/25 bg-public-card shadow-[0_20px_50px_rgba(0,0,0,0.32)]">
         <Image
           src={activeImage.url}
           alt={activeImage.alt ?? `${title} - БВ техніка`}
@@ -59,7 +59,7 @@ export function PublicUsedEquipmentGallery({ title, images }: PublicUsedEquipmen
                 aria-label={`Показати фото ${index + 1} для ${title}`}
                 aria-pressed={isActive}
                 onClick={() => setActiveImageId(image.id)}
-                className={`relative aspect-[4/3] w-24 shrink-0 overflow-hidden rounded-md border bg-surface-muted transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-28 ${
+                className={`relative aspect-[4/3] w-24 shrink-0 overflow-hidden rounded-md border bg-public-elevated transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-28 ${
                   isActive ? 'border-accent ring-2 ring-accent/30' : 'border-public-border hover:border-accent/70'
                 }`}
               >

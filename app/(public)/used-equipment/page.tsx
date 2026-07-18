@@ -5,7 +5,7 @@ import { FaTractor } from 'react-icons/fa';
 import { PublicUsedEquipmentCard } from '@/components/used-equipment/public-used-equipment-card';
 import { PublicUsedEquipmentPagination } from '@/components/used-equipment/public-used-equipment-pagination';
 import { hasDatabaseUrl } from '@/lib/env/database';
-import { getPublicUsedEquipmentPage, parseUsedEquipmentPage, PUBLIC_USED_EQUIPMENT_PAGE_SIZE } from '@/lib/used-equipment/queries';
+import { getPublicUsedEquipmentPage, parseUsedEquipmentPage } from '@/lib/used-equipment/queries';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,19 +87,12 @@ export default async function UsedEquipmentPage({
 
       <section className="py-12 sm:py-14">
         <div className="kp-container">
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm font-bold uppercase text-accent">Каталог</p>
-              <h2 className="mt-2 text-3xl font-bold text-public-primary">БВ техніка</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-public-muted">
-                У каталозі показуються тільки опубліковані позиції, доступні для перегляду клієнтами.
-              </p>
-            </div>
-            {data.totalCount > 0 ? (
-              <p className="rounded-full border border-public-border bg-card px-4 py-2 text-sm font-semibold text-public-muted">
-                {data.totalCount} позицій · по {PUBLIC_USED_EQUIPMENT_PAGE_SIZE} на сторінці
-              </p>
-            ) : null}
+          <div className="mb-8 max-w-3xl">
+            <p className="text-sm font-bold uppercase text-accent">Каталог</p>
+            <h2 className="mt-2 text-3xl font-bold text-public-primary">БВ техніка</h2>
+            <p className="mt-2 text-sm leading-6 text-public-muted">
+              У каталозі показуються тільки опубліковані позиції, доступні для перегляду клієнтами.
+            </p>
           </div>
 
           {data.items.length === 0 ? (

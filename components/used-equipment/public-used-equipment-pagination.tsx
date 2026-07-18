@@ -23,7 +23,7 @@ export function PublicUsedEquipmentPagination({
   return (
     <nav
       aria-label="Пагінація каталогу БВ техніки"
-      className="mt-8 flex flex-col gap-3 rounded-lg border border-public-border bg-card p-3 text-sm shadow-card sm:flex-row sm:items-center sm:justify-between"
+      className="mt-8 flex flex-col gap-3 rounded-lg border border-accent/20 bg-public-card p-3 text-sm shadow-[0_14px_36px_rgba(0,0,0,0.24)] sm:flex-row sm:items-center sm:justify-between"
     >
       <p className="text-center font-semibold text-public-muted sm:text-left">
         Сторінка {page} із {totalPages}
