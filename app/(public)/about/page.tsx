@@ -1,70 +1,70 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import {
+  TbAlertTriangle,
+  TbArrowsDiff,
   TbBuildingFactory2,
-  TbBuildingWarehouse,
   TbDatabaseCog,
   TbDeviceDesktopAnalytics,
+  TbFileSpreadsheet,
   TbGauge,
   TbHeartHandshake,
   TbHistory,
-  TbLayoutDashboard,
-  TbSearch,
+  TbReplace,
   TbSettingsSearch,
   TbShieldCheck,
   TbTargetArrow,
   TbTools,
   TbTractor,
   TbTruck,
-  TbTruckDelivery,
-  TbUserCheck,
-  TbWheat
+  TbWheat,
+  TbZoomQuestion
 } from 'react-icons/tb';
 
 import { ActionIcon } from '@/components/ui/action-icons';
 
 const telegramBotUrl = 'https://t.me/kairos_parts_bot';
 
-const platformItems = [
+const contactScenarios = [
   {
-    title: 'Професійний підбір запчастин',
-    text: 'Перевіряємо каталожні номери, сумісність і технічні параметри.',
-    icon: TbSettingsSearch
+    title: 'Техніка простоює',
+    text: 'Потрібна деталь для термінового ремонту, а кожен день простою впливає на роботу підприємства.',
+    icon: TbAlertTriangle
   },
   {
-    title: 'Пошук оригіналів і аналогів',
-    text: 'Порівнюємо доступні оригінальні деталі та перевірені альтернативи.',
-    icon: TbSearch
+    title: 'Оригінал недоступний',
+    text: 'Шукаємо сумісний і перевірений аналог, коли оригінальна запчастина відсутня або має неприйнятний строк постачання.',
+    icon: TbReplace
   },
   {
-    title: 'Робота з кількома постачальниками',
-    text: 'Одночасно опрацьовуємо пропозиції від різних партнерів.',
-    icon: TbBuildingWarehouse
+    title: 'Невідомий точний номер деталі',
+    text: 'Допомагаємо визначити потрібну позицію за моделлю техніки, серійним номером, фото, шильдиком або описом вузла.',
+    icon: TbZoomQuestion
   },
   {
-    title: 'Консолідована доставка',
-    text: 'Об’єднуємо позиції в одне погоджене відправлення.',
-    icon: TbTruckDelivery
+    title: 'Потрібно зібрати великий список',
+    text: 'Опрацьовуємо Excel, PDF, DOC або перелік позицій і формуємо одне структуроване рішення для закупівлі.',
+    icon: TbFileSpreadsheet
   },
   {
-    title: 'Персональний супровід менеджера',
-    text: 'Один менеджер веде заявку від уточнення до передачі замовлення.',
-    icon: TbUserCheck
+    title: 'Постачальники пропонують різні варіанти',
+    text: 'Перевіряємо характеристики, сумісність і відмінності між пропозиціями, щоб обрати обґрунтоване рішення.',
+    icon: TbArrowsDiff
   },
   {
-    title: 'Особистий кабінет компанії',
-    text: 'Заявки, документи та техніка зібрані в одному робочому просторі.',
-    icon: TbLayoutDashboard
+    title: 'Потрібна закупівля для кількох машин',
+    text: 'Допомагаємо сформувати комплексний запит для різних одиниць техніки та не змішати запчастини між машинами.',
+    icon: TbTractor
   },
   {
-    title: 'Цифрова історія парку техніки',
-    text: 'Замовлення, запчастини та документи зберігаються по кожній машині.',
-    icon: TbDatabaseCog
-  },
-  {
-    title: 'Повторне замовлення за історією',
-    text: 'Попередні запчастини та каталожні номери доступні для швидкого повторного запиту.',
+    title: 'Потрібно повторити старе замовлення',
+    text: 'Знаходимо попередньо підібрані позиції, каталожні номери й документи та використовуємо їх для нового запиту.',
     icon: TbHistory
+  },
+  {
+    title: 'Потрібно впорядкувати історію техніки',
+    text: 'Зберігаємо заявки, запчастини, рахунки та документи в історії конкретних машин для подальшого обслуговування.',
+    icon: TbDatabaseCog
   }
 ];
 
@@ -259,19 +259,19 @@ export default function AboutPage() {
       <section className="bg-public-page py-16 text-white sm:py-20">
         <div className="kp-container">
           <div className="max-w-[760px]">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">Платформа обʼєднує</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">Коли звертатися</p>
             <h2 className="mt-3 max-w-[740px] text-3xl font-bold leading-tight text-white sm:text-4xl">
-              Один процес замість десятків ручних дій
+              Ситуації, у яких важливо швидко знайти правильне рішення
             </h2>
             <p className="mt-4 max-w-[740px] text-base font-medium leading-7 text-white/72 sm:text-lg sm:leading-8">
-              Kairos Parts об’єднує підбір, роботу з постачальниками, супровід, доставку та цифрову історію
-              техніки в одному процесі.
+              Kairos Parts допомагає, коли техніка не може чекати, даних для підбору недостатньо або закупівля
+              потребує координації кількох позицій і постачальників.
             </p>
             <div className="mt-5 h-px w-20 bg-accent" />
           </div>
 
           <ul className="relative mt-10 grid grid-cols-1 overflow-hidden rounded-2xl border border-public-border bg-public-card md:grid-cols-2 xl:auto-rows-fr xl:grid-cols-4">
-            {platformItems.map((item, index) => {
+            {contactScenarios.map((item, index) => {
               const Icon = item.icon;
               const dividerClasses = `${index < 7 ? 'border-b border-public-border' : ''} ${
                 index % 2 === 0 ? 'md:border-r md:border-public-border' : ''
