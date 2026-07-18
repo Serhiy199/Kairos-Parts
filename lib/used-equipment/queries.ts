@@ -135,3 +135,47 @@ export async function getPublicUsedEquipmentPage({
 }
 
 export type PublicUsedEquipmentListItem = Awaited<ReturnType<typeof getPublicUsedEquipmentPage>>['items'][number];
+
+export async function getPublicUsedEquipmentBySlug(slug: string) {
+  const normalizedSlug = slug.trim();
+
+  if (!normalizedSlug) {
+    return null;
+  }
+
+  return prisma.usedEquipment.findFirst({
+    where: {
+      slug: normalizedSlug,
+      status: {
+        in: [...USED_EQUIPMENT_PUBLIC_STATUSES]
+      }
+    },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      equipmentType: true,
+      manufacturerName: true,
+      year: true,
+      description: true,
+      status: true,
+      publishedAt: true,
+      soldAt: true,
+      createdAt: true,
+      images: {
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+        select: {
+          id: true,
+          url: true,
+          alt: true,
+          width: true,
+          height: true,
+          isPrimary: true,
+          sortOrder: true
+        }
+      }
+    }
+  });
+}
+
+export type PublicUsedEquipmentDetail = NonNullable<Awaited<ReturnType<typeof getPublicUsedEquipmentBySlug>>>;
