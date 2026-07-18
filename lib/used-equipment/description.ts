@@ -62,6 +62,20 @@ export function getUsedEquipmentDescriptionVisibleText(html: string) {
     .trim();
 }
 
+export function getUsedEquipmentDescriptionExcerpt(html: string | null | undefined, maxLength = 180) {
+  const text = getUsedEquipmentDescriptionVisibleText(html ?? '');
+
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  const trimmed = text.slice(0, maxLength + 1).trim();
+  const lastSpaceIndex = trimmed.lastIndexOf(' ');
+  const safeText = lastSpaceIndex > Math.floor(maxLength * 0.65) ? trimmed.slice(0, lastSpaceIndex) : trimmed.slice(0, maxLength);
+
+  return `${safeText.trim()}…`;
+}
+
 export function isUsedEquipmentDescriptionEmpty(html: string) {
   return getUsedEquipmentDescriptionVisibleText(html).length === 0;
 }

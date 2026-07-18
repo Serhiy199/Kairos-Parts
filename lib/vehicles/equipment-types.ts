@@ -66,3 +66,13 @@ export const EQUIPMENT_TYPE_GROUPS: EquipmentTypeGroup[] = [
 export const EQUIPMENT_TYPE_OPTIONS = Array.from(
   new Set(EQUIPMENT_TYPE_GROUPS.flatMap((group) => group.options))
 ).sort((left, right) => left.localeCompare(right, 'uk'));
+
+export function getEquipmentTypeLabel(value: string | null | undefined) {
+  const normalizedValue = value?.trim();
+
+  if (!normalizedValue) {
+    return 'Тип техніки уточнюється';
+  }
+
+  return EQUIPMENT_TYPE_OPTIONS.includes(normalizedValue) ? normalizedValue : normalizedValue;
+}

@@ -1,8 +1,10 @@
 import 'server-only';
 
 import { prisma } from '@/lib/prisma';
+import { USED_EQUIPMENT_PUBLIC_STATUSES } from '@/lib/used-equipment/status';
 
 export const ADMIN_USED_EQUIPMENT_PAGE_SIZE = 25;
+export const PUBLIC_USED_EQUIPMENT_PAGE_SIZE = 12;
 
 export function parseUsedEquipmentPage(value?: string | string[]) {
   const rawValue = Array.isArray(value) ? value[0] : value;
@@ -67,3 +69,69 @@ export async function getAdminUsedEquipmentPage({
     totalPages
   };
 }
+
+export async function getPublicUsedEquipmentPage({
+  page,
+  pageSize = PUBLIC_USED_EQUIPMENT_PAGE_SIZE
+}: {
+  page: number;
+  pageSize?: number;
+}) {
+  const totalCount = await prisma.usedEquipment.count({
+    where: {
+      status: {
+        in: [...USED_EQUIPMENT_PUBLIC_STATUSES]
+      }
+    }
+  });
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const normalizedPage = Math.min(Math.max(page, 1), totalPages);
+
+  const items =
+    totalCount === 0
+      ? []
+      : await prisma.usedEquipment.findMany({
+          where: {
+            status: {
+              in: [...USED_EQUIPMENT_PUBLIC_STATUSES]
+            }
+          },
+          orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+          skip: (normalizedPage - 1) * pageSize,
+          take: pageSize,
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            equipmentType: true,
+            manufacturerName: true,
+            year: true,
+            description: true,
+            status: true,
+            publishedAt: true,
+            soldAt: true,
+            createdAt: true,
+            images: {
+              orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
+              take: 1,
+              select: {
+                url: true,
+                alt: true,
+                width: true,
+                height: true
+              }
+            }
+          }
+        });
+
+  return {
+    items,
+    page: normalizedPage,
+    pageSize,
+    requestedPage: page,
+    totalCount,
+    totalPages
+  };
+}
+
+export type PublicUsedEquipmentListItem = Awaited<ReturnType<typeof getPublicUsedEquipmentPage>>['items'][number];
