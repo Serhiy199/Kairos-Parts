@@ -1,12 +1,50 @@
 import Link from 'next/link';
 import { FaArrowLeft, FaTractor } from 'react-icons/fa';
 
+import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
+import { UsedEquipmentForm } from '@/components/used-equipment/used-equipment-form';
 import { requireCrmSession } from '@/lib/admin/access';
+import { hasDatabaseUrl } from '@/lib/env/database';
+import { prisma } from '@/lib/prisma';
+import { createUsedEquipment } from '@/app/admin/used-equipment/items/actions';
+import type { UsedEquipmentFormValues } from '@/lib/used-equipment/validation';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminUsedEquipmentNewPlaceholderPage() {
+const initialValues: UsedEquipmentFormValues = {
+  title: '',
+  equipmentType: '',
+  manufacturerId: '',
+  year: '',
+  description: '',
+  internalComment: '',
+  status: 'DRAFT'
+};
+
+async function getManufacturerOptions() {
+  const manufacturers = await prisma.manufacturer.findMany({
+    orderBy: { name: 'asc' },
+    select: {
+      id: true,
+      name: true
+    }
+  });
+
+  return manufacturers.map((manufacturer) => ({
+    value: manufacturer.id,
+    label: manufacturer.name,
+    name: manufacturer.name
+  }));
+}
+
+export default async function AdminUsedEquipmentNewPage() {
   await requireCrmSession();
+
+  if (!hasDatabaseUrl()) {
+    return <AdminDbBlocker />;
+  }
+
+  const manufacturers = await getManufacturerOptions();
 
   return (
     <div className="grid gap-6">
@@ -21,13 +59,15 @@ export default async function AdminUsedEquipmentNewPlaceholderPage() {
           </div>
           <div>
             <p className="text-sm font-bold uppercase text-accent">Майданчик БВ техніки</p>
-            <h2 className="mt-2 text-2xl font-bold text-foreground">Додавання БВ техніки</h2>
+            <h2 className="mt-2 text-2xl font-bold text-foreground">Додати БВ техніку</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-              Додавання техніки буде реалізовано на наступному етапі. Поточний етап готує CRM-навігацію та список записів.
+              Заповніть базові дані. Запис буде створено як чернетку, а публікація стане доступною після додавання фото.
             </p>
           </div>
         </div>
       </section>
+
+      <UsedEquipmentForm action={createUsedEquipment} mode="create" manufacturers={manufacturers} initialValues={initialValues} />
     </div>
   );
 }

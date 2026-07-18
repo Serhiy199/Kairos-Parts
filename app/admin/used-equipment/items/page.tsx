@@ -2,14 +2,14 @@ import type { UsedEquipmentStatus } from '@prisma/client';
 import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { FaPlus, FaTractor } from 'react-icons/fa';
+import { FaPen, FaPlus, FaTractor } from 'react-icons/fa';
 import { TbPhotoOff } from 'react-icons/tb';
 
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
-import { getUsedEquipmentStatusLabel } from '@/lib/used-equipment/status';
 import { getAdminUsedEquipmentPage, parseUsedEquipmentPage } from '@/lib/used-equipment/queries';
+import { getUsedEquipmentStatusLabel } from '@/lib/used-equipment/status';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,6 +68,18 @@ function Thumbnail({ item }: { item: UsedEquipmentListItem }) {
   );
 }
 
+function EditLink({ itemId }: { itemId: string }) {
+  return (
+    <Link
+      href={`/admin/used-equipment/items/${itemId}/edit`}
+      className="inline-flex items-center justify-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-bold text-foreground transition hover:border-accent hover:text-accent"
+    >
+      <FaPen aria-hidden="true" className="size-3" />
+      Редагувати
+    </Link>
+  );
+}
+
 function Pagination({ page, totalPages, totalCount }: { page: number; totalPages: number; totalCount: number }) {
   if (totalCount === 0) {
     return null;
@@ -109,7 +121,7 @@ function EmptyState() {
       </div>
       <h2 className="mt-4 text-xl font-bold text-foreground">Техніка ще не додана</h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted">
-        Додайте першу одиницю БВ техніки, щоб підготувати її до публікації на майданчику.
+        Додайте першу одиницю БВ техніки, щоб підготувати її до майбутньої публікації на майданчику.
       </p>
       <Link href="/admin/used-equipment/items/new" className="mt-5 inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
         <FaPlus aria-hidden="true" className="size-3" />
@@ -146,7 +158,7 @@ export default async function AdminUsedEquipmentItemsPage({
             <p className="text-sm font-bold uppercase text-accent">Майданчик БВ техніки</p>
             <h2 className="mt-2 text-2xl font-bold text-foreground">БВ техніка</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-              Керуйте технікою, яка буде опублікована на публічному майданчику.
+              Керуйте технікою, яка буде опублікована на публічному майданчику після наповнення фото й перевірки даних.
             </p>
           </div>
           <Link href="/admin/used-equipment/items/new" className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-accent px-5 text-sm font-bold text-foreground transition hover:bg-accent-hover">
@@ -161,7 +173,7 @@ export default async function AdminUsedEquipmentItemsPage({
       ) : (
         <section className="overflow-hidden rounded-lg border border-border bg-card shadow-card">
           <div className="hidden overflow-x-auto lg:block">
-            <table className="w-full min-w-[1040px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface-muted text-muted">
                   <th className="px-4 py-3 font-bold">Техніка</th>
@@ -172,6 +184,7 @@ export default async function AdminUsedEquipmentItemsPage({
                   <th className="px-4 py-3 font-bold">Заявки</th>
                   <th className="px-4 py-3 font-bold">Створено</th>
                   <th className="px-4 py-3 font-bold">Оновлено</th>
+                  <th className="px-4 py-3 font-bold">Дії</th>
                 </tr>
               </thead>
               <tbody>
@@ -189,10 +202,15 @@ export default async function AdminUsedEquipmentItemsPage({
                     <td className="px-4 py-3 text-muted">{item.equipmentType}</td>
                     <td className="px-4 py-3 text-muted">{item.manufacturerName}</td>
                     <td className="px-4 py-3 text-muted">{item.year ?? '—'}</td>
-                    <td className="px-4 py-3"><StatusBadge status={item.status} /></td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={item.status} />
+                    </td>
                     <td className="px-4 py-3 font-bold text-foreground">{item._count.inquiries}</td>
                     <td className="px-4 py-3 text-muted">{dateLabel(item.createdAt)}</td>
                     <td className="px-4 py-3 text-muted">{dateLabel(item.updatedAt)}</td>
+                    <td className="px-4 py-3">
+                      <EditLink itemId={item.id} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -206,7 +224,9 @@ export default async function AdminUsedEquipmentItemsPage({
                   <Thumbnail item={item} />
                   <div className="min-w-0">
                     <h3 className="font-bold text-foreground">{item.title}</h3>
-                    <p className="mt-1 text-sm text-muted">{item.equipmentType} · {item.manufacturerName}</p>
+                    <p className="mt-1 text-sm text-muted">
+                      {item.equipmentType} · {item.manufacturerName}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
@@ -220,12 +240,17 @@ export default async function AdminUsedEquipmentItemsPage({
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase text-muted">Статус</p>
-                    <div className="mt-1"><StatusBadge status={item.status} /></div>
+                    <div className="mt-1">
+                      <StatusBadge status={item.status} />
+                    </div>
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase text-muted">Створено</p>
                     <p className="mt-1 font-semibold text-foreground">{dateLabel(item.createdAt)}</p>
                   </div>
+                </div>
+                <div className="mt-4">
+                  <EditLink itemId={item.id} />
                 </div>
               </article>
             ))}
