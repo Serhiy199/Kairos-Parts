@@ -130,8 +130,6 @@ enum AuditAction {
 enum UsedEquipmentStatus {
   DRAFT
   PUBLISHED
-  RESERVED
-  SOLD
   ARCHIVED
 }
 
@@ -779,8 +777,6 @@ model UsedEquipment {
   updatedById      String?
   updatedBy        User?                  @relation("UsedEquipmentUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
   publishedAt      DateTime?
-  reservedAt       DateTime?
-  soldAt           DateTime?
   archivedAt       DateTime?
   images           UsedEquipmentImage[]
   inquiries        UsedEquipmentInquiry[]

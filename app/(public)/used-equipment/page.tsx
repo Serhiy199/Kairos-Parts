@@ -92,7 +92,7 @@ export default async function UsedEquipmentPage({
               <p className="text-sm font-bold uppercase text-accent">Каталог</p>
               <h2 className="mt-2 text-3xl font-bold text-public-primary">БВ техніка</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-public-muted">
-                У каталозі показуються тільки позиції зі статусами “Доступно”, “Зарезервовано” або “Продано”.
+                У каталозі показуються тільки опубліковані позиції, доступні для перегляду клієнтами.
               </p>
             </div>
             {data.totalCount > 0 ? (

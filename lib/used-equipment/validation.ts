@@ -3,7 +3,7 @@ import type { UsedEquipmentStatus } from '@prisma/client';
 import { validateAndSanitizeUsedEquipmentDescription } from '@/lib/used-equipment/description';
 import { EQUIPMENT_TYPE_OPTIONS } from '@/lib/vehicles/equipment-types';
 
-export const USED_EQUIPMENT_ALLOWED_FORM_STATUSES = ['DRAFT', 'PUBLISHED', 'RESERVED', 'SOLD', 'ARCHIVED'] as const satisfies UsedEquipmentStatus[];
+export const USED_EQUIPMENT_ALLOWED_FORM_STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED'] as const satisfies UsedEquipmentStatus[];
 export const USED_EQUIPMENT_NO_IMAGE_STATUSES = ['DRAFT', 'ARCHIVED'] as const satisfies UsedEquipmentStatus[];
 
 export type UsedEquipmentFormField =

@@ -11,8 +11,6 @@ import { getEquipmentTypeLabel } from '@/lib/vehicles/equipment-types';
 const statusTone: Record<UsedEquipmentStatus, string> = {
   DRAFT: 'border-border bg-surface-muted text-muted',
   PUBLISHED: 'border-success/20 bg-[#E7F6EC] text-success',
-  RESERVED: 'border-warning/25 bg-[#FFF7E0] text-[#8A5B24]',
-  SOLD: 'border-border bg-surface-muted text-muted',
   ARCHIVED: 'border-border bg-surface-muted text-muted'
 };
 

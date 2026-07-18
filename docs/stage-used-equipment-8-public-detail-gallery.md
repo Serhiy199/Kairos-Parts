@@ -34,12 +34,10 @@ The page uses the existing public layout with header and footer.
 
 ## Public Status Guard
 
-Only these statuses are visible:
+Stage 8.1 simplified the used-equipment lifecycle. Only this status is visible:
 
 ```text
 PUBLISHED
-RESERVED
-SOLD
 ```
 
 These statuses return `notFound()`:
@@ -77,7 +75,6 @@ year
 description
 status
 publishedAt
-soldAt
 createdAt
 images: id, url, alt, width, height, isPrimary, sortOrder
 ```
@@ -277,8 +274,6 @@ No redirect to catalog is used for hidden content.
 Recommended scenarios:
 
 - `PUBLISHED`: detail opens, gallery works, rich text renders.
-- `RESERVED`: detail opens and badge says `Зарезервовано`.
-- `SOLD`: detail opens and badge says `Продано`.
 - `DRAFT`/`ARCHIVED`: direct URL returns 404.
 - Gallery: one image, multiple images, primary image not first by sort order, no images.
 - Rich text: headings, lists, links, blockquote, long URLs.

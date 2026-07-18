@@ -1,7 +1,6 @@
 import 'server-only';
 
 import { prisma } from '@/lib/prisma';
-import { USED_EQUIPMENT_PUBLIC_STATUSES } from '@/lib/used-equipment/status';
 
 export const ADMIN_USED_EQUIPMENT_PAGE_SIZE = 25;
 export const PUBLIC_USED_EQUIPMENT_PAGE_SIZE = 12;
@@ -38,7 +37,6 @@ export async function getAdminUsedEquipmentPage({
       status: true,
       publishedAt: true,
       archivedAt: true,
-      soldAt: true,
       createdAt: true,
       updatedAt: true,
       images: {
@@ -79,9 +77,7 @@ export async function getPublicUsedEquipmentPage({
 }) {
   const totalCount = await prisma.usedEquipment.count({
     where: {
-      status: {
-        in: [...USED_EQUIPMENT_PUBLIC_STATUSES]
-      }
+      status: 'PUBLISHED'
     }
   });
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -92,9 +88,7 @@ export async function getPublicUsedEquipmentPage({
       ? []
       : await prisma.usedEquipment.findMany({
           where: {
-            status: {
-              in: [...USED_EQUIPMENT_PUBLIC_STATUSES]
-            }
+            status: 'PUBLISHED'
           },
           orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
           skip: (normalizedPage - 1) * pageSize,
@@ -109,7 +103,6 @@ export async function getPublicUsedEquipmentPage({
             description: true,
             status: true,
             publishedAt: true,
-            soldAt: true,
             createdAt: true,
             images: {
               orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
@@ -146,9 +139,7 @@ export async function getPublicUsedEquipmentBySlug(slug: string) {
   return prisma.usedEquipment.findFirst({
     where: {
       slug: normalizedSlug,
-      status: {
-        in: [...USED_EQUIPMENT_PUBLIC_STATUSES]
-      }
+      status: 'PUBLISHED'
     },
     select: {
       id: true,
@@ -160,7 +151,6 @@ export async function getPublicUsedEquipmentBySlug(slug: string) {
       description: true,
       status: true,
       publishedAt: true,
-      soldAt: true,
       createdAt: true,
       images: {
         orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],

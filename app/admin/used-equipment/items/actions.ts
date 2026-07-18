@@ -184,8 +184,6 @@ export async function updateUsedEquipment(equipmentId: string, _state: UsedEquip
       id: true,
       status: true,
       publishedAt: true,
-      reservedAt: true,
-      soldAt: true,
       archivedAt: true,
       images: {
         orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
@@ -225,7 +223,7 @@ export async function updateUsedEquipment(equipmentId: string, _state: UsedEquip
   if (!canUseUsedEquipmentStatusWithImageCount(validation.data.status, finalImageCount)) {
     return {
       status: 'error',
-      message: 'Для публікації, резерву або продажу потрібно додати фото техніки.',
+      message: 'Для публікації потрібно додати фото техніки.',
       values,
       fieldErrors: {
         status: 'Без фото доступні тільки статуси “Чернетка” або “Архівовано”.',
@@ -280,8 +278,6 @@ export async function updateUsedEquipment(equipmentId: string, _state: UsedEquip
             nextStatus: validation.data.status,
             previous: {
               publishedAt: existingItem.publishedAt,
-              reservedAt: existingItem.reservedAt,
-              soldAt: existingItem.soldAt,
               archivedAt: existingItem.archivedAt
             }
           })

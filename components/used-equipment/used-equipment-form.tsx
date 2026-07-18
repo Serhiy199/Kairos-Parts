@@ -175,7 +175,7 @@ export function UsedEquipmentForm({
             <FieldError error={state.fieldErrors?.status} />
             {!hasImages ? (
               <p className="text-xs font-medium text-muted">
-                Публікація, резерв і продаж будуть доступні після додавання фото техніки.
+                Публікація буде доступна після додавання фото техніки.
               </p>
             ) : null}
           </label>

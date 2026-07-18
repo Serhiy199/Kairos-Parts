@@ -1,14 +1,12 @@
 import type { UsedEquipmentInquiryStatus, UsedEquipmentStatus } from '@prisma/client';
 
-export const USED_EQUIPMENT_PUBLIC_STATUSES = ['PUBLISHED', 'RESERVED', 'SOLD'] as const satisfies readonly UsedEquipmentStatus[];
+export const USED_EQUIPMENT_PUBLIC_STATUSES = ['PUBLISHED'] as const satisfies readonly UsedEquipmentStatus[];
 
 export type UsedEquipmentPublicStatus = (typeof USED_EQUIPMENT_PUBLIC_STATUSES)[number];
 
 export const USED_EQUIPMENT_STATUS_LABELS: Record<UsedEquipmentStatus, string> = {
   DRAFT: 'Чернетка',
   PUBLISHED: 'Опубліковано',
-  RESERVED: 'Зарезервовано',
-  SOLD: 'Продано',
   ARCHIVED: 'Архівовано'
 };
 
@@ -20,9 +18,7 @@ export const USED_EQUIPMENT_INQUIRY_STATUS_LABELS: Record<UsedEquipmentInquirySt
 };
 
 export const USED_EQUIPMENT_PUBLIC_STATUS_LABELS: Record<UsedEquipmentPublicStatus, string> = {
-  PUBLISHED: 'Доступно',
-  RESERVED: 'Зарезервовано',
-  SOLD: 'Продано'
+  PUBLISHED: 'Доступно'
 };
 
 export function getUsedEquipmentStatusLabel(status: UsedEquipmentStatus) {
@@ -38,7 +34,7 @@ export function getUsedEquipmentInquiryStatusLabel(status: UsedEquipmentInquiryS
 }
 
 export function isUsedEquipmentPublic(status: UsedEquipmentStatus) {
-  return USED_EQUIPMENT_PUBLIC_STATUSES.includes(status as UsedEquipmentPublicStatus);
+  return status === 'PUBLISHED';
 }
 
 export function canSubmitUsedEquipmentInquiry(status: UsedEquipmentStatus) {
