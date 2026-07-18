@@ -1,10 +1,9 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import { revalidateUsedEquipmentInquiryAdminPaths } from '@/lib/used-equipment/revalidation';
 import {
   parseUsedEquipmentInquiryUpdateFormData,
   type UsedEquipmentInquiryUpdateField,
@@ -111,9 +110,7 @@ export async function updateUsedEquipmentInquiry(
       }
     });
 
-    revalidatePath('/admin');
-    revalidatePath('/admin/used-equipment/inquiries');
-    revalidatePath(`/admin/used-equipment/inquiries/${inquiry.id}`);
+    revalidateUsedEquipmentInquiryAdminPaths(inquiry.id);
 
     return {
       status: 'success',

@@ -41,6 +41,12 @@ export function getPhoneDisplayVariants(phone: string | null | undefined) {
   return [...variants];
 }
 
+export function formatPhoneForDisplay(phone: string | null | undefined) {
+  const normalized = normalizePhoneDigits(phone);
+
+  return normalized ? `+${normalized}` : '';
+}
+
 export function phoneNumbersMatch(left: string | null | undefined, right: string | null | undefined) {
   const normalizedLeft = normalizePhoneDigits(left);
   const normalizedRight = normalizePhoneDigits(right);

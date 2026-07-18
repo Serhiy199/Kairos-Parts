@@ -1,6 +1,8 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
+import { notifyManagerAboutUsedEquipmentInquiry } from '@/lib/telegram/manager-notifications';
+import { revalidateUsedEquipmentInquiryAdminPaths } from '@/lib/used-equipment/revalidation';
 import { canSubmitUsedEquipmentInquiry } from '@/lib/used-equipment/status';
 import {
   parseUsedEquipmentInquiryFormData,
@@ -98,7 +100,7 @@ export async function createUsedEquipmentInquiry(
       };
     }
 
-    await prisma.usedEquipmentInquiry.create({
+    const inquiry = await prisma.usedEquipmentInquiry.create({
       data: {
         usedEquipmentId: equipment.id,
         equipmentTitle: equipment.title,
@@ -110,7 +112,32 @@ export async function createUsedEquipmentInquiry(
         internalComment: null,
         processedAt: null,
         source: validation.data.source
+      },
+      select: {
+        id: true,
+        equipmentTitle: true,
+        name: true,
+        phone: true,
+        source: true
       }
+    });
+
+    try {
+      revalidateUsedEquipmentInquiryAdminPaths(inquiry.id);
+    } catch (error) {
+      console.warn('Used equipment inquiry admin revalidation failed', {
+        event: 'usedEquipmentInquiryRevalidationFailed',
+        inquiryId: inquiry.id,
+        error: error instanceof Error ? error.message.slice(0, 500) : 'Unknown error'
+      });
+    }
+
+    await notifyManagerAboutUsedEquipmentInquiry({
+      inquiryId: inquiry.id,
+      equipmentTitle: inquiry.equipmentTitle,
+      customerName: inquiry.name,
+      phone: inquiry.phone,
+      source: validation.data.source
     });
 
     return {
