@@ -12,7 +12,8 @@ export type UsedEquipmentFormField =
   | 'year'
   | 'description'
   | 'internalComment'
-  | 'status';
+  | 'status'
+  | 'images';
 
 export type UsedEquipmentFormValues = {
   title: string;

@@ -59,6 +59,18 @@ export default async function AdminUsedEquipmentEditPage({ params }: PageProps) 
         status: true,
         createdAt: true,
         updatedAt: true,
+        images: {
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+          select: {
+            id: true,
+            url: true,
+            alt: true,
+            width: true,
+            height: true,
+            isPrimary: true,
+            sortOrder: true
+          }
+        },
         _count: {
           select: {
             images: true,
@@ -117,7 +129,14 @@ export default async function AdminUsedEquipmentEditPage({ params }: PageProps) 
         </div>
       </section>
 
-      <UsedEquipmentForm action={action} mode="edit" manufacturers={manufacturers} initialValues={initialValues} hasImages={item._count.images > 0} />
+      <UsedEquipmentForm
+        action={action}
+        mode="edit"
+        manufacturers={manufacturers}
+        initialValues={initialValues}
+        hasImages={item.images.length > 0}
+        existingImages={item.images}
+      />
     </div>
   );
 }

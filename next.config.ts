@@ -2,6 +2,14 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com'
+      }
+    ]
+  },
   outputFileTracingIncludes: {
     '/*': [
       './node_modules/prisma/build/public/assets/inter-all-400-normal.4c1f8a0d.woff',
@@ -10,7 +18,7 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: '20mb'
+      bodySizeLimit: '160mb'
     }
   }
 };

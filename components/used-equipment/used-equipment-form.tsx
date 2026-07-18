@@ -5,6 +5,7 @@ import { useActionState, useEffect, useMemo, useState } from 'react';
 import { FaSave } from 'react-icons/fa';
 
 import { SearchableCombobox, type SearchableComboboxOption } from '@/components/ui/searchable-combobox';
+import { UsedEquipmentImageManager, type UsedEquipmentExistingImage } from '@/components/used-equipment/used-equipment-image-manager';
 import { USED_EQUIPMENT_STATUS_LABELS } from '@/lib/used-equipment/status';
 import {
   EMPTY_USED_EQUIPMENT_FORM_STATE,
@@ -26,6 +27,7 @@ type UsedEquipmentFormProps = {
   manufacturers: ManufacturerOption[];
   initialValues: UsedEquipmentFormValues;
   hasImages?: boolean;
+  existingImages?: UsedEquipmentExistingImage[];
 };
 
 function fieldClass(error?: string) {
@@ -53,7 +55,8 @@ export function UsedEquipmentForm({
   mode,
   manufacturers,
   initialValues,
-  hasImages = false
+  hasImages = false,
+  existingImages = []
 }: UsedEquipmentFormProps) {
   const [state, formAction, isPending] = useActionState(action, EMPTY_USED_EQUIPMENT_FORM_STATE);
   const values = state.values ?? initialValues;
@@ -189,6 +192,8 @@ export function UsedEquipmentForm({
           <FieldError error={state.fieldErrors?.internalComment} />
         </label>
       </div>
+
+      <UsedEquipmentImageManager mode={mode} existingImages={existingImages} error={state.fieldErrors?.images} />
 
       <div className="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted">
