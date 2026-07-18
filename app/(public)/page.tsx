@@ -446,8 +446,15 @@ export default function HomePage() {
       </section>
 
       <section id="how-it-works" className="relative overflow-hidden bg-public-page py-16">
-        <div className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(rgba(152,157,166,0.45)_1px,transparent_1px),linear-gradient(90deg,rgba(152,157,166,0.45)_1px,transparent_1px)] [background-size:28px_28px]" />
-        <div className="kp-container relative">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-70 [background-image:linear-gradient(180deg,var(--public-surface-page)_0%,transparent_18%,transparent_82%,var(--public-surface-page)_100%),radial-gradient(ellipse_at_16%_10%,rgba(200,150,66,0.13),transparent_38%),radial-gradient(ellipse_at_88%_92%,rgba(27,33,44,0.62),transparent_48%),linear-gradient(112deg,rgba(16,20,28,0.48),transparent_46%,rgba(7,9,13,0.42))] sm:opacity-90 lg:opacity-100"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(rgba(152,157,166,0.45)_1px,transparent_1px),linear-gradient(90deg,rgba(152,157,166,0.45)_1px,transparent_1px)] [background-size:28px_28px]"
+        />
+        <div className="kp-container relative z-10">
           <div className="max-w-3xl">
             <p className="text-sm font-bold uppercase text-accent">Як це працює</p>
             <h2 className="public-section-heading mt-2 text-3xl font-bold">Заявка, підбір, узгодження та доставка в одному процесі</h2>
@@ -528,8 +535,15 @@ export default function HomePage() {
       </section>
 
       <section className="relative overflow-hidden bg-public-page py-16">
-        <div className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(rgba(152,157,166,0.45)_1px,transparent_1px),linear-gradient(90deg,rgba(152,157,166,0.45)_1px,transparent_1px)] [background-size:28px_28px]" />
-        <div className="kp-container relative">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.65] [background-image:linear-gradient(180deg,var(--public-surface-page)_0%,transparent_16%,transparent_84%,var(--public-surface-page)_100%),radial-gradient(ellipse_at_86%_14%,rgba(200,150,66,0.12),transparent_36%),radial-gradient(ellipse_at_8%_78%,rgba(24,27,32,0.58),transparent_44%),linear-gradient(96deg,rgba(7,9,13,0.58),rgba(16,18,22,0.24)_52%,rgba(28,22,14,0.3))] sm:opacity-[0.85] lg:opacity-100"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(rgba(152,157,166,0.45)_1px,transparent_1px),linear-gradient(90deg,rgba(152,157,166,0.45)_1px,transparent_1px)] [background-size:28px_28px]"
+        />
+        <div className="kp-container relative z-10">
           <div className="max-w-3xl">
             <p className="text-sm font-bold uppercase text-accent">Сервіс</p>
             <h2 className="mt-2 max-w-3xl text-3xl font-bold leading-tight text-public-primary sm:text-4xl">
@@ -594,8 +608,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="telegram" className="border-y border-white/5 bg-public-page py-14 text-white sm:py-16">
-        <div className="kp-container">
+      <section id="telegram" className="relative overflow-hidden border-y border-white/5 bg-public-page py-14 text-white sm:py-16">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.65] [background-image:linear-gradient(180deg,var(--public-surface-page)_0%,rgba(11,14,20,0.12)_24%,rgba(11,14,20,0.08)_72%,var(--public-surface-page)_100%),radial-gradient(ellipse_at_24%_104%,rgba(200,150,66,0.14),transparent_42%),radial-gradient(ellipse_at_92%_6%,rgba(146,96,38,0.1),transparent_34%),linear-gradient(180deg,rgba(18,22,30,0.34),rgba(7,9,13,0.46))] sm:opacity-[0.85] lg:opacity-100"
+        />
+        <div className="kp-container relative z-10">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] lg:items-end lg:gap-12">
             <div className="max-w-2xl">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">Способи створення заявки</p>
