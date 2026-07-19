@@ -1,5 +1,7 @@
 export const MAX_VEHICLE_DOCUMENTS = 25;
 export const MAX_VEHICLE_DOCUMENT_BYTES = 15 * 1024 * 1024;
+export const MAX_DOCUMENTS_PER_OWNER = MAX_VEHICLE_DOCUMENTS;
+export const MAX_DOCUMENT_BYTES = MAX_VEHICLE_DOCUMENT_BYTES;
 
 const ALLOWED_VEHICLE_DOCUMENT_TYPES = new Set([
   'application/pdf',
@@ -42,13 +44,13 @@ function hasExpectedSignature(file: File, bytes: Uint8Array) {
   return false;
 }
 
-export async function validateVehicleDocumentFiles(files: File[], existingCount: number) {
+export async function validateVehicleDocumentFiles(files: File[], existingCount: number, ownerLabel = 'однієї одиниці техніки') {
   if (files.length === 0) {
     return { ok: false as const, message: 'Оберіть хоча б один документ.' };
   }
 
   if (existingCount + files.length > MAX_VEHICLE_DOCUMENTS) {
-    return { ok: false as const, message: `Для однієї одиниці техніки можна зберігати до ${MAX_VEHICLE_DOCUMENTS} документів.` };
+    return { ok: false as const, message: `Для ${ownerLabel} можна зберігати до ${MAX_VEHICLE_DOCUMENTS} документів.` };
   }
 
   for (const file of files) {

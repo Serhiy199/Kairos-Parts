@@ -11,6 +11,7 @@ import {
 } from '@/app/admin/company-actions';
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
+import { AdminOwnerDocumentsSection } from '@/components/documents/admin-owner-documents-section';
 import { AdminOwnerFleetSection } from '@/components/vehicles/admin-owner-fleet-section';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
@@ -70,7 +71,20 @@ export default async function AdminCompanyDetailPage({
           take: 12,
           include: { client: true, category: true }
         },
-        billingDetails: true
+        billingDetails: true,
+        documents: {
+          where: { vehicleId: null, clientId: null, requestId: null },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            fileName: true,
+            mimeType: true,
+            size: true,
+            visibleToClient: true,
+            createdAt: true,
+            uploadedBy: { select: { name: true, email: true } }
+          }
+        }
       }
     }),
     prisma.user.findMany({
@@ -281,6 +295,8 @@ export default async function AdminCompanyDetailPage({
         vehicles={companyVehicles}
         createHref={`/admin/companies/${company.id}/vehicles/new`}
       />
+
+      <AdminOwnerDocumentsSection ownerType="company" ownerId={company.id} documents={company.documents} />
     </div>
   );
 }

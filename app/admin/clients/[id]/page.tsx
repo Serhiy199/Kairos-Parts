@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { upsertClientBillingDetails } from '@/app/admin/client-billing-actions';
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
+import { AdminOwnerDocumentsSection } from '@/components/documents/admin-owner-documents-section';
 import { AdminOwnerFleetSection } from '@/components/vehicles/admin-owner-fleet-section';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
@@ -11,10 +12,6 @@ import { prisma } from '@/lib/prisma';
 import { getAdminClientVehicles } from '@/lib/vehicles/admin-queries';
 
 export const dynamic = 'force-dynamic';
-
-function formatSize(size: number) {
-  return `${(size / 1024 / 1024).toFixed(2)} MB`;
-}
 
 const inputClass = 'h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent';
 
@@ -62,7 +59,19 @@ export default async function AdminClientDetailPage({
           }
         },
         billingDetails: true,
-        documents: { orderBy: { createdAt: 'desc' } },
+        documents: {
+          where: { vehicleId: null, companyId: null, requestId: null },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            fileName: true,
+            mimeType: true,
+            size: true,
+            visibleToClient: true,
+            createdAt: true,
+            uploadedBy: { select: { name: true, email: true } }
+          }
+        },
         requests: {
           orderBy: { createdAt: 'desc' },
           include: {
@@ -201,6 +210,8 @@ export default async function AdminClientDetailPage({
         createHref={`/admin/clients/${client.id}/vehicles/new`}
       />
 
+      <AdminOwnerDocumentsSection ownerType="client" ownerId={client.id} documents={client.documents} />
+
       <section className="rounded-lg border border-border bg-card p-6 shadow-card">
         <p className="text-sm font-bold uppercase text-accent">Заявки клієнта</p>
         <div className="mt-4 overflow-x-auto">
@@ -230,16 +241,6 @@ export default async function AdminClientDetailPage({
         </div>
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-6 shadow-card">
-        <p className="text-sm font-bold uppercase text-accent">Документи клієнта</p>
-        <div className="mt-4 grid gap-3">
-          {client.documents.length === 0 ? <p className="rounded-md border border-dashed border-border p-5 text-sm text-muted">Документів немає.</p> : client.documents.map((document) => (
-            <div key={document.id} className="rounded-md border border-border p-4 text-sm text-muted">
-              <span className="font-bold text-foreground">{document.fileName}</span> · {document.mimeType} · {formatSize(document.size)} · {document.fileUrl ? 'Посилання доступне' : 'Приватне сховище'}
-            </div>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }

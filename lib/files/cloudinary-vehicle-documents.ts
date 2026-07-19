@@ -4,16 +4,19 @@ import { randomUUID } from 'node:crypto';
 import type { UploadApiResponse } from 'cloudinary';
 
 import { getCloudinaryServerClient } from '@/lib/cloudinary/server';
+import { documentOwnerId, type DocumentOwnerContext } from '@/lib/documents/ownership';
 import { sanitizeVehicleDocumentName } from '@/lib/vehicles/documents';
 
 const STORAGE_KEY_PREFIX = 'cloudinary-raw-authenticated:';
 
-export type CloudinaryVehicleDocumentUpload = {
+export type CloudinaryDocumentUpload = {
   storageKey: string;
   publicId: string;
   format: string;
   bytes: number;
 };
+
+export type CloudinaryVehicleDocumentUpload = CloudinaryDocumentUpload;
 
 function extensionFor(file: File) {
   const fromName = file.name.split('.').pop()?.toLowerCase();
@@ -47,7 +50,17 @@ function parseStorageKey(storageKey: string) {
   }
 }
 
-export async function uploadVehicleDocument(vehicleId: string, file: File): Promise<CloudinaryVehicleDocumentUpload> {
+function ownerFolder(owner: DocumentOwnerContext) {
+  const folders: Record<DocumentOwnerContext['type'], string> = {
+    vehicle: 'vehicle-documents',
+    company: 'company-documents',
+    client: 'client-documents'
+  };
+
+  return `kairos-parts/${folders[owner.type]}/${documentOwnerId(owner)}`;
+}
+
+export async function uploadDocument(owner: DocumentOwnerContext, file: File): Promise<CloudinaryDocumentUpload> {
   const client = getCloudinaryServerClient();
   const buffer = Buffer.from(await file.arrayBuffer());
   const format = extensionFor(file);
@@ -55,7 +68,7 @@ export async function uploadVehicleDocument(vehicleId: string, file: File): Prom
   const result = await new Promise<UploadApiResponse>((resolve, reject) => {
     const stream = client.uploader.upload_stream(
       {
-        folder: `kairos-parts/vehicle-documents/${vehicleId}`,
+        folder: ownerFolder(owner),
         public_id: `${randomUUID()}.${format}`,
         resource_type: 'raw',
         type: 'authenticated',
@@ -83,6 +96,10 @@ export async function uploadVehicleDocument(vehicleId: string, file: File): Prom
   };
 }
 
+export function uploadVehicleDocument(vehicleId: string, file: File) {
+  return uploadDocument({ type: 'vehicle', vehicleId }, file);
+}
+
 export async function deleteVehicleDocumentAsset(storageKey: string) {
   const asset = parseStorageKey(storageKey);
   if (!asset) throw new Error('Invalid vehicle document storage key.');
@@ -99,9 +116,13 @@ export async function deleteVehicleDocumentAsset(storageKey: string) {
   }
 }
 
+export const deleteDocumentAsset = deleteVehicleDocumentAsset;
+
 export async function cleanupVehicleDocumentAssets(storageKeys: string[]) {
   await Promise.allSettled(storageKeys.map((storageKey) => deleteVehicleDocumentAsset(storageKey)));
 }
+
+export const cleanupDocumentAssets = cleanupVehicleDocumentAssets;
 
 export async function fetchVehicleDocument(storageKey: string) {
   const asset = parseStorageKey(storageKey);
@@ -120,8 +141,12 @@ export async function fetchVehicleDocument(storageKey: string) {
   return { ok: true as const, buffer: await response.arrayBuffer() };
 }
 
+export const fetchDocument = fetchVehicleDocument;
+
 export function vehicleDocumentContentDisposition(fileName: string) {
   const safeName = sanitizeVehicleDocumentName(fileName);
   const asciiFallback = safeName.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_') || 'document';
   return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(safeName)}`;
 }
+
+export const documentContentDisposition = vehicleDocumentContentDisposition;

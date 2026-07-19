@@ -95,21 +95,21 @@ export function documentAccessWhere(context: ClientAccessContext): Prisma.Docume
   if (context.companyId) {
     return {
       OR: [
-        { companyId: context.companyId },
-        { clientId: context.clientProfileId, companyId: null },
-        { request: { companyId: context.companyId } },
-        { request: { clientId: context.clientProfileId, companyId: null } },
-        { vehicle: { companyId: context.companyId } },
-        { vehicle: { clientId: context.clientProfileId, companyId: null } }
+        { companyId: context.companyId, clientId: null, vehicleId: null, requestId: null },
+        { clientId: context.clientProfileId, companyId: null, vehicleId: null, requestId: null },
+        { requestId: { not: null }, clientId: null, companyId: null, vehicleId: null, request: { companyId: context.companyId } },
+        { requestId: { not: null }, clientId: null, companyId: null, vehicleId: null, request: { clientId: context.clientProfileId, companyId: null } },
+        { vehicleId: { not: null }, clientId: null, companyId: null, requestId: null, vehicle: { companyId: context.companyId } },
+        { vehicleId: { not: null }, clientId: null, companyId: null, requestId: null, vehicle: { clientId: context.clientProfileId, companyId: null } }
       ]
     };
   }
 
   return {
     OR: [
-      { clientId: context.clientProfileId },
-      { request: { clientId: context.clientProfileId } },
-      { vehicle: { clientId: context.clientProfileId, companyId: null } }
+      { clientId: context.clientProfileId, companyId: null, vehicleId: null, requestId: null },
+      { requestId: { not: null }, clientId: null, companyId: null, vehicleId: null, request: { clientId: context.clientProfileId } },
+      { vehicleId: { not: null }, clientId: null, companyId: null, requestId: null, vehicle: { clientId: context.clientProfileId, companyId: null } }
     ]
   };
 }

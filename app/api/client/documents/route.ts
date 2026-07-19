@@ -28,14 +28,19 @@ export async function GET() {
 
   const [documents, requestFiles] = await Promise.all([
     prisma.document.findMany({
-      where: {
-        AND: [
-          documentAccessWhere(access),
-          { OR: [{ vehicleId: null }, { visibleToClient: true }] }
-        ]
-      },
+      where: { AND: [documentAccessWhere(access), { visibleToClient: true }] },
       orderBy: { createdAt: 'desc' },
-      include: {
+      select: {
+        id: true,
+        fileName: true,
+        mimeType: true,
+        size: true,
+        createdAt: true,
+        clientId: true,
+        companyId: true,
+        requestId: true,
+        vehicleId: true,
+        company: { select: { id: true, name: true } },
         request: { select: { id: true, requestNumber: true } },
         vehicle: { select: { id: true, manufacturer: true, model: true } }
       }
@@ -43,12 +48,22 @@ export async function GET() {
     prisma.requestFile.findMany({
       where: { request: requestAccessWhere(access) },
       orderBy: { createdAt: 'desc' },
-      include: { request: { select: { id: true, requestNumber: true } } }
+      select: {
+        id: true,
+        fileName: true,
+        mimeType: true,
+        size: true,
+        createdAt: true,
+        request: { select: { id: true, requestNumber: true } }
+      }
     })
   ]);
 
   return Response.json({
-    documents,
+    documents: documents.map((document) => ({
+      ...document,
+      downloadUrl: `/api/client/documents/${document.id}/download`
+    })),
     requestFiles
   });
 }
