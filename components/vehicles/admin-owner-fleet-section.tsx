@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { LuPlus } from 'react-icons/lu';
+import { LuPencil, LuPlus } from 'react-icons/lu';
 
 import type { AdminVehicleSummary } from '@/lib/vehicles/admin-queries';
 
@@ -28,7 +28,7 @@ export function AdminOwnerFleetSection({
   const emptyCopy = emptyStateCopy[ownerType];
 
   return (
-    <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+    <section id="fleet" className="scroll-mt-6 rounded-lg border border-border bg-card p-6 shadow-card">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <p className="text-sm font-bold uppercase text-accent">Парк техніки</p>
@@ -65,7 +65,7 @@ export function AdminOwnerFleetSection({
           {vehicles.map((vehicle) => (
             <article
               key={vehicle.id}
-              className="grid gap-4 rounded-md border border-border p-4 sm:grid-cols-2 xl:grid-cols-[1.1fr_1fr_1fr_0.6fr_1.35fr_0.8fr] xl:items-center"
+              className="grid gap-4 rounded-md border border-border p-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_0.55fr_1.3fr_0.8fr_auto] xl:items-center"
             >
               <VehicleField label="Тип техніки" value={vehicle.type} />
               <VehicleField label="Виробник" value={vehicle.manufacturer} />
@@ -73,6 +73,13 @@ export function AdminOwnerFleetSection({
               <VehicleField label="Рік" value={vehicle.year ? String(vehicle.year) : '—'} />
               <VehicleField label="VIN / серійний номер" value={vehicle.vinOrSerial ?? '—'} />
               <VehicleField label="Дата додавання" value={vehicle.createdAt.toLocaleDateString('uk-UA')} />
+              <Link
+                href={`/admin/vehicles/${vehicle.id}/edit`}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+              >
+                <LuPencil aria-hidden="true" className="h-4 w-4" />
+                Редагувати
+              </Link>
             </article>
           ))}
         </div>

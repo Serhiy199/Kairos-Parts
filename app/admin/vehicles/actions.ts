@@ -1,0 +1,222 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+
+import { requireCrmSession } from '@/lib/admin/access';
+import { hasDatabaseUrl } from '@/lib/env/database';
+import { prisma } from '@/lib/prisma';
+import { validateAdminVehicleManufacturer } from '@/lib/vehicles/admin-manufacturers';
+import {
+  getAdminVehicleFormValues,
+  type AdminVehicleFormState,
+  validateAdminVehicleForm
+} from '@/lib/vehicles/admin-validation';
+import {
+  isValidVehicleOwnership,
+  vehicleOwnershipForCompany,
+  vehicleOwnershipForPersonalClient
+} from '@/lib/vehicles/ownership';
+
+const GENERIC_ERROR = 'Не вдалося зберегти техніку. Спробуйте ще раз.';
+
+function errorState(
+  values: ReturnType<typeof getAdminVehicleFormValues>,
+  message = GENERIC_ERROR,
+  fieldErrors?: AdminVehicleFormState['fieldErrors']
+): AdminVehicleFormState {
+  return {
+    status: 'error',
+    message,
+    values,
+    fieldErrors
+  };
+}
+
+async function validateForm(formData: FormData) {
+  const values = getAdminVehicleFormValues(formData);
+  const validation = validateAdminVehicleForm(values);
+
+  if (!validation.ok) {
+    return {
+      ok: false as const,
+      state: errorState(values, 'Перевірте поля форми.', validation.fieldErrors)
+    };
+  }
+
+  const manufacturerResult = await validateAdminVehicleManufacturer(
+    validation.data.manufacturerId,
+    validation.data.equipmentType
+  );
+
+  if (!manufacturerResult.ok) {
+    return {
+      ok: false as const,
+      state: errorState(values, 'Перевірте поля форми.', {
+        manufacturerId: manufacturerResult.message
+      })
+    };
+  }
+
+  return {
+    ok: true as const,
+    values,
+    data: {
+      type: validation.data.equipmentType,
+      manufacturer: manufacturerResult.manufacturer.name,
+      model: validation.data.model,
+      year: validation.data.year,
+      vinOrSerial: validation.data.vinOrSerial,
+      comment: validation.data.comment
+    }
+  };
+}
+
+export async function createAdminVehicleForCompany(
+  companyId: string,
+  _state: AdminVehicleFormState,
+  formData: FormData
+): Promise<AdminVehicleFormState> {
+  await requireCrmSession();
+  const values = getAdminVehicleFormValues(formData);
+
+  if (!hasDatabaseUrl()) {
+    return errorState(values, 'База даних тимчасово недоступна.');
+  }
+
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { id: true }
+  });
+
+  if (!company) {
+    return errorState(values, 'Компанію не знайдено.');
+  }
+
+  const validation = await validateForm(formData);
+  if (!validation.ok) {
+    return validation.state;
+  }
+
+  try {
+    await prisma.vehicle.create({
+      data: {
+        ...vehicleOwnershipForCompany(company.id),
+        ...validation.data
+      }
+    });
+  } catch {
+    return errorState(validation.values);
+  }
+
+  revalidatePath(`/admin/companies/${company.id}`);
+  revalidatePath('/client/vehicles');
+  redirect(`/admin/companies/${company.id}#fleet`);
+}
+
+export async function createAdminVehicleForClient(
+  clientId: string,
+  _state: AdminVehicleFormState,
+  formData: FormData
+): Promise<AdminVehicleFormState> {
+  await requireCrmSession();
+  const values = getAdminVehicleFormValues(formData);
+
+  if (!hasDatabaseUrl()) {
+    return errorState(values, 'База даних тимчасово недоступна.');
+  }
+
+  const client = await prisma.clientProfile.findFirst({
+    where: {
+      id: clientId,
+      user: { role: 'CLIENT' }
+    },
+    select: { id: true }
+  });
+
+  if (!client) {
+    return errorState(values, 'Клієнта не знайдено.');
+  }
+
+  const validation = await validateForm(formData);
+  if (!validation.ok) {
+    return validation.state;
+  }
+
+  try {
+    await prisma.vehicle.create({
+      data: {
+        ...vehicleOwnershipForPersonalClient(client.id),
+        ...validation.data
+      }
+    });
+  } catch {
+    return errorState(validation.values);
+  }
+
+  revalidatePath(`/admin/clients/${client.id}`);
+  revalidatePath('/client/vehicles');
+  redirect(`/admin/clients/${client.id}#fleet`);
+}
+
+export async function updateAdminVehicle(
+  vehicleId: string,
+  _state: AdminVehicleFormState,
+  formData: FormData
+): Promise<AdminVehicleFormState> {
+  await requireCrmSession();
+  const values = getAdminVehicleFormValues(formData);
+
+  if (!hasDatabaseUrl()) {
+    return errorState(values, 'База даних тимчасово недоступна.');
+  }
+
+  const vehicle = await prisma.vehicle.findUnique({
+    where: { id: vehicleId },
+    select: {
+      id: true,
+      clientId: true,
+      companyId: true,
+      client: {
+        select: {
+          id: true,
+          user: { select: { role: true } }
+        }
+      },
+      company: { select: { id: true } }
+    }
+  });
+
+  if (
+    !vehicle ||
+    !isValidVehicleOwnership(vehicle) ||
+    (vehicle.clientId !== null && (!vehicle.client || vehicle.client.user.role !== 'CLIENT')) ||
+    (vehicle.companyId !== null && !vehicle.company)
+  ) {
+    return errorState(values, 'Техніку або її власника не знайдено.');
+  }
+
+  const validation = await validateForm(formData);
+  if (!validation.ok) {
+    return validation.state;
+  }
+
+  try {
+    await prisma.vehicle.update({
+      where: { id: vehicle.id },
+      data: validation.data
+    });
+  } catch {
+    return errorState(validation.values);
+  }
+
+  const ownerProfilePath = vehicle.companyId
+    ? `/admin/companies/${vehicle.companyId}`
+    : `/admin/clients/${vehicle.clientId}`;
+
+  revalidatePath(ownerProfilePath);
+  revalidatePath(`/admin/vehicles/${vehicle.id}/edit`);
+  revalidatePath('/client/vehicles');
+  revalidatePath(`/client/vehicles/${vehicle.id}`);
+  redirect(`${ownerProfilePath}#fleet`);
+}

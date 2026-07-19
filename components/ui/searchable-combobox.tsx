@@ -41,6 +41,7 @@ export function SearchableCombobox({
   const generatedId = useId();
   const inputId = `${generatedId}-input`;
   const listboxId = `${generatedId}-listbox`;
+  const errorId = `${generatedId}-error`;
   const rootRef = useRef<HTMLDivElement>(null);
   const selectedOption = useMemo(() => options.find((option) => option.value === value) ?? null, [options, value]);
   const [inputValue, setInputValue] = useState(selectedOption?.label ?? '');
@@ -157,6 +158,7 @@ export function SearchableCombobox({
         aria-activedescendant={activeOptionId}
         aria-required={required}
         aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
         onFocus={() => setIsOpen(true)}
         onClick={() => setIsOpen(true)}
         onChange={(event) => handleInputChange(event.target.value)}
@@ -168,7 +170,11 @@ export function SearchableCombobox({
             : 'public-field'
         } ${error ? 'border-danger/50 focus-visible:outline-danger' : ''}`}
       />
-      {error ? <p className={`text-xs font-medium ${isLight ? 'text-danger' : 'text-public-danger'}`}>{error}</p> : null}
+      {error ? (
+        <p id={errorId} className={`text-xs font-medium ${isLight ? 'text-danger' : 'text-public-danger'}`}>
+          {error}
+        </p>
+      ) : null}
       {isOpen ? (
         <div
           id={listboxId}

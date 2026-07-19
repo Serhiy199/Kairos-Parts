@@ -40,6 +40,12 @@ export function vehicleOwnershipForCompany(companyId: string): VehicleOwnership 
   return owner;
 }
 
+export function vehicleOwnershipForPersonalClient(clientId: string): VehicleOwnership {
+  const owner: VehicleOwnership = { clientId, companyId: null };
+  assertValidVehicleOwnership(owner);
+  return owner;
+}
+
 export function vehicleAccessWhereForClient(context: VehicleOwnerContext): Prisma.VehicleWhereInput {
   if (context.companyId) {
     return {
