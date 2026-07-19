@@ -1,5 +1,6 @@
 'use server';
 
+import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -13,7 +14,12 @@ import {
   validateAdminVehicleForm
 } from '@/lib/vehicles/admin-validation';
 import {
+  findVehicleVinDuplicate,
+  VEHICLE_VIN_DUPLICATE_MESSAGE
+} from '@/lib/vehicles/duplicates';
+import {
   isValidVehicleOwnership,
+  type VehicleOwnership,
   vehicleOwnershipForCompany,
   vehicleOwnershipForPersonalClient
 } from '@/lib/vehicles/ownership';
@@ -23,14 +29,25 @@ const GENERIC_ERROR = 'Не вдалося зберегти техніку. Сп
 function errorState(
   values: ReturnType<typeof getAdminVehicleFormValues>,
   message = GENERIC_ERROR,
-  fieldErrors?: AdminVehicleFormState['fieldErrors']
+  fieldErrors?: AdminVehicleFormState['fieldErrors'],
+  duplicateVehicleId?: string
 ): AdminVehicleFormState {
   return {
     status: 'error',
     message,
     values,
-    fieldErrors
+    fieldErrors,
+    duplicateVehicleId
   };
+}
+
+function duplicateState(values: ReturnType<typeof getAdminVehicleFormValues>, duplicateVehicleId: string) {
+  return errorState(
+    values,
+    VEHICLE_VIN_DUPLICATE_MESSAGE,
+    { vinOrSerial: VEHICLE_VIN_DUPLICATE_MESSAGE },
+    duplicateVehicleId
+  );
 }
 
 async function validateForm(formData: FormData) {
@@ -99,12 +116,25 @@ export async function createAdminVehicleForCompany(
   }
 
   try {
-    await prisma.vehicle.create({
-      data: {
-        ...vehicleOwnershipForCompany(company.id),
-        ...validation.data
+    const owner = vehicleOwnershipForCompany(company.id);
+    const duplicate = await prisma.$transaction(async (tx) => {
+      const found = await findVehicleVinDuplicate({
+        db: tx,
+        owner,
+        normalizedVin: validation.data.vinOrSerial
+      });
+
+      if (found) {
+        return found;
       }
-    });
+
+      await tx.vehicle.create({ data: { ...owner, ...validation.data } });
+      return null;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+    if (duplicate) {
+      return duplicateState(validation.values, duplicate.id);
+    }
   } catch {
     return errorState(validation.values);
   }
@@ -144,12 +174,25 @@ export async function createAdminVehicleForClient(
   }
 
   try {
-    await prisma.vehicle.create({
-      data: {
-        ...vehicleOwnershipForPersonalClient(client.id),
-        ...validation.data
+    const owner = vehicleOwnershipForPersonalClient(client.id);
+    const duplicate = await prisma.$transaction(async (tx) => {
+      const found = await findVehicleVinDuplicate({
+        db: tx,
+        owner,
+        normalizedVin: validation.data.vinOrSerial
+      });
+
+      if (found) {
+        return found;
       }
-    });
+
+      await tx.vehicle.create({ data: { ...owner, ...validation.data } });
+      return null;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+    if (duplicate) {
+      return duplicateState(validation.values, duplicate.id);
+    }
   } catch {
     return errorState(validation.values);
   }
@@ -202,10 +245,28 @@ export async function updateAdminVehicle(
   }
 
   try {
-    await prisma.vehicle.update({
-      where: { id: vehicle.id },
-      data: validation.data
-    });
+    const owner: VehicleOwnership = vehicle.companyId
+      ? vehicleOwnershipForCompany(vehicle.companyId)
+      : vehicleOwnershipForPersonalClient(vehicle.clientId as string);
+    const duplicate = await prisma.$transaction(async (tx) => {
+      const found = await findVehicleVinDuplicate({
+        db: tx,
+        owner,
+        normalizedVin: validation.data.vinOrSerial,
+        excludeVehicleId: vehicle.id
+      });
+
+      if (found) {
+        return found;
+      }
+
+      await tx.vehicle.update({ where: { id: vehicle.id }, data: validation.data });
+      return null;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+    if (duplicate) {
+      return duplicateState(validation.values, duplicate.id);
+    }
   } catch {
     return errorState(validation.values);
   }

@@ -1,8 +1,15 @@
+import { Prisma } from '@prisma/client';
+
 import { auth } from '@/auth';
 import { getClientAccessContext, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import {
+  findVehicleVinDuplicate,
+  VEHICLE_VIN_DUPLICATE_MESSAGE
+} from '@/lib/vehicles/duplicates';
 import { vehicleOwnershipForClient } from '@/lib/vehicles/ownership';
+import { normalizeVehicleVin } from '@/lib/vehicles/vin';
 
 export const runtime = 'nodejs';
 
@@ -57,24 +64,46 @@ export async function POST(request: Request) {
   const type = readString(body.type);
   const manufacturer = readString(body.manufacturer);
   const model = readString(body.model);
+  const vinSource = readString(body.vinOrSerial);
   const yearValue = typeof body.year === 'number' ? body.year : Number(readString(body.year));
   const year = Number.isInteger(yearValue) && yearValue > 1900 && yearValue < 2200 ? yearValue : null;
 
-  if (!type || !manufacturer || !model) {
-    return Response.json({ status: 'validation_error', errors: ['type, manufacturer and model are required.'] }, { status: 400 });
+  if (!type || !manufacturer || !model || vinSource.length > 120) {
+    return Response.json(
+      { status: 'validation_error', message: 'Перевірте обовʼязкові поля та довжину VIN або серійного номера.' },
+      { status: 400 }
+    );
   }
 
-  const vehicle = await prisma.vehicle.create({
-    data: {
-      ...vehicleOwnershipForClient(result.access),
-      type,
-      manufacturer,
-      model,
-      year,
-      vinOrSerial: readString(body.vinOrSerial) || null,
-      comment: readString(body.comment) || null
-    }
-  });
+  const owner = vehicleOwnershipForClient(result.access);
+  const vinOrSerial = normalizeVehicleVin(vinSource);
+  const transactionResult = await prisma.$transaction(async (tx) => {
+    const duplicate = await findVehicleVinDuplicate({ db: tx, owner, normalizedVin: vinOrSerial });
 
-  return Response.json({ vehicle }, { status: 201 });
+    if (duplicate) {
+      return { duplicate: true as const };
+    }
+
+    const vehicle = await tx.vehicle.create({
+      data: {
+        ...owner,
+        type,
+        manufacturer,
+        model,
+        year,
+        vinOrSerial,
+        comment: readString(body.comment) || null
+      }
+    });
+    return { duplicate: false as const, vehicle };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  if (transactionResult.duplicate) {
+    return Response.json(
+      { status: 'duplicate_vin', message: VEHICLE_VIN_DUPLICATE_MESSAGE },
+      { status: 409 }
+    );
+  }
+
+  return Response.json({ vehicle: transactionResult.vehicle }, { status: 201 });
 }

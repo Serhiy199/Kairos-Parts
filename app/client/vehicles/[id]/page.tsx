@@ -104,7 +104,13 @@ export default async function ClientVehicleDetailPage({
       </div>
 
       {query.updated ? <div className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">Дані техніки оновлено.</div> : null}
-      {query.error ? <div className="rounded-md border border-danger/30 bg-[#FEF3F2] p-4 text-sm font-semibold text-danger">Перевірте обовʼязкові поля.</div> : null}
+      {query.error ? (
+        <div className="rounded-md border border-danger/30 bg-[#FEF3F2] p-4 text-sm font-semibold text-danger">
+          {query.error === 'duplicate'
+            ? 'Техніка з таким VIN або серійним номером уже є у вашому парку.'
+            : 'Перевірте обовʼязкові поля.'}
+        </div>
+      ) : null}
       {changeMessage ? <div className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">{changeMessage}</div> : null}
 
       <VehicleForm action={updateVehicle} submitLabel="Зберегти зміни" vehicle={vehicle} />

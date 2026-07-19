@@ -1,5 +1,6 @@
 'use server';
 
+import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { notFound, redirect } from 'next/navigation';
 
@@ -8,7 +9,9 @@ import { parseCompanyBillingInput } from '@/lib/billing/validation';
 import { parseCompanyInput, readCompanyMemberInput } from '@/lib/companies/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import { findVehicleVinDuplicate } from '@/lib/vehicles/duplicates';
 import { vehicleOwnershipForCompany } from '@/lib/vehicles/ownership';
+import { normalizeVehicleVin } from '@/lib/vehicles/vin';
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -258,7 +261,7 @@ export async function assignVehicleToCompany(formData: FormData) {
     prisma.company.findUnique({ where: { id: companyId }, select: { id: true } }),
     prisma.vehicle.findFirst({
       where: { id: vehicleId, clientId: { not: null }, companyId: null },
-      select: { id: true }
+      select: { id: true, vinOrSerial: true }
     })
   ]);
 
@@ -266,10 +269,29 @@ export async function assignVehicleToCompany(formData: FormData) {
     redirectCompany(companyId, 'assign-validation');
   }
 
-  await prisma.vehicle.update({
-    where: { id: vehicle.id },
-    data: vehicleOwnershipForCompany(company.id)
-  });
+  const owner = vehicleOwnershipForCompany(company.id);
+  const normalizedVin = normalizeVehicleVin(vehicle.vinOrSerial);
+  const duplicate = await prisma.$transaction(async (tx) => {
+    const found = await findVehicleVinDuplicate({
+      db: tx,
+      owner,
+      normalizedVin
+    });
+
+    if (found) {
+      return true;
+    }
+
+    await tx.vehicle.update({
+      where: { id: vehicle.id },
+      data: { ...owner, vinOrSerial: normalizedVin }
+    });
+    return false;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  if (duplicate) {
+    redirectCompany(companyId, 'vehicle-vin-duplicate');
+  }
 
   revalidatePath('/admin/companies');
   revalidatePath(`/admin/companies/${companyId}`);

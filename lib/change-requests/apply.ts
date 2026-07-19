@@ -1,5 +1,9 @@
 import type { AuditAction, AuditEntityType, ChangeRequest, Prisma } from '@prisma/client';
 
+import { findVehicleVinDuplicate } from '@/lib/vehicles/duplicates';
+import { isValidVehicleOwnership } from '@/lib/vehicles/ownership';
+import { normalizeVehicleVin } from '@/lib/vehicles/vin';
+
 type ApplyableChangeRequest = Pick<ChangeRequest, 'entityType' | 'entityId' | 'action' | 'fieldName' | 'newValue' | 'companyId' | 'requestedById'>;
 
 type ApplyResult =
@@ -11,6 +15,7 @@ type ApplyResult =
         | 'change-request-field-not-allowed'
         | 'change-request-new-value-required'
         | 'change-request-invalid-value'
+        | 'change-request-vehicle-vin-duplicate'
         | 'change-request-target-not-found-or-forbidden';
     };
 
@@ -167,6 +172,19 @@ function vehicleUpdateData(field: VehicleField, value: unknown): Prisma.VehicleU
     return year ? { year } : null;
   }
 
+  if (field === 'vinOrSerial') {
+    if (typeof value !== 'string' && typeof value !== 'number') {
+      return null;
+    }
+
+    const source = String(value).trim();
+    if (!source || source.length > 120) {
+      return null;
+    }
+
+    return { vinOrSerial: normalizeVehicleVin(source) };
+  }
+
   const maxLength = field === 'comment' ? 1000 : 500;
   const text = readText(value, maxLength);
 
@@ -285,15 +303,43 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
       where: changeRequest.companyId
         ? { id: changeRequest.entityId, companyId: changeRequest.companyId }
         : { id: changeRequest.entityId, client: { userId: changeRequest.requestedById } },
-      select: { id: true, type: true, manufacturer: true, model: true, year: true, vinOrSerial: true, comment: true }
+      select: {
+        id: true,
+        clientId: true,
+        companyId: true,
+        type: true,
+        manufacturer: true,
+        model: true,
+        year: true,
+        vinOrSerial: true,
+        comment: true
+      }
     });
 
-    if (!vehicle) {
+    if (!vehicle || !isValidVehicleOwnership(vehicle)) {
       return { ok: false, status: 'change-request-target-not-found-or-forbidden' };
     }
 
+    const requestedValue = extractNewValue(changeRequest, field);
+    const normalizedVin = field === 'vinOrSerial' && (typeof requestedValue === 'string' || typeof requestedValue === 'number')
+      ? normalizeVehicleVin(String(requestedValue))
+      : null;
+
+    if (field === 'vinOrSerial') {
+      const duplicate = await findVehicleVinDuplicate({
+        db: tx,
+        owner: vehicle,
+        normalizedVin,
+        excludeVehicleId: vehicle.id
+      });
+
+      if (duplicate) {
+        return { ok: false, status: 'change-request-vehicle-vin-duplicate' };
+      }
+    }
+
     await tx.vehicle.update({ where: { id: vehicle.id }, data });
-    const newValue = extractNewValue(changeRequest, field);
+    const newValue = field === 'vinOrSerial' ? normalizedVin : requestedValue;
 
     return {
       ok: true,

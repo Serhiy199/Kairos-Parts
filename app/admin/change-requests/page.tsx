@@ -20,6 +20,7 @@ function resultMessage(result?: string) {
     'change-request-field-not-allowed': 'Це поле не входить у allowlist і не може бути застосоване автоматично.',
     'change-request-new-value-required': 'Для погодження потрібне нове значення.',
     'change-request-invalid-value': 'Нове значення має некоректний формат.',
+    'change-request-vehicle-vin-duplicate': 'Зміну не застосовано: у цього власника вже є техніка з таким VIN або серійним номером.',
     'change-request-target-not-found-or-forbidden': 'Пов’язаний об’єкт не знайдено або scope запиту не збігається.'
   };
 

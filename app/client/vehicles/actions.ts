@@ -1,12 +1,18 @@
 'use server';
 
+import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { notFound, redirect } from 'next/navigation';
 
 import { getClientAccessContext, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
-import { vehicleOwnershipForClient } from '@/lib/vehicles/ownership';
+import { findVehicleVinDuplicate } from '@/lib/vehicles/duplicates';
+import {
+  isValidVehicleOwnership,
+  vehicleOwnershipForClient
+} from '@/lib/vehicles/ownership';
+import { normalizeVehicleVin } from '@/lib/vehicles/vin';
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -44,22 +50,38 @@ export async function createVehicle(formData: FormData) {
   const type = readString(formData, 'type');
   const manufacturer = readString(formData, 'manufacturer');
   const model = readString(formData, 'model');
+  const vinSource = readString(formData, 'vinOrSerial');
 
-  if (!type || !manufacturer || !model) {
+  if (!type || !manufacturer || !model || vinSource.length > 120) {
     redirect('/client/vehicles/new?error=validation');
   }
 
-  await prisma.vehicle.create({
-    data: {
-      ...vehicleOwnershipForClient(access),
-      type,
-      manufacturer,
-      model,
-      year: readYear(formData),
-      vinOrSerial: readString(formData, 'vinOrSerial') || null,
-      comment: readString(formData, 'comment') || null
+  const owner = vehicleOwnershipForClient(access);
+  const vinOrSerial = normalizeVehicleVin(vinSource);
+  const duplicate = await prisma.$transaction(async (tx) => {
+    const found = await findVehicleVinDuplicate({ db: tx, owner, normalizedVin: vinOrSerial });
+
+    if (found) {
+      return found;
     }
-  });
+
+    await tx.vehicle.create({
+      data: {
+        ...owner,
+        type,
+        manufacturer,
+        model,
+        year: readYear(formData),
+        vinOrSerial,
+        comment: readString(formData, 'comment') || null
+      }
+    });
+    return null;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  if (duplicate) {
+    redirect('/client/vehicles/new?error=duplicate');
+  }
 
   revalidatePath('/client/vehicles');
   redirect('/client/vehicles?created=1');
@@ -71,31 +93,51 @@ export async function updateVehicle(formData: FormData) {
   const type = readString(formData, 'type');
   const manufacturer = readString(formData, 'manufacturer');
   const model = readString(formData, 'model');
+  const vinSource = readString(formData, 'vinOrSerial');
 
-  if (!vehicleId || !type || !manufacturer || !model) {
+  if (!vehicleId || !type || !manufacturer || !model || vinSource.length > 120) {
     redirect(vehicleId ? `/client/vehicles/${vehicleId}?error=validation` : '/client/vehicles?error=validation');
   }
 
   const vehicle = await prisma.vehicle.findFirst({
     where: { id: vehicleId, AND: [vehicleAccessWhere(access)] },
-    select: { id: true }
+    select: { id: true, clientId: true, companyId: true }
   });
 
-  if (!vehicle) {
+  if (!vehicle || !isValidVehicleOwnership(vehicle)) {
     notFound();
   }
 
-  await prisma.vehicle.update({
-    where: { id: vehicle.id },
-    data: {
-      type,
-      manufacturer,
-      model,
-      year: readYear(formData),
-      vinOrSerial: readString(formData, 'vinOrSerial') || null,
-      comment: readString(formData, 'comment') || null
+  const vinOrSerial = normalizeVehicleVin(vinSource);
+  const duplicate = await prisma.$transaction(async (tx) => {
+    const found = await findVehicleVinDuplicate({
+      db: tx,
+      owner: vehicle,
+      normalizedVin: vinOrSerial,
+      excludeVehicleId: vehicle.id
+    });
+
+    if (found) {
+      return found;
     }
-  });
+
+    await tx.vehicle.update({
+      where: { id: vehicle.id },
+      data: {
+        type,
+        manufacturer,
+        model,
+        year: readYear(formData),
+        vinOrSerial,
+        comment: readString(formData, 'comment') || null
+      }
+    });
+    return null;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  if (duplicate) {
+    redirect(`/client/vehicles/${vehicle.id}?error=duplicate`);
+  }
 
   revalidatePath('/client/vehicles');
   revalidatePath(`/client/vehicles/${vehicle.id}`);

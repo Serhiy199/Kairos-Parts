@@ -1,4 +1,5 @@
 import { EQUIPMENT_TYPE_OPTIONS } from '@/lib/vehicles/equipment-types';
+import { normalizeVehicleVin } from '@/lib/vehicles/vin';
 
 export type AdminVehicleFormField =
   | 'equipmentType'
@@ -22,6 +23,7 @@ export type AdminVehicleFormState = {
   message?: string;
   values?: AdminVehicleFormValues;
   fieldErrors?: Partial<Record<AdminVehicleFormField, string>>;
+  duplicateVehicleId?: string;
 };
 
 export type ValidAdminVehicleInput = {
@@ -63,7 +65,8 @@ export function validateAdminVehicleForm(values: AdminVehicleFormValues) {
   const manufacturerId = values.manufacturerId.trim();
   const model = values.model.trim();
   const yearValue = values.year.trim();
-  const vinOrSerial = values.vinOrSerial.trim().replace(/\s+/g, ' ');
+  const vinSource = values.vinOrSerial.trim();
+  const vinOrSerial = normalizeVehicleVin(vinSource);
   const comment = values.comment.trim();
 
   if (!EQUIPMENT_TYPE_OPTIONS.includes(equipmentType)) {
@@ -92,7 +95,7 @@ export function validateAdminVehicleForm(values: AdminVehicleFormValues) {
     }
   }
 
-  if (vinOrSerial.length > 120) {
+  if (vinSource.length > 120 || (vinOrSerial?.length ?? 0) > 120) {
     fieldErrors.vinOrSerial = 'VIN або серійний номер має бути не довшим за 120 символів.';
   }
 
@@ -111,7 +114,7 @@ export function validateAdminVehicleForm(values: AdminVehicleFormValues) {
       manufacturerId,
       model,
       year,
-      vinOrSerial: vinOrSerial || null,
+      vinOrSerial,
       comment: comment || null
     } satisfies ValidAdminVehicleInput
   };

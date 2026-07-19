@@ -33,6 +33,7 @@ function resultMessage(result?: string) {
     'primary-updated': 'Primary contact оновлено.',
     'request-assigned': 'Заявку привʼязано до компанії.',
     'vehicle-assigned': 'Техніку привʼязано до компанії.',
+    'vehicle-vin-duplicate': 'Техніку не привʼязано: у компанії вже є запис із таким VIN або серійним номером.',
     'assign-validation': 'Оберіть запис для привʼязки.',
     'billing-updated': 'Реквізити покупця збережено.',
     'billing-validation': 'Перевірте реквізити покупця.'

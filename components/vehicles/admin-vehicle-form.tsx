@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { useActionState, useEffect, useId, useMemo, useState } from 'react';
 import { LuSave } from 'react-icons/lu';
 
@@ -72,6 +73,12 @@ export function AdminVehicleForm({
       setManufacturerId(state.values.manufacturerId);
     }
   }, [state.values]);
+
+  useEffect(() => {
+    if (state.duplicateVehicleId) {
+      document.querySelector<HTMLInputElement>('input[name="vinOrSerial"]')?.focus();
+    }
+  }, [state.duplicateVehicleId]);
 
   const equipmentTypeOptions = useMemo<SearchableComboboxOption[]>(
     () => EQUIPMENT_TYPE_OPTIONS.map((option) => ({ value: option, label: option })),
@@ -172,6 +179,14 @@ export function AdminVehicleForm({
             placeholder="Вкажіть VIN або серійний номер"
             error={state.fieldErrors?.vinOrSerial}
             errorId={vinErrorId}
+            afterError={state.duplicateVehicleId ? (
+              <Link
+                href={`/admin/vehicles/${state.duplicateVehicleId}/edit`}
+                className="w-fit text-sm font-bold text-accent underline underline-offset-4 transition hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                Відкрити існуючу техніку
+              </Link>
+            ) : null}
           />
         </div>
 
@@ -218,6 +233,7 @@ type VehicleInputProps = {
   placeholder?: string;
   error?: string;
   errorId: string;
+  afterError?: ReactNode;
 };
 
 function VehicleInput({
@@ -228,7 +244,8 @@ function VehicleInput({
   inputMode = 'text',
   placeholder,
   error,
-  errorId
+  errorId,
+  afterError
 }: VehicleInputProps) {
   return (
     <label className="grid gap-2 text-sm font-semibold text-foreground">
@@ -247,6 +264,7 @@ function VehicleInput({
         className={fieldClass(error)}
       />
       <FieldError id={errorId} message={error} />
+      {afterError}
     </label>
   );
 }

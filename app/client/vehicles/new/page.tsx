@@ -17,9 +17,11 @@ export default async function NewVehiclePage({
           Збережіть базові дані техніки, щоб швидко створювати заявки з готовими параметрами.
         </p>
       </div>
-      {params.error === 'validation' ? (
+      {params.error ? (
         <div className="rounded-md border border-danger/30 bg-[#FEF3F2] p-4 text-sm font-semibold text-danger">
-          Заповніть тип техніки, виробника і модель.
+          {params.error === 'duplicate'
+            ? 'Техніка з таким VIN або серійним номером уже є у вашому парку.'
+            : 'Заповніть тип техніки, виробника і модель.'}
         </div>
       ) : null}
       <VehicleForm action={createVehicle} submitLabel="Додати техніку" />
