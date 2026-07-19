@@ -29,14 +29,14 @@ const focusableSelector = [
 ].join(',');
 
 function fieldClass(error?: string) {
-  return `h-11 rounded-md border bg-card px-3 text-sm font-semibold text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 ${
-    error ? 'border-danger/50' : 'border-border'
+  return `h-11 rounded-md border bg-public-elevated px-3 text-sm font-semibold text-public-primary outline-none transition placeholder:text-public-subtle focus:border-accent focus:ring-2 focus:ring-accent/20 ${
+    error ? 'border-red-400/60' : 'border-public-border'
   }`;
 }
 
 function FieldError({ id, message }: { id: string; message?: string }) {
   return message ? (
-    <p id={id} className="text-xs font-semibold text-danger">
+    <p id={id} className="text-xs font-semibold text-red-300">
       {message}
     </p>
   ) : null;
@@ -75,7 +75,7 @@ function InquiryForm({
           id={messageId}
           aria-live="polite"
           className={`rounded-md border px-4 py-3 text-sm font-semibold ${
-            isSuccess ? 'border-success/25 bg-[#E7F6EC] text-success' : 'border-danger/30 bg-danger/10 text-danger'
+            isSuccess ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200' : 'border-red-400/35 bg-red-500/10 text-red-200'
           }`}
         >
           {state.message}
@@ -84,7 +84,7 @@ function InquiryForm({
 
       {!isSuccess ? (
         <>
-          <label className="grid gap-2 text-sm font-semibold text-foreground">
+          <label className="grid gap-2 text-sm font-semibold text-public-secondary">
             Ім’я *
             <input
               name="name"
@@ -98,7 +98,7 @@ function InquiryForm({
             <FieldError id={nameErrorId} message={state.fieldErrors?.name} />
           </label>
 
-          <label className="grid gap-2 text-sm font-semibold text-foreground">
+          <label className="grid gap-2 text-sm font-semibold text-public-secondary">
             Телефон *
             <input
               name="phone"
@@ -244,7 +244,7 @@ export function UsedEquipmentInquiryDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="relative max-h-[calc(100dvh-48px)] w-full max-w-lg overflow-y-auto rounded-lg border border-public-border bg-card p-5 shadow-2xl outline-none sm:p-6"
+        className="relative max-h-[calc(100dvh-48px)] w-full max-w-lg overflow-y-auto rounded-lg border border-accent/25 bg-public-card p-5 shadow-2xl outline-none sm:p-6"
         tabIndex={-1}
       >
         <button

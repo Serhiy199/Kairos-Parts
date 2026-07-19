@@ -3,10 +3,18 @@
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import Link from '@tiptap/extension-link';
 import StarterKit from '@tiptap/starter-kit';
+import { Table } from '@tiptap/extension-table';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
+import { TableRow } from '@tiptap/extension-table-row';
+import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
 import { useEffect, useState } from 'react';
 import {
   FaBold,
+  FaAlignCenter,
+  FaAlignLeft,
+  FaAlignRight,
   FaEraser,
   FaItalic,
   FaLink,
@@ -15,6 +23,8 @@ import {
   FaQuoteRight,
   FaRedo,
   FaRemoveFormat,
+  FaTable,
+  FaTrashAlt,
   FaUnderline,
   FaUndo,
   FaUnlink
@@ -38,7 +48,7 @@ type ToolbarButtonProps = {
 };
 
 const editorContentClass =
-  'min-h-56 rounded-b-md border-x border-b bg-card px-4 py-3 text-sm font-medium leading-6 text-foreground outline-none transition focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20 [&_.ProseMirror]:min-h-48 [&_.ProseMirror]:outline-none [&_a]:font-semibold [&_a]:text-accent [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-accent/40 [&_blockquote]:pl-4 [&_h2]:mb-3 [&_h2]:mt-5 [&_h2]:text-xl [&_h2]:font-bold [&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:text-lg [&_h3]:font-bold [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-3 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5';
+  'min-h-56 overflow-x-auto rounded-b-md border-x border-b bg-card px-4 py-3 text-sm font-medium leading-6 text-foreground outline-none transition focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20 [&_.ProseMirror]:min-h-48 [&_.ProseMirror]:outline-none [&_a]:font-semibold [&_a]:text-accent [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-accent/40 [&_blockquote]:pl-4 [&_h2]:mb-3 [&_h2]:mt-5 [&_h2]:text-xl [&_h2]:font-bold [&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:text-lg [&_h3]:font-bold [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-3 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_table]:my-4 [&_table]:min-w-[640px] [&_table]:border-collapse [&_table]:table-fixed [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:bg-surface-muted [&_th]:p-2 [&_th]:text-left [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5';
 
 function ToolbarButton({ label, title, active = false, disabled = false, onClick, children }: ToolbarButtonProps) {
   return (
@@ -90,12 +100,8 @@ function getSafeEditorUrl(input: string) {
 }
 
 function setLink(editor: Editor) {
-  if (editor.isActive('link')) {
-    editor.chain().focus().unsetLink().run();
-    return;
-  }
-
-  const href = window.prompt('Вставте посилання');
+  const currentHref = editor.getAttributes('link').href as string | undefined;
+  const href = window.prompt('Вставте або змініть посилання', currentHref ?? '');
   if (href === null) {
     return;
   }
@@ -108,6 +114,7 @@ function setLink(editor: Editor) {
   editor
     .chain()
     .focus()
+    .extendMarkRange('link')
     .setLink({ href: safeUrl, target: '_blank', rel: 'noopener noreferrer' })
     .run();
 }
@@ -126,14 +133,26 @@ export function RichTextEditor({
       StarterKit.configure({
         heading: {
           levels: [2, 3]
-        }
+        },
+        link: false,
+        underline: false
       }),
       Underline,
       Link.configure({
         autolink: false,
         openOnClick: false,
         protocols: ['http', 'https', 'mailto', 'tel']
-      })
+      }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+        alignments: ['left', 'center', 'right']
+      }),
+      Table.configure({
+        resizable: false
+      }),
+      TableRow,
+      TableHeader,
+      TableCell
     ],
     content: normalizeEditorValue(value),
     editorProps: {
@@ -200,8 +219,41 @@ export function RichTextEditor({
         <ToolbarButton label="Цитата" active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
           <FaQuoteRight aria-hidden="true" />
         </ToolbarButton>
-        <ToolbarButton label="Додати або прибрати посилання" active={editor.isActive('link')} onClick={() => setLink(editor)}>
-          {editor.isActive('link') ? <FaUnlink aria-hidden="true" /> : <FaLink aria-hidden="true" />}
+        <ToolbarButton label="Вирівняти ліворуч" active={editor.isActive({ textAlign: 'left' })} onClick={() => editor.chain().focus().setTextAlign('left').run()}>
+          <FaAlignLeft aria-hidden="true" />
+        </ToolbarButton>
+        <ToolbarButton label="Вирівняти по центру" active={editor.isActive({ textAlign: 'center' })} onClick={() => editor.chain().focus().setTextAlign('center').run()}>
+          <FaAlignCenter aria-hidden="true" />
+        </ToolbarButton>
+        <ToolbarButton label="Вирівняти праворуч" active={editor.isActive({ textAlign: 'right' })} onClick={() => editor.chain().focus().setTextAlign('right').run()}>
+          <FaAlignRight aria-hidden="true" />
+        </ToolbarButton>
+        <ToolbarButton label="Додати або змінити посилання" active={editor.isActive('link')} onClick={() => setLink(editor)}>
+          <FaLink aria-hidden="true" />
+        </ToolbarButton>
+        <ToolbarButton label="Прибрати посилання" disabled={!editor.isActive('link')} onClick={() => editor.chain().focus().extendMarkRange('link').unsetLink().run()}>
+          <FaUnlink aria-hidden="true" />
+        </ToolbarButton>
+        <ToolbarButton
+          label="Вставити таблицю"
+          onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+        >
+          <FaTable aria-hidden="true" />
+        </ToolbarButton>
+        <ToolbarButton label="Додати рядок" disabled={!editor.can().addRowAfter()} onClick={() => editor.chain().focus().addRowAfter().run()}>
+          Р+
+        </ToolbarButton>
+        <ToolbarButton label="Видалити рядок" disabled={!editor.can().deleteRow()} onClick={() => editor.chain().focus().deleteRow().run()}>
+          Р-
+        </ToolbarButton>
+        <ToolbarButton label="Додати колонку" disabled={!editor.can().addColumnAfter()} onClick={() => editor.chain().focus().addColumnAfter().run()}>
+          К+
+        </ToolbarButton>
+        <ToolbarButton label="Видалити колонку" disabled={!editor.can().deleteColumn()} onClick={() => editor.chain().focus().deleteColumn().run()}>
+          К-
+        </ToolbarButton>
+        <ToolbarButton label="Видалити таблицю" disabled={!editor.can().deleteTable()} onClick={() => editor.chain().focus().deleteTable().run()}>
+          <FaTrashAlt aria-hidden="true" />
         </ToolbarButton>
         <ToolbarButton label="Очистити форматування" onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}>
           <FaRemoveFormat aria-hidden="true" />

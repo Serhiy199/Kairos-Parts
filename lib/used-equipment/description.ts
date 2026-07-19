@@ -4,10 +4,36 @@ export const USED_EQUIPMENT_DESCRIPTION_MIN_TEXT_LENGTH = 10;
 export const USED_EQUIPMENT_DESCRIPTION_MAX_TEXT_LENGTH = 20000;
 export const USED_EQUIPMENT_DESCRIPTION_MAX_HTML_LENGTH = 100000;
 
-const allowedTags = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'a'];
+const allowedTags = [
+  'p',
+  'br',
+  'strong',
+  'b',
+  'em',
+  'i',
+  'u',
+  'h2',
+  'h3',
+  'ul',
+  'ol',
+  'li',
+  'blockquote',
+  'a',
+  'table',
+  'thead',
+  'tbody',
+  'tr',
+  'th',
+  'td'
+];
 
 const allowedAttributes = {
-  a: ['href', 'target', 'rel']
+  a: ['href', 'target', 'rel'],
+  p: ['style'],
+  h2: ['style'],
+  h3: ['style'],
+  th: ['colspan', 'rowspan'],
+  td: ['colspan', 'rowspan']
 };
 
 const allowedSchemes = ['http', 'https', 'mailto', 'tel'];
@@ -22,6 +48,17 @@ export function sanitizeUsedEquipmentDescription(html: string) {
   return sanitizeHtml(html, {
     allowedTags,
     allowedAttributes,
+    allowedStyles: {
+      p: {
+        'text-align': [/^(left|center|right)$/]
+      },
+      h2: {
+        'text-align': [/^(left|center|right)$/]
+      },
+      h3: {
+        'text-align': [/^(left|center|right)$/]
+      }
+    },
     allowedSchemes,
     allowProtocolRelative: false,
     disallowedTagsMode: 'discard',

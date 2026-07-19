@@ -26,7 +26,7 @@ export function PublicUsedEquipmentGallery({ title, images }: PublicUsedEquipmen
 
   if (!activeImage) {
     return (
-      <div className="flex aspect-[4/3] min-h-[280px] w-full items-center justify-center rounded-lg border border-dashed border-accent/30 bg-[linear-gradient(145deg,#151d29,#0b111a)] text-accent shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+      <div className="flex aspect-[4/3] min-h-[280px] w-full items-center justify-center rounded-md border border-dashed border-public-border bg-public-elevated text-accent">
         <FaTractor aria-hidden="true" className="size-16 opacity-85" />
         <span className="sr-only">Фото тимчасово відсутнє</span>
       </div>
@@ -35,7 +35,7 @@ export function PublicUsedEquipmentGallery({ title, images }: PublicUsedEquipmen
 
   return (
     <section aria-label="Галерея фото техніки" className="grid gap-3">
-      <div className="relative aspect-[4/3] overflow-hidden rounded-lg border border-accent/25 bg-public-card shadow-[0_20px_50px_rgba(0,0,0,0.32)]">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-md border border-public-border bg-public-elevated">
         <Image
           src={activeImage.url}
           alt={activeImage.alt ?? `${title} - БВ техніка`}

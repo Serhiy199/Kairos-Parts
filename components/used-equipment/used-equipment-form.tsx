@@ -128,6 +128,7 @@ export function UsedEquipmentForm({
         </label>
 
         <SearchableCombobox
+          variant="light"
           label="Тип техніки"
           name="equipmentType"
           options={equipmentTypeOptions}
@@ -140,6 +141,7 @@ export function UsedEquipmentForm({
         />
 
         <SearchableCombobox
+          variant="light"
           label="Виробник"
           name="manufacturerId"
           options={manufacturerOptions}
