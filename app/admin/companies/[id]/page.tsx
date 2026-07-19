@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation';
 import {
   addCompanyMember,
   assignRequestToCompany,
-  assignVehicleToCompany,
   removeCompanyMember,
   setPrimaryCompanyMember,
   updateCompany,
@@ -12,9 +11,11 @@ import {
 } from '@/app/admin/company-actions';
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
+import { AdminOwnerFleetSection } from '@/components/vehicles/admin-owner-fleet-section';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import { getAdminCompanyVehicles } from '@/lib/vehicles/admin-queries';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +56,7 @@ export default async function AdminCompanyDetailPage({
     return <AdminDbBlocker />;
   }
 
-  const [company, availableClients, unassignedRequests, unassignedVehicles] = await Promise.all([
+  const [company, availableClients, unassignedRequests, companyVehicles] = await Promise.all([
     prisma.company.findUnique({
       where: { id },
       include: {
@@ -67,11 +68,6 @@ export default async function AdminCompanyDetailPage({
           orderBy: { createdAt: 'desc' },
           take: 12,
           include: { client: true, category: true }
-        },
-        vehicles: {
-          orderBy: { createdAt: 'desc' },
-          take: 12,
-          include: { client: true }
         },
         billingDetails: true
       }
@@ -91,12 +87,7 @@ export default async function AdminCompanyDetailPage({
       include: { client: true },
       take: 100
     }),
-    prisma.vehicle.findMany({
-      where: { companyId: null },
-      orderBy: { createdAt: 'desc' },
-      include: { client: true },
-      take: 100
-    })
+    getAdminCompanyVehicles(id)
   ]);
 
   if (!company) {
@@ -251,68 +242,44 @@ export default async function AdminCompanyDetailPage({
         </form>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <section className="rounded-lg border border-border bg-card p-6 shadow-card">
-          <h2 className="text-lg font-bold text-foreground">Заявки компанії</h2>
-          <div className="mt-5 grid gap-3">
-            {company.requests.map((request) => (
-              <Link key={request.id} href={`/admin/requests/${request.id}`} className="rounded-md border border-border p-4 transition hover:border-accent hover:bg-surface-muted">
-                <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-                  <div>
-                    <p className="font-bold text-foreground">{request.requestNumber}</p>
-                    <p className="mt-1 text-sm text-muted">{request.category?.name ?? request.equipmentType ?? request.description.slice(0, 80)}</p>
-                  </div>
-                  <StatusBadge status={request.status} />
+      <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+        <h2 className="text-lg font-bold text-foreground">Заявки компанії</h2>
+        <div className="mt-5 grid gap-3">
+          {company.requests.map((request) => (
+            <Link key={request.id} href={`/admin/requests/${request.id}`} className="rounded-md border border-border p-4 transition hover:border-accent hover:bg-surface-muted">
+              <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                <div>
+                  <p className="font-bold text-foreground">{request.requestNumber}</p>
+                  <p className="mt-1 text-sm text-muted">{request.category?.name ?? request.equipmentType ?? request.description.slice(0, 80)}</p>
                 </div>
-              </Link>
-            ))}
-            {company.requests.length === 0 ? <p className="rounded-md border border-dashed border-border p-5 text-sm text-muted">Привʼязаних заявок ще немає.</p> : null}
-          </div>
-          <form action={assignRequestToCompany} className="mt-5 grid gap-3 border-t border-border pt-5">
-            <input type="hidden" name="companyId" value={company.id} />
-            <label className="grid gap-2 text-sm font-semibold text-foreground">
-              Привʼязати існуючу заявку
-              <select name="requestId" className={inputClass}>
-                <option value="">Оберіть заявку</option>
-                {unassignedRequests.map((request) => (
-                  <option key={request.id} value={request.id}>
-                    {request.requestNumber} · {request.client?.contactName ?? request.client?.email ?? 'client'}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button className="w-fit rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent">Привʼязати заявку</button>
-          </form>
-        </section>
+                <StatusBadge status={request.status} />
+              </div>
+            </Link>
+          ))}
+          {company.requests.length === 0 ? <p className="rounded-md border border-dashed border-border p-5 text-sm text-muted">Привʼязаних заявок ще немає.</p> : null}
+        </div>
+        <form action={assignRequestToCompany} className="mt-5 grid gap-3 border-t border-border pt-5">
+          <input type="hidden" name="companyId" value={company.id} />
+          <label className="grid gap-2 text-sm font-semibold text-foreground">
+            Привʼязати існуючу заявку
+            <select name="requestId" className={inputClass}>
+              <option value="">Оберіть заявку</option>
+              {unassignedRequests.map((request) => (
+                <option key={request.id} value={request.id}>
+                  {request.requestNumber} · {request.client?.contactName ?? request.client?.email ?? 'client'}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="w-fit rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent">Привʼязати заявку</button>
+        </form>
+      </section>
 
-        <section className="rounded-lg border border-border bg-card p-6 shadow-card">
-          <h2 className="text-lg font-bold text-foreground">Парк техніки компанії</h2>
-          <div className="mt-5 grid gap-3">
-            {company.vehicles.map((vehicle) => (
-              <Link key={vehicle.id} href={`/client/vehicles/${vehicle.id}`} className="rounded-md border border-border p-4 transition hover:border-accent hover:bg-surface-muted">
-                <p className="font-bold text-foreground">{vehicle.manufacturer} {vehicle.model}</p>
-                <p className="mt-1 text-sm text-muted">{vehicle.type} · {vehicle.vinOrSerial ?? 'VIN не вказано'} · Власник: {company.name}</p>
-              </Link>
-            ))}
-            {company.vehicles.length === 0 ? <p className="rounded-md border border-dashed border-border p-5 text-sm text-muted">Привʼязаної техніки ще немає.</p> : null}
-          </div>
-          <form action={assignVehicleToCompany} className="mt-5 grid gap-3 border-t border-border pt-5">
-            <input type="hidden" name="companyId" value={company.id} />
-            <label className="grid gap-2 text-sm font-semibold text-foreground">
-              Привʼязати існуючу техніку
-              <select name="vehicleId" className={inputClass}>
-                <option value="">Оберіть техніку</option>
-                {unassignedVehicles.map((vehicle) => (
-                  <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.manufacturer} {vehicle.model} · {vehicle.client?.contactName ?? vehicle.client?.email ?? 'client'}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button className="w-fit rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent">Привʼязати техніку</button>
-          </form>
-        </section>
-      </div>
+      <AdminOwnerFleetSection
+        ownerType="company"
+        vehicles={companyVehicles}
+        createHref={`/admin/companies/${company.id}/vehicles/new`}
+      />
     </div>
   );
 }

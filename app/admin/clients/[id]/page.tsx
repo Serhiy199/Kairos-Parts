@@ -4,9 +4,11 @@ import { notFound } from 'next/navigation';
 import { upsertClientBillingDetails } from '@/app/admin/client-billing-actions';
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
+import { AdminOwnerFleetSection } from '@/components/vehicles/admin-owner-fleet-section';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import { getAdminClientVehicles } from '@/lib/vehicles/admin-queries';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,49 +46,34 @@ export default async function AdminClientDetailPage({
     return <AdminDbBlocker />;
   }
 
-  const client = await prisma.clientProfile.findUnique({
-    where: { id },
-    include: {
-      user: {
-        select: {
-          name: true,
-          email: true,
-          phone: true,
-          companyMemberships: {
-            include: { company: { include: { billingDetails: true } } },
-            take: 1
-          }
-        }
-      },
-      billingDetails: true,
-      vehicles: {
-        orderBy: { createdAt: 'desc' },
-        include: {
-          requestItems: {
-            orderBy: { createdAt: 'desc' },
-            include: {
-              request: {
-                select: {
-                  id: true,
-                  requestNumber: true,
-                  status: true,
-                  createdAt: true
-                }
-              }
+  const [client, personalVehicles] = await Promise.all([
+    prisma.clientProfile.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+            companyMemberships: {
+              include: { company: { include: { billingDetails: true } } },
+              take: 1
             }
           }
-        }
-      },
-      documents: { orderBy: { createdAt: 'desc' } },
-      requests: {
-        orderBy: { createdAt: 'desc' },
-        include: {
-          category: { select: { name: true } },
-          assignedManager: { select: { name: true, email: true } }
+        },
+        billingDetails: true,
+        documents: { orderBy: { createdAt: 'desc' } },
+        requests: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            category: { select: { name: true } },
+            assignedManager: { select: { name: true, email: true } }
+          }
         }
       }
-    }
-  });
+    }),
+    getAdminClientVehicles(id)
+  ]);
 
   if (!client) {
     notFound();
@@ -208,43 +195,11 @@ export default async function AdminClientDetailPage({
         </form>
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-6 shadow-card">
-        <p className="text-sm font-bold uppercase text-accent">Техніка клієнта</p>
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          {client.vehicles.length === 0 ? <p className="rounded-md border border-dashed border-border p-5 text-sm text-muted">Техніки немає.</p> : client.vehicles.map((vehicle) => (
-            <article key={vehicle.id} className="rounded-md border border-border p-4">
-              <h3 className="font-bold text-foreground">{vehicle.manufacturer} {vehicle.model}</h3>
-              <p className="mt-2 text-sm text-muted">{vehicle.type}{vehicle.year ? ` · ${vehicle.year} р.` : ''}</p>
-              <p className="mt-2 text-sm text-muted">{vehicle.vinOrSerial ?? 'VIN / серійний номер не вказано'}</p>
-              <div className="mt-4 border-t border-border pt-4">
-                <p className="text-xs font-bold uppercase text-accent">Історія підібраних запчастин</p>
-                <div className="mt-3 grid gap-2">
-                  {vehicle.requestItems.length === 0 ? (
-                    <p className="rounded-md border border-dashed border-border p-3 text-xs text-muted">Для цієї техніки ще немає підібраних позицій.</p>
-                  ) : (
-                    vehicle.requestItems.map((item) => (
-                      <div key={item.id} className="rounded-md bg-surface-muted p-3 text-sm">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <Link href={`/admin/requests/${item.request.id}`} className="font-bold text-foreground transition hover:text-accent">
-                            {item.request.requestNumber} · {item.name}
-                          </Link>
-                          <StatusBadge status={item.request.status} />
-                        </div>
-                        <p className="mt-2 text-xs text-muted">
-                          {item.request.createdAt.toLocaleDateString('uk-UA')} · {item.brand ?? 'Виробник —'} · {item.catalogNumber ?? 'Каталог —'} · {item.quantity} {item.unit}
-                        </p>
-                        <p className="mt-1 text-xs text-muted">
-                          {item.availability ?? 'Наявність —'}{item.supplierName ? ` · ${item.supplierName}` : ''}
-                        </p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+      <AdminOwnerFleetSection
+        ownerType="client"
+        vehicles={personalVehicles}
+        createHref={`/admin/clients/${client.id}/vehicles/new`}
+      />
 
       <section className="rounded-lg border border-border bg-card p-6 shadow-card">
         <p className="text-sm font-bold uppercase text-accent">Заявки клієнта</p>
