@@ -46,19 +46,26 @@ export type CloudinaryUsedEquipmentUpload = {
   bytes?: number;
 };
 
-export async function uploadUsedEquipmentImage(usedEquipmentId: string, file: File): Promise<CloudinaryUsedEquipmentUpload> {
+export type CloudinaryVehicleUpload = CloudinaryUsedEquipmentUpload;
+
+async function uploadImage(
+  folder: string,
+  file: File,
+  transformation?: { width: number; height: number; crop: 'limit'; angle: 'auto'; quality: 'auto' }[]
+): Promise<CloudinaryUsedEquipmentUpload> {
   const client = getCloudinaryClient();
   const buffer = Buffer.from(await file.arrayBuffer());
 
   const result = await new Promise<UploadApiResponse>((resolve, reject) => {
     const stream = client.uploader.upload_stream(
       {
-        folder: `kairos-parts/used-equipment/${usedEquipmentId}`,
+        folder,
         resource_type: 'image',
         allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
         use_filename: false,
         unique_filename: true,
-        overwrite: false
+        overwrite: false,
+        ...(transformation ? { transformation } : {})
       },
       (error, uploadResult) => {
         if (error || !uploadResult) {
@@ -81,6 +88,16 @@ export async function uploadUsedEquipmentImage(usedEquipmentId: string, file: Fi
     format: result.format,
     bytes: result.bytes
   };
+}
+
+export async function uploadUsedEquipmentImage(usedEquipmentId: string, file: File): Promise<CloudinaryUsedEquipmentUpload> {
+  return uploadImage(`kairos-parts/used-equipment/${usedEquipmentId}`, file);
+}
+
+export async function uploadVehicleImage(vehicleId: string, file: File): Promise<CloudinaryVehicleUpload> {
+  return uploadImage(`kairos-parts/vehicles/${vehicleId}`, file, [
+    { width: 2400, height: 2400, crop: 'limit', angle: 'auto', quality: 'auto' }
+  ]);
 }
 
 export async function deleteCloudinaryAsset(publicId: string) {

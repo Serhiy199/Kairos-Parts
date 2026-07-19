@@ -1,5 +1,7 @@
 ﻿import Link from 'next/link';
 
+import Image from 'next/image';
+
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { getClientAccessContext, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
@@ -28,7 +30,15 @@ export default async function ClientVehiclesPage({
   const vehicles = await prisma.vehicle.findMany({
     where: vehicleAccessWhere(access),
     orderBy: { createdAt: 'desc' },
-    include: { requests: { select: { id: true } }, company: { select: { name: true } } }
+    include: {
+      requests: { select: { id: true } },
+      company: { select: { name: true } },
+      images: {
+        orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
+        take: 1,
+        select: { secureUrl: true }
+      }
+    }
   });
 
   return (
@@ -61,30 +71,45 @@ export default async function ClientVehiclesPage({
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {vehicles.map((vehicle) => (
-            <article key={vehicle.id} className="rounded-lg border border-border bg-card p-5 shadow-card">
-              <div className="flex flex-col justify-between gap-3 sm:flex-row">
-                <div>
-                  <p className="text-sm font-bold text-foreground">{vehicle.type}</p>
-                  <h3 className="mt-1 text-xl font-bold text-foreground">
-                    {vehicle.manufacturer} {vehicle.model}
-                  </h3>
-                  <p className="mt-2 text-sm text-muted">
-                    {vehicle.year ? `${vehicle.year} р. · ` : ''}
-                    {vehicle.vinOrSerial ?? 'VIN / серійний номер не вказано'}
-                  </p>
-                </div>
-                <span className="h-fit rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">
-                  {vehicle.archivedAt ? 'Архів' : `${vehicle.requests.length} заявок`}
-                </span>
+            <article key={vehicle.id} className="overflow-hidden rounded-lg border border-border bg-card shadow-card">
+              <div className="relative aspect-[16/9] bg-surface-muted">
+                {vehicle.images[0] ? (
+                  <Image
+                    src={vehicle.images[0].secureUrl}
+                    alt={`${vehicle.manufacturer} ${vehicle.model}`}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm font-semibold text-muted">Фото відсутнє</div>
+                )}
               </div>
-              {vehicle.comment ? <p className="mt-4 text-sm leading-6 text-muted">{vehicle.comment}</p> : null}
-              <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-                <Link href={`/client/vehicles/${vehicle.id}`} className="rounded-md border border-border px-4 py-2 text-center text-sm font-semibold text-foreground transition hover:border-accent hover:bg-surface-muted">
-                  Детальніше
-                </Link>
-                <Link href={`/request?source=client&vehicleId=${vehicle.id}`} className="rounded-md bg-accent px-4 py-2 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover">
-                  Створити заявку по цій техніці
-                </Link>
+              <div className="p-5">
+                <div className="flex flex-col justify-between gap-3 sm:flex-row">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{vehicle.type}</p>
+                    <h3 className="mt-1 text-xl font-bold text-foreground">
+                      {vehicle.manufacturer} {vehicle.model}
+                    </h3>
+                    <p className="mt-2 text-sm text-muted">
+                      {vehicle.year ? `${vehicle.year} р. · ` : ''}
+                      {vehicle.vinOrSerial ?? 'VIN / серійний номер не вказано'}
+                    </p>
+                  </div>
+                  <span className="h-fit rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">
+                    {vehicle.archivedAt ? 'Архів' : `${vehicle.requests.length} заявок`}
+                  </span>
+                </div>
+                {vehicle.comment ? <p className="mt-4 text-sm leading-6 text-muted">{vehicle.comment}</p> : null}
+                <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                  <Link href={`/client/vehicles/${vehicle.id}`} className="rounded-md border border-border px-4 py-2 text-center text-sm font-semibold text-foreground transition hover:border-accent hover:bg-surface-muted">
+                    Детальніше
+                  </Link>
+                  <Link href={`/request?source=client&vehicleId=${vehicle.id}`} className="rounded-md bg-accent px-4 py-2 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover">
+                    Створити заявку по цій техніці
+                  </Link>
+                </div>
               </div>
             </article>
           ))}

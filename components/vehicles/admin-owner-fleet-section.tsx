@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { LuPencil, LuPlus } from 'react-icons/lu';
 
@@ -65,8 +66,15 @@ export function AdminOwnerFleetSection({
           {vehicles.map((vehicle) => (
             <article
               key={vehicle.id}
-              className="grid gap-4 rounded-md border border-border p-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_0.55fr_1.3fr_0.8fr_auto] xl:items-center"
+              className="grid gap-4 rounded-md border border-border p-4 sm:grid-cols-2 xl:grid-cols-[6rem_1fr_1fr_1fr_0.55fr_1.3fr_0.8fr_auto] xl:items-center"
             >
+              <div className="relative aspect-[4/3] overflow-hidden rounded-md bg-surface-muted sm:col-span-2 xl:col-span-1 xl:w-24">
+                {vehicle.images[0] ? (
+                  <Image src={vehicle.images[0].secureUrl} alt={`${vehicle.manufacturer} ${vehicle.model}`} fill sizes="96px" className="object-cover" />
+                ) : (
+                  <div className="flex h-full items-center justify-center px-2 text-center text-xs font-semibold text-muted">Фото відсутнє</div>
+                )}
+              </div>
               <VehicleField label="Тип техніки" value={vehicle.type} />
               <VehicleField label="Виробник" value={vehicle.manufacturer} />
               <VehicleField label="Модель" value={vehicle.model} />

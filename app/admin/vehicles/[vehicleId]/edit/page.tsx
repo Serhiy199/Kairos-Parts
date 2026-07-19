@@ -5,6 +5,7 @@ import { FaArrowLeft, FaTractor } from 'react-icons/fa';
 import { updateAdminVehicle } from '@/app/admin/vehicles/actions';
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { AdminVehicleForm } from '@/components/vehicles/admin-vehicle-form';
+import { VehicleImageManager } from '@/components/vehicles/vehicle-image-manager';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
@@ -39,6 +40,10 @@ export default async function AdminVehicleEditPage({
         year: true,
         vinOrSerial: true,
         comment: true,
+        images: {
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+          select: { id: true, secureUrl: true, width: true, height: true, sortOrder: true, isPrimary: true }
+        },
         client: {
           select: {
             id: true,
@@ -149,6 +154,8 @@ export default async function AdminVehicleEditPage({
         initialValues={initialValues}
         cancelHref={`${profileHref}#fleet`}
       />
+
+      <VehicleImageManager vehicleId={vehicle.id} vehicleLabel={`${vehicle.manufacturer} ${vehicle.model}`} images={vehicle.images} />
     </div>
   );
 }

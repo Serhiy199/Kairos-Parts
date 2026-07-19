@@ -12,7 +12,12 @@ const adminVehicleSummarySelect = {
   year: true,
   vinOrSerial: true,
   createdAt: true,
-  updatedAt: true
+  updatedAt: true,
+  images: {
+    orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
+    take: 1,
+    select: { id: true, secureUrl: true }
+  }
 } satisfies Prisma.VehicleSelect;
 
 export type AdminVehicleSummary = Prisma.VehicleGetPayload<{

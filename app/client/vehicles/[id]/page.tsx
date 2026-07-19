@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { ContextualChangeRequestForm } from '@/app/client/change-requests/contextual-change-request-form';
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
+import { ClientVehicleGallery } from '@/components/vehicles/client-vehicle-gallery';
 import { getClientAccessContext, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
@@ -76,6 +77,10 @@ export default async function ClientVehicleDetailPage({
             }
           }
         }
+      },
+      images: {
+        orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true, secureUrl: true, isPrimary: true }
       }
     }
   });
@@ -112,6 +117,8 @@ export default async function ClientVehicleDetailPage({
         </div>
       ) : null}
       {changeMessage ? <div className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">{changeMessage}</div> : null}
+
+      <ClientVehicleGallery vehicleLabel={`${vehicle.manufacturer} ${vehicle.model}`} images={vehicle.images} />
 
       <VehicleForm action={updateVehicle} submitLabel="Зберегти зміни" vehicle={vehicle} />
 
