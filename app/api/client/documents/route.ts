@@ -28,7 +28,12 @@ export async function GET() {
 
   const [documents, requestFiles] = await Promise.all([
     prisma.document.findMany({
-      where: documentAccessWhere(access),
+      where: {
+        AND: [
+          documentAccessWhere(access),
+          { OR: [{ vehicleId: null }, { visibleToClient: true }] }
+        ]
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         request: { select: { id: true, requestNumber: true } },

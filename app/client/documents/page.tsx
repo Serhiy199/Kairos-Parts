@@ -28,7 +28,12 @@ export default async function ClientDocumentsPage() {
   const requestWhere = requestAccessWhere(access);
   const [documents, requestFiles, requestDocuments] = await Promise.all([
     prisma.document.findMany({
-      where: documentAccessWhere(access),
+      where: {
+        AND: [
+          documentAccessWhere(access),
+          { OR: [{ vehicleId: null }, { visibleToClient: true }] }
+        ]
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         request: { select: { id: true, requestNumber: true } },
@@ -66,7 +71,7 @@ export default async function ClientDocumentsPage() {
       createdAt: document.createdAt,
       request: document.request,
       vehicle: document.vehicle,
-      url: document.fileUrl
+      url: document.vehicleId ? `/api/client/vehicle-documents/${document.id}/download` : document.fileUrl
     })),
     ...requestDocuments.map((document) => ({
       id: `request-document-${document.id}`,

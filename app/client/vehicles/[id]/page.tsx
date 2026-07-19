@@ -8,6 +8,7 @@ import { ClientVehicleGallery } from '@/components/vehicles/client-vehicle-galle
 import { getClientAccessContext, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import { formatVehicleDocumentSize, vehicleDocumentTypeLabel } from '@/lib/vehicles/documents';
 
 import { updateVehicle } from '../actions';
 import { VehicleForm } from '../vehicle-form';
@@ -81,6 +82,11 @@ export default async function ClientVehicleDetailPage({
       images: {
         orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
         select: { id: true, secureUrl: true, isPrimary: true }
+      },
+      documents: {
+        where: { visibleToClient: true },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true }
       }
     }
   });
@@ -121,6 +127,30 @@ export default async function ClientVehicleDetailPage({
       <ClientVehicleGallery vehicleLabel={`${vehicle.manufacturer} ${vehicle.model}`} images={vehicle.images} />
 
       <VehicleForm action={updateVehicle} submitLabel="Зберегти зміни" vehicle={vehicle} />
+
+      <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+        <h3 className="text-xl font-bold text-foreground">Документи</h3>
+        <p className="mt-2 text-sm leading-6 text-muted">Документи цієї одиниці техніки, які менеджер відкрив для вашого кабінету.</p>
+        {vehicle.documents.length === 0 ? (
+          <p className="mt-5 rounded-md border border-dashed border-border p-5 text-sm text-muted">Доступних документів ще немає.</p>
+        ) : (
+          <div className="mt-5 grid gap-3">
+            {vehicle.documents.map((document) => (
+              <article key={document.id} className="flex flex-col justify-between gap-4 rounded-md border border-border p-4 sm:flex-row sm:items-center">
+                <div className="min-w-0">
+                  <p className="break-words font-bold text-foreground">{document.fileName}</p>
+                  <p className="mt-1 text-xs text-muted">
+                    {vehicleDocumentTypeLabel(document.mimeType)} · {formatVehicleDocumentSize(document.size)} · {document.createdAt.toLocaleDateString('uk-UA')}
+                  </p>
+                </div>
+                <a href={`/api/client/vehicle-documents/${document.id}/download`} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent/10">
+                  Завантажити
+                </a>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ContextualChangeRequestForm

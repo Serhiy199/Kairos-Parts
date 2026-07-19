@@ -5,6 +5,7 @@ import { FaArrowLeft, FaTractor } from 'react-icons/fa';
 import { updateAdminVehicle } from '@/app/admin/vehicles/actions';
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { AdminVehicleForm } from '@/components/vehicles/admin-vehicle-form';
+import { VehicleDocumentManager } from '@/components/vehicles/vehicle-document-manager';
 import { VehicleImageManager } from '@/components/vehicles/vehicle-image-manager';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
@@ -43,6 +44,18 @@ export default async function AdminVehicleEditPage({
         images: {
           orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
           select: { id: true, secureUrl: true, width: true, height: true, sortOrder: true, isPrimary: true }
+        },
+        documents: {
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            fileName: true,
+            mimeType: true,
+            size: true,
+            visibleToClient: true,
+            createdAt: true,
+            uploadedBy: { select: { name: true, email: true } }
+          }
         },
         client: {
           select: {
@@ -156,6 +169,8 @@ export default async function AdminVehicleEditPage({
       />
 
       <VehicleImageManager vehicleId={vehicle.id} vehicleLabel={`${vehicle.manufacturer} ${vehicle.model}`} images={vehicle.images} />
+
+      <VehicleDocumentManager vehicleId={vehicle.id} documents={vehicle.documents} />
     </div>
   );
 }

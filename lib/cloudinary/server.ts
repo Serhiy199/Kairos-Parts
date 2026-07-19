@@ -17,7 +17,7 @@ export function hasCloudinaryConfig() {
   return Boolean(cloudName && apiKey && apiSecret);
 }
 
-function getCloudinaryClient() {
+export function getCloudinaryServerClient() {
   const { cloudName, apiKey, apiSecret } = getCloudinaryCredentials();
 
   if (!cloudName || !apiKey || !apiSecret) {
@@ -53,7 +53,7 @@ async function uploadImage(
   file: File,
   transformation?: { width: number; height: number; crop: 'limit'; angle: 'auto'; quality: 'auto' }[]
 ): Promise<CloudinaryUsedEquipmentUpload> {
-  const client = getCloudinaryClient();
+  const client = getCloudinaryServerClient();
   const buffer = Buffer.from(await file.arrayBuffer());
 
   const result = await new Promise<UploadApiResponse>((resolve, reject) => {
@@ -105,7 +105,7 @@ export async function deleteCloudinaryAsset(publicId: string) {
     return;
   }
 
-  const client = getCloudinaryClient();
+  const client = getCloudinaryServerClient();
   await client.uploader.destroy(publicId, { resource_type: 'image' });
 }
 
