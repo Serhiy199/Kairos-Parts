@@ -4,7 +4,8 @@ import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { notFound, redirect } from 'next/navigation';
 
-import { requireCrmSession } from '@/lib/admin/access';
+import { requireAdminSession, requireCrmSession } from '@/lib/admin/access';
+import { createAuditLog } from '@/lib/audit-log/service';
 import { parseCompanyBillingInput } from '@/lib/billing/validation';
 import { parseCompanyInput, readCompanyMemberInput } from '@/lib/companies/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
@@ -248,7 +249,7 @@ export async function assignRequestToCompany(formData: FormData) {
 }
 
 export async function assignVehicleToCompany(formData: FormData) {
-  await requireCrmSession();
+  const session = await requireAdminSession();
 
   const companyId = readString(formData, 'companyId');
   const vehicleId = readString(formData, 'vehicleId');
@@ -261,7 +262,7 @@ export async function assignVehicleToCompany(formData: FormData) {
     prisma.company.findUnique({ where: { id: companyId }, select: { id: true } }),
     prisma.vehicle.findFirst({
       where: { id: vehicleId, clientId: { not: null }, companyId: null },
-      select: { id: true, vinOrSerial: true }
+      select: { id: true, clientId: true, vinOrSerial: true }
     })
   ]);
 
@@ -286,6 +287,20 @@ export async function assignVehicleToCompany(formData: FormData) {
       where: { id: vehicle.id },
       data: { ...owner, vinOrSerial: normalizedVin }
     });
+
+    await createAuditLog(tx, {
+      actorId: session.user.id,
+      companyId: company.id,
+      entityType: 'VEHICLE',
+      entityId: vehicle.id,
+      action: 'ENTITY_UPDATED',
+      oldValue: { ownerType: 'client', ownerId: vehicle.clientId },
+      newValue: { ownerType: 'company', ownerId: company.id },
+      metadata: {
+        event: 'VEHICLE_OWNER_TRANSFERRED',
+        actorRole: session.user.role
+      }
+    });
     return false;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
@@ -295,5 +310,8 @@ export async function assignVehicleToCompany(formData: FormData) {
 
   revalidatePath('/admin/companies');
   revalidatePath(`/admin/companies/${companyId}`);
+  revalidatePath(`/admin/clients/${vehicle.clientId}`);
+  revalidatePath('/client/vehicles');
+  revalidatePath(`/client/vehicles/${vehicle.id}`);
   redirectCompany(companyId, 'vehicle-assigned');
 }

@@ -1,5 +1,6 @@
 import { config } from 'dotenv';
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 
 import {
   diffVehicleFields,
@@ -8,6 +9,23 @@ import {
 } from '../lib/vehicles/change-snapshot';
 
 config({ path: '.env.local', quiet: true });
+
+if (process.env.DATABASE_URL_UNPOOLED) {
+  const databaseUrl = new URL(process.env.DATABASE_URL_UNPOOLED);
+  databaseUrl.searchParams.delete('channel_binding');
+  databaseUrl.searchParams.set('sslmode', 'verify-full');
+  process.env.DATABASE_URL = databaseUrl.toString();
+}
+
+const requireForAudit = createRequire(import.meta.url);
+type PgClientInstance = {
+  connect(): Promise<void>;
+  end(): Promise<void>;
+  query<Row>(sql: string): Promise<{ rows: Row[] }>;
+};
+const { Client: PgClient } = requireForAudit('pg') as {
+  Client: new (config: { connectionString: string }) => PgClientInstance;
+};
 
 const FORBIDDEN_OWNER_KEYS = ['clientId', 'companyId', 'ownerId', 'ownerType'];
 
@@ -38,41 +56,51 @@ async function main() {
   assert.deepEqual(diffVehicleFields(snapshot, snapshot).changedFields, []);
   assert.deepEqual(diffVehicleFields(snapshot, { ...snapshot, model: '6195M' }).changedFields, ['model']);
 
-  const { prisma } = await import('../lib/prisma');
-  const [vehicleAuditCount, vehicleRequests, approvedVehicleRequests, appliedVehicleAudits] = await Promise.all([
-    prisma.auditLog.count({ where: { entityType: 'VEHICLE' } }),
-    prisma.changeRequest.groupBy({
-      by: ['status'],
-      where: { entityType: 'VEHICLE' },
-      _count: { _all: true }
-    }),
-    prisma.changeRequest.findMany({
-      where: { entityType: 'VEHICLE', status: 'APPROVED' },
-      select: { id: true, oldValue: true, newValue: true }
-    }),
-    prisma.auditLog.findMany({
-      where: { entityType: 'VEHICLE', changeRequestId: { not: null } },
-      select: { changeRequestId: true }
-    })
-  ]);
+  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not configured.');
 
-  const auditedRequestIds = new Set(appliedVehicleAudits.map((item) => item.changeRequestId));
+  const client = new PgClient({ connectionString: process.env.DATABASE_URL });
+  await client.connect();
+  const vehicleAuditCount = await client.query<{ count: string }>(`
+    SELECT COUNT(*)::bigint AS count FROM "AuditLog" WHERE "entityType" = 'VEHICLE'
+  `);
+  const vehicleRequests = await client.query<{ status: string; count: string }>(`
+    SELECT status, COUNT(*)::bigint AS count
+    FROM "ChangeRequest"
+    WHERE "entityType" = 'VEHICLE'
+    GROUP BY status
+  `);
+  const approvedVehicleRequests = await client.query<{
+    id: string;
+    oldValue: unknown;
+    newValue: unknown;
+  }>(`
+    SELECT id, "oldValue", "newValue"
+    FROM "ChangeRequest"
+    WHERE "entityType" = 'VEHICLE' AND status = 'APPROVED'
+  `);
+  const appliedVehicleAudits = await client.query<{ changeRequestId: string }>(`
+    SELECT "changeRequestId"
+    FROM "AuditLog"
+    WHERE "entityType" = 'VEHICLE' AND "changeRequestId" IS NOT NULL
+  `);
+
+  const auditedRequestIds = new Set(appliedVehicleAudits.rows.map((item) => item.changeRequestId));
   const result = {
     helperChecks: 'passed',
-    vehicleAuditCount,
+    vehicleAuditCount: Number(vehicleAuditCount.rows[0]?.count ?? '0'),
     vehicleChangeRequestsByStatus: Object.fromEntries(
-      vehicleRequests.map((row) => [row.status, row._count._all])
+      vehicleRequests.rows.map((row) => [row.status, Number(row.count)])
     ),
-    forbiddenOwnershipPayloads: approvedVehicleRequests.filter(
+    forbiddenOwnershipPayloads: approvedVehicleRequests.rows.filter(
       (item) => hasForbiddenOwnerKey(item.oldValue) || hasForbiddenOwnerKey(item.newValue)
     ).length,
-    approvedWithoutVehicleAudit: approvedVehicleRequests.filter(
+    approvedWithoutVehicleAudit: approvedVehicleRequests.rows.filter(
       (item) => !auditedRequestIds.has(item.id)
     ).length
   };
 
   console.log(JSON.stringify(result, null, 2));
-  await prisma.$disconnect();
+  await client.end();
 }
 
 main()
