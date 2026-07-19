@@ -2,7 +2,7 @@
 
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
-import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
+import { getClientAccessContext, requestAccessWhere, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 
@@ -22,10 +22,11 @@ export default async function ClientDashboardPage() {
   }
 
   const requestWhere = requestAccessWhere(access);
-  const [totalRequests, activeRequests, completedRequests, recentRequests] = await Promise.all([
+  const [totalRequests, activeRequests, completedRequests, totalVehicles, recentRequests] = await Promise.all([
     prisma.request.count({ where: requestWhere }),
     prisma.request.count({ where: { AND: [requestWhere, { status: { notIn: ['COMPLETED', 'CANCELLED'] } }] } }),
     prisma.request.count({ where: { AND: [requestWhere, { status: 'COMPLETED' }] } }),
+    prisma.vehicle.count({ where: vehicleAccessWhere(access) }),
     prisma.request.findMany({
       where: requestWhere,
       orderBy: { createdAt: 'desc' },
@@ -47,15 +48,21 @@ export default async function ClientDashboardPage() {
         </Link>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
           ['Всього заявок', totalRequests],
           ['Активні заявки', activeRequests],
-          ['Завершено', completedRequests]
-        ].map(([label, value]) => (
+          ['Завершено', completedRequests],
+          ['Техніка в парку', totalVehicles]
+        ].map(([label, value], index) => (
           <div key={label} className="rounded-lg border border-border bg-card p-5 shadow-card">
             <p className="text-sm font-semibold text-muted">{label}</p>
             <p className="mt-2 text-3xl font-bold text-foreground">{value}</p>
+            {index === 3 ? (
+              <Link href="/client/vehicles" className="mt-3 inline-flex text-sm font-bold text-foreground transition hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                Переглянути парк
+              </Link>
+            ) : null}
           </div>
         ))}
       </div>

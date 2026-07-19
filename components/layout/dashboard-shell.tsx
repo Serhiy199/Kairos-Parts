@@ -56,6 +56,7 @@ export function DashboardShell({ children, title, subtitle, navItems, homeHref, 
                 <Link
                   key={item.href}
                   href={item.href}
+                  aria-current={isActive ? 'page' : undefined}
                   className={`whitespace-nowrap rounded-md px-3 py-2 transition lg:whitespace-normal ${
                     isActive ? 'bg-accent text-foreground' : 'hover:bg-white/10 hover:text-white'
                   }`}

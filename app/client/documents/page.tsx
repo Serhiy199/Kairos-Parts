@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { TbDownload, TbFileDescription } from 'react-icons/tb';
 
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { documentAccessWhere, getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
@@ -22,7 +23,6 @@ type ClientDocumentItem = {
 
 export default async function ClientDocumentsPage() {
   const session = await requireClientSession();
-
   if (!hasDatabaseUrl()) return <ClientDbBlocker />;
 
   const access = await getClientAccessContext(session.user.id);
@@ -32,27 +32,54 @@ export default async function ClientDocumentsPage() {
   const [documents, requestFiles, requestDocuments] = await Promise.all([
     prisma.document.findMany({
       where: { AND: [documentAccessWhere(access), { visibleToClient: true }] },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        company: { select: { id: true, name: true } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: {
+        id: true,
+        clientId: true,
+        companyId: true,
+        requestId: true,
+        vehicleId: true,
+        fileName: true,
+        mimeType: true,
+        size: true,
+        createdAt: true,
+        company: { select: { name: true } },
         request: { select: { id: true, requestNumber: true } },
         vehicle: { select: { id: true, manufacturer: true, model: true } }
       }
     }),
     prisma.requestFile.findMany({
       where: { request: requestWhere },
-      orderBy: { createdAt: 'desc' },
-      include: { request: { select: { id: true, requestNumber: true } } }
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: {
+        id: true,
+        fileName: true,
+        mimeType: true,
+        size: true,
+        createdAt: true,
+        request: { select: { id: true, requestNumber: true } }
+      }
     }),
     prisma.requestDocument.findMany({
       where: { visibleToClient: true, request: requestWhere },
-      orderBy: { createdAt: 'desc' },
-      include: { request: { select: { id: true, requestNumber: true } } }
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        mimeType: true,
+        size: true,
+        createdAt: true,
+        request: { select: { id: true, requestNumber: true } }
+      }
     })
   ]);
 
   const companyDocuments: ClientDocumentItem[] = documents
-    .filter((document) => document.companyId)
+    .filter(
+      (document) =>
+        document.companyId !== null && document.requestId === null && document.vehicleId === null
+    )
     .map((document) => ({
       id: `company-${document.id}`,
       fileName: document.fileName,
@@ -64,7 +91,10 @@ export default async function ClientDocumentsPage() {
     }));
 
   const personalDocuments: ClientDocumentItem[] = documents
-    .filter((document) => document.clientId)
+    .filter(
+      (document) =>
+        document.clientId !== null && document.requestId === null && document.vehicleId === null
+    )
     .map((document) => ({
       id: `personal-${document.id}`,
       fileName: document.fileName,
@@ -75,7 +105,7 @@ export default async function ClientDocumentsPage() {
     }));
 
   const vehicleDocuments: ClientDocumentItem[] = documents
-    .filter((document) => document.vehicleId)
+    .filter((document) => document.vehicleId !== null && document.requestId === null)
     .map((document) => ({
       id: `vehicle-${document.id}`,
       fileName: document.fileName,
@@ -99,7 +129,7 @@ export default async function ClientDocumentsPage() {
       contextHref: `/client/requests/${file.request.id}`
     })),
     ...documents
-      .filter((document) => document.requestId)
+      .filter((document) => document.requestId !== null)
       .map((document) => ({
         id: `request-document-generic-${document.id}`,
         fileName: document.fileName,
@@ -123,30 +153,29 @@ export default async function ClientDocumentsPage() {
   ].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
 
   const groups = [
-    { title: 'Документи компанії', description: 'Загальні документи компанії, доступні всім її учасникам.', items: companyDocuments },
     { title: 'Особисті документи', description: 'Ваші персональні документи, які не належать конкретній техніці.', items: personalDocuments },
-    { title: 'Документи техніки', description: 'Файли, привʼязані до доступних одиниць вашого парку.', items: vehicleDocuments },
-    { title: 'Документи заявок', description: 'Файли та документи, повʼязані із заявками.', items: requestItems }
+    { title: 'Документи компанії', description: 'Загальні документи компанії, доступні її учасникам.', items: companyDocuments },
+    { title: 'Документи техніки', description: 'Файли, прив’язані до доступних одиниць вашого парку.', items: vehicleDocuments },
+    { title: 'Документи заявок', description: 'Файли та документи, пов’язані із заявками.', items: requestItems }
   ].filter((group) => group.items.length > 0);
 
   return (
     <div className="grid gap-6">
-      <section className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
+      <header className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
         <p className="text-sm font-bold uppercase text-accent">Документи</p>
         <h1 className="mt-2 text-2xl font-bold text-foreground">Усі документи в одному місці</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
           Тут показуються лише документи, які менеджер відкрив для вашого кабінету: особисті, компанії, техніки та заявок.
         </p>
-      </section>
+      </header>
 
       {groups.length === 0 ? (
         <section className="rounded-lg border border-dashed border-border bg-card p-8 text-center shadow-card">
-          <h2 className="text-lg font-bold text-foreground">Документів ще немає</h2>
-          <p className="mt-2 text-sm text-muted">Доступні файли зʼявляться тут після публікації менеджером.</p>
+          <TbFileDescription aria-hidden="true" className="mx-auto size-8 text-muted" />
+          <h2 className="mt-3 text-lg font-bold text-foreground">Документів ще немає</h2>
+          <p className="mt-2 text-sm text-muted">Доступні файли з’являться тут після публікації менеджером.</p>
         </section>
-      ) : (
-        groups.map((group) => <DocumentGroup key={group.title} {...group} />)
-      )}
+      ) : groups.map((group) => <DocumentGroup key={group.title} {...group} />)}
     </div>
   );
 }
@@ -165,16 +194,23 @@ function DocumentGroup({ title, description, items }: { title: string; descripti
                 {vehicleDocumentTypeLabel(item.mimeType)} · {formatVehicleDocumentSize(item.size)} · {item.createdAt.toLocaleDateString('uk-UA')}
               </p>
               {item.context ? (
-                item.contextHref ? <Link href={item.contextHref} className="mt-2 inline-flex text-sm font-semibold text-muted transition hover:text-accent">{item.context}</Link> : <p className="mt-2 text-sm text-muted">{item.context}</p>
+                item.contextHref ? (
+                  <Link href={item.contextHref} className="mt-2 inline-flex break-words text-sm font-semibold text-muted transition hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                    {item.context}
+                  </Link>
+                ) : <p className="mt-2 break-words text-sm text-muted">{item.context}</p>
               ) : null}
             </div>
             {item.url ? (
-              <a href={item.url} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+              <a
+                href={item.url}
+                aria-label={`Завантажити ${item.fileName}`}
+                className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <TbDownload aria-hidden="true" className="size-4" />
                 Завантажити
               </a>
-            ) : (
-              <span className="text-xs font-semibold text-muted">Файл додано клієнтом</span>
-            )}
+            ) : <span className="text-xs font-semibold text-muted">Файл додано клієнтом</span>}
           </article>
         ))}
       </div>
