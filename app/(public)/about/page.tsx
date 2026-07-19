@@ -3,21 +3,19 @@ import Link from 'next/link';
 import {
   TbAlertTriangle,
   TbArrowsDiff,
-  TbBuildingFactory2,
   TbDatabaseCog,
-  TbDeviceDesktopAnalytics,
+  TbFileInvoice,
   TbFileSpreadsheet,
   TbGauge,
   TbHeartHandshake,
   TbHistory,
+  TbMessages,
+  TbPackages,
   TbReplace,
   TbSettingsSearch,
   TbShieldCheck,
   TbTargetArrow,
-  TbTools,
   TbTractor,
-  TbTruck,
-  TbWheat,
   TbZoomQuestion
 } from 'react-icons/tb';
 
@@ -70,34 +68,34 @@ const contactScenarios = [
 
 const audiences = [
   {
-    title: 'Аграрні підприємства',
-    text: 'Допомагаємо підтримувати трактори, комбайни та іншу сільськогосподарську техніку в робочому стані протягом сезону.',
-    icon: TbTractor
+    title: 'Пошук і перевірка позицій',
+    text: 'Аналізуємо артикул, дані техніки, каталожні номери та сумісність, щоб запропонувати коректні варіанти для конкретної машини.',
+    icon: TbSettingsSearch
   },
   {
-    title: 'Фермерські господарства',
-    text: 'Швидко підбираємо потрібні запчастини, щоб зменшити простої техніки під час критичних польових робіт.',
-    icon: TbWheat
+    title: 'Комунікація з постачальниками',
+    text: 'Самостійно уточнюємо наявність, характеристики, строки та умови, щоб клієнту не доводилося вести кілька паралельних переписок.',
+    icon: TbMessages
   },
   {
-    title: 'Транспортні компанії',
-    text: 'Підбираємо деталі для вантажного транспорту, причепів і комерційної техніки з урахуванням сумісності.',
-    icon: TbTruck
+    title: 'Порівняння варіантів',
+    text: 'Зіставляємо оригінальні деталі й перевірені аналоги, пояснюємо відмінності та допомагаємо обрати обґрунтоване рішення.',
+    icon: TbArrowsDiff
   },
   {
-    title: 'Будівельні підприємства',
-    text: 'Допомагаємо знаходити запчастини для спеціальної та будівельної техніки, яка щодня працює на об’єктах.',
-    icon: TbBuildingFactory2
+    title: 'Документи й погодження',
+    text: 'Формуємо зрозумілу пропозицію, погоджуємо склад замовлення та збираємо рахунки й документи в одному процесі.',
+    icon: TbFileInvoice
   },
   {
-    title: 'Сервісні центри',
-    text: 'Забезпечуємо СТО та ремонтні майстерні сумісними деталями для швидкого обслуговування техніки клієнтів.',
-    icon: TbTools
+    title: 'Комплектація і доставка',
+    text: 'Координуємо позиції від різних постачальників, консолідуємо замовлення та організовуємо передачу у погодженому форматі.',
+    icon: TbPackages
   },
   {
-    title: 'Підприємства з власним парком техніки',
-    text: 'Об’єднуємо техніку, заявки, запчастини, документи та історію замовлень в одному цифровому просторі.',
-    icon: TbDeviceDesktopAnalytics
+    title: 'Збереження історії',
+    text: 'Прив’язуємо запчастини, каталожні номери, рахунки й документи до конкретної техніки, щоб спростити наступні звернення.',
+    icon: TbDatabaseCog
   }
 ];
 
@@ -354,14 +352,14 @@ export default function AboutPage() {
         <div className="kp-container relative z-10">
           <div className="max-w-[900px]">
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent">
-              Для кого створено Kairos Parts
+              Зона відповідальності
             </p>
             <h2 className="mt-2 max-w-[820px] text-[28px] font-bold leading-[1.08] text-white sm:text-[34px] lg:text-[38px]">
-              Для компаній із технікою, яка має працювати щодня
+              Те, що більше не потрібно координувати самостійно
             </h2>
             <p className="mt-3 max-w-[820px] text-sm font-semibold leading-6 text-technical-white sm:text-base sm:leading-7">
-              Kairos Parts допомагає бізнесу швидко знаходити сумісні запчастини, зменшувати простої техніки та
-              зберігати історію замовлень в одному цифровому просторі.
+              Kairos Parts бере на себе ключові етапи роботи із запитом — від перевірки позицій і комунікації з
+              постачальниками до документів, комплектації та збереження історії.
             </p>
             <div className="mt-5 h-px w-20 bg-accent" />
           </div>
@@ -371,15 +369,17 @@ export default function AboutPage() {
               const Icon = audience.icon;
 
               return (
-                <article key={audience.title} className="benefit-card">
+                <article key={audience.title} className="benefit-card md:gap-x-2 xl:gap-x-[22px]">
                   <div className="benefit-card__diagonal" />
                   <div className="benefit-card__icon-wrap">
                     <Icon aria-hidden="true" focusable="false" />
                   </div>
                   <div className="benefit-card__content">
-                    <div className="benefit-card__header">
+                    <div className="benefit-card__header md:gap-1.5 xl:gap-[10px]">
                       <span className="benefit-card__number">{index + 1}</span>
-                      <h3 className="benefit-card__title">{audience.title}</h3>
+                      <h3 className="benefit-card__title min-w-0 whitespace-normal break-normal hyphens-none">
+                        {audience.title}
+                      </h3>
                     </div>
                     <p className="benefit-card__description">{audience.text}</p>
                   </div>
