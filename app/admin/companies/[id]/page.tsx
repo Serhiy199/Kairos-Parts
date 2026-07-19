@@ -291,7 +291,7 @@ export default async function AdminCompanyDetailPage({
             {company.vehicles.map((vehicle) => (
               <Link key={vehicle.id} href={`/client/vehicles/${vehicle.id}`} className="rounded-md border border-border p-4 transition hover:border-accent hover:bg-surface-muted">
                 <p className="font-bold text-foreground">{vehicle.manufacturer} {vehicle.model}</p>
-                <p className="mt-1 text-sm text-muted">{vehicle.type} · {vehicle.vinOrSerial ?? 'VIN не вказано'} · {vehicle.client.contactName ?? vehicle.client.email ?? 'client'}</p>
+                <p className="mt-1 text-sm text-muted">{vehicle.type} · {vehicle.vinOrSerial ?? 'VIN не вказано'} · Власник: {company.name}</p>
               </Link>
             ))}
             {company.vehicles.length === 0 ? <p className="rounded-md border border-dashed border-border p-5 text-sm text-muted">Привʼязаної техніки ще немає.</p> : null}
@@ -304,7 +304,7 @@ export default async function AdminCompanyDetailPage({
                 <option value="">Оберіть техніку</option>
                 {unassignedVehicles.map((vehicle) => (
                   <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.manufacturer} {vehicle.model} · {vehicle.client.contactName ?? vehicle.client.email ?? 'client'}
+                    {vehicle.manufacturer} {vehicle.model} · {vehicle.client?.contactName ?? vehicle.client?.email ?? 'client'}
                   </option>
                 ))}
               </select>

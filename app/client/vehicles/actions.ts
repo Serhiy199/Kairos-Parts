@@ -6,6 +6,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getClientAccessContext, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import { vehicleOwnershipForClient } from '@/lib/vehicles/ownership';
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -50,8 +51,7 @@ export async function createVehicle(formData: FormData) {
 
   await prisma.vehicle.create({
     data: {
-      clientId: access.clientProfileId,
-      companyId: access.companyId,
+      ...vehicleOwnershipForClient(access),
       type,
       manufacturer,
       model,

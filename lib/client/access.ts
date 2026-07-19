@@ -4,6 +4,7 @@ import type { Prisma } from '@prisma/client';
 import { auth } from '@/auth';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import { vehicleAccessWhereForClient } from '@/lib/vehicles/ownership';
 
 export type ClientAccessContext = {
   userId: string;
@@ -87,16 +88,7 @@ export function requestAccessWhere(context: ClientAccessContext): Prisma.Request
 }
 
 export function vehicleAccessWhere(context: ClientAccessContext): Prisma.VehicleWhereInput {
-  if (context.companyId) {
-    return {
-      OR: [
-        { companyId: context.companyId },
-        { clientId: context.clientProfileId, companyId: null }
-      ]
-    };
-  }
-
-  return { clientId: context.clientProfileId };
+  return vehicleAccessWhereForClient(context);
 }
 
 export function documentAccessWhere(context: ClientAccessContext): Prisma.DocumentWhereInput {
@@ -117,7 +109,7 @@ export function documentAccessWhere(context: ClientAccessContext): Prisma.Docume
     OR: [
       { clientId: context.clientProfileId },
       { request: { clientId: context.clientProfileId } },
-      { vehicle: { clientId: context.clientProfileId } }
+      { vehicle: { clientId: context.clientProfileId, companyId: null } }
     ]
   };
 }

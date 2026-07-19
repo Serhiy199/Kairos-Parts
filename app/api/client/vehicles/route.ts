@@ -2,6 +2,7 @@ import { auth } from '@/auth';
 import { getClientAccessContext, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import { vehicleOwnershipForClient } from '@/lib/vehicles/ownership';
 
 export const runtime = 'nodejs';
 
@@ -65,8 +66,7 @@ export async function POST(request: Request) {
 
   const vehicle = await prisma.vehicle.create({
     data: {
-      clientId: result.access.clientProfileId,
-      companyId: result.access.companyId,
+      ...vehicleOwnershipForClient(result.access),
       type,
       manufacturer,
       model,

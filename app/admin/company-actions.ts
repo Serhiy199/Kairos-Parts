@@ -8,6 +8,7 @@ import { parseCompanyBillingInput } from '@/lib/billing/validation';
 import { parseCompanyInput, readCompanyMemberInput } from '@/lib/companies/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import { vehicleOwnershipForCompany } from '@/lib/vehicles/ownership';
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -253,9 +254,21 @@ export async function assignVehicleToCompany(formData: FormData) {
     redirectCompany(companyId, 'assign-validation');
   }
 
+  const [company, vehicle] = await Promise.all([
+    prisma.company.findUnique({ where: { id: companyId }, select: { id: true } }),
+    prisma.vehicle.findFirst({
+      where: { id: vehicleId, clientId: { not: null }, companyId: null },
+      select: { id: true }
+    })
+  ]);
+
+  if (!company || !vehicle) {
+    redirectCompany(companyId, 'assign-validation');
+  }
+
   await prisma.vehicle.update({
-    where: { id: vehicleId },
-    data: { companyId }
+    where: { id: vehicle.id },
+    data: vehicleOwnershipForCompany(company.id)
   });
 
   revalidatePath('/admin/companies');

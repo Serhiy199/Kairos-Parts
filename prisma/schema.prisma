@@ -664,11 +664,11 @@ model RequestComment {
 }
 
 model Vehicle {
-  id           String        @id @default(cuid())
-  clientId     String
-  client       ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id           String         @id @default(cuid())
+  clientId     String?
+  client       ClientProfile? @relation(fields: [clientId], references: [id], onDelete: Restrict)
   companyId    String?
-  company      Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  company      Company?       @relation(fields: [companyId], references: [id], onDelete: Restrict)
   type         String
   manufacturer String
   model        String
@@ -677,12 +677,12 @@ model Vehicle {
   comment      String?
   archivedAt   DateTime?
   archivedById String?
-  archivedBy   User?         @relation("VehicleArchivedBy", fields: [archivedById], references: [id], onDelete: SetNull)
+  archivedBy   User?          @relation("VehicleArchivedBy", fields: [archivedById], references: [id], onDelete: SetNull)
   requests     Request[]
   requestItems RequestItem[]
   documents    Document[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   @@index([clientId])
   @@index([companyId])

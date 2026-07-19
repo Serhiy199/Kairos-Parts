@@ -256,6 +256,7 @@ async function main() {
     where: { id: 'dev_vehicle_john_deere_8430' },
     update: {
       clientId: clientProfile.id,
+      companyId: null,
       type: 'Сільгосптехніка',
       manufacturer: 'John Deere',
       model: '8430',
@@ -266,6 +267,7 @@ async function main() {
     create: {
       id: 'dev_vehicle_john_deere_8430',
       clientId: clientProfile.id,
+      companyId: null,
       type: 'Сільгосптехніка',
       manufacturer: 'John Deere',
       model: '8430',
@@ -279,6 +281,7 @@ async function main() {
     where: { id: 'dev_vehicle_man_tgx_18440' },
     update: {
       clientId: clientProfile.id,
+      companyId: null,
       type: 'Вантажний транспорт',
       manufacturer: 'MAN',
       model: 'TGX 18.440',
@@ -289,6 +292,7 @@ async function main() {
     create: {
       id: 'dev_vehicle_man_tgx_18440',
       clientId: clientProfile.id,
+      companyId: null,
       type: 'Вантажний транспорт',
       manufacturer: 'MAN',
       model: 'TGX 18.440',
