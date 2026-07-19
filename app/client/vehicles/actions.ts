@@ -2,16 +2,15 @@
 
 import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
-import { notFound, redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 
-import { getClientAccessContext, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
+import { getClientAccessContext, requireClientSession } from '@/lib/client/access';
+import { createAuditLog } from '@/lib/audit-log/service';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 import { findVehicleVinDuplicate } from '@/lib/vehicles/duplicates';
-import {
-  isValidVehicleOwnership,
-  vehicleOwnershipForClient
-} from '@/lib/vehicles/ownership';
+import { vehicleOwnershipForClient } from '@/lib/vehicles/ownership';
+import { pickEditableVehicleFields } from '@/lib/vehicles/change-snapshot';
 import { normalizeVehicleVin } from '@/lib/vehicles/vin';
 
 function readString(formData: FormData, key: string) {
@@ -65,7 +64,7 @@ export async function createVehicle(formData: FormData) {
       return found;
     }
 
-    await tx.vehicle.create({
+    const created = await tx.vehicle.create({
       data: {
         ...owner,
         type,
@@ -74,6 +73,20 @@ export async function createVehicle(formData: FormData) {
         year: readYear(formData),
         vinOrSerial,
         comment: readString(formData, 'comment') || null
+      }
+    });
+    await createAuditLog(tx, {
+      actorId: access.userId,
+      companyId: access.companyId,
+      entityType: 'VEHICLE',
+      entityId: created.id,
+      action: 'ENTITY_UPDATED',
+      newValue: pickEditableVehicleFields(created),
+      metadata: {
+        event: 'VEHICLE_CREATED',
+        actorRole: 'CLIENT',
+        ownerType: access.companyId ? 'company' : 'client',
+        ownerId: access.companyId ?? access.clientProfileId
       }
     });
     return null;
@@ -85,61 +98,4 @@ export async function createVehicle(formData: FormData) {
 
   revalidatePath('/client/vehicles');
   redirect('/client/vehicles?created=1');
-}
-
-export async function updateVehicle(formData: FormData) {
-  const access = await getClientAccess();
-  const vehicleId = readString(formData, 'vehicleId');
-  const type = readString(formData, 'type');
-  const manufacturer = readString(formData, 'manufacturer');
-  const model = readString(formData, 'model');
-  const vinSource = readString(formData, 'vinOrSerial');
-
-  if (!vehicleId || !type || !manufacturer || !model || vinSource.length > 120) {
-    redirect(vehicleId ? `/client/vehicles/${vehicleId}?error=validation` : '/client/vehicles?error=validation');
-  }
-
-  const vehicle = await prisma.vehicle.findFirst({
-    where: { id: vehicleId, AND: [vehicleAccessWhere(access)] },
-    select: { id: true, clientId: true, companyId: true }
-  });
-
-  if (!vehicle || !isValidVehicleOwnership(vehicle)) {
-    notFound();
-  }
-
-  const vinOrSerial = normalizeVehicleVin(vinSource);
-  const duplicate = await prisma.$transaction(async (tx) => {
-    const found = await findVehicleVinDuplicate({
-      db: tx,
-      owner: vehicle,
-      normalizedVin: vinOrSerial,
-      excludeVehicleId: vehicle.id
-    });
-
-    if (found) {
-      return found;
-    }
-
-    await tx.vehicle.update({
-      where: { id: vehicle.id },
-      data: {
-        type,
-        manufacturer,
-        model,
-        year: readYear(formData),
-        vinOrSerial,
-        comment: readString(formData, 'comment') || null
-      }
-    });
-    return null;
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-
-  if (duplicate) {
-    redirect(`/client/vehicles/${vehicle.id}?error=duplicate`);
-  }
-
-  revalidatePath('/client/vehicles');
-  revalidatePath(`/client/vehicles/${vehicle.id}`);
-  redirect(`/client/vehicles/${vehicle.id}?updated=1`);
 }

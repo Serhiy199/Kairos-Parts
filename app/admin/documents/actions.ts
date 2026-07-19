@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { requireCrmSession } from '@/lib/admin/access';
+import { createAuditLog } from '@/lib/audit-log/service';
 import { hasCloudinaryConfig } from '@/lib/cloudinary/server';
 import { documentOwnerData, hasExactlyOneDocumentOwner, ownerDocumentWhere, type DocumentOwnerContext, type OwnerDocumentType } from '@/lib/documents/ownership';
 import {
@@ -20,6 +21,12 @@ import {
 } from '@/lib/vehicles/documents';
 
 const GENERIC_UPLOAD_ERROR = 'Не вдалося завантажити документ.';
+
+function ownerAuditTarget(owner: DocumentOwnerContext) {
+  if (owner.type === 'company') return { entityType: 'COMPANY' as const, entityId: owner.companyId, companyId: owner.companyId };
+  if (owner.type === 'client') return { entityType: 'USER' as const, entityId: owner.clientId, companyId: null };
+  return { entityType: 'VEHICLE' as const, entityId: owner.vehicleId, companyId: null };
+}
 
 async function resolveOwner(type: OwnerDocumentType, ownerId: string): Promise<DocumentOwnerContext | null> {
   if (type === 'company') {
@@ -80,8 +87,8 @@ export async function uploadAdminOwnerDocuments(
       uploads.push({ file, upload: await uploadDocument(owner, file) });
     }
 
-    await prisma.document.createMany({
-      data: uploads.map(({ file, upload }) => ({
+    await prisma.$transaction(async (tx) => {
+      const created = await Promise.all(uploads.map(({ file, upload }) => tx.document.create({ data: {
         ...ownerData,
         fileName: sanitizeVehicleDocumentName(file.name),
         storageKey: upload.storageKey,
@@ -90,7 +97,18 @@ export async function uploadAdminOwnerDocuments(
         size: upload.bytes,
         visibleToClient,
         uploadedById: session.user.id
-      }))
+      } })));
+      const auditTarget = ownerAuditTarget(owner);
+      await createAuditLog(tx, {
+        actorId: session.user.id,
+        ...auditTarget,
+        action: 'ENTITY_UPDATED',
+        metadata: {
+          event: owner.type === 'company' ? 'COMPANY_DOCUMENT_UPLOADED' : 'CLIENT_DOCUMENT_UPLOADED',
+          actorRole: session.user.role, documentOwnerType: owner.type,
+          documents: created.map((document) => ({ id: document.id, originalName: document.fileName, mimeType: document.mimeType, size: document.size, visibleToClient: document.visibleToClient }))
+        }
+      });
     });
   } catch {
     await cleanupDocumentAssets(uploads.map(({ upload }) => upload.storageKey));
@@ -107,16 +125,25 @@ export async function setOwnerDocumentVisibility(
   documentId: string,
   visibleToClient: boolean
 ): Promise<VehicleDocumentActionState> {
-  await requireCrmSession();
+  const session = await requireCrmSession();
   const owner = await resolveOwner(ownerType, ownerId);
   const document = owner
-    ? await prisma.document.findFirst({ where: { id: documentId, ...ownerDocumentWhere(owner) }, select: { id: true } })
+    ? await prisma.document.findFirst({ where: { id: documentId, ...ownerDocumentWhere(owner) }, select: { id: true, visibleToClient: true } })
     : null;
 
   if (!owner || !document) return { status: 'error', message: 'Документ не знайдено.' };
+  if (document.visibleToClient === visibleToClient) return { status: 'success', message: 'Доступ до документа не змінився.' };
 
   try {
-    await prisma.document.update({ where: { id: document.id }, data: { visibleToClient } });
+    await prisma.$transaction(async (tx) => {
+      await tx.document.update({ where: { id: document.id }, data: { visibleToClient } });
+      const auditTarget = ownerAuditTarget(owner);
+      await createAuditLog(tx, {
+        actorId: session.user.id, ...auditTarget,
+        action: 'ENTITY_UPDATED', oldValue: { visibleToClient: document.visibleToClient }, newValue: { visibleToClient },
+        metadata: { event: owner.type === 'company' ? 'COMPANY_DOCUMENT_VISIBILITY_CHANGED' : 'CLIENT_DOCUMENT_VISIBILITY_CHANGED', actorRole: session.user.role, documentOwnerType: owner.type, documentId: document.id }
+      });
+    });
   } catch {
     return { status: 'error', message: 'Не вдалося змінити доступ до документа.' };
   }
@@ -133,12 +160,12 @@ export async function deleteAdminOwnerDocument(
   ownerId: string,
   documentId: string
 ): Promise<VehicleDocumentActionState> {
-  await requireCrmSession();
+  const session = await requireCrmSession();
   const owner = await resolveOwner(ownerType, ownerId);
   const document = owner
     ? await prisma.document.findFirst({
         where: { id: documentId, ...ownerDocumentWhere(owner) },
-        select: { id: true, storageKey: true }
+        select: { id: true, storageKey: true, fileName: true, visibleToClient: true, mimeType: true, size: true }
       })
     : null;
 
@@ -152,7 +179,19 @@ export async function deleteAdminOwnerDocument(
   }
 
   try {
-    await prisma.document.deleteMany({ where: { id: document.id, ...ownerDocumentWhere(owner) } });
+    await prisma.$transaction(async (tx) => {
+      await tx.document.deleteMany({ where: { id: document.id, ...ownerDocumentWhere(owner) } });
+      const auditTarget = ownerAuditTarget(owner);
+      await createAuditLog(tx, {
+        actorId: session.user.id, ...auditTarget,
+        action: 'ENTITY_UPDATED',
+        metadata: {
+          event: owner.type === 'company' ? 'COMPANY_DOCUMENT_DELETED' : 'CLIENT_DOCUMENT_DELETED', actorRole: session.user.role,
+          documentOwnerType: owner.type, documentId: document.id, originalName: document.fileName,
+          visibleToClient: document.visibleToClient, mimeType: document.mimeType, size: document.size
+        }
+      });
+    });
   } catch {
     return { status: 'error', message: 'Файл видалено зі сховища, але запис документа не вдалося видалити.' };
   }

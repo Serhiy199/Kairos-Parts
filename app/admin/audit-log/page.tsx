@@ -26,6 +26,44 @@ const AUDIT_ACTION_LABELS = {
   ENTITY_UPDATED: 'Об’єкт оновлено'
 } as const;
 
+const AUDIT_EVENT_LABELS: Record<string, string> = {
+  VEHICLE_CREATED: 'Техніку створено',
+  VEHICLE_UPDATED: 'Дані техніки оновлено',
+  VEHICLE_IMAGE_UPLOADED: 'Фото техніки додано',
+  VEHICLE_IMAGE_PRIMARY_CHANGED: 'Головне фото змінено',
+  VEHICLE_IMAGES_REORDERED: 'Порядок фото змінено',
+  VEHICLE_IMAGE_DELETED: 'Фото техніки видалено',
+  VEHICLE_DOCUMENT_UPLOADED: 'Документ техніки додано',
+  VEHICLE_DOCUMENT_VISIBILITY_CHANGED: 'Видимість документа техніки змінено',
+  VEHICLE_DOCUMENT_DELETED: 'Документ техніки видалено',
+  COMPANY_DOCUMENT_UPLOADED: 'Документ компанії додано',
+  COMPANY_DOCUMENT_VISIBILITY_CHANGED: 'Видимість документа компанії змінено',
+  COMPANY_DOCUMENT_DELETED: 'Документ компанії видалено',
+  CLIENT_DOCUMENT_UPLOADED: 'Документ клієнта додано',
+  CLIENT_DOCUMENT_VISIBILITY_CHANGED: 'Видимість документа клієнта змінено',
+  CLIENT_DOCUMENT_DELETED: 'Документ клієнта видалено'
+};
+
+const FIELD_LABELS: Record<string, string> = {
+  type: 'Тип техніки',
+  manufacturer: 'Виробник',
+  model: 'Модель',
+  year: 'Рік',
+  vinOrSerial: 'VIN / серійний номер',
+  comment: 'Коментар'
+};
+
+function asRecord(value: unknown) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function auditEventLabel(metadata: unknown) {
+  const event = asRecord(metadata)?.event;
+  return typeof event === 'string' ? AUDIT_EVENT_LABELS[event] ?? event : null;
+}
+
 function formatJsonValue(value: unknown) {
   if (value === null || value === undefined) {
     return '—';
@@ -33,6 +71,13 @@ function formatJsonValue(value: unknown) {
 
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     return String(value);
+  }
+
+  const record = asRecord(value);
+  if (record) {
+    return Object.entries(record)
+      .map(([key, entry]) => `${FIELD_LABELS[key] ?? key}: ${entry === null || entry === '' ? 'Не вказано' : String(entry)}`)
+      .join(', ');
   }
 
   return JSON.stringify(value);
@@ -102,7 +147,10 @@ export default async function AdminAuditLogPage() {
                       'Personal'
                     )}
                   </td>
-                  <td className="px-4 py-3 font-semibold text-foreground">{AUDIT_ACTION_LABELS[item.action]}</td>
+                  <td className="px-4 py-3 font-semibold text-foreground">
+                    <p>{auditEventLabel(item.metadata) ?? AUDIT_ACTION_LABELS[item.action]}</p>
+                    {auditEventLabel(item.metadata) ? <p className="mt-1 text-xs font-normal text-muted">{AUDIT_ACTION_LABELS[item.action]}</p> : null}
+                  </td>
                   <td className="px-4 py-3 text-muted">
                     <p className="font-semibold text-foreground">{AUDIT_ENTITY_LABELS[item.entityType]}</p>
                     <p className="mt-1 font-mono text-xs">{item.entityId}</p>

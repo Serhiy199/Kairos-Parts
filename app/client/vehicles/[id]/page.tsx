@@ -11,9 +11,6 @@ import { hasDatabaseUrl } from '@/lib/env/database';
 import { getClientVehicleDetail } from '@/lib/vehicles/client-queries';
 import { formatVehicleDocumentSize, vehicleDocumentTypeLabel } from '@/lib/vehicles/documents';
 
-import { updateVehicle } from '../actions';
-import { VehicleForm } from '../vehicle-form';
-
 export const dynamic = 'force-dynamic';
 
 const CHANGE_RESULT_MESSAGES: Record<string, { tone: 'success' | 'error'; text: string }> = {
@@ -23,7 +20,11 @@ const CHANGE_RESULT_MESSAGES: Record<string, { tone: 'success' | 'error'; text: 
   'entity-id-required': { tone: 'error', text: 'Не вдалося визначити техніку.' },
   'invalid-action': { tone: 'error', text: 'Некоректна дія.' },
   'change-details-required': { tone: 'error', text: 'Вкажіть нове значення або причину зміни.' },
-  'entity-not-found-or-forbidden': { tone: 'error', text: 'Техніку не знайдено або вона недоступна.' }
+  'entity-not-found-or-forbidden': { tone: 'error', text: 'Техніку не знайдено або вона недоступна.' },
+  'change-request-field-not-allowed': { tone: 'error', text: 'Це поле не можна змінити через запит.' },
+  'change-request-invalid-value': { tone: 'error', text: 'Нове значення має некоректний формат.' },
+  'change-request-no-changes': { tone: 'error', text: 'Зміни відсутні.' },
+  'change-request-already-pending': { tone: 'error', text: 'Для цього поля вже є запит, який очікує погодження.' }
 };
 
 export default async function ClientVehicleDetailPage({
@@ -126,15 +127,6 @@ export default async function ClientVehicleDetailPage({
 
       <VehicleDocumentsSection documents={vehicle.documents} />
 
-      <details className="rounded-lg border border-border bg-card shadow-card">
-        <summary className="cursor-pointer px-5 py-4 text-sm font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:px-6">
-          Редагувати основні дані техніки
-        </summary>
-        <div className="border-t border-border p-4 sm:p-6">
-          <VehicleForm action={updateVehicle} submitLabel="Зберегти зміни" vehicle={vehicle} />
-        </div>
-      </details>
-
       <div className="grid gap-4 lg:grid-cols-2">
         <ContextualChangeRequestForm
           title="Передати уточнення менеджеру"
@@ -149,8 +141,7 @@ export default async function ClientVehicleDetailPage({
             { value: 'model', label: 'Модель', currentValue: vehicle.model },
             { value: 'year', label: 'Рік', currentValue: vehicle.year },
             { value: 'vinOrSerial', label: 'VIN / серійний номер', currentValue: vehicle.vinOrSerial },
-            { value: 'comment', label: 'Примітка', currentValue: vehicle.comment },
-            { value: 'other', label: 'Інше' }
+            { value: 'comment', label: 'Примітка', currentValue: vehicle.comment }
           ]}
         />
         {!vehicle.archivedAt ? (

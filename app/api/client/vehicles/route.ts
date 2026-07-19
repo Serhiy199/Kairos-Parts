@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 
 import { auth } from '@/auth';
+import { createAuditLog } from '@/lib/audit-log/service';
 import { getClientAccessContext, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
@@ -9,6 +10,7 @@ import {
   VEHICLE_VIN_DUPLICATE_MESSAGE
 } from '@/lib/vehicles/duplicates';
 import { vehicleOwnershipForClient } from '@/lib/vehicles/ownership';
+import { pickEditableVehicleFields } from '@/lib/vehicles/change-snapshot';
 import { normalizeVehicleVin } from '@/lib/vehicles/vin';
 
 export const runtime = 'nodejs';
@@ -93,6 +95,20 @@ export async function POST(request: Request) {
         year,
         vinOrSerial,
         comment: readString(body.comment) || null
+      }
+    });
+    await createAuditLog(tx, {
+      actorId: result.access.userId,
+      companyId: result.access.companyId,
+      entityType: 'VEHICLE',
+      entityId: vehicle.id,
+      action: 'ENTITY_UPDATED',
+      newValue: pickEditableVehicleFields(vehicle),
+      metadata: {
+        event: 'VEHICLE_CREATED',
+        actorRole: 'CLIENT',
+        ownerType: result.access.companyId ? 'company' : 'client',
+        ownerId: result.access.companyId ?? result.access.clientProfileId
       }
     });
     return { duplicate: false as const, vehicle };

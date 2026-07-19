@@ -6,6 +6,11 @@ import type { ClientAccessContext } from '@/lib/client/access';
 import { requestAccessWhere, vehicleAccessWhere } from '@/lib/client/access';
 import { applyChangeRequest } from '@/lib/change-requests/apply';
 import { prisma } from '@/lib/prisma';
+import {
+  isEditableVehicleField,
+  normalizeEditableVehicleValue,
+  pickEditableVehicleFields
+} from '@/lib/vehicles/change-snapshot';
 
 type ChangeRequestInput = {
   entityType: ChangeEntityType;
@@ -74,6 +79,48 @@ export async function createChangeRequest(access: ClientAccessContext, input: Ch
   }
 
   const changeRequest = await prisma.$transaction(async (tx) => {
+    let oldValue = input.oldValue;
+    let newValue = input.newValue;
+
+    if (input.entityType === 'VEHICLE' && input.action === 'UPDATE') {
+      if (!isEditableVehicleField(input.fieldName)) {
+        return { ok: false as const, status: 'change-request-field-not-allowed' };
+      }
+
+      const vehicle = await tx.vehicle.findFirst({
+        where: access.companyId
+          ? { id: input.entityId, companyId: access.companyId, clientId: null }
+          : { id: input.entityId, companyId: null, client: { userId: access.userId } },
+        select: { type: true, manufacturer: true, model: true, year: true, vinOrSerial: true, comment: true }
+      });
+
+      if (!vehicle) return { ok: false as const, status: 'entity-not-found-or-forbidden' };
+      const proposedSource = input.newValue && typeof input.newValue === 'object' && !Array.isArray(input.newValue) && !('toJSON' in input.newValue)
+        ? (input.newValue as Record<string, unknown>)[input.fieldName]
+        : input.newValue;
+      const proposed = normalizeEditableVehicleValue(input.fieldName, proposedSource);
+      if (proposed === undefined) return { ok: false as const, status: 'change-request-invalid-value' };
+
+      const current = pickEditableVehicleFields(vehicle)[input.fieldName];
+      if (current === proposed) return { ok: false as const, status: 'change-request-no-changes' };
+
+      const pending = await tx.changeRequest.findFirst({
+        where: {
+          entityType: 'VEHICLE',
+          entityId: input.entityId,
+          action: 'UPDATE',
+          fieldName: input.fieldName,
+          status: 'PENDING',
+          OR: access.companyId ? [{ companyId: access.companyId }] : [{ requestedById: access.userId, companyId: null }]
+        },
+        select: { id: true }
+      });
+      if (pending) return { ok: false as const, status: 'change-request-already-pending' };
+
+      oldValue = { [input.fieldName]: current };
+      newValue = { [input.fieldName]: proposed };
+    }
+
     const created = await tx.changeRequest.create({
       data: {
         companyId: access.companyId,
@@ -83,8 +130,8 @@ export async function createChangeRequest(access: ClientAccessContext, input: Ch
         action: input.action,
         status: 'PENDING',
         fieldName: input.fieldName,
-        oldValue: input.oldValue,
-        newValue: input.newValue,
+        oldValue,
+        newValue,
         reason: input.reason
       },
       include: changeRequestInclude
@@ -96,8 +143,8 @@ export async function createChangeRequest(access: ClientAccessContext, input: Ch
       changeRequestId: created.id,
       entityId: created.id,
       action: 'CHANGE_REQUEST_CREATED',
-      oldValue: input.oldValue,
-      newValue: input.newValue,
+      oldValue,
+      newValue,
       metadata: {
         entityType: input.entityType,
         originalEntityId: input.entityId,
@@ -107,10 +154,11 @@ export async function createChangeRequest(access: ClientAccessContext, input: Ch
       }
     });
 
-    return created;
+    return { ok: true as const, created };
   });
 
-  return { ok: true as const, changeRequest };
+  if (!changeRequest.ok) return changeRequest;
+  return { ok: true as const, changeRequest: changeRequest.created };
 }
 
 export async function listChangeRequestsForClient(access: ClientAccessContext) {

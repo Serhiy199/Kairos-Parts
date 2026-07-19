@@ -9,6 +9,15 @@ export const dynamic = 'force-dynamic';
 
 const inputClass = 'rounded-md border border-border px-3 py-2 text-xs outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25';
 
+const CHANGE_FIELD_LABELS: Record<string, string> = {
+  type: 'Тип техніки',
+  manufacturer: 'Виробник',
+  model: 'Модель',
+  year: 'Рік',
+  vinOrSerial: 'VIN / серійний номер',
+  comment: 'Коментар'
+};
+
 function resultMessage(result?: string) {
   const messages: Record<string, string> = {
     approved: 'Запит погоджено.',
@@ -20,6 +29,7 @@ function resultMessage(result?: string) {
     'change-request-field-not-allowed': 'Це поле не входить у allowlist і не може бути застосоване автоматично.',
     'change-request-new-value-required': 'Для погодження потрібне нове значення.',
     'change-request-invalid-value': 'Нове значення має некоректний формат.',
+    'change-request-stale-conflict': 'Дані техніки змінилися після створення запиту. Перевірте зміни повторно.',
     'change-request-vehicle-vin-duplicate': 'Зміну не застосовано: у цього власника вже є техніка з таким VIN або серійним номером.',
     'change-request-target-not-found-or-forbidden': 'Пов’язаний об’єкт не знайдено або scope запиту не збігається.'
   };
@@ -45,6 +55,12 @@ function formatJsonValue(value: unknown) {
 
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     return String(value);
+  }
+
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, entry]) => `${CHANGE_FIELD_LABELS[key] ?? key}: ${entry === null || entry === '' ? 'Не вказано' : String(entry)}`)
+      .join(', ');
   }
 
   return JSON.stringify(value);
@@ -107,7 +123,7 @@ export default async function AdminChangeRequestsPage({
                   <td className="px-4 py-3 text-muted">
                     <p className="font-semibold text-foreground">{CHANGE_ENTITY_TYPE_LABELS[item.entityType]}</p>
                     <p className="mt-1 font-mono text-xs">{item.entityId}</p>
-                    {item.fieldName ? <p className="mt-1">Поле: {item.fieldName}</p> : null}
+                    {item.fieldName ? <p className="mt-1">Поле: {CHANGE_FIELD_LABELS[item.fieldName] ?? item.fieldName}</p> : null}
                   </td>
                   <td className="px-4 py-3 font-semibold text-foreground">{CHANGE_ACTION_LABELS[item.action]}</td>
                   <td className="px-4 py-3">

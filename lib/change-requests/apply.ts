@@ -2,9 +2,14 @@ import type { AuditAction, AuditEntityType, ChangeRequest, Prisma } from '@prism
 
 import { findVehicleVinDuplicate } from '@/lib/vehicles/duplicates';
 import { isValidVehicleOwnership } from '@/lib/vehicles/ownership';
-import { normalizeVehicleVin } from '@/lib/vehicles/vin';
+import {
+  isEditableVehicleField,
+  normalizeEditableVehicleValue,
+  pickEditableVehicleFields,
+  readChangeValue
+} from '@/lib/vehicles/change-snapshot';
 
-type ApplyableChangeRequest = Pick<ChangeRequest, 'entityType' | 'entityId' | 'action' | 'fieldName' | 'newValue' | 'companyId' | 'requestedById'>;
+type ApplyableChangeRequest = Pick<ChangeRequest, 'entityType' | 'entityId' | 'action' | 'fieldName' | 'oldValue' | 'newValue' | 'companyId' | 'requestedById'>;
 
 type ApplyResult =
   | { ok: true; audit: AppliedChangeAudit }
@@ -15,6 +20,7 @@ type ApplyResult =
         | 'change-request-field-not-allowed'
         | 'change-request-new-value-required'
         | 'change-request-invalid-value'
+        | 'change-request-stale-conflict'
         | 'change-request-vehicle-vin-duplicate'
         | 'change-request-target-not-found-or-forbidden';
     };
@@ -111,11 +117,6 @@ function readPositiveInteger(value: unknown): number | null {
   return Number.isInteger(parsed) && parsed >= 1 ? parsed : null;
 }
 
-function readVehicleYear(value: unknown): number | null {
-  const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value.trim()) : NaN;
-  return Number.isInteger(parsed) && parsed >= 1950 && parsed <= 2100 ? parsed : null;
-}
-
 function normalizeRequestField(fieldName: string | null): RequestField | null {
   if (!fieldName) {
     return null;
@@ -167,32 +168,8 @@ function requestItemUpdateData(field: RequestItemField, value: unknown): Prisma.
 }
 
 function vehicleUpdateData(field: VehicleField, value: unknown): Prisma.VehicleUpdateInput | null {
-  if (field === 'year') {
-    const year = readVehicleYear(value);
-    return year ? { year } : null;
-  }
-
-  if (field === 'vinOrSerial') {
-    if (typeof value !== 'string' && typeof value !== 'number') {
-      return null;
-    }
-
-    const source = String(value).trim();
-    if (!source || source.length > 120) {
-      return null;
-    }
-
-    return { vinOrSerial: normalizeVehicleVin(source) };
-  }
-
-  const maxLength = field === 'comment' ? 1000 : 500;
-  const text = readText(value, maxLength);
-
-  if (!text) {
-    return null;
-  }
-
-  return { [field]: text };
+  const normalized = normalizeEditableVehicleValue(field, value);
+  return normalized === undefined ? null : { [field]: normalized };
 }
 
 export async function applyChangeRequest(tx: Prisma.TransactionClient, changeRequest: ApplyableChangeRequest, reviewedById: string): Promise<ApplyResult> {
@@ -320,16 +297,27 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
       return { ok: false, status: 'change-request-target-not-found-or-forbidden' };
     }
 
+    if (!isEditableVehicleField(field)) {
+      return { ok: false, status: 'change-request-field-not-allowed' };
+    }
+
+    const currentValue = pickEditableVehicleFields(vehicle)[field];
+    const storedOldValue = normalizeEditableVehicleValue(field, readChangeValue(changeRequest.oldValue, field));
+    if (storedOldValue === undefined || currentValue !== storedOldValue) {
+      return { ok: false, status: 'change-request-stale-conflict' };
+    }
+
     const requestedValue = extractNewValue(changeRequest, field);
-    const normalizedVin = field === 'vinOrSerial' && (typeof requestedValue === 'string' || typeof requestedValue === 'number')
-      ? normalizeVehicleVin(String(requestedValue))
-      : null;
+    const canonicalNewValue = normalizeEditableVehicleValue(field, requestedValue);
+    if (canonicalNewValue === undefined || canonicalNewValue === currentValue) {
+      return { ok: false, status: 'change-request-invalid-value' };
+    }
 
     if (field === 'vinOrSerial') {
       const duplicate = await findVehicleVinDuplicate({
         db: tx,
         owner: vehicle,
-        normalizedVin,
+        normalizedVin: typeof canonicalNewValue === 'string' ? canonicalNewValue : null,
         excludeVehicleId: vehicle.id
       });
 
@@ -339,7 +327,6 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
     }
 
     await tx.vehicle.update({ where: { id: vehicle.id }, data });
-    const newValue = field === 'vinOrSerial' ? normalizedVin : requestedValue;
 
     return {
       ok: true,
@@ -347,8 +334,8 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
         entityType: 'VEHICLE',
         entityId: vehicle.id,
         action: 'CHANGE_APPLIED',
-        oldValue: { [field]: vehicle[field] ?? null },
-        newValue: { [field]: newValue as Prisma.InputJsonValue },
+        oldValue: { [field]: currentValue },
+        newValue: { [field]: canonicalNewValue },
         metadata: {
           fieldName: changeRequest.fieldName,
           normalizedField: field,

@@ -33,6 +33,11 @@ export async function approveChangeRequestAction(formData: FormData) {
   }
 
   revalidatePath('/admin/change-requests');
+  if (result.changeRequest.entityType === 'VEHICLE') {
+    revalidatePath(`/admin/vehicles/${result.changeRequest.entityId}/edit`);
+    revalidatePath('/client/vehicles');
+    revalidatePath(`/client/vehicles/${result.changeRequest.entityId}`);
+  }
   redirectBack('approved');
 }
 

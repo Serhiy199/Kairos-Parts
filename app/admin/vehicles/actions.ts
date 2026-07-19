@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { requireCrmSession } from '@/lib/admin/access';
+import { createAuditLog } from '@/lib/audit-log/service';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 import { validateAdminVehicleManufacturer } from '@/lib/vehicles/admin-manufacturers';
@@ -23,6 +24,7 @@ import {
   vehicleOwnershipForCompany,
   vehicleOwnershipForPersonalClient
 } from '@/lib/vehicles/ownership';
+import { diffVehicleFields, pickEditableVehicleFields } from '@/lib/vehicles/change-snapshot';
 
 const GENERIC_ERROR = 'Не вдалося зберегти техніку. Спробуйте ще раз.';
 
@@ -94,7 +96,7 @@ export async function createAdminVehicleForCompany(
   _state: AdminVehicleFormState,
   formData: FormData
 ): Promise<AdminVehicleFormState> {
-  await requireCrmSession();
+  const session = await requireCrmSession();
   const values = getAdminVehicleFormValues(formData);
 
   if (!hasDatabaseUrl()) {
@@ -128,7 +130,16 @@ export async function createAdminVehicleForCompany(
         return found;
       }
 
-      await tx.vehicle.create({ data: { ...owner, ...validation.data } });
+      const created = await tx.vehicle.create({ data: { ...owner, ...validation.data } });
+      await createAuditLog(tx, {
+        actorId: session.user.id,
+        companyId: company.id,
+        entityType: 'VEHICLE',
+        entityId: created.id,
+        action: 'ENTITY_UPDATED',
+        newValue: pickEditableVehicleFields(created),
+        metadata: { event: 'VEHICLE_CREATED', actorRole: session.user.role, ownerType: 'company', ownerId: company.id }
+      });
       return null;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
@@ -149,7 +160,7 @@ export async function createAdminVehicleForClient(
   _state: AdminVehicleFormState,
   formData: FormData
 ): Promise<AdminVehicleFormState> {
-  await requireCrmSession();
+  const session = await requireCrmSession();
   const values = getAdminVehicleFormValues(formData);
 
   if (!hasDatabaseUrl()) {
@@ -186,7 +197,15 @@ export async function createAdminVehicleForClient(
         return found;
       }
 
-      await tx.vehicle.create({ data: { ...owner, ...validation.data } });
+      const created = await tx.vehicle.create({ data: { ...owner, ...validation.data } });
+      await createAuditLog(tx, {
+        actorId: session.user.id,
+        entityType: 'VEHICLE',
+        entityId: created.id,
+        action: 'ENTITY_UPDATED',
+        newValue: pickEditableVehicleFields(created),
+        metadata: { event: 'VEHICLE_CREATED', actorRole: session.user.role, ownerType: 'client', ownerId: client.id }
+      });
       return null;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
@@ -207,7 +226,7 @@ export async function updateAdminVehicle(
   _state: AdminVehicleFormState,
   formData: FormData
 ): Promise<AdminVehicleFormState> {
-  await requireCrmSession();
+  const session = await requireCrmSession();
   const values = getAdminVehicleFormValues(formData);
 
   if (!hasDatabaseUrl()) {
@@ -226,7 +245,13 @@ export async function updateAdminVehicle(
           user: { select: { role: true } }
         }
       },
-      company: { select: { id: true } }
+      company: { select: { id: true } },
+      type: true,
+      manufacturer: true,
+      model: true,
+      year: true,
+      vinOrSerial: true,
+      comment: true
     }
   });
 
@@ -260,7 +285,28 @@ export async function updateAdminVehicle(
         return found;
       }
 
-      await tx.vehicle.update({ where: { id: vehicle.id }, data: validation.data });
+      const before = pickEditableVehicleFields(vehicle);
+      const updated = await tx.vehicle.update({ where: { id: vehicle.id }, data: validation.data });
+      const changes = diffVehicleFields(before, pickEditableVehicleFields(updated));
+
+      if (changes.changedFields.length > 0) {
+        await createAuditLog(tx, {
+          actorId: session.user.id,
+          companyId: vehicle.companyId,
+          entityType: 'VEHICLE',
+          entityId: vehicle.id,
+          action: 'ENTITY_UPDATED',
+          oldValue: changes.oldValue,
+          newValue: changes.newValue,
+          metadata: {
+            event: 'VEHICLE_UPDATED',
+            actorRole: session.user.role,
+            changedFields: changes.changedFields,
+            ownerType: vehicle.companyId ? 'company' : 'client',
+            ownerId: vehicle.companyId ?? vehicle.clientId
+          }
+        });
+      }
       return null;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 

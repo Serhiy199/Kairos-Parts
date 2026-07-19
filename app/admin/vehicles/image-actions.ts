@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { requireCrmSession } from '@/lib/admin/access';
+import { createAuditLog } from '@/lib/audit-log/service';
 import {
   cleanupCloudinaryAssets,
   deleteCloudinaryAsset,
@@ -53,7 +54,7 @@ export async function uploadAdminVehicleImages(
   _state: VehicleImageActionState,
   formData: FormData
 ): Promise<VehicleImageActionState> {
-  await requireCrmSession();
+  const session = await requireCrmSession();
   const vehicle = await getVehicleContext(vehicleId);
 
   if (!vehicle) {
@@ -79,15 +80,28 @@ export async function uploadAdminVehicleImages(
     const maxSortOrder = vehicle.images.reduce((max, image) => Math.max(max, image.sortOrder), -1);
     const hasPrimary = vehicle.images.some((image) => image.isPrimary);
 
-    await prisma.vehicleImage.createMany({
-      data: uploads.map((upload, index) =>
-        mapVehicleUploadToCreateInput({
+    await prisma.$transaction(async (tx) => {
+      const created = await Promise.all(uploads.map((upload, index) =>
+        tx.vehicleImage.create({ data: mapVehicleUploadToCreateInput({
           vehicleId: vehicle.id,
           upload,
           sortOrder: maxSortOrder + index + 1,
           isPrimary: !hasPrimary && index === 0
-        })
-      )
+        }) })
+      ));
+      await createAuditLog(tx, {
+        actorId: session.user.id,
+        companyId: vehicle.companyId,
+        entityType: 'VEHICLE',
+        entityId: vehicle.id,
+        action: 'ENTITY_UPDATED',
+        metadata: {
+          event: 'VEHICLE_IMAGE_UPLOADED', actorRole: session.user.role,
+          imageIds: created.map((image) => image.id), count: created.length,
+          primaryImageId: created.find((image) => image.isPrimary)?.id ?? null,
+          ownerType: vehicle.companyId ? 'company' : 'client', ownerId: vehicle.companyId ?? vehicle.clientId
+        }
+      });
     });
   } catch {
     await cleanupCloudinaryAssets(uploads.map((upload) => upload.publicId));
@@ -99,17 +113,26 @@ export async function uploadAdminVehicleImages(
 }
 
 export async function setPrimaryVehicleImage(vehicleId: string, imageId: string) {
-  await requireCrmSession();
+  const session = await requireCrmSession();
   const vehicle = await getVehicleContext(vehicleId);
   if (!vehicle || !vehicle.images.some((image) => image.id === imageId)) {
     return { status: 'error', message: 'Фотографію не знайдено.' } satisfies VehicleImageActionState;
   }
+  const oldPrimaryImageId = vehicle.images.find((image) => image.isPrimary)?.id ?? null;
+  if (oldPrimaryImageId === imageId) {
+    return { status: 'success', message: 'Це фото вже є головним.' } satisfies VehicleImageActionState;
+  }
 
   try {
-    await prisma.$transaction([
-      prisma.vehicleImage.updateMany({ where: { vehicleId: vehicle.id }, data: { isPrimary: false } }),
-      prisma.vehicleImage.update({ where: { id: imageId }, data: { isPrimary: true } })
-    ]);
+    await prisma.$transaction(async (tx) => {
+      await tx.vehicleImage.updateMany({ where: { vehicleId: vehicle.id }, data: { isPrimary: false } });
+      await tx.vehicleImage.update({ where: { id: imageId }, data: { isPrimary: true } });
+      await createAuditLog(tx, {
+        actorId: session.user.id, companyId: vehicle.companyId, entityType: 'VEHICLE', entityId: vehicle.id,
+        action: 'ENTITY_UPDATED', oldValue: { primaryImageId: oldPrimaryImageId }, newValue: { primaryImageId: imageId },
+        metadata: { event: 'VEHICLE_IMAGE_PRIMARY_CHANGED', actorRole: session.user.role }
+      });
+    });
   } catch {
     return { status: 'error', message: 'Не вдалося змінити головне фото.' } satisfies VehicleImageActionState;
   }
@@ -119,18 +142,25 @@ export async function setPrimaryVehicleImage(vehicleId: string, imageId: string)
 }
 
 export async function reorderAdminVehicleImages(vehicleId: string, orderedImageIds: string[]) {
-  await requireCrmSession();
+  const session = await requireCrmSession();
   const vehicle = await getVehicleContext(vehicleId);
   if (!vehicle || !validateVehicleImageOrder(vehicle.images.map((image) => image.id), orderedImageIds)) {
     return { status: 'error', message: 'Не вдалося перевірити порядок фотографій.' } satisfies VehicleImageActionState;
   }
+  const oldOrder = vehicle.images.map((image) => image.id);
+  if (oldOrder.every((id, index) => id === orderedImageIds[index])) {
+    return { status: 'success', message: 'Порядок фотографій не змінився.' } satisfies VehicleImageActionState;
+  }
 
   try {
-    await prisma.$transaction(
-      orderedImageIds.map((id, sortOrder) =>
-        prisma.vehicleImage.update({ where: { id }, data: { sortOrder } })
-      )
-    );
+    await prisma.$transaction(async (tx) => {
+      await Promise.all(orderedImageIds.map((id, sortOrder) => tx.vehicleImage.update({ where: { id }, data: { sortOrder } })));
+      await createAuditLog(tx, {
+        actorId: session.user.id, companyId: vehicle.companyId, entityType: 'VEHICLE', entityId: vehicle.id,
+        action: 'ENTITY_UPDATED', oldValue: { imageOrder: oldOrder }, newValue: { imageOrder: orderedImageIds },
+        metadata: { event: 'VEHICLE_IMAGES_REORDERED', actorRole: session.user.role }
+      });
+    });
   } catch {
     return { status: 'error', message: 'Не вдалося змінити порядок фотографій.' } satisfies VehicleImageActionState;
   }
@@ -140,7 +170,7 @@ export async function reorderAdminVehicleImages(vehicleId: string, orderedImageI
 }
 
 export async function deleteAdminVehicleImage(vehicleId: string, imageId: string) {
-  await requireCrmSession();
+  const session = await requireCrmSession();
   const vehicle = await getVehicleContext(vehicleId);
   const image = vehicle?.images.find((candidate) => candidate.id === imageId);
   if (!vehicle || !image) {
@@ -173,6 +203,14 @@ export async function deleteAdminVehicleImage(vehicleId: string, imageId: string
           })
         )
       );
+      await createAuditLog(tx, {
+        actorId: session.user.id, companyId: vehicle.companyId, entityType: 'VEHICLE', entityId: vehicle.id,
+        action: 'ENTITY_UPDATED',
+        metadata: {
+          event: 'VEHICLE_IMAGE_DELETED', actorRole: session.user.role, imageId: image.id,
+          wasPrimary: image.isPrimary, sortOrder: image.sortOrder
+        }
+      });
     });
   } catch {
     return { status: 'error', message: 'Фотографію видалено зі сховища, але не вдалося оновити галерею.' } satisfies VehicleImageActionState;
