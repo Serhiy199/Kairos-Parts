@@ -133,6 +133,9 @@ enum AuditAction {
   CHANGE_APPLIED
   VEHICLE_ARCHIVED
   ENTITY_UPDATED
+  MANAGER_INVITATION_CREATED
+  MANAGER_INVITATION_REGENERATED
+  MANAGER_ACTIVATED
 }
 
 enum UsedEquipmentStatus {
@@ -176,6 +179,8 @@ model User {
   changeRequestsReviewed  ChangeRequest[]        @relation("ChangeRequestReviewedBy")
   archivedVehicles        Vehicle[]              @relation("VehicleArchivedBy")
   auditLogs               AuditLog[]             @relation("AuditLogActor")
+  managerInvitations      ManagerInvitation[]    @relation("ManagerInvitationUser")
+  invitationsCreated      ManagerInvitation[]    @relation("ManagerInvitationCreatedBy")
   usedEquipmentCreated    UsedEquipment[]        @relation("UsedEquipmentCreatedBy")
   usedEquipmentUpdated    UsedEquipment[]        @relation("UsedEquipmentUpdatedBy")
   usedEquipmentInquiries  UsedEquipmentInquiry[] @relation("UsedEquipmentInquiryAssignee")
@@ -395,6 +400,24 @@ model ManagerProfile {
   displayName String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model ManagerInvitation {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation("ManagerInvitationUser", fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  revokedAt   DateTime?
+  createdById String
+  createdBy   User      @relation("ManagerInvitationCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([userId, usedAt, revokedAt])
 }
 
 model Request {

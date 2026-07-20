@@ -24,7 +24,10 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   CHANGE_REQUEST_REJECTED: 'Запит відхилено',
   CHANGE_APPLIED: 'Зміну застосовано',
   VEHICLE_ARCHIVED: 'Техніку архівовано',
-  ENTITY_UPDATED: 'Об’єкт оновлено'
+  ENTITY_UPDATED: 'Об’єкт оновлено',
+  MANAGER_INVITATION_CREATED: 'Запрошення менеджера створено',
+  MANAGER_INVITATION_REGENERATED: 'Запрошення менеджера оновлено',
+  MANAGER_ACTIVATED: 'Менеджера активовано'
 };
 
 export const AUDIT_EVENT_LABELS: Record<string, string> = {
@@ -55,7 +58,10 @@ export const AUDIT_EVENT_LABELS: Record<string, string> = {
   MANUFACTURER_UPDATED: 'Виробника оновлено',
   MANUFACTURER_ACTIVATION_CHANGED: 'Активність виробника змінено',
   MANUFACTURER_ORDER_CHANGED: 'Порядок виробника змінено',
-  MANUFACTURER_TYPES_CHANGED: 'Типи техніки виробника змінено'
+  MANUFACTURER_TYPES_CHANGED: 'Типи техніки виробника змінено',
+  MANAGER_INVITATION_CREATED: 'Запрошення менеджера створено',
+  MANAGER_INVITATION_REGENERATED: 'Запрошення менеджера оновлено',
+  MANAGER_ACTIVATED: 'Менеджера активовано'
 };
 
 const KEY_LABELS: Record<string, string> = {
