@@ -110,8 +110,8 @@ export default async function ClientChangeRequestsPage({
   const message = resultMessage(query.result);
 
   return (
-    <div className="grid gap-6">
-      <div className="rounded-lg border border-border bg-card p-6 shadow-card">
+    <div className="cabinet-stack">
+      <div className="cabinet-card">
         <p className="text-sm font-bold uppercase text-accent">Запити на зміну</p>
         <h1 className="mt-2 text-2xl font-bold text-foreground">Зміни в заявках, техніці та документах</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
@@ -121,10 +121,10 @@ export default async function ClientChangeRequestsPage({
         {message ? <div className="mt-4 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm font-semibold text-[#8A5B24]">{message}</div> : null}
       </div>
 
-      <form action={createClientChangeRequestAction} className="grid gap-4 rounded-lg border border-border bg-card p-6 shadow-card">
+      <form action={createClientChangeRequestAction} className="cabinet-card grid gap-4">
         <h2 className="text-lg font-bold text-foreground">Створити запит вручну</h2>
         <p className="text-sm text-muted">Ця форма лишається як fallback для випадків, коли потрібно вказати ID об’єкта вручну.</p>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="cabinet-form-grid">
           <label className="grid gap-2 text-sm font-semibold text-foreground">
             Об’єкт *
             <select name="entityType" required className={inputClass} defaultValue="REQUEST">
@@ -161,7 +161,7 @@ export default async function ClientChangeRequestsPage({
             Нове значення
             <input name="newValueText" className={inputClass} placeholder="Вкажіть нове значення" />
           </label>
-          <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
+          <label className="grid gap-2 text-sm font-semibold text-foreground lg:col-span-2">
             Причина зміни
             <textarea name="reason" rows={4} className={inputClass} placeholder="Опишіть, що саме потрібно змінити" />
           </label>
@@ -171,9 +171,37 @@ export default async function ClientChangeRequestsPage({
         </button>
       </form>
 
-      <div className="rounded-lg border border-border bg-card p-6 shadow-card">
+      <div className="cabinet-card">
         <h2 className="text-lg font-bold text-foreground">Історія запитів</h2>
-        <div className="mt-5 overflow-x-auto">
+        <div className="mt-5 grid gap-4 xl:hidden">
+          {changeRequests.map((item) => (
+            <article key={item.id} className="rounded-md border border-border p-4 sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-bold text-foreground">{CHANGE_ENTITY_TYPE_LABELS[item.entityType]}</p>
+                  <p className="mt-1 text-sm text-muted">{entityLabels.get(`${item.entityType}:${item.entityId}`) ?? 'Об’єкт недоступний або вже змінений'}</p>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass(item.status)}`}>{CHANGE_STATUS_LABELS[item.status]}</span>
+              </div>
+              <dl className="cabinet-record-grid mt-4">
+                <ClientChangeCardField label="Дата" value={item.createdAt.toLocaleDateString('uk-UA')} />
+                <ClientChangeCardField label="Дія" value={CHANGE_ACTION_LABELS[item.action]} />
+                <ClientChangeCardField label="Поле" value={item.fieldName ?? '—'} />
+                <ClientChangeCardField label="Причина" value={item.reason ?? '—'} />
+                <ClientChangeCardField label="Поточне значення" value={formatJsonValue(item.oldValue)} />
+                <ClientChangeCardField label="Нове значення" value={formatJsonValue(item.newValue)} />
+                <ClientChangeCardField label="Коментар менеджера" value={item.adminComment ?? '—'} />
+              </dl>
+              {item.status === 'PENDING' && item.requestedById === access.userId ? (
+                <form action={cancelClientChangeRequestAction} className="mt-4">
+                  <input type="hidden" name="changeRequestId" value={item.id} />
+                  <button className="rounded-md border border-border px-3 py-2 text-xs font-bold text-muted transition hover:border-danger hover:text-danger">Скасувати</button>
+                </form>
+              ) : null}
+            </article>
+          ))}
+        </div>
+        <div className="mt-5 hidden overflow-x-auto xl:block">
           <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border bg-surface-muted text-muted">
@@ -224,9 +252,18 @@ export default async function ClientChangeRequestsPage({
               ))}
             </tbody>
           </table>
-          {changeRequests.length === 0 ? <p className="mt-5 rounded-md border border-dashed border-border p-5 text-sm text-muted">Запитів на зміну ще немає.</p> : null}
         </div>
+        {changeRequests.length === 0 ? <p className="mt-5 rounded-md border border-dashed border-border p-5 text-sm text-muted">Запитів на зміну ще немає.</p> : null}
       </div>
+    </div>
+  );
+}
+
+function ClientChangeCardField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-bold uppercase text-muted">{label}</dt>
+      <dd className="mt-1 break-words text-sm text-foreground">{value}</dd>
     </div>
   );
 }

@@ -205,7 +205,7 @@ export default async function AdminRequestDetailPage({
         <main className="grid min-w-0 gap-6">
           <section className="rounded-lg border border-border bg-card p-6 shadow-card">
             <p className="text-sm font-bold uppercase text-accent">Контактні дані</p>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
               <Info label="Контакт" value={contactName} />
               <Info label="Компанія" value={companyName} />
               <Info label="Телефон" value={phone} />
@@ -224,7 +224,7 @@ export default async function AdminRequestDetailPage({
 
           <section className="rounded-lg border border-border bg-card p-6 shadow-card">
             <p className="text-sm font-bold uppercase text-accent">Потреба</p>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
               <Info label="Виробник / марка" value={request.manufacturer?.name ?? '—'} />
               <Info label="Тип техніки" value={request.equipmentType ?? '—'} />
               <Info label="Модель" value={request.model ?? '—'} />
@@ -240,7 +240,7 @@ export default async function AdminRequestDetailPage({
           {request.vehicle ? (
             <section className="rounded-lg border border-border bg-card p-6 shadow-card">
               <p className="text-sm font-bold uppercase text-accent">Привʼязана техніка</p>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 <Info label="Тип" value={request.vehicle.type} />
                 <Info label="Виробник" value={request.vehicle.manufacturer} />
                 <Info label="Модель" value={request.vehicle.model} />
@@ -262,7 +262,7 @@ export default async function AdminRequestDetailPage({
             <p className="mt-2 text-sm leading-6 text-muted">
               Тут відображаються фото, списки, документи або інші файли, які клієнт додав під час створення заявки, через кабінет або Telegram.
             </p>
-            <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-2">
+            <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-2">
               <FileList title="Файли заявки" description="Матеріали, які клієнт передав для підбору запчастин." items={request.files.map((file) => ({ id: file.id, fileName: file.fileName, mimeType: file.mimeType, size: file.size, url: file.fileUrl ?? `/api/admin/files/${file.id}` }))} />
               <FileList title="Додаткові файли від клієнта" description="Документи або вкладення клієнта, які збережені в його профілі чи заявці." items={request.documents.map((document) => ({ id: document.id, fileName: document.fileName, mimeType: document.mimeType, size: document.size, url: document.fileUrl }))} />
             </div>
@@ -356,7 +356,7 @@ export default async function AdminRequestDetailPage({
           {request.client ? (
             <section className="rounded-lg border border-border bg-card p-6 shadow-card">
               <p className="text-sm font-bold uppercase text-accent">Клієнтська база</p>
-              <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-2">
+              <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-2">
                 <div className="min-w-0">
                   <h3 className="font-bold text-foreground">Техніка клієнта</h3>
                   <div className="mt-3 grid gap-2">
@@ -625,7 +625,7 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
 
           return (
           <article key={item.id} className="min-w-0 rounded-md border border-border bg-card p-4">
-            <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.8fr)]">
+            <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.8fr)]">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
                 <p className="mt-2 font-bold text-foreground">{item.name}</p>
@@ -926,7 +926,7 @@ function RequestItemForm({
     <form action={action} className="grid gap-4">
       <input type="hidden" name="requestId" value={requestId} />
       {item ? <input type="hidden" name="itemId" value={item.id} /> : null}
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
         <TextField name="name" label="Назва запчастини" required defaultValue={item?.name} />
         <PartManufacturerField defaultValue={item?.brand} listId={`part-manufacturer-${item?.id ?? 'new'}`} />
         <TextField name="catalogNumber" label="Каталожний номер" defaultValue={item?.catalogNumber} />
@@ -1096,7 +1096,7 @@ function RequestDocumentsSection({ requestId, documents }: { requestId: string; 
         <summary className="cursor-pointer text-sm font-bold text-foreground">Додати документ</summary>
         <form action={createAdminRequestDocument} className="mt-4 grid gap-4" encType="multipart/form-data">
           <input type="hidden" name="requestId" value={requestId} />
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 lg:grid-cols-2">
             <RequestDocumentTypeSelect />
             <TextField name="title" label="Назва документа" required />
           </div>

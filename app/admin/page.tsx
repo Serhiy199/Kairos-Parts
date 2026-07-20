@@ -55,7 +55,7 @@ export default async function AdminDashboardPage() {
   ];
 
   return (
-    <div className="grid gap-6">
+    <div className="cabinet-stack">
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
           <div key={card.label} className="rounded-lg border border-border bg-card p-5 shadow-card">
@@ -65,7 +65,7 @@ export default async function AdminDashboardPage() {
         ))}
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+      <section className="cabinet-card">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <p className="text-sm font-bold uppercase text-accent">Останні заявки</p>
@@ -79,7 +79,34 @@ export default async function AdminDashboardPage() {
         {recentRequests.length === 0 ? (
           <p className="mt-6 rounded-md border border-dashed border-border p-5 text-sm text-muted">Заявок ще немає.</p>
         ) : (
-          <div className="mt-6 overflow-x-auto">
+          <>
+          <div className="mt-5 grid gap-3 xl:hidden">
+            {recentRequests.map((request) => (
+              <article key={request.id} className="rounded-md border border-border p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <Link href={`/admin/requests/${request.id}`} className="font-bold text-foreground transition hover:text-accent">
+                    {request.requestNumber}
+                  </Link>
+                  <StatusBadge status={request.status} />
+                </div>
+                <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="font-semibold text-muted">Клієнт</dt>
+                    <dd className="mt-1 break-words text-foreground">{request.client?.companyName ?? request.client?.contactName ?? request.companyName ?? request.guestName ?? 'Гість'}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold text-muted">Менеджер</dt>
+                    <dd className="mt-1 break-words text-foreground">{request.assignedManager?.name ?? request.assignedManager?.email ?? 'Не призначено'}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold text-muted">Дата</dt>
+                    <dd className="mt-1 text-foreground">{request.createdAt.toLocaleDateString('uk-UA')}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+          <div className="mt-6 hidden overflow-x-auto xl:block">
             <table className="w-full min-w-[760px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface-muted text-muted">
@@ -107,10 +134,11 @@ export default async function AdminDashboardPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+      <section className="cabinet-card">
         <p className="text-sm font-bold uppercase text-accent">Статуси</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {REQUEST_STATUSES.map((status) => (

@@ -39,7 +39,7 @@ export default async function ClientRequestsPage() {
   const pendingApprovalCount = requests.filter((request) => request.items.length > 0).length;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6 shadow-card">
+    <div className="cabinet-card">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <p className="text-sm font-bold uppercase text-accent">Мої заявки</p>
@@ -55,7 +55,31 @@ export default async function ClientRequestsPage() {
           Створити заявку
         </Link>
       </div>
-      <div className="mt-6 overflow-x-auto">
+      <div className="mt-5 grid gap-3 xl:hidden">
+        {requests.map((request) => {
+          const needsApproval = request.items.length > 0;
+
+          return (
+            <article key={request.id} className={`rounded-md border p-4 ${needsApproval ? 'border-success/35 bg-[#E7F6EC]/45' : 'border-border'}`}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <span className="break-words font-bold text-foreground">{request.requestNumber}</span>
+                <StatusBadge status={request.status} />
+              </div>
+              {needsApproval ? <span className="mt-3 inline-flex rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success">Очікує погодження</span> : null}
+              <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                <div><dt className="font-semibold text-muted">Техніка</dt><dd className="mt-1 break-words text-foreground">{request.equipmentType ?? '—'}</dd></div>
+                <div><dt className="font-semibold text-muted">Дата</dt><dd className="mt-1 text-foreground">{request.createdAt.toLocaleDateString('uk-UA')}</dd></div>
+                <div className="sm:col-span-2"><dt className="font-semibold text-muted">Опис</dt><dd className="mt-1 break-words text-foreground">{request.description.slice(0, 120)}</dd></div>
+              </dl>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <Link href={`/client/requests/${request.id}`} className="flex min-h-10 items-center justify-center rounded-md bg-accent px-3 text-center text-sm font-bold text-foreground">Деталі</Link>
+                <Link href={`/request?source=client&repeatRequestId=${request.id}`} className="flex min-h-10 items-center justify-center rounded-md border border-border px-3 text-center text-sm font-bold text-foreground">Повторити</Link>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      <div className="mt-6 hidden overflow-x-auto xl:block">
         <table className="w-full min-w-[760px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-border bg-surface-muted text-muted">

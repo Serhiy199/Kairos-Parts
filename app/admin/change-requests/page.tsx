@@ -82,8 +82,8 @@ export default async function AdminChangeRequestsPage({
   const message = resultMessage(query.result);
 
   return (
-    <div className="grid gap-6">
-      <div className="rounded-lg border border-border bg-card p-6 shadow-card">
+    <div className="cabinet-stack">
+      <div className="cabinet-card">
         <p className="text-sm font-bold uppercase text-accent">Запити змін</p>
         <h1 className="mt-2 text-2xl font-bold text-foreground">Клієнтські запити на зміну</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
@@ -95,9 +95,12 @@ export default async function AdminChangeRequestsPage({
         {message ? <div className="mt-4 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm font-semibold text-[#8A5B24]">{message}</div> : null}
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-6 shadow-card">
+      <div className="cabinet-card">
         <h2 className="text-lg font-bold text-foreground">Список запитів</h2>
-        <div className="mt-5 overflow-x-auto">
+        <div className="mt-5 grid gap-4 xl:hidden">
+          {changeRequests.map((item) => <AdminChangeRequestCard key={item.id} item={item} />)}
+        </div>
+        <div className="mt-5 hidden overflow-x-auto xl:block">
           <table className="w-full min-w-[1320px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border bg-surface-muted text-muted">
@@ -166,9 +169,66 @@ export default async function AdminChangeRequestsPage({
               ))}
             </tbody>
           </table>
-          {changeRequests.length === 0 ? <p className="mt-5 rounded-md border border-dashed border-border p-5 text-sm text-muted">Запитів на зміну ще немає.</p> : null}
         </div>
+        {changeRequests.length === 0 ? <p className="mt-5 rounded-md border border-dashed border-border p-5 text-sm text-muted">Запитів на зміну ще немає.</p> : null}
       </div>
+    </div>
+  );
+}
+
+function AdminChangeRequestCard({ item }: { item: Awaited<ReturnType<typeof listChangeRequestsForAdmin>>[number] }) {
+  return (
+    <article className="rounded-md border border-border p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-semibold text-foreground">{item.requestedBy.name ?? item.requestedBy.email}</p>
+          <p className="mt-1 break-all text-sm text-muted">{item.requestedBy.email}</p>
+        </div>
+        <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass(item.status)}`}>{CHANGE_STATUS_LABELS[item.status]}</span>
+      </div>
+      <dl className="cabinet-record-grid mt-4">
+        <ChangeRequestCardField label="Дата" value={item.createdAt.toLocaleDateString('uk-UA')} />
+        <ChangeRequestCardField label="Компанія" value={item.company?.name ?? 'Personal'} />
+        <ChangeRequestCardField label="Об’єкт" value={CHANGE_ENTITY_TYPE_LABELS[item.entityType]} />
+        <ChangeRequestCardField label="Дія" value={CHANGE_ACTION_LABELS[item.action]} />
+        <ChangeRequestCardField label="Поле" value={item.fieldName ? (CHANGE_FIELD_LABELS[item.fieldName] ?? item.fieldName) : '—'} />
+        <ChangeRequestCardField label="Причина" value={item.reason ?? '—'} />
+      </dl>
+      <div className="mt-4 grid gap-3 rounded-md bg-surface-muted p-4 sm:grid-cols-2">
+        <ChangeRequestCardField label="Поточне значення" value={formatJsonValue(item.oldValue)} />
+        <ChangeRequestCardField label="Нове значення" value={formatJsonValue(item.newValue)} />
+      </div>
+      <div className="mt-4">
+        {item.status === 'PENDING' ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            <form action={approveChangeRequestAction} className="grid gap-2">
+              <input type="hidden" name="changeRequestId" value={item.id} />
+              <input name="adminComment" className={inputClass} placeholder="Коментар до погодження" />
+              <button className="rounded-md bg-accent px-3 py-2 text-xs font-bold text-foreground transition hover:bg-accent-hover">Погодити і застосувати</button>
+            </form>
+            <form action={rejectChangeRequestAction} className="grid gap-2">
+              <input type="hidden" name="changeRequestId" value={item.id} />
+              <input name="adminComment" className={inputClass} placeholder="Причина відхилення" />
+              <button className="rounded-md border border-border px-3 py-2 text-xs font-bold text-muted transition hover:border-danger hover:text-danger">Відхилити</button>
+            </form>
+          </div>
+        ) : (
+          <div className="text-sm text-muted">
+            <p>{item.adminComment ?? '—'}</p>
+            {item.reviewedBy ? <p className="mt-1 text-xs">Розглянув: {item.reviewedBy.name ?? item.reviewedBy.email}</p> : null}
+            {item.reviewedAt ? <p className="mt-1 text-xs">{item.reviewedAt.toLocaleDateString('uk-UA')}</p> : null}
+          </div>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function ChangeRequestCardField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-bold uppercase text-muted">{label}</dt>
+      <dd className="mt-1 break-words text-sm text-foreground">{value}</dd>
     </div>
   );
 }

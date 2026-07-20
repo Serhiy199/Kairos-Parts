@@ -107,16 +107,16 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
   ].join('|');
 
   return (
-    <div className="grid gap-6">
-      <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+    <div className="cabinet-stack">
+      <section className="cabinet-card">
         <p className="text-sm font-bold uppercase text-accent">CRM заявки</p>
         <h2 className="mt-2 text-2xl font-bold text-foreground">Список заявок</h2>
         <p className="mt-2 text-sm text-muted">
           {session.user.role === 'ADMIN' ? 'Адміністратор бачить повний потік заявок.' : 'Менеджер бачить CRM потік заявок. Обмеження тільки призначеними менеджеру заявками ще не ввімкнено.'}
         </p>
 
-        <form key={filterFormKey} action="/admin/requests" method="get" className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
-          <input name="q" defaultValue={inputValue(params.q)} placeholder="Пошук: №, телефон, клієнт, VIN" className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25 xl:col-span-2" />
+        <form key={filterFormKey} action="/admin/requests" method="get" className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+          <input name="q" defaultValue={inputValue(params.q)} placeholder="Пошук: №, телефон, клієнт, VIN" className="h-11 min-w-0 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25 sm:col-span-2 2xl:col-span-2" />
           <select name="status" defaultValue={inputValue(params.status)} className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent">
             <option value="">Всі статуси</option>
             {REQUEST_STATUSES.map((status) => <option key={status} value={status}>{REQUEST_STATUS_LABELS[status]}</option>)}
@@ -147,7 +147,32 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
       </section>
 
       <section className="overflow-hidden rounded-lg border border-border bg-card shadow-card">
-        <div className="overflow-x-auto">
+        {requests.length > 0 ? (
+          <div className="grid gap-3 p-4 sm:p-5 xl:hidden">
+            {requests.map((request) => (
+              <article key={request.id} className="rounded-md border border-border bg-card p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <Link href={`/admin/requests/${request.id}`} className="break-words font-bold text-foreground transition hover:text-accent">
+                    {request.requestNumber}
+                  </Link>
+                  <StatusBadge status={request.status} />
+                </div>
+                <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                  <RequestCardField label="Клієнт" value={request.client?.companyName ?? request.client?.contactName ?? request.companyName ?? request.guestName ?? 'Гість'} />
+                  <RequestCardField label="Телефон" value={request.client?.phone ?? request.guestPhone ?? '—'} />
+                  <RequestCardField label="Техніка" value={request.equipmentType ?? '—'} />
+                  <RequestCardField label="Менеджер" value={request.assignedManager?.name ?? request.assignedManager?.email ?? 'Не призначено'} />
+                  <RequestCardField label="Джерело" value={REQUEST_SOURCE_LABELS[request.source]} />
+                  <RequestCardField label="Оновлено" value={request.updatedAt.toLocaleDateString('uk-UA')} />
+                </dl>
+                <Link href={`/admin/requests/${request.id}`} className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md border border-border px-4 text-sm font-bold text-foreground transition hover:border-accent">
+                  Відкрити заявку
+                </Link>
+              </article>
+            ))}
+          </div>
+        ) : null}
+        <div className="hidden overflow-x-auto xl:block">
           <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border bg-surface-muted text-muted">
@@ -180,9 +205,18 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
               ))}
             </tbody>
           </table>
-          {requests.length === 0 ? <p className="m-6 rounded-md border border-dashed border-border p-5 text-sm text-muted">За вибраними фільтрами заявок немає.</p> : null}
         </div>
+        {requests.length === 0 ? <p className="m-4 rounded-md border border-dashed border-border p-5 text-sm text-muted sm:m-5">За вибраними фільтрами заявок немає.</p> : null}
       </section>
+    </div>
+  );
+}
+
+function RequestCardField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="font-semibold text-muted">{label}</dt>
+      <dd className="mt-1 break-words text-foreground">{value}</dd>
     </div>
   );
 }

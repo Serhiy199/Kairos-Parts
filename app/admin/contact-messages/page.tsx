@@ -53,7 +53,7 @@ export default async function AdminContactMessagesPage() {
         </div>
       ) : (
         <>
-          <div className="mt-6 grid gap-3 md:hidden">
+          <div className="mt-6 grid gap-3 xl:hidden">
             {contactMessages.map((contactMessage) => (
               <article key={contactMessage.id} className="min-w-0 rounded-md border border-border p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -87,7 +87,7 @@ export default async function AdminContactMessagesPage() {
             ))}
           </div>
 
-          <div className="mt-6 hidden max-w-full overflow-x-auto md:block">
+          <div className="mt-6 hidden max-w-full overflow-x-auto xl:block">
             <table className="w-full min-w-[920px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface-muted text-muted">

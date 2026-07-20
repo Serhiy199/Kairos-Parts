@@ -64,7 +64,7 @@ function ToolbarButton({ label, active = false, disabled = false, onClick, child
       disabled={disabled}
       onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
-      className={`inline-flex h-9 min-w-9 items-center justify-center rounded-md border px-2 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
+      className={`inline-flex h-11 min-w-11 items-center justify-center rounded-md border px-2 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
         active
           ? 'border-accent bg-accent text-foreground'
           : 'border-border bg-card text-foreground hover:border-accent/60 hover:bg-accent/10'

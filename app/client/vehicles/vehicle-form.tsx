@@ -45,7 +45,7 @@ export function VehicleForm({ action, submitLabel, taxonomy, vehicle }: VehicleF
   }
 
   return (
-    <form action={action} className="grid gap-5 rounded-lg border border-border bg-card p-6 shadow-card md:grid-cols-2">
+    <form action={action} className="cabinet-card grid gap-5 lg:grid-cols-2">
       {vehicle ? <input type="hidden" name="vehicleId" value={vehicle.id} /> : null}
       <SearchableCombobox
         variant="light"

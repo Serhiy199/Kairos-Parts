@@ -22,8 +22,8 @@ export default async function AdminAuditLogPage() {
   const auditLogs = await listAuditLogsForAdmin();
 
   return (
-    <div className="grid gap-6">
-      <div className="rounded-lg border border-border bg-card p-6 shadow-card">
+    <div className="cabinet-stack">
+      <div className="cabinet-card">
         <p className="text-sm font-bold uppercase text-accent">Журнал дій</p>
         <h1 className="mt-2 text-2xl font-bold text-foreground">AuditLog критичних змін</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
@@ -31,9 +31,34 @@ export default async function AdminAuditLogPage() {
         </p>
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-6 shadow-card">
+      <div className="cabinet-card">
         <h2 className="text-lg font-bold text-foreground">Останні записи</h2>
-        <div className="mt-5 overflow-x-auto">
+        <div className="mt-5 grid gap-4 xl:hidden">
+          {auditLogs.map((item) => (
+            <article key={item.id} className="rounded-md border border-border p-4 sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-bold text-foreground">{auditEventLabel(item.metadata) ?? AUDIT_ACTION_LABELS[item.action] ?? item.action}</p>
+                  <p className="mt-1 text-sm text-muted">{AUDIT_ENTITY_LABELS[item.entityType] ?? item.entityType}</p>
+                </div>
+                <time className="text-sm text-muted">{item.createdAt.toLocaleDateString('uk-UA')} {item.createdAt.toLocaleTimeString('uk-UA')}</time>
+              </div>
+              <dl className="cabinet-record-grid mt-4">
+                <AuditCardField label="Actor" value={item.actor ? (item.actor.name ?? item.actor.email ?? '—') : '—'} />
+                <AuditCardField label="Роль" value={item.actor?.role ?? '—'} />
+                <AuditCardField label="Компанія" value={item.company?.name ?? 'Personal'} />
+                <AuditCardField label="ID об’єкта" value={item.entityId} mono />
+                <AuditCardField label="Old value" value={formatAuditValue(item.oldValue)} />
+                <AuditCardField label="New value" value={formatAuditValue(item.newValue)} />
+              </dl>
+              <details className="mt-4 rounded-md bg-surface-muted p-4">
+                <summary className="cursor-pointer font-semibold text-foreground">Деталі події</summary>
+                <div className="mt-3"><AuditMetadataDetails metadata={item.metadata} /></div>
+              </details>
+            </article>
+          ))}
+        </div>
+        <div className="mt-5 hidden overflow-x-auto xl:block">
           <table className="w-full min-w-[1360px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border bg-surface-muted text-muted">
@@ -109,9 +134,18 @@ export default async function AdminAuditLogPage() {
               ))}
             </tbody>
           </table>
-          {auditLogs.length === 0 ? <p className="mt-5 rounded-md border border-dashed border-border p-5 text-sm text-muted">Журнал дій ще порожній.</p> : null}
         </div>
+        {auditLogs.length === 0 ? <p className="mt-5 rounded-md border border-dashed border-border p-5 text-sm text-muted">Журнал дій ще порожній.</p> : null}
       </div>
+    </div>
+  );
+}
+
+function AuditCardField({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-bold uppercase text-muted">{label}</dt>
+      <dd className={`mt-1 break-words text-sm text-foreground ${mono ? 'font-mono text-xs' : ''}`}>{value}</dd>
     </div>
   );
 }

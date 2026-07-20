@@ -214,7 +214,22 @@ export default async function AdminClientDetailPage({
 
       <section className="rounded-lg border border-border bg-card p-6 shadow-card">
         <p className="text-sm font-bold uppercase text-accent">Заявки клієнта</p>
-        <div className="mt-4 overflow-x-auto">
+        <div className="mt-4 grid gap-3 xl:hidden">
+          {client.requests.map((request) => (
+            <article key={request.id} className="rounded-md border border-border p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <Link href={`/admin/requests/${request.id}`} className="font-bold text-foreground transition hover:text-accent">{request.requestNumber}</Link>
+                <StatusBadge status={request.status} />
+              </div>
+              <dl className="cabinet-record-grid mt-4">
+                <ClientRequestField label="Категорія" value={request.category?.name ?? '—'} />
+                <ClientRequestField label="Менеджер" value={request.assignedManager?.name ?? request.assignedManager?.email ?? 'Не призначено'} />
+                <ClientRequestField label="Дата" value={request.createdAt.toLocaleDateString('uk-UA')} />
+              </dl>
+            </article>
+          ))}
+        </div>
+        <div className="mt-4 hidden overflow-x-auto xl:block">
           <table className="w-full min-w-[760px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border bg-surface-muted text-muted">
@@ -237,8 +252,8 @@ export default async function AdminClientDetailPage({
               ))}
             </tbody>
           </table>
-          {client.requests.length === 0 ? <p className="mt-5 rounded-md border border-dashed border-border p-5 text-sm text-muted">Заявок немає.</p> : null}
         </div>
+        {client.requests.length === 0 ? <p className="mt-5 rounded-md border border-dashed border-border p-5 text-sm text-muted">Заявок немає.</p> : null}
       </section>
 
     </div>
@@ -250,6 +265,15 @@ function Info({ label, value }: { label: string; value: string }) {
     <div className="rounded-md border border-border p-4">
       <p className="text-xs font-bold uppercase text-muted">{label}</p>
       <p className="mt-2 text-sm font-semibold text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function ClientRequestField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-bold uppercase text-muted">{label}</dt>
+      <dd className="mt-1 break-words text-sm text-foreground">{value}</dd>
     </div>
   );
 }

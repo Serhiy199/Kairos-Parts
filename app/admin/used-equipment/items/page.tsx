@@ -189,7 +189,7 @@ export default async function AdminUsedEquipmentItemsPage({
         <EmptyState />
       ) : (
         <section className="overflow-hidden rounded-lg border border-border bg-card shadow-card">
-          <div className="hidden overflow-x-auto lg:block">
+          <div className="hidden overflow-x-auto xl:block">
             <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface-muted text-muted">
@@ -234,7 +234,7 @@ export default async function AdminUsedEquipmentItemsPage({
             </table>
           </div>
 
-          <div className="grid gap-3 p-4 lg:hidden">
+          <div className="grid gap-3 p-4 sm:p-5 xl:hidden">
             {data.items.map((item) => (
               <article key={item.id} className="rounded-lg border border-border p-4">
                 <div className="flex gap-3">

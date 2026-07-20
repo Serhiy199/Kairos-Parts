@@ -168,7 +168,7 @@ export default async function ClientRequestDetailPage({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         {details.map(([label, value]) => (
           <div key={label} className="rounded-lg border border-border bg-card p-4 shadow-card">
             <p className="text-sm font-semibold text-muted">{label}</p>
@@ -204,7 +204,7 @@ export default async function ClientRequestDetailPage({
 
               return (
               <article key={item.id} className="min-w-0 rounded-md border border-border p-4">
-                  <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,auto)] lg:items-start">
+                  <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,auto)] xl:items-start">
                     <div className="min-w-0">
                       <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
                       <p className="mt-2 font-bold text-foreground">{item.name}</p>

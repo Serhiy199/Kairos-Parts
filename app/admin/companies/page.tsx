@@ -47,8 +47,8 @@ export default async function AdminCompaniesPage({
   const message = resultMessage(query.result);
 
   return (
-    <div className="grid gap-6">
-      <div className="rounded-lg border border-border bg-card p-6 shadow-card">
+    <div className="cabinet-stack">
+      <div className="cabinet-card">
         <p className="text-sm font-bold uppercase text-accent">Компанії</p>
         <h1 className="mt-2 text-2xl font-bold text-foreground">Company accounts</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
@@ -57,9 +57,9 @@ export default async function AdminCompaniesPage({
         {message ? <div className="mt-4 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm font-semibold text-[#8A5B24]">{message}</div> : null}
       </div>
 
-      <form action={createCompany} className="grid gap-4 rounded-lg border border-border bg-card p-6 shadow-card">
+      <form action={createCompany} className="cabinet-card grid gap-4">
         <h2 className="text-lg font-bold text-foreground">Створити компанію</h2>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="cabinet-form-grid">
           <label className="grid gap-2 text-sm font-semibold text-foreground">
             Назва *
             <input name="name" required className={inputClass} />
@@ -76,7 +76,7 @@ export default async function AdminCompaniesPage({
             Телефон
             <input name="phone" className={inputClass} />
           </label>
-          <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
+          <label className="grid gap-2 text-sm font-semibold text-foreground lg:col-span-2">
             Юридична адреса
             <input name="legalAddress" className={inputClass} />
           </label>
@@ -86,9 +86,29 @@ export default async function AdminCompaniesPage({
         </button>
       </form>
 
-      <div className="rounded-lg border border-border bg-card p-6 shadow-card">
+      <div className="cabinet-card">
         <h2 className="text-lg font-bold text-foreground">Список компаній</h2>
-        <div className="mt-5 overflow-x-auto">
+        <div className="mt-5 grid gap-3 xl:hidden">
+          {companies.map((company) => (
+            <article key={company.id} className="rounded-md border border-border p-4 sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <Link href={`/admin/companies/${company.id}`} className="font-bold text-foreground transition hover:text-accent">
+                  {company.name}
+                </Link>
+                <span className="text-sm text-muted">{company.createdAt.toLocaleDateString('uk-UA')}</span>
+              </div>
+              <dl className="cabinet-record-grid mt-4">
+                <CompanyCardField label="ЄДРПОУ" value={company.edrpou ?? '—'} />
+                <CompanyCardField label="Email" value={company.email ?? 'Не вказано'} />
+                <CompanyCardField label="Телефон" value={company.phone ?? 'Не вказано'} />
+                <CompanyCardField label="Учасники" value={String(company._count.members)} />
+                <CompanyCardField label="Заявки" value={String(company._count.requests)} />
+                <CompanyCardField label="Техніка" value={String(company._count.vehicles)} />
+              </dl>
+            </article>
+          ))}
+        </div>
+        <div className="mt-5 hidden overflow-x-auto xl:block">
           <table className="w-full min-w-[920px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border bg-surface-muted text-muted">
@@ -122,9 +142,18 @@ export default async function AdminCompaniesPage({
               ))}
             </tbody>
           </table>
-          {companies.length === 0 ? <p className="mt-5 rounded-md border border-dashed border-border p-5 text-sm text-muted">Компаній ще немає.</p> : null}
         </div>
+        {companies.length === 0 ? <p className="mt-5 rounded-md border border-dashed border-border p-5 text-sm text-muted">Компаній ще немає.</p> : null}
       </div>
+    </div>
+  );
+}
+
+function CompanyCardField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-bold uppercase text-muted">{label}</dt>
+      <dd className="mt-1 break-words text-sm text-foreground">{value}</dd>
     </div>
   );
 }

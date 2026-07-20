@@ -83,9 +83,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
     return item;
   });
+  const wideContent = [
+    '/admin/requests',
+    '/admin/clients',
+    '/admin/companies',
+    '/admin/change-requests',
+    '/admin/audit-log',
+    '/admin/contact-messages',
+    '/admin/used-equipment'
+  ].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 
   return (
-    <DashboardShell title="CRM менеджера" subtitle={session.user.role === 'ADMIN' ? 'Admin / CRM' : 'Manager / CRM'} navItems={navItemsWithBadges} homeHref="/admin" logoutTarget="staff">
+    <DashboardShell title="CRM менеджера" subtitle={session.user.role === 'ADMIN' ? 'Admin / CRM' : 'Manager / CRM'} navItems={navItemsWithBadges} homeHref="/admin" logoutTarget="staff" contentWidth={wideContent ? 'wide' : 'default'}>
       {children}
     </DashboardShell>
   );

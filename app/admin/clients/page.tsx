@@ -28,8 +28,8 @@ export default async function AdminClientsPage() {
   });
 
   return (
-    <div className="grid gap-6">
-      <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+    <div className="cabinet-stack">
+      <section className="cabinet-card">
         <p className="text-sm font-bold uppercase text-accent">Клієнтська база</p>
         <h2 className="mt-2 text-2xl font-bold text-foreground">Клієнти</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
@@ -38,7 +38,25 @@ export default async function AdminClientsPage() {
       </section>
 
       <section className="overflow-hidden rounded-lg border border-border bg-card shadow-card">
-        <div className="overflow-x-auto">
+        <div className="grid gap-3 p-4 sm:p-5 xl:hidden">
+          {clients.map((client) => (
+            <article key={client.id} className="rounded-md border border-border p-4">
+              <Link href={`/admin/clients/${client.id}`} className="font-bold text-foreground transition hover:text-accent">
+                {client.contactName ?? ([client.firstName, client.lastName].filter(Boolean).join(' ') || client.user.name || 'Клієнт')}
+              </Link>
+              <dl className="cabinet-record-grid mt-4">
+                <ClientCardField label="Компанія" value={client.companyName ?? '—'} />
+                <ClientCardField label="Телефон" value={client.phone ?? client.user.phone ?? '—'} />
+                <ClientCardField label="Email" value={client.email ?? client.user.email ?? '—'} />
+                <ClientCardField label="Тип" value={client.clientType === 'BUSINESS' ? 'ФОП / Юр особа' : 'Фіз особа'} />
+                <ClientCardField label="Заявки" value={String(client._count.requests)} />
+                <ClientCardField label="Техніка" value={String(client._count.vehicles)} />
+                <ClientCardField label="Остання заявка" value={client.requests[0]?.createdAt.toLocaleDateString('uk-UA') ?? '—'} />
+              </dl>
+            </article>
+          ))}
+        </div>
+        <div className="hidden overflow-x-auto xl:block">
           <table className="w-full min-w-[980px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border bg-surface-muted text-muted">
@@ -71,9 +89,18 @@ export default async function AdminClientsPage() {
               ))}
             </tbody>
           </table>
-          {clients.length === 0 ? <p className="m-6 rounded-md border border-dashed border-border p-5 text-sm text-muted">Клієнтів ще немає.</p> : null}
         </div>
+        {clients.length === 0 ? <p className="m-4 rounded-md border border-dashed border-border p-5 text-sm text-muted sm:m-5">Клієнтів ще немає.</p> : null}
       </section>
+    </div>
+  );
+}
+
+function ClientCardField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-bold uppercase text-muted">{label}</dt>
+      <dd className="mt-1 break-words text-sm text-foreground">{value}</dd>
     </div>
   );
 }

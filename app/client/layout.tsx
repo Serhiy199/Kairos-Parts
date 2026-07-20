@@ -48,6 +48,9 @@ export default async function ClientLayout({ children }: { children: React.React
     { href: '/client/change-requests', label: 'Запити на зміну', icon: 'changes' as const },
     { href: '/client/profile', label: 'Профіль', icon: 'profile' as const }
   ];
+  const wideContent = ['/client/requests', '/client/change-requests', '/client/documents'].some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
 
   return (
     <DashboardShell
@@ -56,6 +59,7 @@ export default async function ClientLayout({ children }: { children: React.React
       navItems={clientNavItems}
       homeHref="/client"
       logoutTarget="client"
+      contentWidth={wideContent ? 'wide' : 'default'}
     >
       {children}
     </DashboardShell>

@@ -133,7 +133,7 @@ export default async function AdminCompanyDetailPage({
       <form action={updateCompany} className="grid gap-4 rounded-lg border border-border bg-card p-6 shadow-card">
         <input type="hidden" name="companyId" value={company.id} />
         <h2 className="text-lg font-bold text-foreground">Дані компанії</h2>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           <label className="grid gap-2 text-sm font-semibold text-foreground">Назва *<input name="name" required defaultValue={company.name} className={inputClass} /></label>
           <label className="grid gap-2 text-sm font-semibold text-foreground">ЄДРПОУ<input name="edrpou" defaultValue={company.edrpou ?? ''} className={inputClass} /></label>
           <label className="grid gap-2 text-sm font-semibold text-foreground">Email<input name="email" type="email" defaultValue={company.email ?? ''} className={inputClass} /></label>
@@ -157,7 +157,7 @@ export default async function AdminCompanyDetailPage({
             </p>
           ) : null}
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           <label className="grid gap-2 text-sm font-semibold text-foreground">
             Компанія / юридична назва *
             <input name="legalName" required defaultValue={company.billingDetails?.legalName ?? company.name} className={inputClass} />
