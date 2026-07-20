@@ -8,11 +8,13 @@ import {
   TbBuilding,
   TbBuildingStore,
   TbClipboardList,
+  TbFileDescription,
   TbHierarchy3,
   TbHistory,
   TbLayoutDashboard,
   TbMessageCircle,
   TbTractor,
+  TbUser,
   TbUsers
 } from 'react-icons/tb';
 
@@ -22,7 +24,7 @@ type NavItem = {
   href: string;
   label: string;
   badge?: number;
-  icon?: 'dashboard' | 'requests' | 'messages' | 'tractor' | 'clients' | 'companies' | 'changes' | 'history' | 'billing' | 'directories';
+  icon?: 'dashboard' | 'requests' | 'messages' | 'tractor' | 'clients' | 'companies' | 'changes' | 'history' | 'billing' | 'directories' | 'documents' | 'profile';
   activePrefix?: string;
 };
 
@@ -123,5 +125,7 @@ const NAV_ICONS = {
   changes: TbArrowsExchange,
   history: TbHistory,
   billing: TbBuildingStore,
-  directories: TbHierarchy3
+  directories: TbHierarchy3,
+  documents: TbFileDescription,
+  profile: TbUser
 } as const;

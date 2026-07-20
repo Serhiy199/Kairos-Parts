@@ -41,12 +41,12 @@ export default async function ClientLayout({ children }: { children: React.React
   }
 
   const clientNavItems = [
-    { href: '/client', label: 'Панель керування' },
-    { href: '/client/requests', label: 'Мої заявки', badge: pendingApprovalRequestCount },
-    { href: '/client/vehicles', label: 'Мій парк техніки' },
-    { href: '/client/documents', label: 'Документи' },
-    { href: '/client/change-requests', label: 'Запити на зміну' },
-    { href: '/client/profile', label: 'Профіль' }
+    { href: '/client', label: 'Панель керування', icon: 'dashboard' as const },
+    { href: '/client/requests', label: 'Мої заявки', icon: 'requests' as const, badge: pendingApprovalRequestCount },
+    { href: '/client/vehicles', label: 'Мій парк техніки', icon: 'tractor' as const },
+    { href: '/client/documents', label: 'Документи', icon: 'documents' as const },
+    { href: '/client/change-requests', label: 'Запити на зміну', icon: 'changes' as const },
+    { href: '/client/profile', label: 'Профіль', icon: 'profile' as const }
   ];
 
   return (

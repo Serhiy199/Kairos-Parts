@@ -19,3 +19,18 @@ export function taxonomySlug(value: string) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || 'directory-item';
 }
+
+export function uniqueTaxonomySlug(value: string, occupiedSlugs: ReadonlySet<string>) {
+  const baseSlug = taxonomySlug(value);
+
+  if (!occupiedSlugs.has(baseSlug)) {
+    return baseSlug;
+  }
+
+  let suffix = 2;
+  while (occupiedSlugs.has(`${baseSlug}-${suffix}`)) {
+    suffix += 1;
+  }
+
+  return `${baseSlug}-${suffix}`;
+}

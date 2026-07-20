@@ -33,6 +33,7 @@ import {
 } from 'react-icons/fa';
 
 import { normalizeRichTextHtml } from '@/lib/rich-text/normalize';
+import { applyHeading } from '@/lib/rich-text/heading';
 
 type AdminRichTextEditorProps = {
   value: string;
@@ -61,6 +62,7 @@ function ToolbarButton({ label, active = false, disabled = false, onClick, child
       title={label}
       aria-pressed={active}
       disabled={disabled}
+      onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
       className={`inline-flex h-9 min-w-9 items-center justify-center rounded-md border px-2 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
         active
@@ -236,10 +238,10 @@ export function AdminRichTextEditor({
         <ToolbarButton label="Абзац" disabled={controlsDisabled} active={editor.isActive('paragraph')} onClick={() => editor.chain().focus().setParagraph().run()}>
           P
         </ToolbarButton>
-        <ToolbarButton label="Заголовок 2" disabled={controlsDisabled} active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+        <ToolbarButton label="Заголовок 2" disabled={controlsDisabled} active={editor.isActive('heading', { level: 2 })} onClick={() => applyHeading(editor, 2)}>
           H2
         </ToolbarButton>
-        <ToolbarButton label="Заголовок 3" disabled={controlsDisabled} active={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
+        <ToolbarButton label="Заголовок 3" disabled={controlsDisabled} active={editor.isActive('heading', { level: 3 })} onClick={() => applyHeading(editor, 3)}>
           H3
         </ToolbarButton>
         <ToolbarButton label="Жирний" disabled={controlsDisabled} active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}>

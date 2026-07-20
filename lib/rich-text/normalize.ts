@@ -12,16 +12,15 @@ function looksLikeHtml(value: string) {
 }
 
 export function normalizeRichTextHtml(value: string | null | undefined) {
-  const trimmed = value?.trim() ?? '';
+  const trimmed = value?.replace(/\r\n?/g, '\n').trim() ?? '';
 
   if (!trimmed || looksLikeHtml(trimmed)) {
     return trimmed;
   }
 
   return trimmed
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean)
-    .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
+    .split('\n')
+    .map((line) => line.trim())
+    .map((line) => (line ? `<p>${escapeHtml(line)}</p>` : '<p></p>'))
     .join('');
 }

@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import { requireAdminSession } from '@/lib/admin/access';
 import { createAuditLog } from '@/lib/audit-log/service';
 import { prisma } from '@/lib/prisma';
-import { normalizeTaxonomyName, taxonomySlug } from '@/lib/vehicles/taxonomy-normalization';
+import { normalizeTaxonomyName, taxonomySlug, uniqueTaxonomySlug } from '@/lib/vehicles/taxonomy-normalization';
 import { parseTaxonomySortOrder } from '@/lib/vehicles/taxonomy-sort-order';
 
 function value(formData: FormData, key: string) {
@@ -42,9 +42,12 @@ export async function createEquipmentType(formData: FormData) {
   const exists = await prisma.equipmentType.findUnique({ where: { normalizedName }, select: { id: true } });
   if (exists) redirectWithResult('/admin/directories/equipment-types', 'duplicate');
 
-  let slug = taxonomySlug(name);
-  const slugExists = await prisma.equipmentType.findUnique({ where: { slug }, select: { id: true } });
-  if (slugExists) slug = `${slug}-${Date.now().toString(36)}`;
+  const baseSlug = taxonomySlug(name);
+  const matchingSlugs = await prisma.equipmentType.findMany({
+    where: { OR: [{ slug: baseSlug }, { slug: { startsWith: `${baseSlug}-` } }] },
+    select: { slug: true }
+  });
+  const slug = uniqueTaxonomySlug(name, new Set(matchingSlugs.map((item) => item.slug)));
   await prisma.$transaction(async (tx) => {
     const created = await tx.equipmentType.create({ data: { name, normalizedName, slug, sortOrder } });
     await createAuditLog(tx, {
@@ -61,18 +64,17 @@ export async function updateEquipmentType(formData: FormData) {
   const session = await requireAdminSession();
   const id = value(formData, 'id');
   const name = value(formData, 'name').replace(/\s+/g, ' ');
-  const slug = value(formData, 'slug').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
   const sortOrder = order(formData, '/admin/directories/equipment-types');
-  if (!id || name.length < 2 || !slug) redirectWithResult('/admin/directories/equipment-types', 'validation');
+  if (!id || name.length < 2 || name.length > 120) redirectWithResult('/admin/directories/equipment-types', 'validation');
   const current = await prisma.equipmentType.findUnique({ where: { id } });
   if (!current) redirectWithResult('/admin/directories/equipment-types', 'not-found');
   const duplicate = await prisma.equipmentType.findFirst({
-    where: { id: { not: id }, OR: [{ normalizedName: normalizeTaxonomyName(name) }, { slug }] },
+    where: { id: { not: id }, normalizedName: normalizeTaxonomyName(name) },
     select: { id: true }
   });
   if (duplicate) redirectWithResult('/admin/directories/equipment-types', 'duplicate');
-  const next = { name, normalizedName: normalizeTaxonomyName(name), slug, isActive: value(formData, 'isActive') === 'on', sortOrder };
-  if (current.name === next.name && current.slug === next.slug && current.isActive === next.isActive && current.sortOrder === next.sortOrder) {
+  const next = { name, normalizedName: normalizeTaxonomyName(name), isActive: value(formData, 'isActive') === 'on', sortOrder };
+  if (current.name === next.name && current.isActive === next.isActive && current.sortOrder === next.sortOrder) {
     redirectWithResult('/admin/directories/equipment-types', 'unchanged');
   }
   try {
