@@ -2,9 +2,9 @@ import Link from 'next/link';
 
 import { auth } from '@/auth';
 import { ActionIcon } from '@/components/ui/action-icons';
-import { getAllManufacturers } from '@/lib/catalog/catalog-data';
 import { getClientAccessContext, getClientProfileForSession, requestAccessWhere, vehicleAccessWhere } from '@/lib/client/access';
 import { getUploadMaxSizeMb } from '@/lib/files/upload-policy';
+import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
 import { RequestForm } from './request-form';
 
@@ -30,7 +30,6 @@ export default async function RequestPage({
   }
 
   const maxSizeMb = getUploadMaxSizeMb();
-  const manufacturerOptions = getAllManufacturers().map((manufacturer) => manufacturer.name);
   const clientFullName = [clientProfile.firstName, clientProfile.lastName].filter(Boolean).join(' ');
   const initialContact = {
     contactName: clientProfile.contactName ?? (clientFullName || clientProfile.user.name || ''),
@@ -41,6 +40,10 @@ export default async function RequestPage({
   const vehiclePrefill = params.vehicleId ? await prismaVehiclePrefill(clientAccess, params.vehicleId) : null;
   const repeatPrefill = params.repeatRequestId ? await prismaRepeatPrefill(clientAccess, params.repeatRequestId) : null;
   const initialRequest = vehiclePrefill ?? repeatPrefill ?? undefined;
+  const taxonomy = await getActiveEquipmentTaxonomy({
+    equipmentType: initialRequest?.equipmentType,
+    manufacturer: initialRequest?.manufacturer
+  });
 
   return (
     <>
@@ -58,7 +61,7 @@ export default async function RequestPage({
       <section className="bg-public-page px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_0.45fr] lg:items-start">
           <RequestForm
-            manufacturerOptions={manufacturerOptions}
+            taxonomy={taxonomy}
             initialContact={initialContact}
             initialMode={params.mode}
             initialRequest={initialRequest}

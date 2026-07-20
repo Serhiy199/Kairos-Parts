@@ -19,8 +19,7 @@ const adminNavItems = [
   { href: '/admin/change-requests', label: 'Запити змін' },
   { href: '/admin/audit-log', label: 'Журнал дій' },
   { href: '/admin/billing-settings', label: 'Реквізити продавця' },
-  { href: '/admin/categories', label: 'Категорії' },
-  { href: '/admin/manufacturers', label: 'Виробники' },
+  { href: '/admin/directories', label: 'Довідники' },
   { href: '/admin/settings', label: 'Налаштування' }
 ];
 
@@ -69,7 +68,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const navItems = session.user.role === 'ADMIN'
     ? adminNavItems
-    : adminNavItems.filter((item) => !['/admin/change-requests', '/admin/billing-settings', '/admin/categories', '/admin/manufacturers', '/admin/settings'].includes(item.href));
+    : adminNavItems.filter((item) => !['/admin/change-requests', '/admin/billing-settings', '/admin/settings'].includes(item.href));
   const navItemsWithBadges = navItems.map((item) => {
     if (item.href === '/admin/requests') {
       return { ...item, badge: newRequestsCount };

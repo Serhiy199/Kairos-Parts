@@ -13,7 +13,9 @@ const AUDIT_ENTITY_LABELS = {
   COMMERCIAL_OFFER: 'Комерційна пропозиція',
   COMPANY: 'Компанія',
   CHANGE_REQUEST: 'Запит зміни',
-  USER: 'Користувач'
+  USER: 'Користувач',
+  EQUIPMENT_TYPE: 'Тип техніки',
+  MANUFACTURER: 'Виробник'
 } as const;
 
 const AUDIT_ACTION_LABELS = {

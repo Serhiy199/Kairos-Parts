@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { TbArrowLeft, TbBuilding, TbDownload, TbFileDescription, TbUser } from 'react-icons/tb';
+import { TbArrowLeft, TbBuilding, TbDownload, TbFileDescription, TbPhotoEdit, TbUser } from 'react-icons/tb';
 
 import { ContextualChangeRequestForm } from '@/app/client/change-requests/contextual-change-request-form';
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
@@ -55,10 +55,16 @@ export default async function ClientVehicleDetailPage({
   return (
     <div className="grid min-w-0 gap-6">
       <nav aria-label="Навігація сторінки техніки">
-        <Link href="/client/vehicles" className="inline-flex items-center gap-2 text-sm font-semibold text-muted transition hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-          <TbArrowLeft aria-hidden="true" className="size-4" />
-          Назад до парку техніки
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link href="/client/vehicles" className="inline-flex items-center gap-2 text-sm font-semibold text-muted transition hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            <TbArrowLeft aria-hidden="true" className="size-4" />
+            Назад до парку техніки
+          </Link>
+          <Link href={`/client/vehicles/${vehicle.id}/photos`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            <TbPhotoEdit aria-hidden="true" className="size-4" />
+            Керувати фото
+          </Link>
+        </div>
       </nav>
 
       {query.updated ? (

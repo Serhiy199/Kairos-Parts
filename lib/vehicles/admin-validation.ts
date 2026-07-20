@@ -1,4 +1,3 @@
-import { EQUIPMENT_TYPE_OPTIONS } from '@/lib/vehicles/equipment-types';
 import { normalizeVehicleVin } from '@/lib/vehicles/vin';
 
 export type AdminVehicleFormField =
@@ -69,7 +68,7 @@ export function validateAdminVehicleForm(values: AdminVehicleFormValues) {
   const vinOrSerial = normalizeVehicleVin(vinSource);
   const comment = values.comment.trim();
 
-  if (!EQUIPMENT_TYPE_OPTIONS.includes(equipmentType)) {
+  if (!equipmentType) {
     fieldErrors.equipmentType = 'Оберіть тип техніки зі списку.';
   }
 

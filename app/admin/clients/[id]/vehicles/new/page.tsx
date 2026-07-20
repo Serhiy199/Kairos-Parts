@@ -8,8 +8,8 @@ import { AdminVehicleForm } from '@/components/vehicles/admin-vehicle-form';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
-import { getAdminVehicleManufacturerOptions } from '@/lib/vehicles/admin-manufacturers';
 import { EMPTY_ADMIN_VEHICLE_FORM_VALUES } from '@/lib/vehicles/admin-validation';
+import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +25,7 @@ export default async function AdminClientVehicleCreatePage({
     return <AdminDbBlocker />;
   }
 
-  const [client, manufacturers] = await Promise.all([
+  const [client, taxonomy] = await Promise.all([
     prisma.clientProfile.findFirst({
       where: {
         id,
@@ -47,7 +47,7 @@ export default async function AdminClientVehicleCreatePage({
         }
       }
     }),
-    getAdminVehicleManufacturerOptions()
+    getActiveEquipmentTaxonomy()
   ]);
 
   if (!client) {
@@ -88,7 +88,7 @@ export default async function AdminClientVehicleCreatePage({
         action={action}
         mode="create"
         owner={{ type: 'client', name: clientName, meta: contactMeta }}
-        manufacturers={manufacturers}
+        taxonomy={taxonomy}
         initialValues={EMPTY_ADMIN_VEHICLE_FORM_VALUES}
         cancelHref={profileHref}
       />

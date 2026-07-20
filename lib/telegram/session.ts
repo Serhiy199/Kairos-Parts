@@ -2,12 +2,12 @@ import { saveRequestFileBufferLocal } from '@/lib/files/local-storage';
 import { getPhoneLookupTail, normalizePhoneDigits, phoneNumbersMatch } from '@/lib/phone/normalize';
 import { prisma } from '@/lib/prisma';
 import { generatePublicStatusToken, generateRequestNumber } from '@/lib/requests/identifiers';
-import { getSpecificManufacturersForEquipmentType } from '@/lib/vehicles/equipment-manufacturers';
-import { EQUIPMENT_TYPE_OPTIONS } from '@/lib/vehicles/equipment-types';
+import { getActiveEquipmentTypeNames, getActiveManufacturerNamesForType, validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
 import { answerCallbackQuery, downloadTelegramFile, getTelegramFile, sendTelegramMessage } from './bot';
 import {
   buildManufacturerKeyboard,
+  buildEquipmentTypeKeyboard,
   buildCreatedMessage,
   buildProfileFoundMessage,
   buildRegistrationKeyboard,
@@ -18,9 +18,7 @@ import {
   contactKeyboard,
   continueRequestKeyboard,
   createdRequestKeyboard,
-  equipmentTypeKeyboard,
   isSkipText,
-  OTHER_MANUFACTURER_TEXT,
   removeKeyboard,
   skipKeyboard,
   TELEGRAM_CALLBACKS
@@ -202,15 +200,6 @@ function isValidVehicleYear(text: string) {
   }
 
   return year;
-}
-
-function catalogSlug(name: string) {
-  return (
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9а-яіїєґ]+/giu, '-')
-      .replace(/^-|-$/g, '') || 'manufacturer'
-  );
 }
 
 async function getDraft(telegramUserId: string) {
@@ -436,9 +425,10 @@ async function handleTextMessage(message: TelegramMessage, draft: TelegramDraft)
   }
 
   if (draft.step === 'ASK_EQUIPMENT') {
-    if (!EQUIPMENT_TYPE_OPTIONS.includes(text) && text.length < 2) {
+    const equipmentTypeOptions = await getActiveEquipmentTypeNames();
+    if (!equipmentTypeOptions.includes(text)) {
       await sendTelegramMessage(message.chat.id, 'Оберіть тип техніки зі списку або введіть власний варіант.', {
-        replyMarkup: equipmentTypeKeyboard
+        replyMarkup: buildEquipmentTypeKeyboard(equipmentTypeOptions)
       });
       return;
     }
@@ -447,7 +437,7 @@ async function handleTextMessage(message: TelegramMessage, draft: TelegramDraft)
       where: { telegramUserId: draft.telegramUserId },
       data: { equipmentType: text, step: 'ASK_MANUFACTURER' }
     });
-    const manufacturerOptions = getSpecificManufacturersForEquipmentType(text);
+    const manufacturerOptions = await getActiveManufacturerNamesForType(text);
 
     if (manufacturerOptions.length > 0) {
       await sendTelegramMessage(message.chat.id, 'Оберіть виробника / марку техніки:', {
@@ -463,9 +453,10 @@ async function handleTextMessage(message: TelegramMessage, draft: TelegramDraft)
   }
 
   if (draft.step === 'ASK_MANUFACTURER') {
-    if (text === OTHER_MANUFACTURER_TEXT) {
-      await sendTelegramMessage(message.chat.id, 'Введіть виробника або марку техніки.\n\nНаприклад: John Deere, MAN, Claas', {
-        replyMarkup: removeKeyboard
+    const manufacturerOptions = await getActiveManufacturerNamesForType(draft.equipmentType ?? '');
+    if (!manufacturerOptions.includes(text)) {
+      await sendTelegramMessage(message.chat.id, 'Оберіть виробника / марку зі списку.', {
+        replyMarkup: buildManufacturerKeyboard(manufacturerOptions)
       });
       return;
     }
@@ -758,14 +749,13 @@ async function createTelegramRequest(draft: TelegramDraft) {
   const publicStatusToken = generatePublicStatusToken();
   const files = metadata.files;
   const company = clientProfile.user.companyMemberships[0]?.company ?? null;
-  const manufacturer = await prisma.manufacturer.findFirst({
-    where: { name: { equals: metadata.manufacturer, mode: 'insensitive' } }
-  }) ?? await prisma.manufacturer.create({
-    data: {
-      name: metadata.manufacturer,
-      slug: catalogSlug(metadata.manufacturer)
-    }
+  const taxonomy = await validateEquipmentTaxonomySelection({
+    equipmentType: draft.equipmentType,
+    manufacturer: metadata.manufacturer
   });
+  if (!taxonomy.ok) {
+    throw new Error('Telegram equipment taxonomy selection is no longer active.');
+  }
   const description = buildTelegramRequestDescription({
     equipmentType: draft.equipmentType,
     manufacturer: metadata.manufacturer,
@@ -786,8 +776,8 @@ async function createTelegramRequest(draft: TelegramDraft) {
       guestName: null,
       guestPhone: null,
       companyName: draft.companyName ?? clientProfile.companyName ?? company?.name ?? draft.contactName,
-      manufacturerId: manufacturer.id,
-      equipmentType: draft.equipmentType,
+      manufacturerId: taxonomy.manufacturer.id,
+      equipmentType: taxonomy.equipmentType.name,
       model: metadata.model,
       vehicleYear: metadata.vehicleYear,
       vinOrSerial: metadata.vinOrSerial,
@@ -864,7 +854,8 @@ async function handleCallback(callbackQuery: TelegramCallbackQuery) {
       data: { step: 'ASK_EQUIPMENT' }
     });
     await answerCallbackQuery(callbackQuery.id);
-    await sendTelegramMessage(chatId, 'Оберіть тип техніки:', { replyMarkup: equipmentTypeKeyboard });
+    const equipmentTypeOptions = await getActiveEquipmentTypeNames();
+    await sendTelegramMessage(chatId, 'Оберіть тип техніки:', { replyMarkup: buildEquipmentTypeKeyboard(equipmentTypeOptions) });
     return;
   }
 

@@ -8,8 +8,8 @@ import { AdminVehicleForm } from '@/components/vehicles/admin-vehicle-form';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
-import { getAdminVehicleManufacturerOptions } from '@/lib/vehicles/admin-manufacturers';
 import { EMPTY_ADMIN_VEHICLE_FORM_VALUES } from '@/lib/vehicles/admin-validation';
+import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +25,7 @@ export default async function AdminCompanyVehicleCreatePage({
     return <AdminDbBlocker />;
   }
 
-  const [company, manufacturers] = await Promise.all([
+  const [company, taxonomy] = await Promise.all([
     prisma.company.findUnique({
       where: { id },
       select: {
@@ -34,7 +34,7 @@ export default async function AdminCompanyVehicleCreatePage({
         edrpou: true
       }
     }),
-    getAdminVehicleManufacturerOptions()
+    getActiveEquipmentTaxonomy()
   ]);
 
   if (!company) {
@@ -73,7 +73,7 @@ export default async function AdminCompanyVehicleCreatePage({
           name: company.name,
           meta: company.edrpou ? `ЄДРПОУ: ${company.edrpou}` : 'ЄДРПОУ не вказано'
         }}
-        manufacturers={manufacturers}
+        taxonomy={taxonomy}
         initialValues={EMPTY_ADMIN_VEHICLE_FORM_VALUES}
         cancelHref={profileHref}
       />

@@ -8,7 +8,6 @@ import { requireCrmSession } from '@/lib/admin/access';
 import { createAuditLog } from '@/lib/audit-log/service';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
-import { validateAdminVehicleManufacturer } from '@/lib/vehicles/admin-manufacturers';
 import {
   getAdminVehicleFormValues,
   type AdminVehicleFormState,
@@ -25,6 +24,7 @@ import {
   vehicleOwnershipForPersonalClient
 } from '@/lib/vehicles/ownership';
 import { diffVehicleFields, pickEditableVehicleFields } from '@/lib/vehicles/change-snapshot';
+import { validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
 const GENERIC_ERROR = 'Не вдалося зберегти техніку. Спробуйте ще раз.';
 
@@ -63,16 +63,16 @@ async function validateForm(formData: FormData) {
     };
   }
 
-  const manufacturerResult = await validateAdminVehicleManufacturer(
-    validation.data.manufacturerId,
-    validation.data.equipmentType
-  );
+  const manufacturerResult = await validateEquipmentTaxonomySelection({
+    equipmentType: validation.data.equipmentType,
+    manufacturerId: validation.data.manufacturerId
+  });
 
   if (!manufacturerResult.ok) {
     return {
       ok: false as const,
       state: errorState(values, 'Перевірте поля форми.', {
-        manufacturerId: manufacturerResult.message
+        [manufacturerResult.field === 'equipmentType' ? 'equipmentType' : 'manufacturerId']: manufacturerResult.message
       })
     };
   }
@@ -81,7 +81,7 @@ async function validateForm(formData: FormData) {
     ok: true as const,
     values,
     data: {
-      type: validation.data.equipmentType,
+      type: manufacturerResult.equipmentType.name,
       manufacturer: manufacturerResult.manufacturer.name,
       model: validation.data.model,
       year: validation.data.year,
@@ -117,9 +117,10 @@ export async function createAdminVehicleForCompany(
     return validation.state;
   }
 
+  let createdVehicleId = '';
   try {
     const owner = vehicleOwnershipForCompany(company.id);
-    const duplicate = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const found = await findVehicleVinDuplicate({
         db: tx,
         owner,
@@ -127,7 +128,7 @@ export async function createAdminVehicleForCompany(
       });
 
       if (found) {
-        return found;
+        return { duplicate: found, createdId: null };
       }
 
       const created = await tx.vehicle.create({ data: { ...owner, ...validation.data } });
@@ -140,19 +141,20 @@ export async function createAdminVehicleForCompany(
         newValue: pickEditableVehicleFields(created),
         metadata: { event: 'VEHICLE_CREATED', actorRole: session.user.role, ownerType: 'company', ownerId: company.id }
       });
-      return null;
+      return { duplicate: null, createdId: created.id };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-    if (duplicate) {
-      return duplicateState(validation.values, duplicate.id);
+    if (result.duplicate) {
+      return duplicateState(validation.values, result.duplicate.id);
     }
+    createdVehicleId = result.createdId;
   } catch {
     return errorState(validation.values);
   }
 
   revalidatePath(`/admin/companies/${company.id}`);
   revalidatePath('/client/vehicles');
-  redirect(`/admin/companies/${company.id}#fleet`);
+  redirect(`/admin/vehicles/${createdVehicleId}/edit?created=1#photos`);
 }
 
 export async function createAdminVehicleForClient(
@@ -184,9 +186,10 @@ export async function createAdminVehicleForClient(
     return validation.state;
   }
 
+  let createdVehicleId = '';
   try {
     const owner = vehicleOwnershipForPersonalClient(client.id);
-    const duplicate = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const found = await findVehicleVinDuplicate({
         db: tx,
         owner,
@@ -194,7 +197,7 @@ export async function createAdminVehicleForClient(
       });
 
       if (found) {
-        return found;
+        return { duplicate: found, createdId: null };
       }
 
       const created = await tx.vehicle.create({ data: { ...owner, ...validation.data } });
@@ -206,19 +209,20 @@ export async function createAdminVehicleForClient(
         newValue: pickEditableVehicleFields(created),
         metadata: { event: 'VEHICLE_CREATED', actorRole: session.user.role, ownerType: 'client', ownerId: client.id }
       });
-      return null;
+      return { duplicate: null, createdId: created.id };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-    if (duplicate) {
-      return duplicateState(validation.values, duplicate.id);
+    if (result.duplicate) {
+      return duplicateState(validation.values, result.duplicate.id);
     }
+    createdVehicleId = result.createdId;
   } catch {
     return errorState(validation.values);
   }
 
   revalidatePath(`/admin/clients/${client.id}`);
   revalidatePath('/client/vehicles');
-  redirect(`/admin/clients/${client.id}#fleet`);
+  redirect(`/admin/vehicles/${createdVehicleId}/edit?created=1#photos`);
 }
 
 export async function updateAdminVehicle(

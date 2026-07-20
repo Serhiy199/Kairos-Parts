@@ -12,6 +12,7 @@ import { findVehicleVinDuplicate } from '@/lib/vehicles/duplicates';
 import { vehicleOwnershipForClient } from '@/lib/vehicles/ownership';
 import { pickEditableVehicleFields } from '@/lib/vehicles/change-snapshot';
 import { normalizeVehicleVin } from '@/lib/vehicles/vin';
+import { validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -47,28 +48,33 @@ async function getClientAccess() {
 export async function createVehicle(formData: FormData) {
   const access = await getClientAccess();
   const type = readString(formData, 'type');
-  const manufacturer = readString(formData, 'manufacturer');
+  const manufacturerId = readString(formData, 'manufacturerId');
   const model = readString(formData, 'model');
   const vinSource = readString(formData, 'vinOrSerial');
 
-  if (!type || !manufacturer || !model || vinSource.length > 120) {
+  if (!type || !manufacturerId || !model || vinSource.length > 120) {
+    redirect('/client/vehicles/new?error=validation');
+  }
+
+  const taxonomy = await validateEquipmentTaxonomySelection({ equipmentType: type, manufacturerId });
+  if (!taxonomy.ok) {
     redirect('/client/vehicles/new?error=validation');
   }
 
   const owner = vehicleOwnershipForClient(access);
   const vinOrSerial = normalizeVehicleVin(vinSource);
-  const duplicate = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const found = await findVehicleVinDuplicate({ db: tx, owner, normalizedVin: vinOrSerial });
 
     if (found) {
-      return found;
+      return { duplicate: found, createdId: null };
     }
 
     const created = await tx.vehicle.create({
       data: {
         ...owner,
-        type,
-        manufacturer,
+        type: taxonomy.equipmentType.name,
+        manufacturer: taxonomy.manufacturer.name,
         model,
         year: readYear(formData),
         vinOrSerial,
@@ -89,13 +95,13 @@ export async function createVehicle(formData: FormData) {
         ownerId: access.companyId ?? access.clientProfileId
       }
     });
-    return null;
+    return { duplicate: null, createdId: created.id };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-  if (duplicate) {
+  if (result.duplicate) {
     redirect('/client/vehicles/new?error=duplicate');
   }
 
   revalidatePath('/client/vehicles');
-  redirect('/client/vehicles?created=1');
+  redirect(`/client/vehicles/${result.createdId}/photos?created=1`);
 }

@@ -12,6 +12,7 @@ import { prisma } from '@/lib/prisma';
 import { normalizeUsedEquipmentDescriptionForEditor } from '@/lib/used-equipment/description';
 import { getUsedEquipmentStatusLabel } from '@/lib/used-equipment/status';
 import type { UsedEquipmentFormValues } from '@/lib/used-equipment/validation';
+import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,22 +22,6 @@ type PageProps = {
   }>;
 };
 
-async function getManufacturerOptions() {
-  const manufacturers = await prisma.manufacturer.findMany({
-    orderBy: { name: 'asc' },
-    select: {
-      id: true,
-      name: true
-    }
-  });
-
-  return manufacturers.map((manufacturer) => ({
-    value: manufacturer.id,
-    label: manufacturer.name,
-    name: manufacturer.name
-  }));
-}
-
 export default async function AdminUsedEquipmentEditPage({ params }: PageProps) {
   await requireCrmSession();
   const { id } = await params;
@@ -45,8 +30,7 @@ export default async function AdminUsedEquipmentEditPage({ params }: PageProps) 
     return <AdminDbBlocker />;
   }
 
-  const [item, manufacturers] = await Promise.all([
-    prisma.usedEquipment.findUnique({
+  const item = await prisma.usedEquipment.findUnique({
       where: { id },
       select: {
         id: true,
@@ -80,13 +64,16 @@ export default async function AdminUsedEquipmentEditPage({ params }: PageProps) 
           }
         }
       }
-    }),
-    getManufacturerOptions()
-  ]);
+    });
 
   if (!item) {
     notFound();
   }
+
+  const taxonomy = await getActiveEquipmentTaxonomy({
+    equipmentType: item.equipmentType,
+    manufacturer: item.manufacturerName
+  });
 
   const initialValues: UsedEquipmentFormValues = {
     title: item.title,
@@ -141,7 +128,7 @@ export default async function AdminUsedEquipmentEditPage({ params }: PageProps) 
       <UsedEquipmentForm
         action={action}
         mode="edit"
-        manufacturers={manufacturers}
+        taxonomy={taxonomy}
         initialValues={initialValues}
         hasImages={item.images.length > 0}
         existingImages={item.images}

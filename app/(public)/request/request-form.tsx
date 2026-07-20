@@ -6,11 +6,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActionIcon } from '@/components/ui/action-icons';
 import { SearchableCombobox, type SearchableComboboxOption } from '@/components/ui/searchable-combobox';
 import { ALLOWED_UPLOAD_EXTENSIONS, ALLOWED_UPLOAD_MIME_TYPES } from '@/lib/files/upload-policy';
-import { getManufacturersForEquipmentType } from '@/lib/vehicles/equipment-manufacturers';
-import { EQUIPMENT_TYPE_GROUPS } from '@/lib/vehicles/equipment-types';
+import type { EquipmentTaxonomyType } from '@/lib/vehicles/taxonomy';
 
 type RequestFormProps = {
-  manufacturerOptions: string[];
+  taxonomy: EquipmentTaxonomyType[];
   initialContact?: {
     contactName?: string;
     companyName?: string;
@@ -50,7 +49,7 @@ function uniqueSortedOptions(values: string[]): SearchableComboboxOption[] {
 }
 
 export function RequestForm({
-  manufacturerOptions,
+  taxonomy,
   initialContact,
   initialMode,
   initialRequest,
@@ -64,25 +63,25 @@ export function RequestForm({
   const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
 
   const equipmentTypeOptions = useMemo(() => {
-    const values = EQUIPMENT_TYPE_GROUPS.flatMap((group) => group.options);
+    const values = taxonomy.map((type) => type.name);
 
     if (initialRequest?.equipmentType && !values.includes(initialRequest.equipmentType)) {
       values.push(initialRequest.equipmentType);
     }
 
     return uniqueSortedOptions(values);
-  }, [initialRequest?.equipmentType]);
+  }, [initialRequest?.equipmentType, taxonomy]);
 
   const manufacturerComboboxOptions = useMemo(() => {
-    const suggestions = getManufacturersForEquipmentType(equipmentType);
-    const options = equipmentType ? suggestions : [...suggestions, ...manufacturerOptions];
+    const selectedType = taxonomy.find((type) => type.name === equipmentType);
+    const options = (selectedType?.manufacturers ?? []).map((manufacturer) => manufacturer.name);
 
     if (initialRequest?.manufacturer && !options.includes(initialRequest.manufacturer)) {
       options.push(initialRequest.manufacturer);
     }
 
     return uniqueSortedOptions(options);
-  }, [equipmentType, initialRequest?.manufacturer, manufacturerOptions]);
+  }, [equipmentType, initialRequest?.manufacturer, taxonomy]);
 
   useEffect(() => {
     if (!manufacturer) {

@@ -115,6 +115,8 @@ enum AuditEntityType {
   COMPANY
   CHANGE_REQUEST
   USER
+  EQUIPMENT_TYPE
+  MANUFACTURER
 }
 
 enum AuditAction {
@@ -772,21 +774,50 @@ model Subcategory {
 }
 
 model Manufacturer {
-  id            String          @id @default(cuid())
-  categoryId    String?
-  category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  subcategoryId String?
-  subcategory   Subcategory?    @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
-  name          String
-  slug          String
-  requests      Request[]
-  usedEquipment UsedEquipment[]
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id             String                      @id @default(cuid())
+  categoryId     String?
+  category       Category?                   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  subcategoryId  String?
+  subcategory    Subcategory?                @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  name           String
+  slug           String
+  isActive       Boolean                     @default(true)
+  sortOrder      Int                         @default(0)
+  requests       Request[]
+  usedEquipment  UsedEquipment[]
+  equipmentTypes ManufacturerEquipmentType[]
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
 
   @@unique([categoryId, subcategoryId, slug])
   @@index([categoryId])
   @@index([subcategoryId])
+  @@index([isActive, sortOrder])
+}
+
+model EquipmentType {
+  id             String                      @id @default(cuid())
+  name           String
+  normalizedName String                      @unique
+  slug           String                      @unique
+  isActive       Boolean                     @default(true)
+  sortOrder      Int                         @default(0)
+  manufacturers  ManufacturerEquipmentType[]
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+model ManufacturerEquipmentType {
+  manufacturerId  String
+  equipmentTypeId String
+  manufacturer    Manufacturer  @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  equipmentType   EquipmentType @relation(fields: [equipmentTypeId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+
+  @@id([manufacturerId, equipmentTypeId])
+  @@index([equipmentTypeId])
 }
 
 model UsedEquipment {

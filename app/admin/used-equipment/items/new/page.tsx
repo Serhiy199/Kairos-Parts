@@ -5,9 +5,9 @@ import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { UsedEquipmentForm } from '@/components/used-equipment/used-equipment-form';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
-import { prisma } from '@/lib/prisma';
 import { createUsedEquipment } from '@/app/admin/used-equipment/items/actions';
 import type { UsedEquipmentFormValues } from '@/lib/used-equipment/validation';
+import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,22 +21,6 @@ const initialValues: UsedEquipmentFormValues = {
   status: 'DRAFT'
 };
 
-async function getManufacturerOptions() {
-  const manufacturers = await prisma.manufacturer.findMany({
-    orderBy: { name: 'asc' },
-    select: {
-      id: true,
-      name: true
-    }
-  });
-
-  return manufacturers.map((manufacturer) => ({
-    value: manufacturer.id,
-    label: manufacturer.name,
-    name: manufacturer.name
-  }));
-}
-
 export default async function AdminUsedEquipmentNewPage() {
   await requireCrmSession();
 
@@ -44,7 +28,7 @@ export default async function AdminUsedEquipmentNewPage() {
     return <AdminDbBlocker />;
   }
 
-  const manufacturers = await getManufacturerOptions();
+  const taxonomy = await getActiveEquipmentTaxonomy();
 
   return (
     <div className="grid gap-6">
@@ -67,7 +51,7 @@ export default async function AdminUsedEquipmentNewPage() {
         </div>
       </section>
 
-      <UsedEquipmentForm action={createUsedEquipment} mode="create" manufacturers={manufacturers} initialValues={initialValues} />
+      <UsedEquipmentForm action={createUsedEquipment} mode="create" taxonomy={taxonomy} initialValues={initialValues} />
     </div>
   );
 }

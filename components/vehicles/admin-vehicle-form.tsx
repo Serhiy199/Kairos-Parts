@@ -6,15 +6,13 @@ import { useActionState, useEffect, useId, useMemo, useState } from 'react';
 import { LuSave } from 'react-icons/lu';
 
 import { SearchableCombobox, type SearchableComboboxOption } from '@/components/ui/searchable-combobox';
-import type { AdminVehicleManufacturerOption } from '@/lib/vehicles/admin-manufacturers';
 import {
   EMPTY_ADMIN_VEHICLE_FORM_STATE,
   type AdminVehicleFormField,
   type AdminVehicleFormState,
   type AdminVehicleFormValues
 } from '@/lib/vehicles/admin-validation';
-import { EQUIPMENT_TYPE_OPTIONS } from '@/lib/vehicles/equipment-types';
-import { getManufacturersForEquipmentType } from '@/lib/vehicles/equipment-manufacturers';
+import type { EquipmentTaxonomyType } from '@/lib/vehicles/taxonomy';
 
 type AdminVehicleOwner = {
   type: 'company' | 'client';
@@ -26,14 +24,10 @@ type AdminVehicleFormProps = {
   action: (state: AdminVehicleFormState, formData: FormData) => Promise<AdminVehicleFormState>;
   mode: 'create' | 'edit';
   owner: AdminVehicleOwner;
-  manufacturers: AdminVehicleManufacturerOption[];
+  taxonomy: EquipmentTaxonomyType[];
   initialValues: AdminVehicleFormValues;
   cancelHref: string;
 };
-
-function normalize(value: string) {
-  return value.trim().toLocaleLowerCase('uk-UA');
-}
 
 function fieldClass(error?: string) {
   return `h-11 w-full rounded-md border bg-card px-3 text-sm font-semibold text-foreground outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/20 ${
@@ -53,7 +47,7 @@ export function AdminVehicleForm({
   action,
   mode,
   owner,
-  manufacturers,
+  taxonomy,
   initialValues,
   cancelHref
 }: AdminVehicleFormProps) {
@@ -81,25 +75,17 @@ export function AdminVehicleForm({
   }, [state.duplicateVehicleId]);
 
   const equipmentTypeOptions = useMemo<SearchableComboboxOption[]>(
-    () => EQUIPMENT_TYPE_OPTIONS.map((option) => ({ value: option, label: option })),
-    []
+    () => taxonomy.map((option) => ({ value: option.name, label: option.name })),
+    [taxonomy]
   );
 
   const manufacturerOptions = useMemo(() => {
-    if (!equipmentType) {
-      return manufacturers;
-    }
-
-    const allowedNames = new Set(getManufacturersForEquipmentType(equipmentType).map(normalize));
-    const filtered = manufacturers.filter((manufacturer) => allowedNames.has(normalize(manufacturer.name)));
-    const selected = manufacturers.find((manufacturer) => manufacturer.value === manufacturerId);
-
-    if (selected && !filtered.some((manufacturer) => manufacturer.value === selected.value)) {
-      return [...filtered, selected];
-    }
-
-    return filtered;
-  }, [equipmentType, manufacturerId, manufacturers]);
+    const selectedType = taxonomy.find((option) => option.name === equipmentType);
+    return (selectedType?.manufacturers ?? []).map((manufacturer) => ({
+      value: manufacturer.id,
+      label: manufacturer.name
+    }));
+  }, [equipmentType, taxonomy]);
 
   useEffect(() => {
     if (manufacturerId && !manufacturerOptions.some((option) => option.value === manufacturerId)) {

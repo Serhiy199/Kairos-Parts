@@ -1,5 +1,6 @@
 import { VehicleForm } from '../vehicle-form';
 import { createVehicle } from '../actions';
+import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
 export default async function NewVehiclePage({
   searchParams
@@ -7,6 +8,7 @@ export default async function NewVehiclePage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const params = await searchParams;
+  const taxonomy = await getActiveEquipmentTaxonomy();
 
   return (
     <div className="grid gap-6">
@@ -24,7 +26,7 @@ export default async function NewVehiclePage({
             : 'Заповніть тип техніки, виробника і модель.'}
         </div>
       ) : null}
-      <VehicleForm action={createVehicle} submitLabel="Додати техніку" />
+      <VehicleForm action={createVehicle} submitLabel="Додати техніку" taxonomy={taxonomy} />
     </div>
   );
 }

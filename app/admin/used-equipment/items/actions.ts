@@ -27,7 +27,7 @@ import {
   type UsedEquipmentFormState,
   validateUsedEquipmentForm
 } from '@/lib/used-equipment/validation';
-import { getManufacturersForEquipmentType } from '@/lib/vehicles/equipment-manufacturers';
+import { validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
 function serverError(values: ReturnType<typeof getUsedEquipmentFormValues>, message = 'Не вдалося зберегти техніку. Спробуйте ще раз.') {
   return {
@@ -35,24 +35,6 @@ function serverError(values: ReturnType<typeof getUsedEquipmentFormValues>, mess
     message,
     values
   };
-}
-
-async function validateManufacturer(manufacturerId: string, equipmentType: string) {
-  const manufacturer = await prisma.manufacturer.findUnique({
-    where: { id: manufacturerId },
-    select: { id: true, name: true }
-  });
-
-  if (!manufacturer) {
-    return { ok: false as const, message: 'Оберіть виробника зі списку.' };
-  }
-
-  const allowedManufacturerNames = getManufacturersForEquipmentType(equipmentType).map((name) => name.toLocaleLowerCase('uk-UA'));
-  if (!allowedManufacturerNames.includes(manufacturer.name.toLocaleLowerCase('uk-UA'))) {
-    return { ok: false as const, message: 'Обраний виробник не відповідає типу техніки.' };
-  }
-
-  return { ok: true as const, manufacturer };
 }
 
 function imageError(values: ReturnType<typeof getUsedEquipmentFormValues>, message: string): UsedEquipmentFormState {
@@ -102,14 +84,17 @@ export async function createUsedEquipment(_state: UsedEquipmentFormState, formDa
     return imageError(values, 'Cloudinary не налаштований. Додайте змінні CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY і CLOUDINARY_API_SECRET.');
   }
 
-  const manufacturerResult = await validateManufacturer(validation.data.manufacturerId, validation.data.equipmentType);
+  const manufacturerResult = await validateEquipmentTaxonomySelection({
+    equipmentType: validation.data.equipmentType,
+    manufacturerId: validation.data.manufacturerId
+  });
   if (!manufacturerResult.ok) {
     return {
       status: 'error',
       message: 'Перевірте обов’язкові поля.',
       values,
       fieldErrors: {
-        manufacturerId: manufacturerResult.message
+        [manufacturerResult.field === 'equipmentType' ? 'equipmentType' : 'manufacturerId']: manufacturerResult.message
       }
     };
   }
@@ -124,7 +109,7 @@ export async function createUsedEquipment(_state: UsedEquipmentFormState, formDa
       data: {
         title: validation.data.title,
         slug,
-        equipmentType: validation.data.equipmentType,
+        equipmentType: manufacturerResult.equipmentType.name,
         manufacturerId: manufacturerResult.manufacturer.id,
         manufacturerName: manufacturerResult.manufacturer.name,
         year: validation.data.year,
@@ -236,14 +221,17 @@ export async function updateUsedEquipment(equipmentId: string, _state: UsedEquip
     return imageError(values, 'Cloudinary не налаштований. Додайте змінні CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY і CLOUDINARY_API_SECRET.');
   }
 
-  const manufacturerResult = await validateManufacturer(validation.data.manufacturerId, validation.data.equipmentType);
+  const manufacturerResult = await validateEquipmentTaxonomySelection({
+    equipmentType: validation.data.equipmentType,
+    manufacturerId: validation.data.manufacturerId
+  });
   if (!manufacturerResult.ok) {
     return {
       status: 'error',
       message: 'Перевірте обов’язкові поля.',
       values,
       fieldErrors: {
-        manufacturerId: manufacturerResult.message
+        [manufacturerResult.field === 'equipmentType' ? 'equipmentType' : 'manufacturerId']: manufacturerResult.message
       }
     };
   }
@@ -266,7 +254,7 @@ export async function updateUsedEquipment(equipmentId: string, _state: UsedEquip
         where: { id: equipmentId },
         data: {
           title: validation.data.title,
-          equipmentType: validation.data.equipmentType,
+          equipmentType: manufacturerResult.equipmentType.name,
           manufacturerId: manufacturerResult.manufacturer.id,
           manufacturerName: manufacturerResult.manufacturer.name,
           year: validation.data.year,

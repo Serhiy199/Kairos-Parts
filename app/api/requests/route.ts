@@ -5,6 +5,7 @@ import { saveRequestFileLocal } from '@/lib/files/local-storage';
 import { prisma } from '@/lib/prisma';
 import { generatePublicStatusToken, generateRequestNumber } from '@/lib/requests/identifiers';
 import { parseRequestFormData } from '@/lib/requests/validation';
+import { validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
 export function GET() {
   return Response.json(
@@ -31,15 +32,6 @@ function buildDescription(description: string, comment?: string) {
   }
 
   return `${description}\n\nКоментар клієнта:\n${comment}`;
-}
-
-function catalogSlug(name: string) {
-  return (
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9а-яіїєґ]+/giu, '-')
-      .replace(/^-|-$/g, '') || 'manufacturer'
-  );
 }
 
 export async function POST(request: Request) {
@@ -103,14 +95,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    const manufacturer = await prisma.manufacturer.findFirst({
-      where: { name: { equals: parsed.data.manufacturer, mode: 'insensitive' } }
-    }) ?? await prisma.manufacturer.create({
-      data: {
-        name: parsed.data.manufacturer,
-        slug: catalogSlug(parsed.data.manufacturer)
-      }
+    const taxonomy = await validateEquipmentTaxonomySelection({
+      equipmentType: parsed.data.equipmentType,
+      manufacturer: parsed.data.manufacturer
     });
+    if (!taxonomy.ok) {
+      return Response.json(
+        { status: 'validation_error', message: taxonomy.message, errors: [taxonomy.message] },
+        { status: 400 }
+      );
+    }
     const requestNumber = generateRequestNumber();
     const publicStatusToken = generatePublicStatusToken();
     const vehicle = parsed.data.vehicleId
@@ -137,9 +131,9 @@ export async function POST(request: Request) {
         companyName: parsed.data.companyName ?? parsed.data.contactName,
         categoryId: null,
         subcategoryId: null,
-        manufacturerId: manufacturer?.id,
+        manufacturerId: taxonomy.manufacturer.id,
         vehicleId: vehicle?.id,
-        equipmentType: parsed.data.equipmentType,
+        equipmentType: taxonomy.equipmentType.name,
         model: parsed.data.model,
         vehicleYear: parsed.data.vehicleYear,
         vinOrSerial: parsed.data.vinOrSerial,

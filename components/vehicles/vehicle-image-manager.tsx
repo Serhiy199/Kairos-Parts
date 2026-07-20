@@ -5,12 +5,6 @@ import { useActionState, useEffect, useRef, useState, useTransition } from 'reac
 import { LuArrowLeft, LuArrowRight, LuImagePlus, LuStar, LuTrash2 } from 'react-icons/lu';
 
 import {
-  deleteAdminVehicleImage,
-  reorderAdminVehicleImages,
-  setPrimaryVehicleImage,
-  uploadAdminVehicleImages
-} from '@/app/admin/vehicles/image-actions';
-import {
   EMPTY_VEHICLE_IMAGE_ACTION_STATE,
   MAX_VEHICLE_IMAGE_BYTES,
   MAX_VEHICLE_IMAGES,
@@ -30,10 +24,13 @@ type VehicleImageManagerProps = {
   vehicleId: string;
   vehicleLabel: string;
   images: VehicleGalleryImage[];
+  uploadAction: (state: VehicleImageActionState, formData: FormData) => Promise<VehicleImageActionState>;
+  setPrimaryAction: (imageId: string) => Promise<VehicleImageActionState>;
+  reorderAction: (orderedImageIds: string[]) => Promise<VehicleImageActionState>;
+  deleteAction: (imageId: string) => Promise<VehicleImageActionState>;
 };
 
-export function VehicleImageManager({ vehicleId, vehicleLabel, images }: VehicleImageManagerProps) {
-  const uploadAction = uploadAdminVehicleImages.bind(null, vehicleId);
+export function VehicleImageManager({ vehicleLabel, images, uploadAction, setPrimaryAction, reorderAction, deleteAction }: VehicleImageManagerProps) {
   const [state, formAction, isPending] = useActionState(uploadAction, EMPTY_VEHICLE_IMAGE_ACTION_STATE);
   const [actionState, setActionState] = useState(EMPTY_VEHICLE_IMAGE_ACTION_STATE);
   const [isGalleryPending, startGalleryTransition] = useTransition();
@@ -50,7 +47,7 @@ export function VehicleImageManager({ vehicleId, vehicleLabel, images }: Vehicle
     if (target < 0 || target >= images.length) return;
     const ordered = images.map((image) => image.id);
     [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
-    runGalleryAction(reorderAdminVehicleImages(vehicleId, ordered));
+    runGalleryAction(reorderAction(ordered));
   }
 
   function runGalleryAction(action: Promise<VehicleImageActionState>) {
@@ -108,12 +105,12 @@ export function VehicleImageManager({ vehicleId, vehicleLabel, images }: Vehicle
               <div className="grid grid-cols-4 gap-2 p-3">
                 <button type="button" onClick={() => moveImage(index, -1)} disabled={isGalleryPending || index === 0} aria-label="Перемістити фото вліво" className="inline-flex h-10 items-center justify-center rounded-md border border-border text-muted hover:border-accent disabled:opacity-40"><LuArrowLeft aria-hidden="true" /></button>
                 <button type="button" onClick={() => moveImage(index, 1)} disabled={isGalleryPending || index === images.length - 1} aria-label="Перемістити фото вправо" className="inline-flex h-10 items-center justify-center rounded-md border border-border text-muted hover:border-accent disabled:opacity-40"><LuArrowRight aria-hidden="true" /></button>
-                <button type="button" onClick={() => runGalleryAction(setPrimaryVehicleImage(vehicleId, image.id))} disabled={isGalleryPending || image.isPrimary} aria-label="Зробити головним фото" className="inline-flex h-10 w-full items-center justify-center rounded-md border border-border text-accent hover:border-accent disabled:opacity-40"><LuStar aria-hidden="true" /></button>
+                <button type="button" onClick={() => runGalleryAction(setPrimaryAction(image.id))} disabled={isGalleryPending || image.isPrimary} aria-label="Зробити головним фото" className="inline-flex h-10 w-full items-center justify-center rounded-md border border-border text-accent hover:border-accent disabled:opacity-40"><LuStar aria-hidden="true" /></button>
                 <details className="relative">
                   <summary aria-label="Видалити фотографію" className="flex h-10 cursor-pointer list-none items-center justify-center rounded-md border border-danger/30 text-danger hover:bg-danger/10"><LuTrash2 aria-hidden="true" /></summary>
                   <div className="absolute bottom-12 right-0 z-10 w-56 rounded-md border border-border bg-card p-3 shadow-card">
                     <p className="text-xs font-semibold text-foreground">Видалити це фото без можливості відновлення?</p>
-                    <button type="button" disabled={isGalleryPending} onClick={() => runGalleryAction(deleteAdminVehicleImage(vehicleId, image.id))} className="mt-3 w-full rounded-md bg-danger px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Підтвердити видалення</button>
+                    <button type="button" disabled={isGalleryPending} onClick={() => runGalleryAction(deleteAction(image.id))} className="mt-3 w-full rounded-md bg-danger px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Підтвердити видалення</button>
                   </div>
                 </details>
               </div>

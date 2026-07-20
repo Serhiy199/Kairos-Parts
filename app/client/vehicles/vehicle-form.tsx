@@ -1,8 +1,15 @@
-﻿import { ActionIcon } from '@/components/ui/action-icons';
+'use client';
+
+import { useMemo, useState } from 'react';
+
+import { ActionIcon } from '@/components/ui/action-icons';
+import { SearchableCombobox, type SearchableComboboxOption } from '@/components/ui/searchable-combobox';
+import type { EquipmentTaxonomyType } from '@/lib/vehicles/taxonomy';
 
 type VehicleFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   submitLabel: string;
+  taxonomy: EquipmentTaxonomyType[];
   vehicle?: {
     id: string;
     type: string;
@@ -17,18 +24,52 @@ type VehicleFormProps = {
 const inputClass =
   'h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25';
 
-export function VehicleForm({ action, submitLabel, vehicle }: VehicleFormProps) {
+export function VehicleForm({ action, submitLabel, taxonomy, vehicle }: VehicleFormProps) {
+  const [equipmentType, setEquipmentType] = useState(vehicle?.type ?? '');
+  const initialManufacturer = taxonomy
+    .flatMap((type) => type.manufacturers)
+    .find((manufacturer) => manufacturer.name.toLocaleLowerCase('uk-UA') === vehicle?.manufacturer.toLocaleLowerCase('uk-UA'));
+  const [manufacturerId, setManufacturerId] = useState(initialManufacturer?.id ?? '');
+  const equipmentTypeOptions = useMemo<SearchableComboboxOption[]>(
+    () => taxonomy.map((type) => ({ value: type.name, label: type.name })),
+    [taxonomy]
+  );
+  const manufacturerOptions = useMemo<SearchableComboboxOption[]>(() => {
+    const selectedType = taxonomy.find((type) => type.name === equipmentType);
+    return (selectedType?.manufacturers ?? []).map((manufacturer) => ({ value: manufacturer.id, label: manufacturer.name }));
+  }, [equipmentType, taxonomy]);
+
+  function handleEquipmentTypeChange(value: string) {
+    setEquipmentType(value);
+    setManufacturerId('');
+  }
+
   return (
     <form action={action} className="grid gap-5 rounded-lg border border-border bg-card p-6 shadow-card md:grid-cols-2">
       {vehicle ? <input type="hidden" name="vehicleId" value={vehicle.id} /> : null}
-      <label className="grid gap-2 text-sm font-semibold text-foreground">
-        Тип техніки *
-        <input name="type" required defaultValue={vehicle?.type} className={inputClass} placeholder="Трактор, комбайн, вантажівка" />
-      </label>
-      <label className="grid gap-2 text-sm font-semibold text-foreground">
-        Виробник *
-        <input name="manufacturer" required defaultValue={vehicle?.manufacturer} className={inputClass} placeholder="John Deere, MAN, Claas" />
-      </label>
+      <SearchableCombobox
+        variant="light"
+        label="Тип техніки"
+        name="type"
+        options={equipmentTypeOptions}
+        value={equipmentType}
+        onChange={handleEquipmentTypeChange}
+        placeholder="Оберіть тип техніки"
+        emptyMessage="Тип техніки не знайдено"
+        required
+      />
+      <SearchableCombobox
+        variant="light"
+        label="Виробник / марка"
+        name="manufacturerId"
+        options={manufacturerOptions}
+        value={manufacturerId}
+        onChange={setManufacturerId}
+        placeholder={equipmentType ? 'Оберіть виробника' : 'Спочатку оберіть тип техніки'}
+        emptyMessage="Виробника не знайдено"
+        disabled={!equipmentType}
+        required
+      />
       <label className="grid gap-2 text-sm font-semibold text-foreground">
         Модель *
         <input name="model" required defaultValue={vehicle?.model} className={inputClass} />
@@ -51,7 +92,7 @@ export function VehicleForm({ action, submitLabel, vehicle }: VehicleFormProps) 
         />
       </label>
       <p className="rounded-md border border-dashed border-border bg-surface-muted p-4 text-xs leading-5 text-muted md:col-span-2">
-        Фото або документи до техніки буде винесено в окремий storage flow. На Day 8 документи показуються як файли заявок і записи Document.
+        Після збереження ви перейдете до додавання фотографій. Документи можна переглядати в картці техніки.
       </p>
       <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover md:col-span-2">
         <ActionIcon name="save" />

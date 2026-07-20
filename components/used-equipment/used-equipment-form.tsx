@@ -15,17 +15,12 @@ import {
   USED_EQUIPMENT_ALLOWED_FORM_STATUSES,
   USED_EQUIPMENT_NO_IMAGE_STATUSES
 } from '@/lib/used-equipment/validation';
-import { EQUIPMENT_TYPE_OPTIONS } from '@/lib/vehicles/equipment-types';
-import { getManufacturersForEquipmentType } from '@/lib/vehicles/equipment-manufacturers';
-
-type ManufacturerOption = SearchableComboboxOption & {
-  name: string;
-};
+import type { EquipmentTaxonomyType } from '@/lib/vehicles/taxonomy';
 
 type UsedEquipmentFormProps = {
   action: (state: UsedEquipmentFormState, formData: FormData) => Promise<UsedEquipmentFormState>;
   mode: 'create' | 'edit';
-  manufacturers: ManufacturerOption[];
+  taxonomy: EquipmentTaxonomyType[];
   initialValues: UsedEquipmentFormValues;
   hasImages?: boolean;
   existingImages?: UsedEquipmentExistingImage[];
@@ -47,14 +42,10 @@ function FieldError({ error }: { error?: string }) {
   return error ? <p className="text-xs font-semibold text-danger">{error}</p> : null;
 }
 
-function normalize(value: string) {
-  return value.toLocaleLowerCase('uk-UA');
-}
-
 export function UsedEquipmentForm({
   action,
   mode,
-  manufacturers,
+  taxonomy,
   initialValues,
   hasImages = false,
   existingImages = []
@@ -74,25 +65,17 @@ export function UsedEquipmentForm({
   }, [state.values]);
 
   const equipmentTypeOptions = useMemo<SearchableComboboxOption[]>(
-    () => EQUIPMENT_TYPE_OPTIONS.map((option) => ({ value: option, label: option })),
-    []
+    () => taxonomy.map((option) => ({ value: option.name, label: option.name })),
+    [taxonomy]
   );
 
-  const manufacturerOptions = useMemo<ManufacturerOption[]>(() => {
-    if (!equipmentType) {
-      return manufacturers;
-    }
-
-    const allowedNames = new Set(getManufacturersForEquipmentType(equipmentType).map(normalize));
-    const filtered = manufacturers.filter((manufacturer) => allowedNames.has(normalize(manufacturer.name)));
-    const selectedManufacturer = manufacturers.find((manufacturer) => manufacturer.value === manufacturerId);
-
-    if (selectedManufacturer && !filtered.some((manufacturer) => manufacturer.value === selectedManufacturer.value)) {
-      return [...filtered, selectedManufacturer];
-    }
-
-    return filtered;
-  }, [equipmentType, manufacturerId, manufacturers]);
+  const manufacturerOptions = useMemo<SearchableComboboxOption[]>(() => {
+    const selectedType = taxonomy.find((option) => option.name === equipmentType);
+    return (selectedType?.manufacturers ?? []).map((manufacturer) => ({
+      value: manufacturer.id,
+      label: manufacturer.name
+    }));
+  }, [equipmentType, taxonomy]);
 
   useEffect(() => {
     if (!manufacturerId) {

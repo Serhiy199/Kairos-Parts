@@ -1,5 +1,3 @@
-import { EQUIPMENT_TYPE_OPTIONS } from '@/lib/vehicles/equipment-types';
-
 import type { TelegramDraftFile } from './types';
 
 export const TELEGRAM_CALLBACKS = {
@@ -25,8 +23,6 @@ export const skipKeyboard = {
   one_time_keyboard: true
 };
 
-export const OTHER_MANUFACTURER_TEXT = 'Інший виробник';
-
 function buildReplyKeyboardRows(options: string[], columns = 2) {
   const rows: Array<Array<{ text: string }>> = [];
 
@@ -41,17 +37,19 @@ function buildReplyKeyboardRows(options: string[], columns = 2) {
   return rows;
 }
 
-export const equipmentTypeKeyboard = {
-  keyboard: buildReplyKeyboardRows(EQUIPMENT_TYPE_OPTIONS, 2),
-  resize_keyboard: true,
-  one_time_keyboard: true
-};
+export function buildEquipmentTypeKeyboard(equipmentTypes: string[]) {
+  return {
+    keyboard: buildReplyKeyboardRows(equipmentTypes, 2),
+    resize_keyboard: true,
+    one_time_keyboard: true
+  };
+}
 
 export function buildManufacturerKeyboard(manufacturers: string[]) {
   const uniqueManufacturers = Array.from(new Set(manufacturers.filter(Boolean)));
 
   return {
-    keyboard: [...buildReplyKeyboardRows(uniqueManufacturers, 2), [{ text: OTHER_MANUFACTURER_TEXT }]],
+    keyboard: buildReplyKeyboardRows(uniqueManufacturers, 2),
     resize_keyboard: true,
     one_time_keyboard: true
   };

@@ -2,6 +2,7 @@ import type { AuditAction, AuditEntityType, ChangeRequest, Prisma } from '@prism
 
 import { findVehicleVinDuplicate } from '@/lib/vehicles/duplicates';
 import { isValidVehicleOwnership } from '@/lib/vehicles/ownership';
+import { normalizeTaxonomyName } from '@/lib/vehicles/taxonomy-normalization';
 import {
   isEditableVehicleField,
   normalizeEditableVehicleValue,
@@ -308,9 +309,39 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
     }
 
     const requestedValue = extractNewValue(changeRequest, field);
-    const canonicalNewValue = normalizeEditableVehicleValue(field, requestedValue);
+    let canonicalNewValue = normalizeEditableVehicleValue(field, requestedValue);
     if (canonicalNewValue === undefined || canonicalNewValue === currentValue) {
       return { ok: false, status: 'change-request-invalid-value' };
+    }
+
+    if (field === 'type' && typeof canonicalNewValue === 'string') {
+      const equipmentType = await tx.equipmentType.findFirst({
+        where: {
+          normalizedName: normalizeTaxonomyName(canonicalNewValue),
+          isActive: true,
+          manufacturers: {
+            some: { manufacturer: { name: { equals: vehicle.manufacturer, mode: 'insensitive' }, isActive: true } }
+          }
+        },
+        select: { name: true }
+      });
+      if (!equipmentType) return { ok: false, status: 'change-request-invalid-value' };
+      canonicalNewValue = equipmentType.name;
+    }
+
+    if (field === 'manufacturer' && typeof canonicalNewValue === 'string') {
+      const manufacturer = await tx.manufacturer.findFirst({
+        where: {
+          name: { equals: canonicalNewValue, mode: 'insensitive' },
+          isActive: true,
+          equipmentTypes: {
+            some: { equipmentType: { normalizedName: normalizeTaxonomyName(vehicle.type), isActive: true } }
+          }
+        },
+        select: { name: true }
+      });
+      if (!manufacturer) return { ok: false, status: 'change-request-invalid-value' };
+      canonicalNewValue = manufacturer.name;
     }
 
     if (field === 'vinOrSerial') {
@@ -326,7 +357,7 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
       }
     }
 
-    await tx.vehicle.update({ where: { id: vehicle.id }, data });
+    await tx.vehicle.update({ where: { id: vehicle.id }, data: { ...data, [field]: canonicalNewValue } });
 
     return {
       ok: true,

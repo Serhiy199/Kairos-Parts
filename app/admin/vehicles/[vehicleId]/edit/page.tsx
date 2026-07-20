@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { FaArrowLeft, FaTractor } from 'react-icons/fa';
 
 import { updateAdminVehicle } from '@/app/admin/vehicles/actions';
+import { deleteAdminVehicleImage, reorderAdminVehicleImages, setPrimaryVehicleImage, uploadAdminVehicleImages } from '@/app/admin/vehicles/image-actions';
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { AdminVehicleForm } from '@/components/vehicles/admin-vehicle-form';
 import { VehicleDocumentManager } from '@/components/vehicles/vehicle-document-manager';
@@ -10,26 +11,28 @@ import { VehicleImageManager } from '@/components/vehicles/vehicle-image-manager
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
-import { getAdminVehicleManufacturerOptions } from '@/lib/vehicles/admin-manufacturers';
 import type { AdminVehicleFormValues } from '@/lib/vehicles/admin-validation';
 import { isValidVehicleOwnership } from '@/lib/vehicles/ownership';
+import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminVehicleEditPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ vehicleId: string }>;
+  searchParams: Promise<{ created?: string }>;
 }) {
   await requireCrmSession();
   const { vehicleId } = await params;
+  const query = await searchParams;
 
   if (!hasDatabaseUrl()) {
     return <AdminDbBlocker />;
   }
 
-  const [vehicle, manufacturers] = await Promise.all([
-    prisma.vehicle.findUnique({
+  const vehicle = await prisma.vehicle.findUnique({
       where: { id: vehicleId },
       select: {
         id: true,
@@ -83,21 +86,23 @@ export default async function AdminVehicleEditPage({
           }
         }
       }
-    }),
-    getAdminVehicleManufacturerOptions()
-  ]);
+    });
 
   if (!vehicle || !isValidVehicleOwnership(vehicle)) {
     notFound();
   }
 
-  const matchingManufacturer = manufacturers.find(
-    (manufacturer) => manufacturer.name.toLocaleLowerCase('uk-UA') === vehicle.manufacturer.toLocaleLowerCase('uk-UA')
-  );
+  const taxonomy = await getActiveEquipmentTaxonomy({
+    equipmentType: vehicle.type,
+    manufacturer: vehicle.manufacturer
+  });
+  const matchingManufacturer = taxonomy
+    .flatMap((type) => type.manufacturers)
+    .find((manufacturer) => manufacturer.name.toLocaleLowerCase('uk-UA') === vehicle.manufacturer.toLocaleLowerCase('uk-UA'));
 
   const initialValues: AdminVehicleFormValues = {
     equipmentType: vehicle.type,
-    manufacturerId: matchingManufacturer?.value ?? '',
+    manufacturerId: matchingManufacturer?.id ?? '',
     model: vehicle.model,
     year: vehicle.year ? String(vehicle.year) : '',
     vinOrSerial: vehicle.vinOrSerial ?? '',
@@ -135,6 +140,10 @@ export default async function AdminVehicleEditPage({
   }
 
   const action = updateAdminVehicle.bind(null, vehicle.id);
+  const uploadAction = uploadAdminVehicleImages.bind(null, vehicle.id);
+  const setPrimaryAction = setPrimaryVehicleImage.bind(null, vehicle.id);
+  const reorderAction = reorderAdminVehicleImages.bind(null, vehicle.id);
+  const deleteAction = deleteAdminVehicleImage.bind(null, vehicle.id);
 
   return (
     <div className="grid gap-6">
@@ -159,16 +168,40 @@ export default async function AdminVehicleEditPage({
         </div>
       </section>
 
+      {query.created === '1' ? (
+        <div className="rounded-md border border-success/30 bg-[#E7F6EC] px-4 py-3 text-sm font-semibold text-success" aria-live="polite">
+          Техніку створено. Тепер додайте фотографії.
+        </div>
+      ) : null}
+
       <AdminVehicleForm
         action={action}
         mode="edit"
         owner={owner}
-        manufacturers={manufacturers}
+        taxonomy={taxonomy}
         initialValues={initialValues}
         cancelHref={`${profileHref}#fleet`}
       />
 
-      <VehicleImageManager vehicleId={vehicle.id} vehicleLabel={`${vehicle.manufacturer} ${vehicle.model}`} images={vehicle.images} />
+      <div id="photos" className="scroll-mt-6">
+        <VehicleImageManager
+          vehicleId={vehicle.id}
+          vehicleLabel={`${vehicle.manufacturer} ${vehicle.model}`}
+          images={vehicle.images}
+          uploadAction={uploadAction}
+          setPrimaryAction={setPrimaryAction}
+          reorderAction={reorderAction}
+          deleteAction={deleteAction}
+        />
+      </div>
+
+      {query.created === '1' ? (
+        <div className="flex justify-end">
+          <Link href={`${profileHref}#fleet`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-5 py-3 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">
+            Завершити
+          </Link>
+        </div>
+      ) : null}
 
       <VehicleDocumentManager vehicleId={vehicle.id} documents={vehicle.documents} />
     </div>
