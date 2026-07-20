@@ -7,15 +7,17 @@ import { requireAdminSession } from '@/lib/admin/access';
 import { createAuditLog } from '@/lib/audit-log/service';
 import { prisma } from '@/lib/prisma';
 import { normalizeTaxonomyName, taxonomySlug } from '@/lib/vehicles/taxonomy-normalization';
+import { parseTaxonomySortOrder } from '@/lib/vehicles/taxonomy-sort-order';
 
 function value(formData: FormData, key: string) {
   const entry = formData.get(key);
   return typeof entry === 'string' ? entry.trim() : '';
 }
 
-function order(formData: FormData) {
-  const parsed = Number(value(formData, 'sortOrder'));
-  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
+function order(formData: FormData, path: string) {
+  const parsed = parseTaxonomySortOrder(formData.get('sortOrder'));
+  if (parsed === null) redirectWithResult(path, 'order-validation');
+  return parsed;
 }
 
 function redirectWithResult(path: string, result: string): never {
@@ -34,6 +36,7 @@ function revalidateDirectories() {
 export async function createEquipmentType(formData: FormData) {
   const session = await requireAdminSession();
   const name = value(formData, 'name').replace(/\s+/g, ' ');
+  const sortOrder = order(formData, '/admin/directories/equipment-types');
   if (name.length < 2 || name.length > 120) redirectWithResult('/admin/directories/equipment-types', 'validation');
   const normalizedName = normalizeTaxonomyName(name);
   const exists = await prisma.equipmentType.findUnique({ where: { normalizedName }, select: { id: true } });
@@ -43,7 +46,7 @@ export async function createEquipmentType(formData: FormData) {
   const slugExists = await prisma.equipmentType.findUnique({ where: { slug }, select: { id: true } });
   if (slugExists) slug = `${slug}-${Date.now().toString(36)}`;
   await prisma.$transaction(async (tx) => {
-    const created = await tx.equipmentType.create({ data: { name, normalizedName, slug, sortOrder: order(formData) } });
+    const created = await tx.equipmentType.create({ data: { name, normalizedName, slug, sortOrder } });
     await createAuditLog(tx, {
       actorId: session.user.id, entityType: 'EQUIPMENT_TYPE', entityId: created.id, action: 'ENTITY_UPDATED',
       newValue: { name: created.name, slug: created.slug, isActive: created.isActive, sortOrder: created.sortOrder },
@@ -59,6 +62,7 @@ export async function updateEquipmentType(formData: FormData) {
   const id = value(formData, 'id');
   const name = value(formData, 'name').replace(/\s+/g, ' ');
   const slug = value(formData, 'slug').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
+  const sortOrder = order(formData, '/admin/directories/equipment-types');
   if (!id || name.length < 2 || !slug) redirectWithResult('/admin/directories/equipment-types', 'validation');
   const current = await prisma.equipmentType.findUnique({ where: { id } });
   if (!current) redirectWithResult('/admin/directories/equipment-types', 'not-found');
@@ -67,7 +71,7 @@ export async function updateEquipmentType(formData: FormData) {
     select: { id: true }
   });
   if (duplicate) redirectWithResult('/admin/directories/equipment-types', 'duplicate');
-  const next = { name, normalizedName: normalizeTaxonomyName(name), slug, isActive: value(formData, 'isActive') === 'on', sortOrder: order(formData) };
+  const next = { name, normalizedName: normalizeTaxonomyName(name), slug, isActive: value(formData, 'isActive') === 'on', sortOrder };
   if (current.name === next.name && current.slug === next.slug && current.isActive === next.isActive && current.sortOrder === next.sortOrder) {
     redirectWithResult('/admin/directories/equipment-types', 'unchanged');
   }
@@ -92,6 +96,7 @@ export async function createManufacturer(formData: FormData) {
   const session = await requireAdminSession();
   const name = value(formData, 'name').replace(/\s+/g, ' ');
   const typeIds = formData.getAll('equipmentTypeIds').filter((item): item is string => typeof item === 'string');
+  const sortOrder = order(formData, '/admin/directories/manufacturers');
   if (name.length < 2 || name.length > 120) redirectWithResult('/admin/directories/manufacturers', 'validation');
   const existing = await prisma.manufacturer.findFirst({ where: { name: { equals: name, mode: 'insensitive' } }, select: { id: true } });
   if (existing) redirectWithResult('/admin/directories/manufacturers', 'duplicate');
@@ -100,7 +105,7 @@ export async function createManufacturer(formData: FormData) {
   const validTypes = await prisma.equipmentType.findMany({ where: { id: { in: typeIds } }, select: { id: true } });
   await prisma.$transaction(async (tx) => {
     const created = await tx.manufacturer.create({
-      data: { name, slug, sortOrder: order(formData), equipmentTypes: { create: validTypes.map((type) => ({ equipmentTypeId: type.id })) } }
+      data: { name, slug, sortOrder, equipmentTypes: { create: validTypes.map((type) => ({ equipmentTypeId: type.id })) } }
     });
     await createAuditLog(tx, {
       actorId: session.user.id, entityType: 'MANUFACTURER', entityId: created.id, action: 'ENTITY_UPDATED',
@@ -117,6 +122,7 @@ export async function updateManufacturer(formData: FormData) {
   const id = value(formData, 'id');
   const name = value(formData, 'name').replace(/\s+/g, ' ');
   const typeIds = [...new Set(formData.getAll('equipmentTypeIds').filter((item): item is string => typeof item === 'string'))];
+  const sortOrder = order(formData, '/admin/directories/manufacturers');
   if (!id || name.length < 2 || name.length > 120) redirectWithResult('/admin/directories/manufacturers', 'validation');
   const current = await prisma.manufacturer.findUnique({
     where: { id },
@@ -131,7 +137,7 @@ export async function updateManufacturer(formData: FormData) {
   const validTypes = await prisma.equipmentType.findMany({ where: { id: { in: typeIds } }, select: { id: true } });
   const nextTypeIds = validTypes.map((type) => type.id).sort();
   const oldTypeIds = current.equipmentTypes.map((type) => type.equipmentTypeId).sort();
-  const next = { name, isActive: value(formData, 'isActive') === 'on', sortOrder: order(formData) };
+  const next = { name, isActive: value(formData, 'isActive') === 'on', sortOrder };
   const typesChanged = nextTypeIds.join('|') !== oldTypeIds.join('|');
   if (current.name === next.name && current.isActive === next.isActive && current.sortOrder === next.sortOrder && !typesChanged) {
     redirectWithResult('/admin/directories/manufacturers', 'unchanged');

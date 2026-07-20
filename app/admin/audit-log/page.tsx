@@ -1,89 +1,16 @@
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { requireCrmSession } from '@/lib/admin/access';
+import {
+  AUDIT_ACTION_LABELS,
+  AUDIT_ENTITY_LABELS,
+  auditEventLabel,
+  formatAuditMetadata,
+  formatAuditValue
+} from '@/lib/audit-log/presentation';
 import { listAuditLogsForAdmin } from '@/lib/audit-log/service';
 import { hasDatabaseUrl } from '@/lib/env/database';
 
 export const dynamic = 'force-dynamic';
-
-const AUDIT_ENTITY_LABELS = {
-  REQUEST: 'Заявка',
-  REQUEST_ITEM: 'Позиція заявки',
-  VEHICLE: 'Техніка',
-  REQUEST_DOCUMENT: 'Документ заявки',
-  COMMERCIAL_OFFER: 'Комерційна пропозиція',
-  COMPANY: 'Компанія',
-  CHANGE_REQUEST: 'Запит зміни',
-  USER: 'Користувач',
-  EQUIPMENT_TYPE: 'Тип техніки',
-  MANUFACTURER: 'Виробник'
-} as const;
-
-const AUDIT_ACTION_LABELS = {
-  CHANGE_REQUEST_CREATED: 'Запит створено',
-  CHANGE_REQUEST_CANCELLED: 'Запит скасовано',
-  CHANGE_REQUEST_APPROVED: 'Запит погоджено',
-  CHANGE_REQUEST_REJECTED: 'Запит відхилено',
-  CHANGE_APPLIED: 'Зміну застосовано',
-  VEHICLE_ARCHIVED: 'Техніку архівовано',
-  ENTITY_UPDATED: 'Об’єкт оновлено'
-} as const;
-
-const AUDIT_EVENT_LABELS: Record<string, string> = {
-  VEHICLE_CREATED: 'Техніку створено',
-  VEHICLE_UPDATED: 'Дані техніки оновлено',
-  VEHICLE_IMAGE_UPLOADED: 'Фото техніки додано',
-  VEHICLE_IMAGE_PRIMARY_CHANGED: 'Головне фото змінено',
-  VEHICLE_IMAGES_REORDERED: 'Порядок фото змінено',
-  VEHICLE_IMAGE_DELETED: 'Фото техніки видалено',
-  VEHICLE_DOCUMENT_UPLOADED: 'Документ техніки додано',
-  VEHICLE_DOCUMENT_VISIBILITY_CHANGED: 'Видимість документа техніки змінено',
-  VEHICLE_DOCUMENT_DELETED: 'Документ техніки видалено',
-  COMPANY_DOCUMENT_UPLOADED: 'Документ компанії додано',
-  COMPANY_DOCUMENT_VISIBILITY_CHANGED: 'Видимість документа компанії змінено',
-  COMPANY_DOCUMENT_DELETED: 'Документ компанії видалено',
-  CLIENT_DOCUMENT_UPLOADED: 'Документ клієнта додано',
-  CLIENT_DOCUMENT_VISIBILITY_CHANGED: 'Видимість документа клієнта змінено',
-  CLIENT_DOCUMENT_DELETED: 'Документ клієнта видалено'
-};
-
-const FIELD_LABELS: Record<string, string> = {
-  type: 'Тип техніки',
-  manufacturer: 'Виробник',
-  model: 'Модель',
-  year: 'Рік',
-  vinOrSerial: 'VIN / серійний номер',
-  comment: 'Коментар'
-};
-
-function asRecord(value: unknown) {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-function auditEventLabel(metadata: unknown) {
-  const event = asRecord(metadata)?.event;
-  return typeof event === 'string' ? AUDIT_EVENT_LABELS[event] ?? event : null;
-}
-
-function formatJsonValue(value: unknown) {
-  if (value === null || value === undefined) {
-    return '—';
-  }
-
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    return String(value);
-  }
-
-  const record = asRecord(value);
-  if (record) {
-    return Object.entries(record)
-      .map(([key, entry]) => `${FIELD_LABELS[key] ?? key}: ${entry === null || entry === '' ? 'Не вказано' : String(entry)}`)
-      .join(', ');
-  }
-
-  return JSON.stringify(value);
-}
 
 export default async function AdminAuditLogPage() {
   await requireCrmSession();
@@ -118,7 +45,7 @@ export default async function AdminAuditLogPage() {
                 <th className="px-4 py-3 font-bold">ChangeRequest</th>
                 <th className="px-4 py-3 font-bold">Old value</th>
                 <th className="px-4 py-3 font-bold">New value</th>
-                <th className="px-4 py-3 font-bold">Metadata</th>
+                <th className="w-72 px-4 py-3 font-bold">Деталі</th>
               </tr>
             </thead>
             <tbody>
@@ -150,11 +77,11 @@ export default async function AdminAuditLogPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 font-semibold text-foreground">
-                    <p>{auditEventLabel(item.metadata) ?? AUDIT_ACTION_LABELS[item.action]}</p>
-                    {auditEventLabel(item.metadata) ? <p className="mt-1 text-xs font-normal text-muted">{AUDIT_ACTION_LABELS[item.action]}</p> : null}
+                    <p>{auditEventLabel(item.metadata) ?? AUDIT_ACTION_LABELS[item.action] ?? item.action}</p>
+                    {auditEventLabel(item.metadata) ? <p className="mt-1 text-xs font-normal text-muted">{AUDIT_ACTION_LABELS[item.action] ?? item.action}</p> : null}
                   </td>
                   <td className="px-4 py-3 text-muted">
-                    <p className="font-semibold text-foreground">{AUDIT_ENTITY_LABELS[item.entityType]}</p>
+                    <p className="font-semibold text-foreground">{AUDIT_ENTITY_LABELS[item.entityType] ?? item.entityType}</p>
                     <p className="mt-1 font-mono text-xs">{item.entityId}</p>
                   </td>
                   <td className="px-4 py-3 text-muted">
@@ -170,13 +97,13 @@ export default async function AdminAuditLogPage() {
                     )}
                   </td>
                   <td className="max-w-xs px-4 py-3 text-muted">
-                    <p className="break-words font-mono text-xs">{formatJsonValue(item.oldValue)}</p>
+                    <p className="break-words font-mono text-xs">{formatAuditValue(item.oldValue)}</p>
                   </td>
                   <td className="max-w-xs px-4 py-3 text-muted">
-                    <p className="break-words font-mono text-xs">{formatJsonValue(item.newValue)}</p>
+                    <p className="break-words font-mono text-xs">{formatAuditValue(item.newValue)}</p>
                   </td>
-                  <td className="max-w-xs px-4 py-3 text-muted">
-                    <p className="break-words font-mono text-xs">{formatJsonValue(item.metadata)}</p>
+                  <td className="w-72 max-w-72 px-4 py-3 text-muted">
+                    <AuditMetadataDetails metadata={item.metadata} />
                   </td>
                 </tr>
               ))}
@@ -186,5 +113,24 @@ export default async function AdminAuditLogPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function AuditMetadataDetails({ metadata }: { metadata: unknown }) {
+  const details = formatAuditMetadata(metadata);
+
+  if (!details.length) {
+    return <span>—</span>;
+  }
+
+  return (
+    <dl className="grid gap-2 text-xs leading-5">
+      {details.map((detail) => (
+        <div key={detail.key} className="grid gap-0.5">
+          <dt className="font-semibold text-foreground">{detail.label}</dt>
+          <dd className="break-words text-muted">{detail.value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }

@@ -8,7 +8,7 @@ export default async function DirectoriesPage() {
   ]);
   return (
     <section className="rounded-lg border border-border bg-card p-6 shadow-card">
-      <p className="text-sm font-bold uppercase text-accent">Довідники</p>
+      <p className="text-sm font-bold uppercase text-accent">Типи й виробники</p>
       <h1 className="mt-2 text-2xl font-bold text-foreground">Типи техніки та виробники</h1>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">Керуйте значеннями, які доступні у нових формах. Історичні категорії каталогу та старі записи не змінюються.</p>
       <div className="mt-6 grid gap-4 sm:grid-cols-3">

@@ -10,17 +10,16 @@ import { getNewUsedEquipmentInquiryCount } from '@/lib/used-equipment/queries';
 const ADMIN_INVOICE_PRINT_ROUTE = /^\/admin\/invoices\/[^/]+\/print$/;
 
 const adminNavItems = [
-  { href: '/admin', label: 'Панель' },
-  { href: '/admin/requests', label: 'Заявки' },
+  { href: '/admin', label: 'Панель', icon: 'dashboard' as const },
+  { href: '/admin/requests', label: 'Заявки', icon: 'requests' as const },
   { href: '/admin/contact-messages', label: 'Звернення', icon: 'messages' as const },
   { href: '/admin/used-equipment/items', label: 'БВ техніка', icon: 'tractor' as const, activePrefix: '/admin/used-equipment' },
-  { href: '/admin/clients', label: 'Клієнти' },
-  { href: '/admin/companies', label: 'Компанії' },
-  { href: '/admin/change-requests', label: 'Запити змін' },
-  { href: '/admin/audit-log', label: 'Журнал дій' },
-  { href: '/admin/billing-settings', label: 'Реквізити продавця' },
-  { href: '/admin/directories', label: 'Довідники' },
-  { href: '/admin/settings', label: 'Налаштування' }
+  { href: '/admin/clients', label: 'Клієнти', icon: 'clients' as const },
+  { href: '/admin/companies', label: 'Компанії', icon: 'companies' as const },
+  { href: '/admin/change-requests', label: 'Запити змін', icon: 'changes' as const },
+  { href: '/admin/audit-log', label: 'Журнал дій', icon: 'history' as const },
+  { href: '/admin/billing-settings', label: 'Реквізити продавця', icon: 'billing' as const },
+  { href: '/admin/directories', label: 'Типи й виробники', icon: 'directories' as const }
 ];
 
 async function getNewContactMessagesCount() {
@@ -68,7 +67,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const navItems = session.user.role === 'ADMIN'
     ? adminNavItems
-    : adminNavItems.filter((item) => !['/admin/change-requests', '/admin/billing-settings', '/admin/settings'].includes(item.href));
+    : adminNavItems.filter((item) => !['/admin/change-requests', '/admin/billing-settings'].includes(item.href));
   const navItemsWithBadges = navItems.map((item) => {
     if (item.href === '/admin/requests') {
       return { ...item, badge: newRequestsCount };

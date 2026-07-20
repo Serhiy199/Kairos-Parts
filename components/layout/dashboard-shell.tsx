@@ -3,7 +3,18 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { TbMessages, TbTractor } from 'react-icons/tb';
+import {
+  TbArrowsExchange,
+  TbBuilding,
+  TbBuildingStore,
+  TbClipboardList,
+  TbHierarchy3,
+  TbHistory,
+  TbLayoutDashboard,
+  TbMessageCircle,
+  TbTractor,
+  TbUsers
+} from 'react-icons/tb';
 
 import { logoutClient, logoutStaff } from '@/app/(auth)/actions';
 
@@ -11,7 +22,7 @@ type NavItem = {
   href: string;
   label: string;
   badge?: number;
-  icon?: 'messages' | 'tractor';
+  icon?: 'dashboard' | 'requests' | 'messages' | 'tractor' | 'clients' | 'companies' | 'changes' | 'history' | 'billing' | 'directories';
   activePrefix?: string;
 };
 
@@ -51,6 +62,7 @@ export function DashboardShell({ children, title, subtitle, navItems, homeHref, 
             {navItems.map((item) => {
               const activeTarget = item.activePrefix ?? item.href;
               const isActive = pathname === item.href || (activeTarget !== homeHref && pathname.startsWith(`${activeTarget}/`)) || (activeTarget !== homeHref && pathname === activeTarget);
+              const Icon = item.icon ? NAV_ICONS[item.icon] : null;
 
               return (
                 <Link
@@ -62,9 +74,8 @@ export function DashboardShell({ children, title, subtitle, navItems, homeHref, 
                   }`}
                 >
                   <span className="inline-flex w-full items-center justify-between gap-3">
-                    <span className="inline-flex items-center gap-2">
-                      {item.icon === 'messages' ? <TbMessages aria-hidden="true" className="size-4 shrink-0" /> : null}
-                      {item.icon === 'tractor' ? <TbTractor aria-hidden="true" className="size-4 shrink-0" /> : null}
+                    <span className="inline-flex min-w-0 items-center gap-2.5">
+                      {Icon ? <Icon aria-hidden="true" className="size-[18px] shrink-0" /> : null}
                       <span>{item.label}</span>
                     </span>
                     {item.badge && item.badge > 0 ? (
@@ -101,3 +112,16 @@ export function DashboardShell({ children, title, subtitle, navItems, homeHref, 
     </div>
   );
 }
+
+const NAV_ICONS = {
+  dashboard: TbLayoutDashboard,
+  requests: TbClipboardList,
+  messages: TbMessageCircle,
+  tractor: TbTractor,
+  clients: TbUsers,
+  companies: TbBuilding,
+  changes: TbArrowsExchange,
+  history: TbHistory,
+  billing: TbBuildingStore,
+  directories: TbHierarchy3
+} as const;
