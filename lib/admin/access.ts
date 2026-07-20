@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import { auth } from '@/auth';
+import { validateSessionAgainstCurrentUser } from '@/lib/auth/current-user-access';
 import type { UserRole } from '@/lib/auth/roles';
 import { hasDatabaseUrl } from '@/lib/env/database';
 
@@ -10,14 +11,28 @@ export async function requireCrmSession() {
   const session = await auth();
 
   if (!session?.user?.id) {
-    redirect('/admin/login?next=/admin');
+    redirect('/admin/login?error=session-expired&next=/admin');
   }
 
-  if (!session.user.role || !CRM_ROLES.includes(session.user.role)) {
+  const validation = await validateSessionAgainstCurrentUser(session);
+
+  if (!validation.ok) {
+    redirect('/admin/login?error=session-expired&next=/admin');
+  }
+
+  if (!CRM_ROLES.includes(validation.user.role)) {
     redirect('/');
   }
 
-  return session;
+  return {
+    ...session,
+    user: {
+      ...session.user,
+      id: validation.user.id,
+      role: validation.user.role,
+      status: validation.user.status
+    }
+  };
 }
 
 export async function requireAdminSession() {
@@ -37,15 +52,32 @@ export async function getCrmApiSession() {
     return { ok: false as const, status: 'unauthorized' as const, statusCode: 401 };
   }
 
-  if (!session.user.role || !CRM_ROLES.includes(session.user.role)) {
-    return { ok: false as const, status: 'forbidden' as const, statusCode: 403 };
-  }
-
   if (!hasDatabaseUrl()) {
     return { ok: false as const, status: 'database_not_configured' as const, statusCode: 503 };
   }
 
-  return { ok: true as const, session };
+  const validation = await validateSessionAgainstCurrentUser(session);
+
+  if (!validation.ok) {
+    return { ok: false as const, status: 'unauthorized' as const, statusCode: 401 };
+  }
+
+  if (!CRM_ROLES.includes(validation.user.role)) {
+    return { ok: false as const, status: 'forbidden' as const, statusCode: 403 };
+  }
+
+  return {
+    ok: true as const,
+    session: {
+      ...session,
+      user: {
+        ...session.user,
+        id: validation.user.id,
+        role: validation.user.role,
+        status: validation.user.status
+      }
+    }
+  };
 }
 
 export async function getAdminApiSession() {

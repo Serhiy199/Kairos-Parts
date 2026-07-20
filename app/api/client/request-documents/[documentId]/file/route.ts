@@ -1,22 +1,17 @@
-import { auth } from '@/auth';
-import { getClientAccessContext, requestAccessWhere } from '@/lib/client/access';
+import { getClientApiSession, requestAccessWhere } from '@/lib/client/access';
 import { contentDispositionFileName, isSafeStorageKey, readLocalUpload } from '@/lib/files/secure-local-file';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(_request: Request, { params }: { params: Promise<{ documentId: string }> }) {
-  const session = await auth();
+  const authResult = await getClientApiSession();
 
-  if (!session?.user?.id || session.user.role !== 'CLIENT') {
-    return Response.json({ status: 'unauthorized' }, { status: 401 });
+  if (!authResult.ok) {
+    return Response.json({ status: authResult.status }, { status: authResult.statusCode });
   }
 
-  const access = await getClientAccessContext(session.user.id);
-
-  if (!access) {
-    return Response.json({ status: 'forbidden' }, { status: 403 });
-  }
+  const access = authResult.access;
 
   const { documentId } = await params;
   const document = await prisma.requestDocument.findFirst({

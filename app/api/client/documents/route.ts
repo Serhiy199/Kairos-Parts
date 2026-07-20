@@ -1,30 +1,16 @@
-import { auth } from '@/auth';
-import { documentAccessWhere, getClientAccessContext, requestAccessWhere } from '@/lib/client/access';
-import { hasDatabaseUrl } from '@/lib/env/database';
+import { documentAccessWhere, getClientApiSession, requestAccessWhere } from '@/lib/client/access';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
-  const session = await auth();
+  const authResult = await getClientApiSession();
 
-  if (!session?.user?.id) {
-    return Response.json({ status: 'unauthorized' }, { status: 401 });
+  if (!authResult.ok) {
+    return Response.json({ status: authResult.status }, { status: authResult.statusCode });
   }
 
-  if (session.user.role !== 'CLIENT') {
-    return Response.json({ status: 'forbidden' }, { status: 403 });
-  }
-
-  if (!hasDatabaseUrl()) {
-    return Response.json({ status: 'database_not_configured' }, { status: 503 });
-  }
-
-  const access = await getClientAccessContext(session.user.id);
-
-  if (!access) {
-    return Response.json({ status: 'profile_not_found' }, { status: 404 });
-  }
+  const access = authResult.access;
 
   const [documents, requestFiles] = await Promise.all([
     prisma.document.findMany({

@@ -24,7 +24,13 @@ export async function middleware(request: NextRequest) {
     secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
     secureCookie: request.nextUrl.protocol === 'https:'
   });
-  const role = token?.role as UserRole | undefined;
+  const hasCurrentLifecycleClaims = Boolean(
+    token?.userId &&
+      token.status === 'ACTIVE' &&
+      Number.isInteger(token.authVersion) &&
+      !token.sessionInvalid
+  );
+  const role = hasCurrentLifecycleClaims ? (token?.role as UserRole | undefined) : undefined;
 
   if (pathname === '/login' && role === 'CLIENT') {
     return NextResponse.redirect(new URL('/client', request.url));
@@ -51,7 +57,11 @@ export async function middleware(request: NextRequest) {
   }
 
   const redirectUrl = request.nextUrl.clone();
-  redirectUrl.pathname = token ? defaultRedirectForRole(role) : pathname.startsWith('/admin') ? '/admin/login' : '/login';
+  redirectUrl.pathname = hasCurrentLifecycleClaims
+    ? defaultRedirectForRole(role)
+    : pathname.startsWith('/admin')
+      ? '/admin/login'
+      : '/login';
   redirectUrl.searchParams.set('next', pathname);
 
   return NextResponse.redirect(redirectUrl);

@@ -1,9 +1,7 @@
 import { Prisma } from '@prisma/client';
 
-import { auth } from '@/auth';
 import { createAuditLog } from '@/lib/audit-log/service';
-import { getClientAccessContext, vehicleAccessWhere } from '@/lib/client/access';
-import { hasDatabaseUrl } from '@/lib/env/database';
+import { getClientApiSession, vehicleAccessWhere } from '@/lib/client/access';
 import { prisma } from '@/lib/prisma';
 import {
   findVehicleVinDuplicate,
@@ -20,29 +18,15 @@ function readString(value: unknown) {
 }
 
 async function getClientAccess() {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return { status: 'unauthorized' as const };
-  }
-
-  if (session.user.role !== 'CLIENT') {
-    return { status: 'forbidden' as const };
-  }
-
-  if (!hasDatabaseUrl()) {
-    return { status: 'database_not_configured' as const };
-  }
-
-  const access = await getClientAccessContext(session.user.id);
-  return access ? { status: 'ok' as const, access } : { status: 'profile_not_found' as const };
+  const result = await getClientApiSession();
+  return result.ok ? { status: 'ok' as const, access: result.access } : result;
 }
 
 export async function GET() {
   const result = await getClientAccess();
 
   if (result.status !== 'ok') {
-    const statusCode = result.status === 'unauthorized' ? 401 : result.status === 'forbidden' ? 403 : result.status === 'profile_not_found' ? 404 : 503;
+    const statusCode = result.statusCode;
     return Response.json({ status: result.status }, { status: statusCode });
   }
 
@@ -58,7 +42,7 @@ export async function POST(request: Request) {
   const result = await getClientAccess();
 
   if (result.status !== 'ok') {
-    const statusCode = result.status === 'unauthorized' ? 401 : result.status === 'forbidden' ? 403 : result.status === 'profile_not_found' ? 404 : 503;
+    const statusCode = result.statusCode;
     return Response.json({ status: result.status }, { status: statusCode });
   }
 

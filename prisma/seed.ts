@@ -163,14 +163,18 @@ async function main() {
       name: testAccounts.client.name,
       phone: testAccounts.client.phone,
       passwordHash,
-      role: UserRole.CLIENT
+      role: UserRole.CLIENT,
+      status: 'ACTIVE',
+      authVersion: 1
     },
     create: {
       email: testAccounts.client.email,
       name: testAccounts.client.name,
       phone: testAccounts.client.phone,
       passwordHash,
-      role: UserRole.CLIENT
+      role: UserRole.CLIENT,
+      status: 'ACTIVE',
+      authVersion: 1
     }
   });
 
@@ -198,13 +202,17 @@ async function main() {
     update: {
       name: testAccounts.manager.name,
       passwordHash,
-      role: UserRole.MANAGER
+      role: UserRole.MANAGER,
+      status: 'ACTIVE',
+      authVersion: 1
     },
     create: {
       email: testAccounts.manager.email,
       name: testAccounts.manager.name,
       passwordHash,
-      role: UserRole.MANAGER
+      role: UserRole.MANAGER,
+      status: 'ACTIVE',
+      authVersion: 1
     }
   });
 
@@ -222,13 +230,17 @@ async function main() {
     update: {
       name: testAccounts.admin.name,
       passwordHash,
-      role: UserRole.ADMIN
+      role: UserRole.ADMIN,
+      status: 'ACTIVE',
+      authVersion: 1
     },
     create: {
       email: testAccounts.admin.email,
       name: testAccounts.admin.name,
       passwordHash,
-      role: UserRole.ADMIN
+      role: UserRole.ADMIN,
+      status: 'ACTIVE',
+      authVersion: 1
     }
   });
 

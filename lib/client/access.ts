@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import type { Prisma } from '@prisma/client';
 
 import { auth } from '@/auth';
+import { validateSessionAgainstCurrentUser } from '@/lib/auth/current-user-access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 import { vehicleAccessWhereForClient } from '@/lib/vehicles/ownership';
@@ -18,14 +19,28 @@ export async function requireClientSession() {
   const session = await auth();
 
   if (!session?.user?.id) {
+    redirect('/login?error=session-expired');
+  }
+
+  const validation = await validateSessionAgainstCurrentUser(session);
+
+  if (!validation.ok) {
+    redirect('/login?error=session-expired');
+  }
+
+  if (validation.user.role !== 'CLIENT') {
     redirect('/login');
   }
 
-  if (session.user.role !== 'CLIENT') {
-    redirect('/login');
-  }
-
-  return session;
+  return {
+    ...session,
+    user: {
+      ...session.user,
+      id: validation.user.id,
+      role: validation.user.role,
+      status: validation.user.status
+    }
+  };
 }
 
 export async function getClientProfileForSession(userId: string) {
@@ -121,27 +136,43 @@ export async function getClientApiSession() {
     return { ok: false as const, status: 'unauthorized' as const, statusCode: 401 };
   }
 
-  if (session.user.role !== 'CLIENT') {
-    return { ok: false as const, status: 'forbidden' as const, statusCode: 403 };
-  }
-
   if (!hasDatabaseUrl()) {
     return { ok: false as const, status: 'database_not_configured' as const, statusCode: 503 };
   }
 
-  const profile = await getClientProfileForSession(session.user.id);
+  const validation = await validateSessionAgainstCurrentUser(session);
+
+  if (!validation.ok) {
+    return { ok: false as const, status: 'unauthorized' as const, statusCode: 401 };
+  }
+
+  if (validation.user.role !== 'CLIENT') {
+    return { ok: false as const, status: 'forbidden' as const, statusCode: 403 };
+  }
+
+  const validatedSession = {
+    ...session,
+    user: {
+      ...session.user,
+      id: validation.user.id,
+      role: validation.user.role,
+      status: validation.user.status
+    }
+  };
+
+  const profile = await getClientProfileForSession(validation.user.id);
 
   if (!profile) {
     return { ok: false as const, status: 'client_profile_not_found' as const, statusCode: 404 };
   }
 
-  const access = await getClientAccessContext(session.user.id);
+  const access = await getClientAccessContext(validation.user.id);
 
   if (!access) {
     return { ok: false as const, status: 'client_profile_not_found' as const, statusCode: 404 };
   }
 
-  return { ok: true as const, session, profile, access };
+  return { ok: true as const, session: validatedSession, profile, access };
 }
 
 export function clientAccessError(result: { status: string; statusCode: number }) {

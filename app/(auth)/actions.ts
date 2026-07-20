@@ -1,6 +1,6 @@
 'use server';
 
-import { AuthError } from 'next-auth';
+import { AuthError, CredentialsSignin } from 'next-auth';
 import { redirect } from 'next/navigation';
 
 import { signIn, signOut } from '@/auth';
@@ -15,6 +15,18 @@ function readString(formData: FormData, key: string) {
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function accountLifecycleError(error: AuthError) {
+  if (!(error instanceof CredentialsSignin)) {
+    return null;
+  }
+
+  if (error.code === 'account-invited' || error.code === 'account-disabled') {
+    return error.code;
+  }
+
+  return null;
 }
 
 function getClientNextPath(nextPath: string) {
@@ -94,6 +106,7 @@ export async function registerClient(formData: FormData) {
       phone,
       passwordHash,
       role: 'CLIENT',
+      status: 'ACTIVE',
       clientProfile: {
         create: {
           clientType: accountType,
@@ -138,6 +151,12 @@ export async function loginClient(formData: FormData) {
     });
   } catch (error) {
     if (error instanceof AuthError) {
+      const lifecycleError = accountLifecycleError(error);
+
+      if (lifecycleError) {
+        redirect(appendNextParam(`/login?error=${lifecycleError}`, nextPath));
+      }
+
       redirect(appendNextParam('/login?error=credentials', nextPath));
     }
 
@@ -177,6 +196,12 @@ export async function loginStaff(formData: FormData) {
     });
   } catch (error) {
     if (error instanceof AuthError) {
+      const lifecycleError = accountLifecycleError(error);
+
+      if (lifecycleError) {
+        redirect(`/admin/login?error=${lifecycleError}`);
+      }
+
       redirect('/admin/login?error=credentials');
     }
 

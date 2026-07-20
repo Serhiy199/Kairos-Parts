@@ -1,5 +1,4 @@
-import { auth } from '@/auth';
-import { getClientAccessContext, vehicleAccessWhere } from '@/lib/client/access';
+import { getClientApiSession, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { saveRequestFileLocal } from '@/lib/files/local-storage';
 import { prisma } from '@/lib/prisma';
@@ -35,9 +34,9 @@ function buildDescription(description: string, comment?: string) {
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
+  const authResult = await getClientApiSession();
 
-  if (!session?.user?.id) {
+  if (!authResult.ok && authResult.status === 'unauthorized') {
     return Response.json(
       {
         status: 'unauthorized',
@@ -47,13 +46,23 @@ export async function POST(request: Request) {
     );
   }
 
-  if (session.user.role !== 'CLIENT') {
+  if (!authResult.ok && authResult.status === 'forbidden') {
     return Response.json(
       {
         status: 'forbidden',
         message: 'Створення заявки доступне тільки для клієнтського акаунта.'
       },
       { status: 403 }
+    );
+  }
+
+  if (!authResult.ok) {
+    return Response.json(
+      {
+        status: authResult.status,
+        message: 'Не вдалося перевірити доступ до клієнтського кабінету.'
+      },
+      { status: authResult.statusCode }
     );
   }
 
@@ -82,17 +91,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const clientAccess = await getClientAccessContext(session.user.id);
-
-  if (!clientAccess) {
-    return Response.json(
-      {
-        status: 'client_profile_not_found',
-        message: 'Не знайдено клієнтський профіль для створення заявки.'
-      },
-      { status: 403 }
-    );
-  }
+  const clientAccess = authResult.access;
 
   try {
     const taxonomy = await validateEquipmentTaxonomySelection({
