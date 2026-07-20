@@ -18,6 +18,7 @@ import {
   TbTractor,
   TbUser,
   TbUsers,
+  TbUsersGroup,
   TbX
 } from 'react-icons/tb';
 
@@ -325,6 +326,7 @@ const NAV_ICONS = {
   history: TbHistory,
   billing: TbBuildingStore,
   directories: TbHierarchy3,
+  team: TbUsersGroup,
   documents: TbFileDescription,
   profile: TbUser
 } as const;

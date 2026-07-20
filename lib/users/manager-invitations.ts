@@ -80,18 +80,16 @@ export async function createInvitedManager(input: {
         await requireActiveAdmin(tx, input.createdByAdminId);
 
         const existingUser = await tx.user.findFirst({
-        where: { email: { equals: email, mode: 'insensitive' } },
-        select: { id: true, role: true, status: true }
-      });
+          where: { email: { equals: email, mode: 'insensitive' } },
+          select: { id: true, role: true, status: true }
+        });
 
         if (existingUser) {
-        throw new ManagerInvitationError(
-          'email_conflict',
-          existingUser.role === 'MANAGER' && existingUser.status === 'INVITED'
-            ? 'Менеджера вже запрошено. Створіть нове посилання через повторну генерацію.'
-            : 'Користувач із таким email уже існує. Зміна ролі має виконуватися окремо.'
-        );
-      }
+          throw new ManagerInvitationError(
+            'email_conflict',
+            getExistingUserConflictMessage(existingUser)
+          );
+        }
 
         const created = await tx.user.create({
         data: {
@@ -391,4 +389,20 @@ function inactiveInvitationError() {
     'invitation_inactive',
     'Посилання вже використане або більше не активне.'
   );
+}
+
+function getExistingUserConflictMessage(user: { role: UserRole; status: UserStatus }) {
+  if (user.role === 'MANAGER' && user.status === 'INVITED') {
+    return 'Менеджера вже запрошено. Створіть нове посилання через повторну генерацію.';
+  }
+
+  if (user.role === 'MANAGER' && user.status === 'DISABLED') {
+    return 'Доступ цього менеджера вимкнено. Скористайтеся дією повторної активації.';
+  }
+
+  if (user.role === 'ADMIN' || user.role === 'MANAGER') {
+    return 'Користувач із таким email уже має доступ до команди.';
+  }
+
+  return 'Клієнт із таким email уже існує. Зміна ролі має виконуватися окремо.';
 }

@@ -27,7 +27,9 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   ENTITY_UPDATED: 'Об’єкт оновлено',
   MANAGER_INVITATION_CREATED: 'Запрошення менеджера створено',
   MANAGER_INVITATION_REGENERATED: 'Запрошення менеджера оновлено',
-  MANAGER_ACTIVATED: 'Менеджера активовано'
+  MANAGER_ACTIVATED: 'Менеджера активовано',
+  MANAGER_DISABLED: 'Доступ менеджера вимкнено',
+  MANAGER_ENABLED: 'Доступ менеджера увімкнено'
 };
 
 export const AUDIT_EVENT_LABELS: Record<string, string> = {

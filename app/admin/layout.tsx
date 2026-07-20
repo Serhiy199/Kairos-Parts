@@ -19,8 +19,11 @@ const adminNavItems = [
   { href: '/admin/change-requests', label: 'Запити змін', icon: 'changes' as const },
   { href: '/admin/audit-log', label: 'Журнал дій', icon: 'history' as const },
   { href: '/admin/billing-settings', label: 'Реквізити продавця', icon: 'billing' as const },
-  { href: '/admin/directories', label: 'Типи й виробники', icon: 'directories' as const }
+  { href: '/admin/directories', label: 'Типи й виробники', icon: 'directories' as const },
+  { href: '/admin/team', label: 'Команда', icon: 'team' as const }
 ];
+
+const ADMIN_ONLY_ROUTES = ['/admin/change-requests', '/admin/billing-settings', '/admin/team'];
 
 async function getNewContactMessagesCount() {
   try {
@@ -67,7 +70,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const navItems = session.user.role === 'ADMIN'
     ? adminNavItems
-    : adminNavItems.filter((item) => !['/admin/change-requests', '/admin/billing-settings'].includes(item.href));
+    : adminNavItems.filter((item) => !ADMIN_ONLY_ROUTES.includes(item.href));
   const navItemsWithBadges = navItems.map((item) => {
     if (item.href === '/admin/requests') {
       return { ...item, badge: newRequestsCount };
@@ -90,7 +93,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     '/admin/change-requests',
     '/admin/audit-log',
     '/admin/contact-messages',
-    '/admin/used-equipment'
+    '/admin/used-equipment',
+    '/admin/team'
   ].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 
   return (
