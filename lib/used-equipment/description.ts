@@ -1,5 +1,7 @@
 import sanitizeHtml from 'sanitize-html';
 
+import { normalizeRichTextHtml } from '@/lib/rich-text/normalize';
+
 export const USED_EQUIPMENT_DESCRIPTION_MIN_TEXT_LENGTH = 10;
 export const USED_EQUIPMENT_DESCRIPTION_MAX_TEXT_LENGTH = 20000;
 export const USED_EQUIPMENT_DESCRIPTION_MAX_HTML_LENGTH = 100000;
@@ -19,6 +21,7 @@ const allowedTags = [
   'li',
   'blockquote',
   'a',
+  'img',
   'table',
   'thead',
   'tbody',
@@ -29,6 +32,7 @@ const allowedTags = [
 
 const allowedAttributes = {
   a: ['href', 'target', 'rel'],
+  img: ['src', 'alt', 'title', 'loading'],
   p: ['style'],
   h2: ['style'],
   h3: ['style'],
@@ -60,6 +64,9 @@ export function sanitizeUsedEquipmentDescription(html: string) {
       }
     },
     allowedSchemes,
+    allowedSchemesByTag: {
+      img: ['http', 'https']
+    },
     allowProtocolRelative: false,
     disallowedTagsMode: 'discard',
     nonTextTags: blockContentTags,
@@ -117,40 +124,14 @@ export function isUsedEquipmentDescriptionEmpty(html: string) {
   return getUsedEquipmentDescriptionVisibleText(html).length === 0;
 }
 
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function plainTextToHtml(value: string) {
-  return value
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean)
-    .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br />')}</p>`)
-    .join('');
-}
-
-function looksLikeHtml(value: string) {
-  return /<\/?[a-z][\s\S]*>/i.test(value);
-}
-
 export function normalizeUsedEquipmentDescriptionForEditor(value: string | null | undefined) {
-  const rawValue = value?.trim() ?? '';
+  const normalized = normalizeRichTextHtml(value);
 
-  if (!rawValue) {
+  if (!normalized) {
     return '';
   }
 
-  if (looksLikeHtml(rawValue)) {
-    return sanitizeUsedEquipmentDescription(rawValue);
-  }
-
-  return plainTextToHtml(rawValue);
+  return sanitizeUsedEquipmentDescription(normalized);
 }
 
 export function validateAndSanitizeUsedEquipmentDescription(value: string) {

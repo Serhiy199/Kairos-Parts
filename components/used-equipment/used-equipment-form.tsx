@@ -4,7 +4,7 @@ import type { UsedEquipmentStatus } from '@prisma/client';
 import { useActionState, useEffect, useMemo, useState } from 'react';
 import { FaSave } from 'react-icons/fa';
 
-import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { AdminRichTextEditor } from '@/components/admin/admin-rich-text-editor';
 import { SearchableCombobox, type SearchableComboboxOption } from '@/components/ui/searchable-combobox';
 import { UsedEquipmentImageManager, type UsedEquipmentExistingImage } from '@/components/used-equipment/used-equipment-image-manager';
 import { USED_EQUIPMENT_STATUS_LABELS } from '@/lib/used-equipment/status';
@@ -170,7 +170,7 @@ export function UsedEquipmentForm({
 
         <label className="grid gap-2 text-sm font-semibold text-foreground lg:col-span-2">
           Опис *
-          <RichTextEditor
+          <AdminRichTextEditor
             value={description}
             onChange={setDescription}
             error={state.fieldErrors?.description}

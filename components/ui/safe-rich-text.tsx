@@ -21,6 +21,7 @@ export function SafeRichText({ html, className = '' }: SafeRichTextProps) {
         '[&_blockquote]:border-l-4 [&_blockquote]:border-accent/40 [&_blockquote]:pl-4 [&_blockquote]:italic',
         '[&_h2]:mb-3 [&_h2]:mt-5 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-foreground',
         '[&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-foreground',
+        '[&_img]:my-5 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-md [&_img]:border [&_img]:border-border',
         '[&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5',
         '[&_p]:my-3 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0',
         '[&_table]:my-5 [&_table]:min-w-[640px] [&_table]:w-full [&_table]:border-collapse',

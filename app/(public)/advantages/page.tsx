@@ -4,12 +4,12 @@ import Link from 'next/link';
 import {
   TbArrowDown,
   TbArrowRight,
+  TbBuildingWarehouse,
   TbCheck,
   TbDatabaseCog,
   TbFileInvoice,
   TbHeartHandshake,
   TbMinus,
-  TbPackages,
   TbSettingsSearch,
   TbTractor
 } from 'react-icons/tb';
@@ -31,7 +31,7 @@ const advantages = [
       'Kairos Parts об’єднує позиції від різних постачальників у межах одного погодженого процесу. Клієнту не потрібно окремо координувати кожне відправлення, контролювати різні служби доставки та збирати інформацію з кількох джерел.',
       'Ми організовуємо приймання, перевірку та консолідацію замовлення, щоб підприємство отримало всі погоджені позиції через один центр координації. Це спрощує логістику, зменшує кількість окремих операцій і робить отримання запчастин більш передбачуваним.'
     ],
-    icon: TbPackages,
+    icon: TbBuildingWarehouse,
     image: '/images/advantages/benefit-1.png'
   },
   {
