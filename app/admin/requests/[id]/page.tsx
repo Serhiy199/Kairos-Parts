@@ -177,44 +177,44 @@ export default async function AdminRequestDetailPage({
   const ocrImageFiles = request.files.filter((file) => file.mimeType.startsWith('image/'));
 
   return (
-    <div className="grid gap-6">
-      <div className="flex flex-col justify-between gap-4 rounded-lg border border-border bg-card p-6 shadow-card xl:flex-row xl:items-start">
-        <div>
+    <div className="grid w-full min-w-0 max-w-full gap-4 sm:gap-5 xl:gap-6">
+      <div className="flex min-w-0 flex-col justify-between gap-4 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:flex-row xl:items-start xl:p-6">
+        <div className="min-w-0">
           <Link href="/admin/requests" className="text-sm font-semibold text-muted transition hover:text-accent">← До списку заявок</Link>
           <p className="mt-4 text-sm font-bold uppercase text-accent">Картка заявки</p>
-          <h2 className="mt-2 text-3xl font-bold text-foreground">{request.requestNumber}</h2>
-          <p className="mt-2 text-sm text-muted">
+          <h2 className="mt-2 break-words text-2xl font-bold text-foreground sm:text-3xl">{request.requestNumber}</h2>
+          <p className="mt-2 break-words text-sm text-muted">
             {REQUEST_SOURCE_LABELS[request.source]} · створено {request.createdAt.toLocaleString('uk-UA')} · оновлено {request.updatedAt.toLocaleString('uk-UA')}
           </p>
         </div>
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:w-[420px] xl:max-w-full">
-          <div className="rounded-md border border-border p-4">
+        <div className="grid w-full min-w-0 gap-3 sm:grid-cols-2 xl:w-[420px] xl:max-w-full xl:shrink-0">
+          <div className="min-w-0 rounded-md border border-border p-4">
             <p className="text-xs font-bold uppercase text-muted">Статус</p>
             <div className="mt-2"><StatusBadge status={request.status} /></div>
           </div>
-          <div className="rounded-md border border-border p-4">
+          <div className="min-w-0 rounded-md border border-border p-4">
             <p className="text-xs font-bold uppercase text-muted">Менеджер</p>
-            <p className="mt-2 text-sm font-bold text-foreground">{request.assignedManager?.name ?? request.assignedManager?.email ?? 'Не призначено'}</p>
+            <p className="mt-2 break-words text-sm font-bold text-foreground">{request.assignedManager?.name ?? request.assignedManager?.email ?? 'Не призначено'}</p>
           </div>
         </div>
       </div>
 
-      {message ? <div className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">{message}</div> : null}
+      {message ? <div className="min-w-0 break-words rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">{message}</div> : null}
 
-      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <main className="grid min-w-0 gap-6">
-          <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+      <div className="grid w-full min-w-0 max-w-full gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] xl:gap-6">
+        <main className="grid min-w-0 gap-4 sm:gap-5 xl:gap-6">
+          <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
             <p className="text-sm font-bold uppercase text-accent">Контактні дані</p>
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-2">
               <Info label="Контакт" value={contactName} />
               <Info label="Компанія" value={companyName} />
               <Info label="Телефон" value={phone} />
               <Info label="Email" value={email} />
             </div>
             {request.company ? (
-              <div className="mt-5 rounded-md border border-accent/30 bg-[#FFF7E0] p-4 text-sm text-[#8A5B24]">
-                <p className="font-bold text-foreground">Company account: {request.company.name}</p>
-                <p className="mt-1">ЄДРПОУ: {request.company.edrpou ?? '—'} · {request.company.email ?? 'email —'} · {request.company.phone ?? 'телефон —'}</p>
+              <div className="mt-5 min-w-0 rounded-md border border-accent/30 bg-[#FFF7E0] p-4 text-sm text-[#8A5B24]">
+                <p className="break-words font-bold text-foreground">Company account: {request.company.name}</p>
+                <p className="mt-1 break-words">ЄДРПОУ: {request.company.edrpou ?? '—'} · {request.company.email ?? 'email —'} · {request.company.phone ?? 'телефон —'}</p>
                 <Link href={`/admin/companies/${request.company.id}`} className="mt-3 inline-flex font-bold text-foreground transition hover:text-accent">
                   Відкрити компанію
                 </Link>
@@ -222,25 +222,25 @@ export default async function AdminRequestDetailPage({
             ) : null}
           </section>
 
-          <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
             <p className="text-sm font-bold uppercase text-accent">Потреба</p>
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-2">
               <Info label="Виробник / марка" value={request.manufacturer?.name ?? '—'} />
               <Info label="Тип техніки" value={request.equipmentType ?? '—'} />
               <Info label="Модель" value={request.model ?? '—'} />
               <Info label="Рік випуску" value={request.vehicleYear ? String(request.vehicleYear) : '—'} />
               <Info label="VIN / серійний номер" value={request.vinOrSerial ?? '—'} />
             </div>
-            <div className="mt-5 rounded-md border border-border bg-surface-muted p-4">
+            <div className="mt-5 min-w-0 rounded-md border border-border bg-surface-muted p-4">
               <p className="text-xs font-bold uppercase text-muted">Опис</p>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">{request.description}</p>
+              <p className="mt-2 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">{request.description}</p>
             </div>
           </section>
 
           {request.vehicle ? (
-            <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+            <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
               <p className="text-sm font-bold uppercase text-accent">Привʼязана техніка</p>
-              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-2">
                 <Info label="Тип" value={request.vehicle.type} />
                 <Info label="Виробник" value={request.vehicle.manufacturer} />
                 <Info label="Модель" value={request.vehicle.model} />
@@ -257,7 +257,7 @@ export default async function AdminRequestDetailPage({
 
           <RequestDocumentsSection requestId={request.id} documents={request.requestDocuments} />
 
-          <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
             <p className="text-sm font-bold uppercase text-accent">Файли, надані клієнтом</p>
             <p className="mt-2 text-sm leading-6 text-muted">
               Тут відображаються фото, списки, документи або інші файли, які клієнт додав під час створення заявки, через кабінет або Telegram.
@@ -269,7 +269,7 @@ export default async function AdminRequestDetailPage({
             <p className="mt-4 text-xs text-muted">Файли захищені: менеджер відкриває їх через CRM, без доступу до приватних шляхів зберігання.</p>
           </section>
 
-          <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-sm font-bold uppercase text-accent">OCR-підказки</p>
@@ -289,11 +289,11 @@ export default async function AdminRequestDetailPage({
                     <form key={file.id} action={runAdminRequestOcr} className="flex flex-col gap-3 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
                       <input type="hidden" name="requestId" value={request.id} />
                       <input type="hidden" name="fileId" value={file.id} />
-                      <div>
-                        <p className="text-sm font-bold text-foreground">{file.fileName}</p>
+                      <div className="min-w-0">
+                        <p className="break-words text-sm font-bold text-foreground">{file.fileName}</p>
                         <p className="mt-1 text-xs text-muted">{file.mimeType} · {formatSize(file.size)}</p>
                       </div>
-                      <button className="inline-flex items-center justify-center gap-2 rounded-md border border-accent px-4 py-2 text-sm font-bold text-[#8A5B24] transition hover:bg-accent/10">
+                      <button className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-accent px-4 py-2 text-sm font-bold text-[#8A5B24] transition hover:bg-accent/10 sm:w-auto">
                         <ActionIcon name="search" />
                         Запустити OCR
                       </button>
@@ -310,10 +310,10 @@ export default async function AdminRequestDetailPage({
                 ) : null
               ) : (
                 request.ocrResults.map((result) => (
-                  <article key={result.id} className="rounded-md border border-border p-4">
+                  <article key={result.id} className="min-w-0 rounded-md border border-border p-4">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <p className="text-sm font-bold text-foreground">{result.file?.fileName ?? 'Без файлу'}</p>
+                      <div className="min-w-0">
+                        <p className="break-words text-sm font-bold text-foreground">{result.file?.fileName ?? 'Без файлу'}</p>
                         <p className="mt-1 text-xs text-muted">
                           {result.provider} · {result.confidence !== null ? `confidence ${result.confidence.toFixed(1)}` : 'confidence —'} · {result.createdAt.toLocaleString('uk-UA')}
                         </p>
@@ -322,7 +322,7 @@ export default async function AdminRequestDetailPage({
                     </div>
                     <div className="mt-4 rounded-md bg-surface-muted p-3">
                       <p className="text-xs font-bold uppercase text-muted">Розпізнаний текст</p>
-                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">{result.rawText}</p>
+                      <p className="mt-2 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">{result.rawText}</p>
                     </div>
                     {result.possiblePartNumber || result.possibleSerialNumber ? (
                       <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -339,10 +339,10 @@ export default async function AdminRequestDetailPage({
                           name="correctedText"
                           rows={4}
                           defaultValue={result.correctedText ?? result.rawText}
-                          className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+                          className="min-w-0 w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
                         />
                       </label>
-                      <button className="inline-flex w-fit items-center justify-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">
+                      <button className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted sm:w-fit">
                         <ActionIcon name="save" />
                         Зберегти виправлення
                       </button>
@@ -354,7 +354,7 @@ export default async function AdminRequestDetailPage({
           </section>
 
           {request.client ? (
-            <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+            <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
               <p className="text-sm font-bold uppercase text-accent">Клієнтська база</p>
               <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-2">
                 <div className="min-w-0">
@@ -381,39 +381,39 @@ export default async function AdminRequestDetailPage({
             </section>
           ) : null}
 
-          <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
             <p className="text-sm font-bold uppercase text-accent">Внутрішні коментарі</p>
             <form action={addAdminRequestComment} className="mt-4 grid gap-3">
               <input type="hidden" name="requestId" value={request.id} />
-              <textarea name="message" required rows={4} placeholder="Додати внутрішній коментар для CRM" className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25" />
-              <button className="inline-flex w-fit items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+              <textarea name="message" required rows={4} placeholder="Додати внутрішній коментар для CRM" className="min-w-0 w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25" />
+              <button className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover sm:w-fit">
                 <ActionIcon name="comment" />
                 Додати коментар
               </button>
             </form>
             <div className="mt-6 grid gap-3">
               {request.comments.length === 0 ? <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted">Внутрішніх коментарів ще немає.</p> : request.comments.map((comment) => (
-                <article key={comment.id} className="rounded-md border border-border p-4">
-                  <p className="text-sm leading-6 text-foreground">{comment.message}</p>
-                  <p className="mt-3 text-xs text-muted">{comment.author?.name ?? comment.author?.email ?? 'Користувач'} · {comment.createdAt.toLocaleString('uk-UA')}</p>
+                <article key={comment.id} className="min-w-0 rounded-md border border-border p-4">
+                  <p className="break-words text-sm leading-6 text-foreground">{comment.message}</p>
+                  <p className="mt-3 break-words text-xs text-muted">{comment.author?.name ?? comment.author?.email ?? 'Користувач'} · {comment.createdAt.toLocaleString('uk-UA')}</p>
                 </article>
               ))}
             </div>
           </section>
         </main>
 
-        <aside className="grid h-fit min-w-0 gap-6">
-          <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+        <aside className="grid h-fit min-w-0 gap-4 sm:gap-5 xl:sticky xl:top-6 xl:gap-6">
+          <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
             <p className="text-sm font-bold uppercase text-accent">Дії</p>
             <form action={updateAdminRequestStatus} className="mt-4 grid gap-3">
               <input type="hidden" name="requestId" value={request.id} />
-              <label className="grid gap-2 text-sm font-semibold text-foreground">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-foreground">
                 Статус
-                <select name="status" defaultValue={selectedRequestStatus} className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent">
+                <select name="status" defaultValue={selectedRequestStatus} className="h-11 w-full min-w-0 rounded-md border border-border px-3 text-sm outline-none focus:border-accent">
                   {REQUEST_STATUSES.map((status) => <option key={status} value={status}>{REQUEST_STATUS_LABELS[status]}</option>)}
                 </select>
               </label>
-              <button className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+              <button className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
                 <ActionIcon name="check" />
                 Оновити статус
               </button>
@@ -424,15 +424,15 @@ export default async function AdminRequestDetailPage({
 
             <form action={assignAdminRequestManager} className="mt-6 grid gap-3">
               <input type="hidden" name="requestId" value={request.id} />
-              <label className="grid gap-2 text-sm font-semibold text-foreground">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-foreground">
                 Відповідальний
-                <select name="assignedManagerId" defaultValue={request.assignedManagerId ?? ''} disabled={session.user.role !== 'ADMIN'} className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent disabled:bg-surface-muted disabled:text-muted">
+                <select name="assignedManagerId" defaultValue={request.assignedManagerId ?? ''} disabled={session.user.role !== 'ADMIN'} className="h-11 w-full min-w-0 rounded-md border border-border px-3 text-sm outline-none focus:border-accent disabled:bg-surface-muted disabled:text-muted">
                   <option value="">Не призначено</option>
                   {managers.map((manager) => <option key={manager.id} value={manager.id}>{manager.name ?? manager.email} · {manager.role}</option>)}
                 </select>
               </label>
               {session.user.role === 'ADMIN' ? (
-                <button className="inline-flex items-center justify-center gap-2 rounded-md border border-border px-4 py-3 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">
+                <button className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-3 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">
                   <ActionIcon name="save" />
                   Призначити
                 </button>
@@ -442,32 +442,32 @@ export default async function AdminRequestDetailPage({
             </form>
           </section>
 
-          <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
             <p className="text-sm font-bold uppercase text-accent">Public status</p>
-            <Link href={publicStatusUrl} className="mt-3 block break-all text-sm font-semibold text-foreground transition hover:text-accent">
+            <Link href={publicStatusUrl} className="mt-3 block min-w-0 break-words text-sm font-semibold text-foreground [overflow-wrap:anywhere] transition hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
               {publicStatusUrl}
             </Link>
           </section>
 
-          <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
             <p className="text-sm font-bold uppercase text-accent">Історія статусів</p>
             <div className="mt-4 grid gap-3">
               {request.statusHistory.length === 0 ? <p className="text-sm text-muted">Історії ще немає.</p> : request.statusHistory.map((item) => (
-                <div key={item.id} className="rounded-md border border-border p-3 text-sm">
+                <div key={item.id} className="min-w-0 rounded-md border border-border p-3 text-sm">
                   <StatusBadge status={item.newStatus} />
-                  <p className="mt-2 text-xs text-muted">{item.changedByUser?.name ?? item.changedByUser?.email ?? 'Система'} · {item.createdAt.toLocaleString('uk-UA')}</p>
+                  <p className="mt-2 break-words text-xs leading-5 text-muted">{item.changedByUser?.name ?? item.changedByUser?.email ?? 'Система'} · {item.createdAt.toLocaleString('uk-UA')}</p>
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+          <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
             <p className="text-sm font-bold uppercase text-accent">Повідомлення</p>
             <div className="mt-4 grid gap-3">
               {request.notifications.length === 0 ? <p className="text-sm text-muted">Повідомлень ще немає.</p> : request.notifications.map((notification) => (
-                <div key={notification.id} className="rounded-md border border-border p-3 text-sm">
-                  <p className="font-bold text-foreground">{notification.channel} · {notification.status}</p>
-                  <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-xs leading-5 text-muted">{notification.message}</p>
+                <div key={notification.id} className="min-w-0 rounded-md border border-border p-3 text-sm">
+                  <p className="break-words font-bold text-foreground">{notification.channel} · {notification.status}</p>
+                  <p className="mt-2 break-words whitespace-pre-wrap text-xs leading-5 text-muted">{notification.message}</p>
                   <p className="mt-2 text-xs text-muted">{notification.createdAt.toLocaleString('uk-UA')}</p>
                 </div>
               ))}
@@ -575,13 +575,13 @@ function BillingSnapshotCard({ title, snapshot, buyer = false }: { title: string
   ].filter(([, value]) => value !== undefined);
 
   return (
-    <div className="rounded-md border border-border bg-card p-4">
+    <div className="min-w-0 rounded-md border border-border bg-card p-4">
       <p className="text-xs font-bold uppercase text-accent">{title}</p>
       <div className="mt-3 grid gap-2 text-sm">
         {rows.map(([label, value]) => (
-          <div key={label} className="grid gap-1 sm:grid-cols-[150px_1fr]">
+          <div key={label} className="grid min-w-0 gap-1 sm:grid-cols-[150px_minmax(0,1fr)]">
             <span className="font-semibold text-muted">{label}</span>
-            <span className="text-foreground">{value || '—'}</span>
+            <span className="min-w-0 break-words text-foreground">{value || '—'}</span>
           </div>
         ))}
       </div>
@@ -593,20 +593,20 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
   const hiddenItemCount = items.filter((item) => !item.visibleToClient).length;
 
   return (
-    <section className="rounded-lg border border-border bg-card p-6 shadow-card">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
+    <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
+      <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0">
           <p className="text-sm font-bold uppercase text-accent">Підібрані позиції</p>
           <h3 className="mt-2 text-xl font-bold text-foreground">Номенклатура та каталожні номери</h3>
           <p className="mt-2 text-sm leading-6 text-muted">
             Додавайте позиції як внутрішню чернетку. Коли список готовий, відправте позиції клієнту на погодження.
           </p>
         </div>
-        <div className="grid min-w-0 gap-3 sm:min-w-[280px]">
+        <div className="grid w-full min-w-0 gap-3 xl:w-auto xl:min-w-[280px] xl:max-w-[320px] xl:shrink-0">
           <span className="w-fit rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{items.length} позицій</span>
-          <form action={sendAdminRequestItemsForApproval}>
+          <form action={sendAdminRequestItemsForApproval} className="w-full">
             <input type="hidden" name="requestId" value={requestId} />
-            <button className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+            <button className="inline-flex min-h-11 w-full items-center justify-center gap-2 whitespace-normal rounded-md bg-accent px-4 py-3 text-center text-sm font-bold leading-5 text-foreground transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
               <ActionIcon name="send" />
               Відправити на погодження
             </button>
@@ -619,40 +619,40 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
         </div>
       </div>
 
-      <div className="mt-5 grid min-w-0 gap-3 rounded-md border border-border p-4">
+      <div className="mt-5 grid min-w-0 max-w-full gap-3 rounded-md border border-border p-3 sm:p-4">
         {items.map((item) => {
           const itemTotal = item.salePrice ? calculateInvoiceLineTotal(item.quantity, item.salePrice) : null;
 
           return (
-          <article key={item.id} className="min-w-0 rounded-md border border-border bg-card p-4">
-            <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.8fr)]">
+          <article key={item.id} className="min-w-0 rounded-md border border-border bg-card p-3 sm:p-4">
+            <div className="grid min-w-0 gap-4 min-[1800px]:grid-cols-[minmax(180px,1.4fr)_minmax(140px,1fr)_minmax(80px,0.5fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(140px,1fr)]">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
-                <p className="mt-2 font-bold text-foreground">{item.name}</p>
-                <p className="mt-1 text-xs text-muted">{item.brand ?? 'Виробник не вказано'}</p>
-                {item.comment ? <p className="mt-2 text-xs leading-5 text-muted">{item.comment}</p> : null}
+                <p className="mt-2 break-words font-bold text-foreground">{item.name}</p>
+                <p className="mt-1 break-words text-xs text-muted">{item.brand ?? 'Виробник не вказано'}</p>
+                {item.comment ? <p className="mt-2 break-words text-xs leading-5 text-muted">{item.comment}</p> : null}
               </div>
-              <div className="text-sm text-muted">
+              <div className="min-w-0 text-sm text-muted">
                 <p className="text-xs font-bold uppercase text-muted">Номери</p>
-                <p className="mt-2">Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
+                <p className="mt-2 break-words">Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-bold uppercase text-muted">К-сть</p>
                 <p className="mt-2 font-semibold text-foreground">{item.quantity} {item.unit}</p>
               </div>
-              <div className="text-sm text-muted">
+              <div className="min-w-0 text-sm text-muted">
                 <p className="text-xs font-bold uppercase text-muted">Наявність</p>
                 <p className="mt-2">{item.availability ?? '—'}</p>
               </div>
-              <div className="text-sm text-muted">
+              <div className="min-w-0 text-sm text-muted">
                 <p className="text-xs font-bold uppercase text-muted">Ціна без ПДВ</p>
                 <p className="mt-2 font-semibold text-foreground">{formatMoney(item.salePrice, item.currency)}</p>
               </div>
-              <div className="text-sm text-muted">
+              <div className="min-w-0 text-sm text-muted">
                 <p className="text-xs font-bold uppercase text-muted">Сума без ПДВ</p>
                 <p className="mt-2 font-semibold text-foreground">{formatMoney(itemTotal, item.currency)}</p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-bold uppercase text-muted">Клієнт</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {!item.visibleToClient ? (
@@ -677,17 +677,17 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
               </div>
             </div>
 
-            <div className="mt-4 border-t border-border pt-4">
+            <div className="mt-4 grid min-w-0 gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
               <details className="group">
-                <summary className="cursor-pointer text-sm font-bold text-foreground transition hover:text-accent">Редагувати позицію</summary>
-                <div className="mt-4 rounded-md border border-border bg-surface-muted p-4">
+                <summary className="cursor-pointer break-words text-sm font-bold text-foreground transition hover:text-accent">Редагувати позицію</summary>
+                <div className="mt-4 min-w-0 rounded-md border border-border bg-surface-muted p-3 sm:p-4">
                   <RequestItemForm action={updateAdminRequestItem} requestId={requestId} item={item} submitLabel="Зберегти позицію" />
                 </div>
               </details>
-              <form action={deleteAdminRequestItem} className="mt-3">
+              <form action={deleteAdminRequestItem} className="sm:justify-self-end">
                 <input type="hidden" name="requestId" value={requestId} />
                 <input type="hidden" name="itemId" value={item.id} />
-                <button className="text-sm font-bold text-danger transition hover:opacity-80">Видалити</button>
+                <button className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-danger/30 px-4 py-2 text-sm font-bold text-danger transition hover:bg-danger/10 sm:w-auto">Видалити</button>
               </form>
             </div>
           </article>
@@ -722,7 +722,7 @@ function InvoicesSection({
   const canCreateInvoice = approvedInvoiceItemCount > 0;
 
   return (
-    <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-sm font-bold uppercase text-accent">Рахунки</p>
@@ -731,11 +731,11 @@ function InvoicesSection({
             Рахунок формується тільки з позицій, які клієнт погодив і відмітив для включення у рахунок.
           </p>
         </div>
-        <form action={createAdminInvoice}>
+        <form action={createAdminInvoice} className="w-full lg:w-auto">
           <input type="hidden" name="requestId" value={requestId} />
           <button
             disabled={!canCreateInvoice}
-            className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-muted"
+            className="inline-flex w-full items-center justify-center gap-2 whitespace-normal rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-muted lg:w-auto"
           >
             <ActionIcon name="plus" />
             Створити рахунок
@@ -766,14 +766,14 @@ function InvoicesSection({
             const invoiceTotals = calculateInvoiceTotals(invoice.items);
 
             return (
-              <article key={invoice.id} className="rounded-md border border-border p-4">
+              <article key={invoice.id} className="min-w-0 rounded-md border border-border p-4">
                 <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="text-lg font-bold text-foreground">{invoice.invoiceNumber}</h4>
+                      <h4 className="break-words text-lg font-bold text-foreground">{invoice.invoiceNumber}</h4>
                       <InvoiceStatusBadge status={invoice.status} />
                     </div>
-                    <p className="mt-2 text-sm text-muted">
+                    <p className="mt-2 break-words text-sm text-muted">
                       Створено {invoice.createdAt.toLocaleString('uk-UA')} · {invoice.createdBy?.name ?? invoice.createdBy?.email ?? 'CRM'}
                     </p>
                     <p className="mt-1 text-xs text-muted">{invoice.items.length} позицій</p>
@@ -786,12 +786,12 @@ function InvoicesSection({
                       </p>
                     ) : null}
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid w-full min-w-0 gap-2 sm:flex sm:flex-wrap xl:w-auto">
                     <Link
                       href={`/admin/invoices/${invoice.id}/print`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted"
+                      className="inline-flex w-full items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted sm:w-auto"
                     >
                       Переглянути рахунок
                     </Link>
@@ -799,7 +799,7 @@ function InvoicesSection({
                       href={`/admin/invoices/${invoice.id}/print`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center justify-center rounded-md border border-accent/60 px-4 py-2 text-sm font-bold text-[#8A5B24] transition hover:bg-[#FFF7E0]"
+                      className="inline-flex w-full items-center justify-center rounded-md border border-accent/60 px-4 py-2 text-sm font-bold text-[#8A5B24] transition hover:bg-[#FFF7E0] sm:w-auto"
                     >
                       Друк / PDF
                     </Link>
@@ -807,7 +807,7 @@ function InvoicesSection({
                       <form action={sendAdminInvoice}>
                         <input type="hidden" name="requestId" value={requestId} />
                         <input type="hidden" name="invoiceId" value={invoice.id} />
-                        <button className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+                        <button className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent-hover sm:w-auto">
                           <ActionIcon name="send" />
                           Надіслати клієнту
                         </button>
@@ -817,7 +817,7 @@ function InvoicesSection({
                       <form action={markAdminInvoicePaid}>
                         <input type="hidden" name="requestId" value={requestId} />
                         <input type="hidden" name="invoiceId" value={invoice.id} />
-                        <button className="rounded-md border border-success/40 px-4 py-2 text-sm font-bold text-success transition hover:bg-success/10">
+                        <button className="w-full rounded-md border border-success/40 px-4 py-2 text-sm font-bold text-success transition hover:bg-success/10 sm:w-auto">
                           Позначити як оплачено
                         </button>
                       </form>
@@ -826,7 +826,7 @@ function InvoicesSection({
                       <form action={cancelAdminInvoice}>
                         <input type="hidden" name="requestId" value={requestId} />
                         <input type="hidden" name="invoiceId" value={invoice.id} />
-                        <button className="rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">
+                        <button className="w-full rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted sm:w-auto">
                           Скасувати
                         </button>
                       </form>
@@ -841,7 +841,7 @@ function InvoicesSection({
 
                 <details className="mt-4 rounded-md border border-border bg-surface-muted p-4" open>
                   <summary className="cursor-pointer text-sm font-bold text-foreground">Переглянути позиції рахунку</summary>
-                  <div className="mt-4 max-w-full overflow-x-auto rounded-md border border-border bg-card">
+                  <div className="mt-4 max-w-full overflow-x-auto overscroll-x-contain rounded-md border border-border bg-card">
                     <table className="w-full min-w-[940px] border-collapse text-left text-sm">
                       <thead>
                         <tr className="border-b border-border bg-surface-muted text-muted">
@@ -923,10 +923,10 @@ function RequestItemForm({
   submitLabel: string;
 }) {
   return (
-    <form action={action} className="grid gap-4">
+    <form action={action} className="grid min-w-0 gap-4">
       <input type="hidden" name="requestId" value={requestId} />
       {item ? <input type="hidden" name="itemId" value={item.id} /> : null}
-      <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="grid min-w-0 gap-3 md:grid-cols-2 min-[1800px]:grid-cols-3">
         <TextField name="name" label="Назва запчастини" required defaultValue={item?.name} />
         <PartManufacturerField defaultValue={item?.brand} listId={`part-manufacturer-${item?.id ?? 'new'}`} />
         <TextField name="catalogNumber" label="Каталожний номер" defaultValue={item?.catalogNumber} />
@@ -936,16 +936,16 @@ function RequestItemForm({
         <TextField name="salePrice" label="Ціна без ПДВ" type="number" min="0" step="0.01" defaultValue={item?.salePrice?.toString()} />
         <TextField name="currency" label="Валюта" defaultValue={item?.currency ?? 'UAH'} />
       </div>
-      <label className="grid gap-2 text-sm font-semibold text-foreground">
+      <label className="grid min-w-0 gap-2 text-sm font-semibold text-foreground">
         Коментар
         <textarea
           name="comment"
           rows={3}
           defaultValue={item?.comment ?? ''}
-          className="rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+          className="min-w-0 w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
         />
       </label>
-      <button className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+      <button className="inline-flex w-full items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover sm:w-fit">
         {submitLabel}
       </button>
     </form>
@@ -954,13 +954,13 @@ function RequestItemForm({
 
 function PartManufacturerField({ defaultValue, listId }: { defaultValue?: string | null; listId: string }) {
   return (
-    <label className="grid gap-2 text-sm font-semibold text-foreground">
+    <label className="grid min-w-0 gap-2 text-sm font-semibold text-foreground">
       Виробник
       <input
         name="brand"
         list={listId}
         defaultValue={defaultValue ?? ''}
-        className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+        className="h-11 w-full min-w-0 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
       />
       <datalist id={listId}>
         {PART_MANUFACTURERS.map((manufacturer) => (
@@ -989,7 +989,7 @@ function TextField({
   step?: string;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-semibold text-foreground">
+    <label className="grid min-w-0 gap-2 text-sm font-semibold text-foreground">
       {label}
       <input
         name={name}
@@ -998,7 +998,7 @@ function TextField({
         min={min}
         step={step}
         defaultValue={defaultValue ?? ''}
-        className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+        className="h-11 w-full min-w-0 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
       />
     </label>
   );
@@ -1018,19 +1018,19 @@ type RequestDocumentView = {
 
 function RequestDocumentsSection({ requestId, documents }: { requestId: string; documents: RequestDocumentView[] }) {
   return (
-    <section className="rounded-lg border border-border bg-card p-6 shadow-card">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-bold uppercase text-accent">Документи та вкладення заявки</p>
           <h3 className="mt-2 text-xl font-bold text-foreground">Додаткові файли, які менеджер додає до заявки</h3>
           <p className="mt-2 text-sm leading-6 text-muted">
             Завантажуйте додаткові файли до заявки: специфікації, договори, акти, PDF, Word, Excel, зображення або інші вкладення. Клієнт побачить тільки файли з позначкою видимості.
           </p>
         </div>
-        <span className="rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{documents.length} документів</span>
+        <span className="w-fit rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{documents.length} документів</span>
       </div>
 
-      <div className="mt-5 max-w-full overflow-x-auto rounded-md border border-border">
+      <div className="mt-5 max-w-full overflow-x-auto overscroll-x-contain rounded-md border border-border">
         <table className="w-full min-w-[1040px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-border bg-surface-muted text-muted">
@@ -1066,7 +1066,7 @@ function RequestDocumentsSection({ requestId, documents }: { requestId: string; 
                 <td className="px-4 py-3">
                   <details>
                     <summary className="cursor-pointer text-sm font-bold text-foreground transition hover:text-accent">Редагувати</summary>
-                    <div className="mt-4 w-[560px] max-w-[80vw] rounded-md border border-border bg-card p-4 shadow-card">
+                    <div className="mt-4 w-full min-w-0 max-w-lg rounded-md border border-border bg-card p-4 shadow-card">
                       <RequestDocumentMetadataForm
                         action={updateAdminRequestDocument}
                         requestId={requestId}
@@ -1094,27 +1094,27 @@ function RequestDocumentsSection({ requestId, documents }: { requestId: string; 
 
       <details className="mt-5 rounded-md border border-border bg-surface-muted p-4" open={documents.length === 0}>
         <summary className="cursor-pointer text-sm font-bold text-foreground">Додати документ</summary>
-        <form action={createAdminRequestDocument} className="mt-4 grid gap-4" encType="multipart/form-data">
+        <form action={createAdminRequestDocument} className="mt-4 grid min-w-0 gap-4" encType="multipart/form-data">
           <input type="hidden" name="requestId" value={requestId} />
-          <div className="grid gap-3 lg:grid-cols-2">
+          <div className="grid min-w-0 gap-3 md:grid-cols-2">
             <RequestDocumentTypeSelect />
             <TextField name="title" label="Назва документа" required />
           </div>
-          <label className="grid gap-2 text-sm font-semibold text-foreground">
+          <label className="grid min-w-0 gap-2 text-sm font-semibold text-foreground">
             Файл
             <input
               name="file"
               type="file"
               required
               accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,image/jpeg,image/png"
-              className="rounded-md border border-border bg-card px-3 py-2 text-sm outline-none file:mr-4 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-2 file:text-sm file:font-bold file:text-foreground focus:border-accent focus:ring-2 focus:ring-accent/25"
+              className="min-w-0 w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none file:mr-4 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-2 file:text-sm file:font-bold file:text-foreground focus:border-accent focus:ring-2 focus:ring-accent/25"
             />
           </label>
           <label className="flex items-center gap-3 text-sm font-semibold text-foreground">
             <input type="checkbox" name="visibleToClient" className="size-4 accent-[var(--accent)]" />
             Видимо клієнту
           </label>
-          <button className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+          <button className="inline-flex w-full items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover sm:w-fit">
             Завантажити
           </button>
         </form>
@@ -1135,7 +1135,7 @@ function RequestDocumentMetadataForm({
   submitLabel: string;
 }) {
   return (
-    <form action={action} className="grid gap-4">
+    <form action={action} className="grid min-w-0 gap-4">
       <input type="hidden" name="requestId" value={requestId} />
       <input type="hidden" name="documentId" value={document.id} />
       <RequestDocumentTypeSelect defaultValue={document.type} />
@@ -1144,7 +1144,7 @@ function RequestDocumentMetadataForm({
         <input type="checkbox" name="visibleToClient" defaultChecked={document.visibleToClient} className="size-4 accent-[var(--accent)]" />
         Видимо клієнту
       </label>
-      <button className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
+      <button className="inline-flex w-full items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover sm:w-fit">
         {submitLabel}
       </button>
     </form>
@@ -1153,13 +1153,13 @@ function RequestDocumentMetadataForm({
 
 function RequestDocumentTypeSelect({ defaultValue }: { defaultValue?: keyof typeof REQUEST_DOCUMENT_TYPE_LABELS }) {
   return (
-    <label className="grid gap-2 text-sm font-semibold text-foreground">
+    <label className="grid min-w-0 gap-2 text-sm font-semibold text-foreground">
       Тип документа
       <select
         name="type"
         required
         defaultValue={defaultValue ?? 'COMMERCIAL_OFFER'}
-        className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+        className="h-11 w-full min-w-0 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
       >
         {REQUEST_DOCUMENT_TYPES.map((type) => (
           <option key={type} value={type}>{REQUEST_DOCUMENT_TYPE_LABELS[type]}</option>
@@ -1171,9 +1171,9 @@ function RequestDocumentTypeSelect({ defaultValue }: { defaultValue?: keyof type
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-border p-4">
+    <div className="min-w-0 rounded-md border border-border p-4">
       <p className="text-xs font-bold uppercase text-muted">{label}</p>
-      <p className="mt-2 text-sm font-semibold text-foreground">{value}</p>
+      <p className="mt-2 break-words text-sm font-semibold text-foreground [overflow-wrap:anywhere]">{value}</p>
     </div>
   );
 }
@@ -1188,20 +1188,20 @@ function FileList({
   items: Array<{ id: string; fileName: string; mimeType: string; size: number; url: string | null }>;
 }) {
   return (
-    <div className="rounded-md border border-border p-4">
+    <div className="min-w-0 rounded-md border border-border p-4">
       <h3 className="font-bold text-foreground">{title}</h3>
       {description ? <p className="mt-2 text-sm leading-6 text-muted">{description}</p> : null}
       <div className="mt-3 grid gap-2">
         {items.length === 0 ? <p className="text-sm text-muted">Немає файлів.</p> : items.map((item) => (
-          <div key={item.id} className="rounded-md bg-surface-muted p-3 text-sm text-muted">
+          <div key={item.id} className="min-w-0 rounded-md bg-surface-muted p-3 text-sm text-muted">
             {item.url ? (
-              <a href={item.url} target="_blank" rel="noreferrer" className="font-bold text-foreground transition hover:text-accent">
+              <a href={item.url} target="_blank" rel="noreferrer" className="break-words font-bold text-foreground [overflow-wrap:anywhere] transition hover:text-accent">
                 {item.fileName}
               </a>
             ) : (
-              <p className="font-bold text-foreground">{item.fileName}</p>
+              <p className="break-words font-bold text-foreground [overflow-wrap:anywhere]">{item.fileName}</p>
             )}
-            <p className="mt-1">{item.mimeType} · {formatSize(item.size)} · {item.url ? 'Посилання доступне' : 'Приватне сховище'}</p>
+            <p className="mt-1 break-words">{item.mimeType} · {formatSize(item.size)} · {item.url ? 'Посилання доступне' : 'Приватне сховище'}</p>
           </div>
         ))}
       </div>
