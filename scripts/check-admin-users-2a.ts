@@ -90,11 +90,11 @@ assert.doesNotThrow(() => assertUserStatusTransition('DISABLED', 'ACTIVE'));
 assert.throws(() => assertUserStatusTransition('INVITED', 'DISABLED'), InvalidUserStatusTransitionError);
 
 assert.throws(
-  () => assertActiveAdminWillRemain({ targetRole: 'ADMIN', targetStatus: 'ACTIVE', activeAdminCount: 1 }),
+  () => assertActiveAdminWillRemain({ targetRole: 'ADMIN', targetStatus: 'DISABLED', activeAdminCount: 1 }),
   LastActiveAdminError
 );
 assert.doesNotThrow(() =>
-  assertActiveAdminWillRemain({ targetRole: 'ADMIN', targetStatus: 'ACTIVE', activeAdminCount: 2 })
+  assertActiveAdminWillRemain({ targetRole: 'ADMIN', targetStatus: 'DISABLED', activeAdminCount: 2 })
 );
 assert.doesNotThrow(() =>
   assertActiveAdminWillRemain({ targetRole: 'MANAGER', targetStatus: 'ACTIVE', activeAdminCount: 1 })
