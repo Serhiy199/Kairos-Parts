@@ -115,22 +115,6 @@ export default function HowItWorksPage() {
             <p className="mt-3 max-w-2xl text-base leading-7 text-white/75 sm:text-lg">
               Створіть заявку, погодьте підібране рішення та отримайте запчастини з повною історією по вашій техніці.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/request"
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3.5 text-center text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              >
-                <ActionIcon name="plus" />
-                Створити заявку
-              </Link>
-              <Link
-                href={telegramBotUrl}
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-accent/50 bg-primary/45 px-6 py-3.5 text-center text-sm font-semibold text-accent transition hover:border-accent/80 hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              >
-                <ActionIcon name="telegram" />
-                Надіслати заявку в Telegram
-              </Link>
-            </div>
           </div>
 
           <div

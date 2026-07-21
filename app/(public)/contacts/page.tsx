@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import Link from 'next/link';
 import { TbBrandTelegram, TbClock, TbMail, TbPhone } from 'react-icons/tb';
 
-import { ActionIcon } from '@/components/ui/action-icons';
 
 import { ContactForm } from './contact-form';
 
@@ -81,24 +79,6 @@ export default function ContactsPage() {
               Ми працюємо із запитами на підбір запчастин, документами, списками позицій, фото деталей та
               зверненнями щодо співпраці.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Link
-                href="/request"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3.5 text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
-              >
-                <ActionIcon name="plus" className="h-4 w-4" />
-                Створити заявку
-              </Link>
-              <a
-                href={telegramBotUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-accent/50 bg-primary/45 px-6 py-3.5 text-sm font-bold text-accent transition hover:border-accent/80 hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
-              >
-                <ActionIcon name="telegram" className="h-4 w-4" />
-                Написати в Telegram
-              </a>
-            </div>
           </div>
         </div>
       </section>

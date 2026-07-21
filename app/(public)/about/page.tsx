@@ -161,13 +161,6 @@ export default function AboutPage() {
               Kairos Parts об’єднує професійний підбір, роботу з перевіреними постачальниками та цифрову
               історію техніки в одному B2B-процесі.
             </p>
-            <Link
-              href="/request"
-              className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3.5 text-center text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
-            >
-              <ActionIcon name="plus" />
-              Створити заявку
-            </Link>
           </div>
         </div>
       </section>

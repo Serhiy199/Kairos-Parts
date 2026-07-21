@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import {
   TbArrowDown,
   TbArrowRight,
@@ -17,6 +18,7 @@ import {
 import { ActionIcon } from '@/components/ui/action-icons';
 
 const telegramBotUrl = 'https://t.me/kairos_parts_bot';
+const ADVANTAGES_PAGE_ENABLED = false;
 
 export const metadata: Metadata = {
   title: 'Переваги Kairos Parts — підбір і постачання запчастин для бізнесу',
@@ -100,6 +102,10 @@ const afterItems = [
 ];
 
 export default function AdvantagesPage() {
+  if (!ADVANTAGES_PAGE_ENABLED) {
+    notFound();
+  }
+
   return (
     <>
       <section className="relative isolate overflow-hidden bg-primary text-white">

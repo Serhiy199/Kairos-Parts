@@ -22,25 +22,6 @@ import { ActionIcon } from '@/components/ui/action-icons';
 
 const telegramBotUrl = 'https://t.me/kairos_parts_bot';
 
-const heroFleetHighlights = [
-  {
-    title: 'Повторне замовлення за секунди',
-    icon: 'clock'
-  },
-  {
-    title: 'Уся історія в одному місці',
-    icon: 'database'
-  },
-  {
-    title: 'Контроль витрат та аналітика',
-    icon: 'chart'
-  },
-  {
-    title: 'Надійні постачальники і гарантія',
-    icon: 'shield'
-  }
-];
-
 const processSteps = [
   {
     title: 'Створіть заявку',
@@ -316,6 +297,21 @@ function TrustIcon({ icon }: { icon: string }) {
   return <GoGear aria-hidden="true" className="size-10 sm:size-12" />;
 }
 
+function HomepageSectionBackdrop() {
+  return (
+    <>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-[0.82] [background-image:radial-gradient(ellipse_at_16%_10%,rgba(200,150,66,0.24),transparent_48%),radial-gradient(ellipse_at_88%_92%,rgba(27,33,44,0.82),transparent_58%),linear-gradient(112deg,rgba(16,20,28,0.66),transparent_44%,rgba(7,9,13,0.58)),linear-gradient(180deg,rgba(11,14,20,0.24),transparent_24%,transparent_76%,rgba(11,14,20,0.28))] sm:opacity-[0.92] lg:opacity-100"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(rgba(152,157,166,0.45)_1px,transparent_1px),linear-gradient(90deg,rgba(152,157,166,0.45)_1px,transparent_1px)] [background-size:28px_28px]"
+      />
+    </>
+  );
+}
+
 function BenefitIcon({ icon }: { icon: string }) {
   if (icon === 'package') {
     return <LuBoxes aria-hidden="true" className="size-12 sm:size-16" />;
@@ -396,12 +392,12 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,5,5,0.9)_0%,rgba(5,5,5,0.7)_42%,rgba(5,5,5,0.2)_100%)]" />
         <div className="kp-container relative flex min-h-[calc(100vh-64px)] flex-col justify-center pb-12 pt-16 lg:min-h-[720px] lg:pb-14 lg:pt-20">
           <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm">Kairos Parts — сервіс для B2B-клієнтів аграрної та транспортної галузі.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm">Kairos Parts — сервіс для B2B-клієнтів аграрної та транспортної галузі</p>
             <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.04] sm:text-5xl lg:text-6xl xl:text-7xl">
               Підберемо запчастини для вашої техніки <span className="text-accent">за одним запитом</span>
             </h1>
             <p className="mt-5 max-w-2xl text-lg font-semibold leading-8 text-white/85">
-              Для аграрної, вантажної та спеціальної техніки.
+              Для аграрної, вантажної та спеціальної техніки
             </p>
             <p className="mt-3 max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
               Надішліть заявку, список або фото — команда Kairos Parts підбере сумісні запчастини та запропонує рішення.
@@ -418,46 +414,11 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="mt-10 overflow-hidden rounded-xl border border-white/15 bg-primary/70 shadow-panel backdrop-blur-md">
-            <div className="grid grid-cols-2 lg:grid-cols-[minmax(340px,2.2fr)_repeat(4,minmax(130px,1fr))]">
-              <div className="col-span-2 flex gap-4 border-b border-white/10 p-4 text-white sm:p-5 lg:col-span-1 lg:border-b-0">
-                <div className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-technical-white sm:size-14">
-                  <TrustIcon icon="database" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold leading-snug sm:text-xl">
-                    Кожне замовлення автоматично поповнює цифрову історію вашої техніки.
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-white/65">
-                    Більше не потрібно шукати, які запчастини вже купували, для якої машини та коли.
-                  </p>
-                </div>
-              </div>
-              {heroFleetHighlights.map((item, index) => (
-                <div
-                  key={item.title}
-                  className={`p-4 text-center sm:p-5 lg:border-l lg:border-white/10 ${index < 2 ? 'border-b border-white/10 lg:border-b-0' : ''} ${index % 2 === 1 ? 'border-l border-white/10' : ''}`}
-                >
-                  <div className="mx-auto flex size-12 items-center justify-center text-accent">
-                    <TrustIcon icon={item.icon} />
-                  </div>
-                  <h3 className="mt-2 text-sm font-bold leading-5 text-white sm:leading-6">{item.title}</h3>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </section>
 
       <section id="how-it-works" className="relative overflow-hidden bg-public-page py-16">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.82] [background-image:radial-gradient(ellipse_at_16%_10%,rgba(200,150,66,0.24),transparent_48%),radial-gradient(ellipse_at_88%_92%,rgba(27,33,44,0.82),transparent_58%),linear-gradient(112deg,rgba(16,20,28,0.66),transparent_44%,rgba(7,9,13,0.58)),linear-gradient(180deg,rgba(11,14,20,0.24),transparent_24%,transparent_76%,rgba(11,14,20,0.28))] sm:opacity-[0.92] lg:opacity-100"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(rgba(152,157,166,0.45)_1px,transparent_1px),linear-gradient(90deg,rgba(152,157,166,0.45)_1px,transparent_1px)] [background-size:28px_28px]"
-        />
+        <HomepageSectionBackdrop />
         <div className="kp-container relative z-10">
           <div className="max-w-3xl">
             <p className="text-sm font-bold uppercase text-accent">Як це працює</p>
@@ -539,14 +500,7 @@ export default function HomePage() {
       </section>
 
       <section className="relative overflow-hidden bg-public-page py-16">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.82] [background-image:radial-gradient(ellipse_at_86%_14%,rgba(200,150,66,0.22),transparent_48%),radial-gradient(ellipse_at_8%_78%,rgba(24,27,32,0.76),transparent_54%),linear-gradient(96deg,rgba(7,9,13,0.68),rgba(16,18,22,0.38)_50%,rgba(48,34,18,0.48)),linear-gradient(180deg,rgba(11,14,20,0.22),transparent_22%,transparent_78%,rgba(11,14,20,0.3))] sm:opacity-[0.92] lg:opacity-100"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(rgba(152,157,166,0.45)_1px,transparent_1px),linear-gradient(90deg,rgba(152,157,166,0.45)_1px,transparent_1px)] [background-size:28px_28px]"
-        />
+        <HomepageSectionBackdrop />
         <div className="kp-container relative z-10">
           <div className="max-w-3xl">
             <p className="text-sm font-bold uppercase text-accent">Сервіс</p>
@@ -613,10 +567,7 @@ export default function HomePage() {
       </section>
 
       <section id="telegram" className="relative overflow-hidden border-y border-white/5 bg-public-page py-14 text-white sm:py-16">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.82] [background-image:radial-gradient(ellipse_at_24%_104%,rgba(200,150,66,0.26),transparent_54%),radial-gradient(ellipse_at_92%_6%,rgba(146,96,38,0.2),transparent_44%),linear-gradient(180deg,rgba(18,22,30,0.5),rgba(7,9,13,0.64)),linear-gradient(180deg,rgba(11,14,20,0.18),transparent_22%,transparent_76%,rgba(11,14,20,0.24))] sm:opacity-[0.92] lg:opacity-100"
-        />
+        <HomepageSectionBackdrop />
         <div className="kp-container relative z-10">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] lg:items-end lg:gap-12">
             <div className="max-w-2xl">
