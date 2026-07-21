@@ -341,7 +341,7 @@ export function RequestForm({
               options={equipmentTypeOptions}
               onChange={handleEquipmentTypeChange}
               required
-              placeholder="Оберіть тип техніки"
+              placeholder="Наприклад: Комбайн, Трактор, Сівалка"
               emptyMessage="Нічого не знайдено"
               error={fieldErrors.equipmentType}
             />
