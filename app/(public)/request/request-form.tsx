@@ -352,7 +352,7 @@ export function RequestForm({
               options={manufacturerComboboxOptions}
               onChange={handleManufacturerChange}
               required
-              placeholder="Наприклад: John Deere, MAN, Claas"
+              placeholder="Наприклад: Claas, Lemken, AgroMax"
               emptyMessage="Нічого не знайдено"
               error={fieldErrors.manufacturer}
             />
@@ -362,7 +362,7 @@ export function RequestForm({
             <ManualEquipmentField
               name="equipmentType"
               label="Тип техніки"
-              placeholder="Введіть тип техніки"
+              placeholder="Наприклад: Комбайн, Трактор, Сівалка"
               value={equipmentType}
               onChange={handleEquipmentTypeChange}
               error={fieldErrors.equipmentType}
@@ -370,7 +370,7 @@ export function RequestForm({
             <ManualEquipmentField
               name="manufacturer"
               label="Виробник / марка"
-              placeholder="Введіть виробника або марку"
+              placeholder="Наприклад: Claas, Lemken, AgroMax"
               value={manufacturer}
               onChange={handleManufacturerChange}
               error={fieldErrors.manufacturer}
