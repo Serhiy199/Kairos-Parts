@@ -1,3 +1,32 @@
+const UKRAINIAN_PHONE_PATTERN = /^\+380\d{9}$/;
+const ALLOWED_PHONE_INPUT_PATTERN = /^\+?[\d\s()-]+$/;
+
+export function normalizeUkrainianPhone(phone: string | null | undefined) {
+  const value = phone?.trim() ?? '';
+
+  if (!value || !ALLOWED_PHONE_INPUT_PATTERN.test(value)) {
+    return null;
+  }
+
+  const plusCount = (value.match(/\+/g) ?? []).length;
+  if (plusCount > 1 || (plusCount === 1 && !value.startsWith('+'))) {
+    return null;
+  }
+
+  const compact = value.replace(/[\s()-]/g, '');
+  let canonical: string;
+
+  if (/^0\d{9}$/.test(compact)) {
+    canonical = `+38${compact}`;
+  } else if (/^380\d{9}$/.test(compact)) {
+    canonical = `+${compact}`;
+  } else {
+    canonical = compact;
+  }
+
+  return UKRAINIAN_PHONE_PATTERN.test(canonical) ? canonical : null;
+}
+
 export function normalizePhoneDigits(phone: string | null | undefined) {
   const digits = (phone ?? '').replace(/\D/g, '');
 

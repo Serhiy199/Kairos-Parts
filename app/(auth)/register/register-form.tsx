@@ -69,7 +69,7 @@ export function RegisterForm({ nextPath }: { nextPath?: string }) {
 
         <label className="grid gap-2 text-sm font-semibold text-foreground">
           Телефон *
-          <input name="phone" required className={inputClass} />
+          <input name="phone" type="tel" autoComplete="tel" placeholder="+380XXXXXXXXX" required className={inputClass} />
         </label>
         <label className="grid gap-2 text-sm font-semibold text-foreground">
           Email *

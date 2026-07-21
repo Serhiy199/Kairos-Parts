@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { signIn, signOut } from '@/auth';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { hashPassword } from '@/lib/auth/password';
+import { getPhoneDisplayVariants, normalizeUkrainianPhone } from '@/lib/phone/normalize';
 import { prisma } from '@/lib/prisma';
 
 function readString(formData: FormData, key: string) {
@@ -66,7 +67,8 @@ export async function registerClient(formData: FormData) {
   const lastName = readString(formData, 'lastName');
   const contactName = accountType === 'BUSINESS' ? readString(formData, 'contactName') : [firstName, lastName].filter(Boolean).join(' ');
   const email = readString(formData, 'email').toLowerCase();
-  const phone = readString(formData, 'phone');
+  const rawPhone = readString(formData, 'phone');
+  const phone = normalizeUkrainianPhone(rawPhone);
   const password = readString(formData, 'password');
   const confirmPassword = readString(formData, 'confirmPassword');
 
@@ -79,7 +81,7 @@ export async function registerClient(formData: FormData) {
     !contactName ||
     !email ||
     !isValidEmail(email) ||
-    !phone ||
+    !rawPhone ||
     !password ||
     password !== confirmPassword ||
     password.length < 8
@@ -87,9 +89,13 @@ export async function registerClient(formData: FormData) {
     redirect(appendNextParam('/register?error=validation', nextPath));
   }
 
+  if (!phone) {
+    redirect(appendNextParam('/register?error=phone', nextPath));
+  }
+
   const existingUser = await prisma.user.findFirst({
     where: {
-      OR: [{ email }, { phone }]
+      OR: [{ email }, { phone: { in: getPhoneDisplayVariants(phone) } }]
     }
   });
 

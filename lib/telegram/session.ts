@@ -1,5 +1,5 @@
 import { saveRequestFileBufferLocal } from '@/lib/files/local-storage';
-import { getPhoneLookupTail, normalizePhoneDigits, phoneNumbersMatch } from '@/lib/phone/normalize';
+import { getPhoneLookupTail, normalizeUkrainianPhone, phoneNumbersMatch } from '@/lib/phone/normalize';
 import { prisma } from '@/lib/prisma';
 import { generatePublicStatusToken } from '@/lib/requests/identifiers';
 import { getActiveEquipmentTypeNames, getActiveManufacturerNamesForType, validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
@@ -288,7 +288,19 @@ async function handleContact(message: TelegramMessage) {
     return;
   }
 
-  const clientProfile = await findClientProfileByPhone(contact.phone_number);
+  const phone = normalizeUkrainianPhone(contact.phone_number);
+
+  if (!phone) {
+    await prisma.telegramDraftRequest.deleteMany({ where: { telegramUserId } });
+    await sendTelegramMessage(
+      message.chat.id,
+      'Введіть коректний номер телефону у форматі +380XXXXXXXXX.',
+      { replyMarkup: contactKeyboard }
+    );
+    return;
+  }
+
+  const clientProfile = await findClientProfileByPhone(phone);
 
   if (!clientProfile) {
     await prisma.telegramDraftRequest.deleteMany({ where: { telegramUserId } });
@@ -304,7 +316,7 @@ async function handleContact(message: TelegramMessage) {
     clientProfileId: clientProfile.id,
     telegramUserId,
     chatId,
-    phone: contact.phone_number
+    phone
   });
 
   await prisma.telegramDraftRequest.upsert({
@@ -313,7 +325,7 @@ async function handleContact(message: TelegramMessage) {
       telegramUserId,
       chatId,
       step: 'CONFIRM_PROFILE',
-      phone: normalizePhoneDigits(contact.phone_number),
+      phone,
       contactName: clientProfile.contactName ?? getContactNameFromMessage(message) ?? clientProfile.user.name,
       companyName: clientProfile.companyName ?? clientProfile.user.companyMemberships[0]?.company.name ?? null,
       fileMetadata: buildDraftMetadata({
@@ -324,7 +336,7 @@ async function handleContact(message: TelegramMessage) {
     update: {
       chatId,
       step: 'CONFIRM_PROFILE',
-      phone: normalizePhoneDigits(contact.phone_number),
+      phone,
       contactName: clientProfile.contactName ?? getContactNameFromMessage(message) ?? clientProfile.user.name,
       companyName: clientProfile.companyName ?? clientProfile.user.companyMemberships[0]?.company.name ?? null,
       equipmentType: null,
@@ -342,7 +354,7 @@ async function handleContact(message: TelegramMessage) {
     buildProfileFoundMessage({
       contactName: clientProfile.contactName ?? getContactNameFromMessage(message) ?? clientProfile.user.name,
       companyName: clientProfile.companyName ?? clientProfile.user.companyMemberships[0]?.company.name ?? null,
-      phone: normalizePhoneDigits(contact.phone_number),
+      phone,
       email: clientProfile.email ?? clientProfile.user.email
     }),
     { replyMarkup: continueRequestKeyboard }
@@ -571,9 +583,10 @@ async function handleTextMessage(message: TelegramMessage, draft: TelegramDraft)
 }
 
 async function findClientProfileByPhone(phone: string) {
-  const phoneTail = getPhoneLookupTail(phone);
+  const normalizedPhone = normalizeUkrainianPhone(phone);
+  const phoneTail = getPhoneLookupTail(normalizedPhone);
 
-  if (!phoneTail) {
+  if (!normalizedPhone || !phoneTail) {
     return null;
   }
 
@@ -606,7 +619,7 @@ async function findClientProfileByPhone(phone: string) {
 
   const profile = candidates.find((candidate) => (
     candidate.user.role === 'CLIENT' &&
-    (phoneNumbersMatch(candidate.phone, phone) || phoneNumbersMatch(candidate.user.phone, phone))
+    (phoneNumbersMatch(candidate.phone, normalizedPhone) || phoneNumbersMatch(candidate.user.phone, normalizedPhone))
   ));
 
   if (profile) {
@@ -621,7 +634,7 @@ async function findClientProfileByPhone(phone: string) {
     include: { clientProfile: true },
     take: 20
   });
-  const user = users.find((candidate) => phoneNumbersMatch(candidate.phone, phone));
+  const user = users.find((candidate) => phoneNumbersMatch(candidate.phone, normalizedPhone));
 
   if (!user) {
     return null;
@@ -630,7 +643,7 @@ async function findClientProfileByPhone(phone: string) {
   const createdProfile = user.clientProfile ?? await prisma.clientProfile.create({
     data: {
       userId: user.id,
-      phone: user.phone,
+      phone: normalizedPhone,
       contactName: user.name,
       email: user.email
     }
@@ -653,12 +666,17 @@ async function findClientProfileByPhone(phone: string) {
 }
 
 async function linkTelegramClient(input: { clientProfileId: string; telegramUserId: string; chatId: string; phone: string }) {
+  const phone = normalizeUkrainianPhone(input.phone);
+  if (!phone) {
+    throw new Error('Invalid Ukrainian phone passed to Telegram client linking.');
+  }
+
   await prisma.clientProfile.update({
     where: { id: input.clientProfileId },
     data: {
       telegramUserId: input.telegramUserId,
       telegramChatId: input.chatId,
-      phone: normalizePhoneDigits(input.phone)
+      phone
     }
   });
 }

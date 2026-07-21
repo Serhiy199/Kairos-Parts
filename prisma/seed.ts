@@ -2,6 +2,7 @@ import { RequestSource, RequestStatus, UserRole } from '@prisma/client';
 
 import { catalogCategories } from '@/lib/catalog/catalog-data';
 import { hashPassword } from '@/lib/auth/password';
+import { normalizeUkrainianPhone } from '@/lib/phone/normalize';
 import { prisma } from '@/lib/prisma';
 
 const TEST_PASSWORD = 'Test123456!';
@@ -150,12 +151,16 @@ async function main() {
   }
 
   const passwordHash = await hashPassword(TEST_PASSWORD);
+  const clientPhone = normalizeUkrainianPhone(testAccounts.client.phone);
+  if (!clientPhone) {
+    throw new Error('Dev seed CLIENT phone must be a valid Ukrainian phone.');
+  }
 
   const clientUser = await prisma.user.upsert({
     where: { email: testAccounts.client.email },
     update: {
       name: testAccounts.client.name,
-      phone: testAccounts.client.phone,
+      phone: clientPhone,
       passwordHash,
       role: UserRole.CLIENT,
       status: 'ACTIVE',
@@ -164,7 +169,7 @@ async function main() {
     create: {
       email: testAccounts.client.email,
       name: testAccounts.client.name,
-      phone: testAccounts.client.phone,
+      phone: clientPhone,
       passwordHash,
       role: UserRole.CLIENT,
       status: 'ACTIVE',
@@ -178,7 +183,7 @@ async function main() {
       clientType: 'BUSINESS',
       contactName: 'Тестовий клієнт',
       companyName: 'ФГ Тест Агро',
-      phone: testAccounts.client.phone,
+      phone: clientPhone,
       email: testAccounts.client.email
     },
     create: {
@@ -186,7 +191,7 @@ async function main() {
       clientType: 'BUSINESS',
       contactName: 'Тестовий клієнт',
       companyName: 'ФГ Тест Агро',
-      phone: testAccounts.client.phone,
+      phone: clientPhone,
       email: testAccounts.client.email
     }
   });

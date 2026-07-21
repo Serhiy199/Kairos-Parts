@@ -1,6 +1,7 @@
 import { RegisterForm } from './register-form';
 
 const errorMessages: Record<string, string> = {
+  phone: 'Введіть коректний номер телефону у форматі +380XXXXXXXXX.',
   validation: 'Перевірте обовʼязкові поля. Пароль має містити щонайменше 8 символів і збігатися з підтвердженням.',
   exists: 'Користувач з таким email або телефоном уже існує.',
   database: 'DATABASE_URL не налаштований.'
