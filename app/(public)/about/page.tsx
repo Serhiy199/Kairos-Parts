@@ -22,6 +22,7 @@ import {
 import { ActionIcon } from '@/components/ui/action-icons';
 
 const telegramBotUrl = 'https://t.me/kairos_parts_bot';
+const showContactScenarios = false;
 
 const contactScenarios = [
   {
@@ -247,63 +248,65 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="bg-public-page py-16 text-white sm:py-20">
-        <div className="kp-container">
-          <div className="max-w-[760px]">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">Коли звертатися</p>
-            <h2 className="mt-3 max-w-[740px] text-3xl font-bold leading-tight text-white sm:text-4xl">
-              Ситуації, у яких важливо швидко знайти правильне рішення
-            </h2>
-            <p className="mt-4 max-w-[740px] text-base font-medium leading-7 text-white/72 sm:text-lg sm:leading-8">
-              Kairos Parts допомагає, коли техніка не може чекати, даних для підбору недостатньо або закупівля
-              потребує координації кількох позицій і постачальників.
-            </p>
-            <div className="mt-5 h-px w-20 bg-accent" />
-          </div>
+      {showContactScenarios ? (
+        <section className="bg-public-page py-16 text-white sm:py-20">
+          <div className="kp-container">
+            <div className="max-w-[760px]">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">Коли звертатися</p>
+              <h2 className="mt-3 max-w-[740px] text-3xl font-bold leading-tight text-white sm:text-4xl">
+                Ситуації, у яких важливо швидко знайти правильне рішення
+              </h2>
+              <p className="mt-4 max-w-[740px] text-base font-medium leading-7 text-white/72 sm:text-lg sm:leading-8">
+                Kairos Parts допомагає, коли техніка не може чекати, даних для підбору недостатньо або закупівля
+                потребує координації кількох позицій і постачальників.
+              </p>
+              <div className="mt-5 h-px w-20 bg-accent" />
+            </div>
 
-          <ul className="relative mt-10 grid grid-cols-1 overflow-hidden rounded-2xl border border-public-border bg-public-card md:grid-cols-2 xl:auto-rows-fr xl:grid-cols-4">
-            {contactScenarios.map((item, index) => {
-              const Icon = item.icon;
-              const dividerClasses = `${index < 7 ? 'border-b border-public-border' : ''} ${
-                index % 2 === 0 ? 'md:border-r md:border-public-border' : ''
-              } ${index >= 6 ? 'md:border-b-0' : ''} ${index < 4 ? 'xl:border-b xl:border-public-border' : 'xl:border-b-0'} ${
-                index % 4 !== 3 ? 'xl:border-r xl:border-public-border' : 'xl:border-r-0'
-              }`;
+            <ul className="relative mt-10 grid grid-cols-1 overflow-hidden rounded-2xl border border-public-border bg-public-card md:grid-cols-2 xl:auto-rows-fr xl:grid-cols-4">
+              {contactScenarios.map((item, index) => {
+                const Icon = item.icon;
+                const dividerClasses = `${index < 7 ? 'border-b border-public-border' : ''} ${
+                  index % 2 === 0 ? 'md:border-r md:border-public-border' : ''
+                } ${index >= 6 ? 'md:border-b-0' : ''} ${index < 4 ? 'xl:border-b xl:border-public-border' : 'xl:border-b-0'} ${
+                  index % 4 !== 3 ? 'xl:border-r xl:border-public-border' : 'xl:border-r-0'
+                }`;
 
-              return (
-                <li
-                  key={item.title}
-                  className={`${dividerClasses} min-w-0 px-5 py-6 transition-colors duration-200 hover:bg-public-elevated sm:px-7 sm:py-8 xl:px-8`}
-                >
-                  <div className="flex items-start gap-4">
-                    <Icon
-                      aria-hidden="true"
-                      focusable="false"
-                      className="size-8 shrink-0 stroke-[1.65] text-accent sm:size-9"
-                    />
-                    <div className="min-w-0">
-                      <h3 className="break-normal whitespace-normal hyphens-none text-lg font-bold leading-snug text-white xl:text-xl">
-                        {item.title}
-                      </h3>
-                      <p className="mt-3 text-[15px] font-medium leading-6 text-white/65 sm:text-base sm:leading-7">
-                        {item.text}
-                      </p>
+                return (
+                  <li
+                    key={item.title}
+                    className={`${dividerClasses} min-w-0 px-5 py-6 transition-colors duration-200 hover:bg-public-elevated sm:px-7 sm:py-8 xl:px-8`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <Icon
+                        aria-hidden="true"
+                        focusable="false"
+                        className="size-8 shrink-0 stroke-[1.65] text-accent sm:size-9"
+                      />
+                      <div className="min-w-0">
+                        <h3 className="break-normal whitespace-normal hyphens-none text-lg font-bold leading-snug text-white xl:text-xl">
+                          {item.title}
+                        </h3>
+                        <p className="mt-3 text-[15px] font-medium leading-6 text-white/65 sm:text-base sm:leading-7">
+                          {item.text}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </li>
-              );
-            })}
-            {[25, 50, 75].map((position) => (
-              <span
-                key={position}
-                aria-hidden="true"
-                className="pointer-events-none absolute top-1/2 z-10 hidden size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#1a1308]/40 bg-accent shadow-[0_1px_4px_rgba(0,0,0,0.35)] xl:block"
-                style={{ left: `${position}%` }}
-              />
-            ))}
-          </ul>
-        </div>
-      </section>
+                  </li>
+                );
+              })}
+              {[25, 50, 75].map((position) => (
+                <span
+                  key={position}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-1/2 z-10 hidden size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#1a1308]/40 bg-accent shadow-[0_1px_4px_rgba(0,0,0,0.35)] xl:block"
+                  style={{ left: `${position}%` }}
+                />
+              ))}
+            </ul>
+          </div>
+        </section>
+      ) : null}
 
       <section className="bg-public-page py-16">
         <div className="kp-container grid gap-6 lg:grid-cols-2">
