@@ -1,9 +1,16 @@
+import { notFound } from 'next/navigation';
+
 import { createManufacturer, updateManufacturer } from '@/app/admin/directories/actions';
 import { requireCrmSession } from '@/lib/admin/access';
+import { EQUIPMENT_TAXONOMY_ADMIN_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { prisma } from '@/lib/prisma';
 import { TAXONOMY_SORT_ORDER_ERROR } from '@/lib/vehicles/taxonomy-sort-order';
 
 export default async function ManufacturersDirectoryPage({ searchParams }: { searchParams: Promise<{ result?: string }> }) {
+  if (!EQUIPMENT_TAXONOMY_ADMIN_ENABLED) {
+    notFound();
+  }
+
   const session = await requireCrmSession();
   const { result } = await searchParams;
   const [types, manufacturers, vehicleUsage] = await Promise.all([

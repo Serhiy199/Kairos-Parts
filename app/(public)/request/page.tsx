@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { auth } from '@/auth';
 import { ActionIcon } from '@/components/ui/action-icons';
 import { getClientAccessContext, getClientProfileForSession, requestAccessWhere, vehicleAccessWhere } from '@/lib/client/access';
+import { EQUIPMENT_TAXONOMY_REQUEST_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { getUploadMaxSizeMb } from '@/lib/files/upload-policy';
 import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
@@ -40,10 +41,12 @@ export default async function RequestPage({
   const vehiclePrefill = params.vehicleId ? await prismaVehiclePrefill(clientAccess, params.vehicleId) : null;
   const repeatPrefill = params.repeatRequestId ? await prismaRepeatPrefill(clientAccess, params.repeatRequestId) : null;
   const initialRequest = vehiclePrefill ?? repeatPrefill ?? undefined;
-  const taxonomy = await getActiveEquipmentTaxonomy({
-    equipmentType: initialRequest?.equipmentType,
-    manufacturer: initialRequest?.manufacturer
-  });
+  const taxonomy = EQUIPMENT_TAXONOMY_REQUEST_FIELDS_ENABLED
+    ? await getActiveEquipmentTaxonomy({
+        equipmentType: initialRequest?.equipmentType,
+        manufacturer: initialRequest?.manufacturer
+      })
+    : [];
 
   return (
     <>
@@ -196,7 +199,7 @@ async function prismaRepeatPrefill(access: NonNullable<ClientAccess>, requestId:
   return {
     vehicleId: request.vehicleId ?? '',
     equipmentType: request.equipmentType ?? '',
-    manufacturer: request.manufacturer?.name ?? '',
+    manufacturer: request.manufacturerName ?? request.manufacturer?.name ?? '',
     model: request.model ?? '',
     vehicleYear: request.vehicleYear,
     vinOrSerial: request.vinOrSerial ?? '',

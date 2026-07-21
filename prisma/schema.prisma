@@ -440,6 +440,7 @@ model Request {
   subcategory       Subcategory?           @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
   manufacturerId    String?
   manufacturer      Manufacturer?          @relation(fields: [manufacturerId], references: [id], onDelete: SetNull)
+  manufacturerName  String?
   vehicleId         String?
   vehicle           Vehicle?               @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   equipmentType     String?

@@ -1,9 +1,16 @@
+import { notFound } from 'next/navigation';
+
 import { createEquipmentType, updateEquipmentType } from '@/app/admin/directories/actions';
 import { requireCrmSession } from '@/lib/admin/access';
+import { EQUIPMENT_TAXONOMY_ADMIN_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { prisma } from '@/lib/prisma';
 import { TAXONOMY_SORT_ORDER_ERROR } from '@/lib/vehicles/taxonomy-sort-order';
 
 export default async function EquipmentTypesDirectoryPage({ searchParams }: { searchParams: Promise<{ result?: string }> }) {
+  if (!EQUIPMENT_TAXONOMY_ADMIN_ENABLED) {
+    notFound();
+  }
+
   const session = await requireCrmSession();
   const { result } = await searchParams;
   const [types, vehicleUsage, requestUsage, usedEquipmentUsage] = await Promise.all([

@@ -225,7 +225,7 @@ export default async function AdminRequestDetailPage({
           <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
             <p className="text-sm font-bold uppercase text-accent">Потреба</p>
             <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-2">
-              <Info label="Виробник / марка" value={request.manufacturer?.name ?? '—'} />
+              <Info label="Виробник / марка" value={request.manufacturerName ?? request.manufacturer?.name ?? '—'} />
               <Info label="Тип техніки" value={request.equipmentType ?? '—'} />
               <Info label="Модель" value={request.model ?? '—'} />
               <Info label="Рік випуску" value={request.vehicleYear ? String(request.vehicleYear) : '—'} />

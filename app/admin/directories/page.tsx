@@ -1,8 +1,14 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 
+import { EQUIPMENT_TAXONOMY_ADMIN_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { prisma } from '@/lib/prisma';
 
 export default async function DirectoriesPage() {
+  if (!EQUIPMENT_TAXONOMY_ADMIN_ENABLED) {
+    notFound();
+  }
+
   const [types, manufacturers, relations] = await Promise.all([
     prisma.equipmentType.count(), prisma.manufacturer.count(), prisma.manufacturerEquipmentType.count()
   ]);

@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { EQUIPMENT_TAXONOMY_ADMIN_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { prisma } from '@/lib/prisma';
 import { getNewUsedEquipmentInquiryCount } from '@/lib/used-equipment/queries';
 
@@ -19,7 +20,9 @@ const adminNavItems = [
   { href: '/admin/change-requests', label: 'Запити змін', icon: 'changes' as const },
   { href: '/admin/audit-log', label: 'Журнал дій', icon: 'history' as const },
   { href: '/admin/billing-settings', label: 'Реквізити продавця', icon: 'billing' as const },
-  { href: '/admin/directories', label: 'Типи й виробники', icon: 'directories' as const },
+  ...(EQUIPMENT_TAXONOMY_ADMIN_ENABLED
+    ? [{ href: '/admin/directories', label: 'Типи й виробники', icon: 'directories' as const }]
+    : []),
   { href: '/admin/team', label: 'Команда', icon: 'team' as const }
 ];
 

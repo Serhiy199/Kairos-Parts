@@ -119,7 +119,7 @@ export default async function ClientRequestDetailPage({
   const details = [
     ['Дата створення', request.createdAt.toLocaleString('uk-UA')],
     ['Оновлено', request.updatedAt.toLocaleString('uk-UA')],
-    ['Виробник / марка', request.manufacturer?.name ?? '—'],
+    ['Виробник / марка', request.manufacturerName ?? request.manufacturer?.name ?? '—'],
     ['Модель', request.model ?? '—'],
     ['Рік випуску', request.vehicleYear ? String(request.vehicleYear) : '—'],
     ['VIN / серійний номер', request.vinOrSerial ?? '—']

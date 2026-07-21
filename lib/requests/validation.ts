@@ -1,4 +1,5 @@
 import { getUploadMaxSizeBytes, isAllowedUpload } from '@/lib/files/upload-policy';
+import { EQUIPMENT_TEXT_FIELD_MAX_LENGTH } from '@/lib/features/equipment-taxonomy';
 
 export type ParsedRequestInput = {
   formType: 'detailed';
@@ -75,11 +76,15 @@ export function parseRequestFormData(formData: FormData): { data?: ParsedRequest
   }
 
   if (!equipmentType) {
-    errors.push('Оберіть тип техніки.');
+    errors.push('Вкажіть тип техніки.');
+  } else if (equipmentType.length > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
+    errors.push(`Тип техніки не може перевищувати ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.`);
   }
 
   if (!manufacturer) {
     errors.push('Вкажіть виробника або марку техніки.');
+  } else if (manufacturer.length > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
+    errors.push(`Виробник або марка не може перевищувати ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.`);
   }
 
   if (!model) {

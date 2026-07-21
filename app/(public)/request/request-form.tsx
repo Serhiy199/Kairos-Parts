@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { ActionIcon } from '@/components/ui/action-icons';
 import { SearchableCombobox, type SearchableComboboxOption } from '@/components/ui/searchable-combobox';
+import { EQUIPMENT_TAXONOMY_REQUEST_FIELDS_ENABLED, EQUIPMENT_TEXT_FIELD_MAX_LENGTH } from '@/lib/features/equipment-taxonomy';
 import { ALLOWED_UPLOAD_EXTENSIONS, ALLOWED_UPLOAD_MIME_TYPES } from '@/lib/files/upload-policy';
 import type { EquipmentTaxonomyType } from '@/lib/vehicles/taxonomy';
 
@@ -84,7 +85,7 @@ export function RequestForm({
   }, [equipmentType, initialRequest?.manufacturer, taxonomy]);
 
   useEffect(() => {
-    if (!manufacturer) {
+    if (!EQUIPMENT_TAXONOMY_REQUEST_FIELDS_ENABLED || !manufacturer) {
       return;
     }
 
@@ -157,19 +158,19 @@ export function RequestForm({
     const form = event.currentTarget;
     const nextFieldErrors: FieldErrors = {};
 
-    if (!equipmentType) {
-      nextFieldErrors.equipmentType = 'Оберіть тип техніки зі списку.';
+    if (!equipmentType.trim()) {
+      nextFieldErrors.equipmentType = 'Вкажіть тип техніки.';
     }
 
-    if (!manufacturer) {
-      nextFieldErrors.manufacturer = 'Оберіть виробника або марку зі списку.';
+    if (!manufacturer.trim()) {
+      nextFieldErrors.manufacturer = 'Вкажіть виробника або марку.';
     }
 
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors);
       setSubmitState({
         status: 'error',
-        message: 'Заповніть обовʼязкові поля зі списку.'
+        message: 'Заповніть обовʼязкові поля.'
       });
       return;
     }
@@ -331,28 +332,51 @@ export function RequestForm({
       </div>
 
       <div className="mt-6 grid gap-5 md:grid-cols-2">
-        <SearchableCombobox
-          name="equipmentType"
-          label="Тип техніки"
-          value={equipmentType}
-          options={equipmentTypeOptions}
-          onChange={handleEquipmentTypeChange}
-          required
-          placeholder="Оберіть тип техніки"
-          emptyMessage="Нічого не знайдено"
-          error={fieldErrors.equipmentType}
-        />
-        <SearchableCombobox
-          name="manufacturer"
-          label="Виробник / марка"
-          value={manufacturer}
-          options={manufacturerComboboxOptions}
-          onChange={handleManufacturerChange}
-          required
-          placeholder="Наприклад: John Deere, MAN, Claas"
-          emptyMessage="Нічого не знайдено"
-          error={fieldErrors.manufacturer}
-        />
+        {EQUIPMENT_TAXONOMY_REQUEST_FIELDS_ENABLED ? (
+          <>
+            <SearchableCombobox
+              name="equipmentType"
+              label="Тип техніки"
+              value={equipmentType}
+              options={equipmentTypeOptions}
+              onChange={handleEquipmentTypeChange}
+              required
+              placeholder="Оберіть тип техніки"
+              emptyMessage="Нічого не знайдено"
+              error={fieldErrors.equipmentType}
+            />
+            <SearchableCombobox
+              name="manufacturer"
+              label="Виробник / марка"
+              value={manufacturer}
+              options={manufacturerComboboxOptions}
+              onChange={handleManufacturerChange}
+              required
+              placeholder="Наприклад: John Deere, MAN, Claas"
+              emptyMessage="Нічого не знайдено"
+              error={fieldErrors.manufacturer}
+            />
+          </>
+        ) : (
+          <>
+            <ManualEquipmentField
+              name="equipmentType"
+              label="Тип техніки"
+              placeholder="Введіть тип техніки"
+              value={equipmentType}
+              onChange={handleEquipmentTypeChange}
+              error={fieldErrors.equipmentType}
+            />
+            <ManualEquipmentField
+              name="manufacturer"
+              label="Виробник / марка"
+              placeholder="Введіть виробника або марку"
+              value={manufacturer}
+              onChange={handleManufacturerChange}
+              error={fieldErrors.manufacturer}
+            />
+          </>
+        )}
         <label className="grid gap-2 text-sm font-semibold text-public-secondary">
           Модель *
           <input
@@ -460,5 +484,41 @@ export function RequestForm({
         {submitState.status === 'submitting' ? 'Створюємо заявку...' : 'Створити заявку'}
       </button>
     </form>
+  );
+}
+
+function ManualEquipmentField({
+  name,
+  label,
+  placeholder,
+  value,
+  onChange,
+  error
+}: {
+  name: 'equipmentType' | 'manufacturer';
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  error?: string;
+}) {
+  const errorId = `${name}-error`;
+
+  return (
+    <label className="grid gap-2 text-sm font-semibold text-public-secondary">
+      {label} *
+      <input
+        name={name}
+        required
+        maxLength={EQUIPMENT_TEXT_FIELD_MAX_LENGTH}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
+        className="public-field h-11 rounded-md px-3 text-sm transition"
+      />
+      {error ? <span id={errorId} role="alert" className="text-xs font-semibold text-red-400">{error}</span> : null}
+    </label>
   );
 }

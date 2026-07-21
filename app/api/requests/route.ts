@@ -1,5 +1,6 @@
 import { getClientApiSession, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { EQUIPMENT_TAXONOMY_REQUEST_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { saveRequestFileLocal } from '@/lib/files/local-storage';
 import { prisma } from '@/lib/prisma';
 import { generatePublicStatusToken } from '@/lib/requests/identifiers';
@@ -94,15 +95,25 @@ export async function POST(request: Request) {
   const clientAccess = authResult.access;
 
   try {
-    const taxonomy = await validateEquipmentTaxonomySelection({
-      equipmentType: parsed.data.equipmentType,
-      manufacturer: parsed.data.manufacturer
-    });
-    if (!taxonomy.ok) {
-      return Response.json(
-        { status: 'validation_error', message: taxonomy.message, errors: [taxonomy.message] },
-        { status: 400 }
-      );
+    let equipmentType = parsed.data.equipmentType;
+    let manufacturerId: string | null = null;
+    let manufacturerName = parsed.data.manufacturer;
+
+    if (EQUIPMENT_TAXONOMY_REQUEST_FIELDS_ENABLED) {
+      const taxonomy = await validateEquipmentTaxonomySelection({
+        equipmentType,
+        manufacturer: manufacturerName
+      });
+      if (!taxonomy.ok) {
+        return Response.json(
+          { status: 'validation_error', message: taxonomy.message, errors: [taxonomy.message] },
+          { status: 400 }
+        );
+      }
+
+      equipmentType = taxonomy.equipmentType.name;
+      manufacturerId = taxonomy.manufacturer.id;
+      manufacturerName = taxonomy.manufacturer.name;
     }
     const publicStatusToken = generatePublicStatusToken();
     const vehicle = parsed.data.vehicleId
@@ -128,9 +139,10 @@ export async function POST(request: Request) {
         companyName: parsed.data.companyName ?? parsed.data.contactName,
         categoryId: null,
         subcategoryId: null,
-        manufacturerId: taxonomy.manufacturer.id,
+        manufacturerId,
+        manufacturerName,
         vehicleId: vehicle?.id,
-        equipmentType: taxonomy.equipmentType.name,
+        equipmentType,
         model: parsed.data.model,
         vehicleYear: parsed.data.vehicleYear,
         vinOrSerial: parsed.data.vinOrSerial,
