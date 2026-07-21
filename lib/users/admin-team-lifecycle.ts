@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 
 import { createAuditLog } from '@/lib/audit-log/service';
 import { prisma } from '@/lib/prisma';
+import { assertCanDisableOrDemoteAdmin } from './lifecycle';
 import { assertUserStatusTransition } from './lifecycle-rules';
 import {
   assertManagerLifecycleTransition,
@@ -18,7 +19,10 @@ async function requireActiveAdmin(tx: Prisma.TransactionClient, actorId: string)
   });
 
   if (!actor || actor.role !== 'ADMIN' || actor.status !== 'ACTIVE') {
-    throw new ManagerLifecycleError('invalid_target', 'Недостатньо прав для керування командою.');
+    throw new ManagerLifecycleError(
+      'invalid_target',
+      'Неможливо виконати дію для цього користувача.'
+    );
   }
 
   return actor;
@@ -46,7 +50,11 @@ export async function setManagerAccessStatus(input: {
       });
 
       if (!manager) {
-        throw new ManagerLifecycleError('manager_not_found', 'Менеджера не знайдено.');
+        throw new ManagerLifecycleError('manager_not_found', 'Менеджер не знайдений.');
+      }
+
+      if (input.targetStatus === 'DISABLED') {
+        await assertCanDisableOrDemoteAdmin(manager.id, tx);
       }
 
       assertUserStatusTransition(manager.status, input.targetStatus);
@@ -64,7 +72,10 @@ export async function setManagerAccessStatus(input: {
       });
 
       if (updated.count !== 1) {
-        throw new ManagerLifecycleError('invalid_transition', 'Статус менеджера вже змінився. Оновіть сторінку.');
+        throw new ManagerLifecycleError(
+          'invalid_transition',
+          'Статус менеджера змінився в цей момент. Спробуйте ще раз.'
+        );
       }
 
       const event = input.targetStatus === 'DISABLED' ? 'MANAGER_DISABLED' : 'MANAGER_ENABLED';

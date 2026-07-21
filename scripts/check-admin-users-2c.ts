@@ -49,7 +49,7 @@ async function main() {
   assert.doesNotThrow(() => assertUserStatusTransition('ACTIVE', 'DISABLED'));
   assert.doesNotThrow(() => assertUserStatusTransition('DISABLED', 'ACTIVE'));
   assert.throws(
-    () => assertActiveAdminWillRemain({ targetRole: 'ADMIN', targetStatus: 'ACTIVE', activeAdminCount: 1 }),
+    () => assertActiveAdminWillRemain({ targetRole: 'ADMIN', targetStatus: 'DISABLED', activeAdminCount: 1 }),
     LastActiveAdminError
   );
 
@@ -82,7 +82,7 @@ async function main() {
 
   assert.match(query, /managerInvitations:\s*\{/);
   assert.match(query, /take: 1/);
-  assert.match(query, /hasPassword: Boolean\(user\.passwordHash\)/);
+  assert.match(query, /passwordUserIds\.has\(user\.id\)/);
   assert.doesNotMatch(query, /authVersion/);
   assert.match(ui, /xl:block/);
   assert.match(ui, /xl:hidden/);

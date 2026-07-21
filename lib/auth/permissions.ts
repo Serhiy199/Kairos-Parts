@@ -17,7 +17,7 @@ export const CLIENT_ROUTE_PREFIXES = ['/client'] as const;
 
 export const CRM_ROUTE_PREFIXES = ['/admin'] as const;
 
-export const ADMIN_ONLY_ROUTE_PREFIXES = ['/admin/settings', '/admin/categories', '/admin/manufacturers', '/admin/change-requests'] as const;
+export const ADMIN_ONLY_ROUTE_PREFIXES = ['/admin/settings', '/admin/categories', '/admin/manufacturers', '/admin/change-requests', '/admin/team'] as const;
 
 export function isPublicPath(pathname: string) {
   if (pathname === '/') {

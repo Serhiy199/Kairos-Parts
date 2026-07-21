@@ -31,7 +31,11 @@ export function assertActiveAdminWillRemain(input: {
   targetStatus: UserStatus;
   activeAdminCount: number;
 }) {
-  if (input.targetRole === 'ADMIN' && input.targetStatus === 'ACTIVE' && input.activeAdminCount <= 1) {
+  if (
+    input.targetRole === 'ADMIN' &&
+    input.targetStatus !== 'ACTIVE' &&
+    input.activeAdminCount <= 1
+  ) {
     throw new LastActiveAdminError();
   }
 }

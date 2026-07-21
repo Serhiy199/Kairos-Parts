@@ -47,7 +47,6 @@ export async function getAdminTeamMembers(): Promise<AdminTeamMember[]> {
       status: true,
       createdAt: true,
       updatedAt: true,
-      passwordHash: true,
       managerInvitations: {
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: 1,
@@ -55,6 +54,12 @@ export async function getAdminTeamMembers(): Promise<AdminTeamMember[]> {
       }
     }
   });
+  const usersWithPassword = await prisma.user.findMany({
+    where: { role: { in: ['ADMIN', 'MANAGER'] }, passwordHash: { not: null } },
+    select: { id: true }
+  });
+
+  const passwordUserIds = new Set(usersWithPassword.map((user) => user.id));
 
   return users
     .map((user): AdminTeamMember => {
@@ -69,7 +74,7 @@ export async function getAdminTeamMembers(): Promise<AdminTeamMember[]> {
         status: user.status,
         createdAt: user.createdAt.toISOString(),
         updatedAt: user.updatedAt.toISOString(),
-        hasPassword: Boolean(user.passwordHash),
+        hasPassword: passwordUserIds.has(user.id),
         invitation: isManager && user.status === 'INVITED'
           ? {
               state: invitationState(latestInvitation, now),

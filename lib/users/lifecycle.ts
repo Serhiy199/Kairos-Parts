@@ -29,7 +29,7 @@ export async function assertCanDisableOrDemoteAdmin(userId: string, db: Lifecycl
 
   assertActiveAdminWillRemain({
     targetRole: target.role,
-    targetStatus: target.status,
+    targetStatus: 'DISABLED',
     activeAdminCount
   });
 }

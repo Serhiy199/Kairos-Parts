@@ -107,7 +107,29 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 function isTechnicalIdKey(key: string) {
-  return key === 'id' || /(?:Id|Ids)$/.test(key);
+  const lowerKey = key.toLowerCase();
+  if (key === 'id' || /(?:Id|Ids)$/.test(key)) {
+    return true;
+  }
+
+  const technicalKeys = new Set([
+    'password',
+    'passwordhash',
+    'token',
+    'tokenhash',
+    'authversion',
+    'secret',
+    'hash',
+    'api_secret',
+    'api_secret_key',
+    'api_secret_key_hash',
+    'webhook_secret',
+    'bot_token',
+    'sessionid',
+    'useragent'
+  ]);
+
+  return technicalKeys.has(lowerKey);
 }
 
 function humanizeKey(key: string) {
