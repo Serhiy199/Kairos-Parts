@@ -1,13 +1,13 @@
 import { LoginForm } from './login-form';
 
 const errorMessages: Record<string, string> = {
-  validation: 'Вкажіть email і пароль.',
-  credentials: 'Email або пароль неправильні, або користувач не має доступу до входу.',
-  'account-invited': 'Акаунт ще не активовано. Скористайтеся посиланням запрошення.',
-  'account-disabled': 'Доступ до акаунта вимкнено. Зверніться до адміністратора.',
+  validation: 'Невірний email, номер телефону або пароль.',
+  credentials: 'Невірний email, номер телефону або пароль.',
+  'account-invited': 'Невірний email, номер телефону або пароль.',
+  'account-disabled': 'Невірний email, номер телефону або пароль.',
   'session-expired': 'Сесію завершено після зміни доступу. Увійдіть повторно.',
   database: 'DATABASE_URL не налаштований.',
-  'staff-login': 'Для менеджера або адміністратора використовуйте службовий вхід.'
+  'staff-login': 'Невірний email, номер телефону або пароль.'
 };
 
 export default async function LoginPage({

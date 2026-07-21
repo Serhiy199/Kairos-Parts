@@ -1,12 +1,13 @@
 'use server';
 
+import { Prisma } from '@prisma/client';
 import { AuthError, CredentialsSignin } from 'next-auth';
 import { redirect } from 'next/navigation';
 
 import { signIn, signOut } from '@/auth';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { hashPassword } from '@/lib/auth/password';
-import { getPhoneDisplayVariants, normalizeUkrainianPhone } from '@/lib/phone/normalize';
+import { normalizeUkrainianPhone } from '@/lib/phone/normalize';
 import { prisma } from '@/lib/prisma';
 
 function readString(formData: FormData, key: string) {
@@ -95,7 +96,7 @@ export async function registerClient(formData: FormData) {
 
   const existingUser = await prisma.user.findFirst({
     where: {
-      OR: [{ email }, { phone: { in: getPhoneDisplayVariants(phone) } }]
+      OR: [{ email }, { normalizedPhone: phone }]
     }
   });
 
@@ -105,64 +106,58 @@ export async function registerClient(formData: FormData) {
 
   const passwordHash = await hashPassword(password);
 
-  await prisma.user.create({
-    data: {
-      name: contactName,
-      email,
-      phone,
-      passwordHash,
-      role: 'CLIENT',
-      status: 'ACTIVE',
-      clientProfile: {
-        create: {
-          clientType: accountType,
-          contactName,
-          companyName: accountType === 'BUSINESS' ? companyName : null,
-          taxId: accountType === 'BUSINESS' ? taxId : null,
-          firstName: accountType === 'INDIVIDUAL' ? firstName : null,
-          lastName: accountType === 'INDIVIDUAL' ? lastName || null : null,
-          phone,
-          email
+  try {
+    await prisma.user.create({
+      data: {
+        name: contactName,
+        email,
+        phone,
+        normalizedPhone: phone,
+        passwordHash,
+        role: 'CLIENT',
+        status: 'ACTIVE',
+        clientProfile: {
+          create: {
+            clientType: accountType,
+            contactName,
+            companyName: accountType === 'BUSINESS' ? companyName : null,
+            taxId: accountType === 'BUSINESS' ? taxId : null,
+            firstName: accountType === 'INDIVIDUAL' ? firstName : null,
+            lastName: accountType === 'INDIVIDUAL' ? lastName || null : null,
+            phone,
+            email
+          }
         }
       }
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      redirect(appendNextParam('/register?error=exists', nextPath));
     }
-  });
+    throw error;
+  }
 
   redirect(appendNextParam('/login?registered=1', nextPath));
 }
 
 export async function loginClient(formData: FormData) {
-  const email = readString(formData, 'email').toLowerCase();
+  const identifier = readString(formData, 'identifier');
   const password = readString(formData, 'password');
   const nextPath = readString(formData, 'next');
 
-  if (!email || !password) {
-    redirect(appendNextParam('/login?error=validation', nextPath));
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { role: true }
-  });
-
-  if (user?.role === 'MANAGER' || user?.role === 'ADMIN') {
-    redirect(appendNextParam('/login?error=staff-login', nextPath));
+  if (!identifier || !password) {
+    redirect(appendNextParam('/login?error=credentials', nextPath));
   }
 
   try {
     await signIn('credentials', {
-      email,
+      identifier,
       password,
+      loginScope: 'CLIENT',
       redirect: false
     });
   } catch (error) {
     if (error instanceof AuthError) {
-      const lifecycleError = accountLifecycleError(error);
-
-      if (lifecycleError) {
-        redirect(appendNextParam(`/login?error=${lifecycleError}`, nextPath));
-      }
-
       redirect(appendNextParam('/login?error=credentials', nextPath));
     }
 
@@ -196,8 +191,9 @@ export async function loginStaff(formData: FormData) {
 
   try {
     await signIn('credentials', {
-      email,
+      identifier: email,
       password,
+      loginScope: 'STAFF',
       redirect: false
     });
   } catch (error) {

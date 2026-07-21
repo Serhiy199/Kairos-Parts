@@ -640,13 +640,20 @@ async function findClientProfileByPhone(phone: string) {
     return null;
   }
 
-  const createdProfile = user.clientProfile ?? await prisma.clientProfile.create({
-    data: {
-      userId: user.id,
-      phone: normalizedPhone,
-      contactName: user.name,
-      email: user.email
-    }
+  const createdProfile = user.clientProfile ?? await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: user.id },
+      data: { phone: normalizedPhone, normalizedPhone }
+    });
+
+    return tx.clientProfile.create({
+      data: {
+        userId: user.id,
+        phone: normalizedPhone,
+        contactName: user.name,
+        email: user.email
+      }
+    });
   });
 
   return prisma.clientProfile.findUnique({
@@ -676,7 +683,10 @@ async function linkTelegramClient(input: { clientProfileId: string; telegramUser
     data: {
       telegramUserId: input.telegramUserId,
       telegramChatId: input.chatId,
-      phone
+      phone,
+      user: {
+        update: { phone, normalizedPhone: phone }
+      }
     }
   });
 }

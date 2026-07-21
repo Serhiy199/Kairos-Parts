@@ -161,6 +161,7 @@ async function main() {
     update: {
       name: testAccounts.client.name,
       phone: clientPhone,
+      normalizedPhone: clientPhone,
       passwordHash,
       role: UserRole.CLIENT,
       status: 'ACTIVE',
@@ -170,6 +171,7 @@ async function main() {
       email: testAccounts.client.email,
       name: testAccounts.client.name,
       phone: clientPhone,
+      normalizedPhone: clientPhone,
       passwordHash,
       role: UserRole.CLIENT,
       status: 'ACTIVE',

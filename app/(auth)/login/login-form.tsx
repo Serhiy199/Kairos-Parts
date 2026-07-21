@@ -35,12 +35,15 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
       <form action={loginClient} className="mt-6 grid gap-4">
         {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
         <label className="grid gap-2 text-sm font-semibold text-foreground">
-          {accountType === 'BUSINESS' ? 'Email / ЄДРПОУ / телефон' : 'Email / телефон'}
+          Email або номер телефону
           <input
-            name="email"
+            name="identifier"
             type="text"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
             required
-            placeholder="На Day 7 фактичний вхід працює через email"
+            placeholder="name@example.com або +380XXXXXXXXX"
             className="h-11 rounded-md border border-border px-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
           />
         </label>

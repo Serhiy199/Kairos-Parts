@@ -1,6 +1,7 @@
 import { CredentialsSignin, type NextAuthConfig } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 
+import { evaluateCredentialCandidate, parseLoginIdentifier, parseLoginScope } from '@/lib/auth/credentials';
 import { validateJwtClaimsAgainstCurrentUser } from '@/lib/auth/current-user-access';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword } from '@/lib/auth/password';
@@ -23,21 +24,27 @@ export const authConfig = {
   },
   providers: [
     Credentials({
-      name: 'Email and password',
+      name: 'Identifier and password',
       credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' }
+        identifier: { label: 'Email or phone', type: 'text' },
+        password: { label: 'Password', type: 'password' },
+        loginScope: { label: 'Login scope', type: 'text' }
       },
       async authorize(credentials) {
-        const email = typeof credentials?.email === 'string' ? credentials.email.toLowerCase().trim() : null;
+        const scope = parseLoginScope(credentials?.loginScope);
         const password = typeof credentials?.password === 'string' ? credentials.password : null;
+        const identifier = scope ? parseLoginIdentifier(credentials?.identifier, scope) : null;
 
-        if (!email || !password) {
+        if (!scope || !password) {
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email },
+        const user = identifier ? await prisma.user.findFirst({
+          where: identifier.kind === 'phone'
+            ? { role: 'CLIENT', normalizedPhone: identifier.value }
+            : scope === 'CLIENT'
+              ? { role: 'CLIENT', email: identifier.value }
+              : { role: { in: ['ADMIN', 'MANAGER'] }, email: identifier.value },
           select: {
             id: true,
             email: true,
@@ -47,37 +54,27 @@ export const authConfig = {
             authVersion: true,
             passwordHash: true
           }
-        });
+        }) : null;
 
-        if (!user?.passwordHash || !['CLIENT', 'MANAGER', 'ADMIN'].includes(user.role)) {
-          return null;
-        }
-
-        const isValid = await verifyPassword(password, user.passwordHash);
-
-        if (!isValid) {
-          return null;
-        }
-
-        if (user.status === 'INVITED') {
+        const decision = await evaluateCredentialCandidate({ candidate: user, password, scope, verify: verifyPassword });
+        if (!decision.ok && decision.reason === 'account_invited') {
           throw new AccountInvitedError();
         }
-
-        if (user.status === 'DISABLED') {
+        if (!decision.ok && decision.reason === 'account_disabled') {
           throw new AccountDisabledError();
         }
-
-        if (user.status !== 'ACTIVE') {
+        if (!decision.ok) {
           return null;
         }
 
+        const authenticatedUser = decision.user;
         return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          status: user.status,
-          authVersion: user.authVersion
+          id: authenticatedUser.id,
+          email: authenticatedUser.email,
+          name: authenticatedUser.name,
+          role: authenticatedUser.role,
+          status: authenticatedUser.status,
+          authVersion: authenticatedUser.authVersion
         };
       }
     })
