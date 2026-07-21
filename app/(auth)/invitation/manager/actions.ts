@@ -11,16 +11,7 @@ import {
   MANAGER_PASSWORD_MAX_LENGTH,
   MANAGER_PASSWORD_MIN_LENGTH
 } from '@/lib/users/manager-invitation-rules';
-
-export type ManagerPasswordSetupState = {
-  status: 'idle' | 'error';
-  message: string;
-};
-
-export const INITIAL_MANAGER_PASSWORD_SETUP_STATE: ManagerPasswordSetupState = {
-  status: 'idle',
-  message: ''
-};
+import type { ManagerPasswordSetupState } from './action-state';
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);

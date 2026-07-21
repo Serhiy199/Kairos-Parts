@@ -7,12 +7,14 @@ import { TbCopy, TbLinkPlus, TbLockOff, TbLockOpen, TbUserPlus, TbUsersGroup, Tb
 import type { AdminTeamMember, TeamInvitationState } from '@/lib/users/admin-team-queries';
 import { TEAM_ROLE_LABELS, TEAM_STATUS_LABELS } from '@/lib/users/admin-team-rules';
 import {
+  INITIAL_TEAM_ACTION_RESULT,
+  type TeamActionResult
+} from './action-state';
+import {
   createManagerAction,
   disableManagerAction,
   enableManagerAction,
-  INITIAL_TEAM_ACTION_RESULT,
-  regenerateManagerInvitationAction,
-  type TeamActionResult
+  regenerateManagerInvitationAction
 } from './actions';
 
 type ConfirmAction = 'regenerate' | 'disable' | 'enable';

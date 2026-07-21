@@ -10,19 +10,7 @@ import {
 } from '@/lib/users/manager-invitations';
 import { setManagerAccessStatus } from '@/lib/users/admin-team-lifecycle';
 import { ManagerLifecycleError } from '@/lib/users/admin-team-rules';
-
-export type TeamActionResult = {
-  status: 'idle' | 'success' | 'error';
-  message?: string;
-  fieldErrors?: { name?: string; email?: string };
-  invitation?: {
-    url: string;
-    expiresAt: string;
-    managerName: string;
-  };
-};
-
-export const INITIAL_TEAM_ACTION_RESULT: TeamActionResult = { status: 'idle' };
+import type { TeamActionResult } from './action-state';
 
 function safeInvitationError(error: unknown, fallback: string): TeamActionResult {
   if (error instanceof ManagerInvitationError) {

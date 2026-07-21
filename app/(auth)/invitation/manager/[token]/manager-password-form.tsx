@@ -2,10 +2,8 @@
 
 import { useActionState } from 'react';
 
-import {
-  INITIAL_MANAGER_PASSWORD_SETUP_STATE,
-  setManagerPassword
-} from '../actions';
+import { INITIAL_MANAGER_PASSWORD_SETUP_STATE } from '../action-state';
+import { setManagerPassword } from '../actions';
 
 const inputClass =
   'h-11 rounded-md border border-border bg-white px-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25';
