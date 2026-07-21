@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useMemo, useState } from 'react';
+import { LuImagePlus } from 'react-icons/lu';
 
 import { ActionIcon } from '@/components/ui/action-icons';
 import { SearchableCombobox, type SearchableComboboxOption } from '@/components/ui/searchable-combobox';
@@ -10,6 +11,7 @@ import {
   EMPTY_ADMIN_VEHICLE_FORM_STATE,
   type AdminVehicleFormState
 } from '@/lib/vehicles/admin-validation';
+import { MAX_VEHICLE_IMAGE_BYTES, MAX_VEHICLE_IMAGES } from '@/lib/vehicles/images';
 import type { EquipmentTaxonomyType } from '@/lib/vehicles/taxonomy';
 
 type VehicleFormProps = {
@@ -34,6 +36,7 @@ export function VehicleForm({ action, submitLabel, taxonomy, vehicle }: VehicleF
   const [state, formAction, isPending] = useActionState(action, EMPTY_ADMIN_VEHICLE_FORM_STATE);
   const values = state.values;
   const [equipmentType, setEquipmentType] = useState(values?.equipmentType ?? vehicle?.type ?? '');
+  const [selectedImageCount, setSelectedImageCount] = useState(0);
   const initialManufacturer = taxonomy
     .flatMap((type) => type.manufacturers)
     .find((manufacturer) => manufacturer.name.toLocaleLowerCase('uk-UA') === vehicle?.manufacturer.toLocaleLowerCase('uk-UA'));
@@ -123,9 +126,38 @@ export function VehicleForm({ action, submitLabel, taxonomy, vehicle }: VehicleF
           placeholder="Напрацювання, особливості, комплектація або інші дані для підбору запчастин."
         />
       </label>
-      <p className="rounded-md border border-dashed border-border bg-surface-muted p-4 text-xs leading-5 text-muted md:col-span-2">
-        Після збереження ви перейдете до додавання фотографій. Документи можна переглядати в картці техніки.
-      </p>
+      {!vehicle ? (
+        <div className="grid gap-3 rounded-md border border-dashed border-border bg-surface-muted p-4 md:col-span-2">
+          <div className="flex items-start gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent">
+              <LuImagePlus aria-hidden="true" className="size-5" />
+            </span>
+            <div>
+              <label htmlFor="vehicle-create-images" className="text-sm font-bold text-foreground">
+                Фотографії техніки
+              </label>
+              <p id="vehicle-create-images-help" className="mt-1 text-xs leading-5 text-muted">
+                Необов’язково. JPEG, PNG або WebP, до {MAX_VEHICLE_IMAGE_BYTES / 1024 / 1024} МБ кожне. Максимум {MAX_VEHICLE_IMAGES} фото.
+              </p>
+            </div>
+          </div>
+          <input
+            id="vehicle-create-images"
+            name="images"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            aria-describedby="vehicle-create-images-help"
+            onChange={(event) => setSelectedImageCount(event.currentTarget.files?.length ?? 0)}
+            className="block w-full rounded-md border border-border bg-white p-2 text-sm text-foreground file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:font-bold file:text-foreground"
+          />
+          {selectedImageCount > 0 ? (
+            <p className={`text-xs font-semibold ${selectedImageCount > MAX_VEHICLE_IMAGES ? 'text-danger' : 'text-muted'}`}>
+              Вибрано фотографій: {selectedImageCount}/{MAX_VEHICLE_IMAGES}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       <button type="submit" disabled={isPending} className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2">
         <ActionIcon name="save" />
         {isPending ? 'Збереження...' : submitLabel}

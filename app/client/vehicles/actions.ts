@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 import { getClientAccessContext, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
 import { createAuditLog } from '@/lib/audit-log/service';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { hasCloudinaryConfig } from '@/lib/cloudinary/server';
 import {
   EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED,
   EQUIPMENT_TEXT_FIELD_MAX_LENGTH
@@ -15,6 +16,8 @@ import { prisma } from '@/lib/prisma';
 import { findVehicleVinDuplicate } from '@/lib/vehicles/duplicates';
 import { vehicleOwnershipForClient } from '@/lib/vehicles/ownership';
 import { diffVehicleFields, pickEditableVehicleFields } from '@/lib/vehicles/change-snapshot';
+import { uploadVehicleImagesForActor } from '@/lib/vehicles/image-mutations';
+import { getVehicleImageFiles, validateVehicleImageFiles } from '@/lib/vehicles/images';
 import {
   getAdminVehicleFormValues,
   type AdminVehicleFormState
@@ -119,12 +122,23 @@ export async function createVehicle(
     return validation.state;
   }
 
+  const imageFiles = getVehicleImageFiles(formData);
+  if (imageFiles.length > 0) {
+    const imageValidation = validateVehicleImageFiles(imageFiles, 0);
+    if (!imageValidation.ok) {
+      return errorState(validation.values, imageValidation.message);
+    }
+    if (!hasCloudinaryConfig()) {
+      return errorState(validation.values, 'Сховище фотографій тимчасово недоступне. Спробуйте пізніше або створіть техніку без фото.');
+    }
+  }
+
   const owner = vehicleOwnershipForClient(access);
   const result = await prisma.$transaction(async (tx) => {
     const found = await findVehicleVinDuplicate({ db: tx, owner, normalizedVin: validation.data.vinOrSerial });
 
     if (found) {
-      return { duplicate: found, createdId: null };
+      return { duplicate: found, created: null };
     }
 
     const created = await tx.vehicle.create({
@@ -147,7 +161,15 @@ export async function createVehicle(
         ownerId: access.companyId ?? access.clientProfileId
       }
     });
-    return { duplicate: null, createdId: created.id };
+    return {
+      duplicate: null,
+      created: {
+        id: created.id,
+        clientId: created.clientId,
+        companyId: created.companyId,
+        images: []
+      }
+    };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
   if (result.duplicate) {
@@ -156,8 +178,24 @@ export async function createVehicle(
     });
   }
 
+  if (!result.created) {
+    return errorState(validation.values, 'Не вдалося створити техніку. Спробуйте ще раз.');
+  }
+
+  if (imageFiles.length > 0) {
+    const uploadResult = await uploadVehicleImagesForActor(
+      result.created,
+      { userId: access.userId, role: 'CLIENT' },
+      formData
+    );
+
+    if (uploadResult.status === 'error') {
+      redirect(`/client/vehicles/${result.created.id}/photos?created=1&upload=failed`);
+    }
+  }
+
   revalidatePath('/client/vehicles');
-  redirect(`/client/vehicles/${result.createdId}/photos?created=1`);
+  redirect('/client/vehicles?created=1');
 }
 
 export async function updateClientVehicle(

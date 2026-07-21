@@ -9,7 +9,13 @@ import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ClientVehiclePhotosPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ClientVehiclePhotosPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ upload?: string }>;
+}) {
   const session = await requireClientSession();
   const access = await getClientAccessContext(session.user.id);
   if (!access) notFound();
@@ -22,6 +28,7 @@ export default async function ClientVehiclePhotosPage({ params }: { params: Prom
     }
   });
   if (!vehicle) notFound();
+  const query = await searchParams;
 
   return (
     <div className="grid gap-6">
@@ -31,6 +38,12 @@ export default async function ClientVehiclePhotosPage({ params }: { params: Prom
         <h1 className="mt-2 text-2xl font-bold text-foreground">Додайте фотографії</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Додайте фотографії, щоб техніку було легше ідентифікувати в парку та заявках. Цей крок можна пропустити.</p>
       </section>
+
+      {query.upload === 'failed' ? (
+        <div role="alert" className="rounded-md border border-danger/30 bg-[#FEF3F2] p-4 text-sm font-semibold text-danger">
+          Техніку створено, але фотографії не вдалося завантажити. Виберіть файли ще раз і повторіть завантаження.
+        </div>
+      ) : null}
 
       <VehicleImageManager
         vehicleId={vehicle.id}
