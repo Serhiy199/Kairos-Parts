@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 import { requireCrmSession } from '@/lib/admin/access';
 import { createAuditLog } from '@/lib/audit-log/service';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { prisma } from '@/lib/prisma';
 import {
   getAdminVehicleFormValues,
@@ -63,12 +64,14 @@ async function validateForm(formData: FormData) {
     };
   }
 
-  const manufacturerResult = await validateEquipmentTaxonomySelection({
-    equipmentType: validation.data.equipmentType,
-    manufacturerId: validation.data.manufacturerId
-  });
+  const manufacturerResult = EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED
+    ? await validateEquipmentTaxonomySelection({
+        equipmentType: validation.data.equipmentType,
+        manufacturerId: validation.data.manufacturerId
+      })
+    : null;
 
-  if (!manufacturerResult.ok) {
+  if (manufacturerResult && !manufacturerResult.ok) {
     return {
       ok: false as const,
       state: errorState(values, 'Перевірте поля форми.', {
@@ -81,8 +84,8 @@ async function validateForm(formData: FormData) {
     ok: true as const,
     values,
     data: {
-      type: manufacturerResult.equipmentType.name,
-      manufacturer: manufacturerResult.manufacturer.name,
+      type: manufacturerResult?.ok ? manufacturerResult.equipmentType.name : validation.data.equipmentType,
+      manufacturer: manufacturerResult?.ok ? manufacturerResult.manufacturer.name : validation.data.manufacturer,
       model: validation.data.model,
       year: validation.data.year,
       vinOrSerial: validation.data.vinOrSerial,

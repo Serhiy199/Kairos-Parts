@@ -3,13 +3,17 @@ import { notFound } from 'next/navigation';
 import { TbArrowLeft, TbBuilding, TbDownload, TbFileDescription, TbPhotoEdit, TbUser } from 'react-icons/tb';
 
 import { ContextualChangeRequestForm } from '@/app/client/change-requests/contextual-change-request-form';
+import { updateClientVehicle } from '@/app/client/vehicles/actions';
+import { VehicleForm } from '@/app/client/vehicles/vehicle-form';
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
 import { ClientVehicleGallery } from '@/components/vehicles/client-vehicle-gallery';
 import { getClientAccessContext, requireClientSession } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { getClientVehicleDetail } from '@/lib/vehicles/client-queries';
 import { formatVehicleDocumentSize, vehicleDocumentTypeLabel } from '@/lib/vehicles/documents';
+import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +49,9 @@ export default async function ClientVehicleDetailPage({
 
   const vehicle = await getClientVehicleDetail(id, access);
   if (!vehicle) notFound();
+  const taxonomy = EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED
+    ? await getActiveEquipmentTaxonomy({ equipmentType: vehicle.type, manufacturer: vehicle.manufacturer })
+    : [];
 
   const vehicleLabel = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ');
   const isCompanyVehicle = vehicle.companyId !== null;
@@ -132,6 +139,19 @@ export default async function ClientVehicleDetailPage({
       ) : null}
 
       <VehicleDocumentsSection documents={vehicle.documents} />
+
+      <section aria-labelledby="vehicle-edit-heading" className="grid gap-4">
+        <div>
+          <h2 id="vehicle-edit-heading" className="text-xl font-bold text-foreground">Редагувати техніку</h2>
+          <p className="mt-2 text-sm leading-6 text-muted">Оновіть характеристики власної техніки. Власник і зв’язки із заявками не змінюються.</p>
+        </div>
+        <VehicleForm
+          action={updateClientVehicle.bind(null, vehicle.id)}
+          submitLabel="Зберегти зміни"
+          taxonomy={taxonomy}
+          vehicle={vehicle}
+        />
+      </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ContextualChangeRequestForm

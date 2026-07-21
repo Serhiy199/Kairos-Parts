@@ -7,6 +7,7 @@ import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { AdminVehicleForm } from '@/components/vehicles/admin-vehicle-form';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { prisma } from '@/lib/prisma';
 import { EMPTY_ADMIN_VEHICLE_FORM_VALUES } from '@/lib/vehicles/admin-validation';
 import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
@@ -47,7 +48,7 @@ export default async function AdminClientVehicleCreatePage({
         }
       }
     }),
-    getActiveEquipmentTaxonomy()
+    EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED ? getActiveEquipmentTaxonomy() : Promise.resolve([])
   ]);
 
   if (!client) {

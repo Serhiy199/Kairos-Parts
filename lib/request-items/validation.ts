@@ -1,4 +1,10 @@
+import {
+  EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED,
+  EQUIPMENT_TEXT_FIELD_MAX_LENGTH
+} from '@/lib/features/equipment-taxonomy';
+
 export type RequestItemInput = {
+  equipmentType: string | null;
   name: string;
   brand: string | null;
   catalogNumber: string | null;
@@ -61,7 +67,27 @@ function readBoolean(source: InputSource, key: string) {
 }
 
 export function parseRequestItemInput(source: InputSource): RequestItemValidationResult {
+  const equipmentType = optionalText(source, 'equipmentType');
+  const brand = optionalText(source, 'brand');
   const name = requiredText(source, 'name');
+
+  if (!EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED) {
+    if (!equipmentType) {
+      return { ok: false, error: 'Тип техніки є обов’язковим.' };
+    }
+
+    if (!brand) {
+      return { ok: false, error: 'Виробник або марка є обов’язковими.' };
+    }
+  }
+
+  if ((equipmentType?.length ?? 0) > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
+    return { ok: false, error: `Тип техніки має бути не довшим за ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.` };
+  }
+
+  if ((brand?.length ?? 0) > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
+    return { ok: false, error: `Виробник або марка має бути не довшим за ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.` };
+  }
 
   if (!name) {
     return { ok: false, error: 'Назва запчастини є обовʼязковою.' };
@@ -88,8 +114,9 @@ export function parseRequestItemInput(source: InputSource): RequestItemValidatio
   return {
     ok: true,
     data: {
+      equipmentType,
       name,
-      brand: optionalText(source, 'brand'),
+      brand,
       catalogNumber: optionalText(source, 'catalogNumber'),
       quantity,
       unit: optionalText(source, 'unit') ?? 'шт',

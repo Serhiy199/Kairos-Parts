@@ -23,8 +23,10 @@ import {
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
 import { ActionIcon } from '@/components/ui/action-icons';
+import { ManualEquipmentFields } from '@/components/vehicles/manual-equipment-fields';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { calculateInvoiceLineTotal, calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
 import { INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 import { PART_MANUFACTURERS } from '@/lib/parts/part-manufacturers';
@@ -481,6 +483,7 @@ export default async function AdminRequestDetailPage({
 
 type RequestItemView = {
   id: string;
+  equipmentType: string | null;
   name: string;
   brand: string | null;
   catalogNumber: string | null;
@@ -622,6 +625,7 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
                 <p className="mt-2 break-words font-bold text-foreground">{item.name}</p>
+                <p className="mt-1 break-words text-xs text-muted">{item.equipmentType ?? 'Тип техніки не вказано'}</p>
                 <p className="mt-1 break-words text-xs text-muted">{item.brand ?? 'Виробник не вказано'}</p>
                 {item.comment ? <p className="mt-2 break-words text-xs leading-5 text-muted">{item.comment}</p> : null}
               </div>
@@ -931,8 +935,18 @@ function RequestItemForm({
       <input type="hidden" name="requestId" value={requestId} />
       {item ? <input type="hidden" name="itemId" value={item.id} /> : null}
       <div className="grid min-w-0 gap-3 md:grid-cols-2 min-[1800px]:grid-cols-3">
+        {EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED ? null : (
+          <ManualEquipmentFields
+            typeName="equipmentType"
+            manufacturerName="brand"
+            typeDefaultValue={item?.equipmentType ?? ''}
+            manufacturerDefaultValue={item?.brand ?? ''}
+          />
+        )}
         <TextField name="name" label="Назва запчастини" required defaultValue={item?.name} />
-        <PartManufacturerField defaultValue={item?.brand} listId={`part-manufacturer-${item?.id ?? 'new'}`} />
+        {EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED ? (
+          <PartManufacturerField defaultValue={item?.brand} listId={`part-manufacturer-${item?.id ?? 'new'}`} />
+        ) : null}
         <TextField name="catalogNumber" label="Каталожний номер" defaultValue={item?.catalogNumber} />
         <TextField name="quantity" label="Кількість" type="number" min="1" defaultValue={String(item?.quantity ?? 1)} />
         <TextField name="unit" label="Одиниця" defaultValue={item?.unit ?? 'шт'} />

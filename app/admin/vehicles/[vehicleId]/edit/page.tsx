@@ -10,6 +10,7 @@ import { VehicleDocumentManager } from '@/components/vehicles/vehicle-document-m
 import { VehicleImageManager } from '@/components/vehicles/vehicle-image-manager';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { prisma } from '@/lib/prisma';
 import type { AdminVehicleFormValues } from '@/lib/vehicles/admin-validation';
 import { isValidVehicleOwnership } from '@/lib/vehicles/ownership';
@@ -92,10 +93,12 @@ export default async function AdminVehicleEditPage({
     notFound();
   }
 
-  const taxonomy = await getActiveEquipmentTaxonomy({
-    equipmentType: vehicle.type,
-    manufacturer: vehicle.manufacturer
-  });
+  const taxonomy = EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED
+    ? await getActiveEquipmentTaxonomy({
+        equipmentType: vehicle.type,
+        manufacturer: vehicle.manufacturer
+      })
+    : [];
   const matchingManufacturer = taxonomy
     .flatMap((type) => type.manufacturers)
     .find((manufacturer) => manufacturer.name.toLocaleLowerCase('uk-UA') === vehicle.manufacturer.toLocaleLowerCase('uk-UA'));
@@ -103,6 +106,7 @@ export default async function AdminVehicleEditPage({
   const initialValues: AdminVehicleFormValues = {
     equipmentType: vehicle.type,
     manufacturerId: matchingManufacturer?.id ?? '',
+    manufacturer: vehicle.manufacturer,
     model: vehicle.model,
     year: vehicle.year ? String(vehicle.year) : '',
     vinOrSerial: vehicle.vinOrSerial ?? '',

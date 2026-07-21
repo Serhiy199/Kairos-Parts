@@ -1,13 +1,19 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useActionState, useMemo, useState } from 'react';
 
 import { ActionIcon } from '@/components/ui/action-icons';
 import { SearchableCombobox, type SearchableComboboxOption } from '@/components/ui/searchable-combobox';
+import { ManualEquipmentFields } from '@/components/vehicles/manual-equipment-fields';
+import { EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
+import {
+  EMPTY_ADMIN_VEHICLE_FORM_STATE,
+  type AdminVehicleFormState
+} from '@/lib/vehicles/admin-validation';
 import type { EquipmentTaxonomyType } from '@/lib/vehicles/taxonomy';
 
 type VehicleFormProps = {
-  action: (formData: FormData) => void | Promise<void>;
+  action: (state: AdminVehicleFormState, formData: FormData) => Promise<AdminVehicleFormState>;
   submitLabel: string;
   taxonomy: EquipmentTaxonomyType[];
   vehicle?: {
@@ -25,7 +31,9 @@ const inputClass =
   'h-11 rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25';
 
 export function VehicleForm({ action, submitLabel, taxonomy, vehicle }: VehicleFormProps) {
-  const [equipmentType, setEquipmentType] = useState(vehicle?.type ?? '');
+  const [state, formAction, isPending] = useActionState(action, EMPTY_ADMIN_VEHICLE_FORM_STATE);
+  const values = state.values;
+  const [equipmentType, setEquipmentType] = useState(values?.equipmentType ?? vehicle?.type ?? '');
   const initialManufacturer = taxonomy
     .flatMap((type) => type.manufacturers)
     .find((manufacturer) => manufacturer.name.toLocaleLowerCase('uk-UA') === vehicle?.manufacturer.toLocaleLowerCase('uk-UA'));
@@ -45,48 +53,73 @@ export function VehicleForm({ action, submitLabel, taxonomy, vehicle }: VehicleF
   }
 
   return (
-    <form action={action} className="cabinet-card grid gap-5 lg:grid-cols-2">
+    <form action={formAction} className="cabinet-card grid gap-5 lg:grid-cols-2">
       {vehicle ? <input type="hidden" name="vehicleId" value={vehicle.id} /> : null}
-      <SearchableCombobox
-        variant="light"
-        label="Тип техніки"
-        name="type"
-        options={equipmentTypeOptions}
-        value={equipmentType}
-        onChange={handleEquipmentTypeChange}
-        placeholder="Оберіть тип техніки"
-        emptyMessage="Тип техніки не знайдено"
-        required
-      />
-      <SearchableCombobox
-        variant="light"
-        label="Виробник / марка"
-        name="manufacturerId"
-        options={manufacturerOptions}
-        value={manufacturerId}
-        onChange={setManufacturerId}
-        placeholder={equipmentType ? 'Оберіть виробника' : 'Спочатку оберіть тип техніки'}
-        emptyMessage="Виробника не знайдено"
-        disabled={!equipmentType}
-        required
-      />
+      {state.message ? (
+        <div className="rounded-md border border-danger/30 bg-[#FEF3F2] p-4 text-sm font-semibold text-danger lg:col-span-2">
+          {state.message}
+        </div>
+      ) : null}
+      {EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED ? (
+        <>
+          <SearchableCombobox
+            variant="light"
+            label="Тип техніки"
+            name="equipmentType"
+            options={equipmentTypeOptions}
+            value={equipmentType}
+            onChange={handleEquipmentTypeChange}
+            placeholder="Оберіть тип техніки"
+            emptyMessage="Тип техніки не знайдено"
+            required
+            error={state.fieldErrors?.equipmentType}
+          />
+          <SearchableCombobox
+            variant="light"
+            label="Виробник / марка"
+            name="manufacturerId"
+            options={manufacturerOptions}
+            value={manufacturerId}
+            onChange={setManufacturerId}
+            placeholder={equipmentType ? 'Оберіть виробника' : 'Спочатку оберіть тип техніки'}
+            emptyMessage="Виробника не знайдено"
+            disabled={!equipmentType}
+            required
+            error={state.fieldErrors?.manufacturerId}
+          />
+        </>
+      ) : (
+        <ManualEquipmentFields
+          typeName="equipmentType"
+          manufacturerName="manufacturer"
+          typeDefaultValue={values?.equipmentType ?? vehicle?.type ?? ''}
+          manufacturerDefaultValue={values?.manufacturer ?? vehicle?.manufacturer ?? ''}
+          typeError={state.fieldErrors?.equipmentType}
+          manufacturerError={state.fieldErrors?.manufacturer}
+          variant="white"
+        />
+      )}
       <label className="grid gap-2 text-sm font-semibold text-foreground">
         Модель *
-        <input name="model" required defaultValue={vehicle?.model} className={inputClass} />
+        <input name="model" required maxLength={120} defaultValue={values?.model ?? vehicle?.model} className={inputClass} />
+        {state.fieldErrors?.model ? <span className="text-xs text-danger">{state.fieldErrors.model}</span> : null}
       </label>
       <label className="grid gap-2 text-sm font-semibold text-foreground">
         Рік
-        <input name="year" type="number" min={1901} max={2199} defaultValue={vehicle?.year ?? ''} className={inputClass} />
+        <input name="year" type="number" min={1950} max={2100} defaultValue={values?.year ?? vehicle?.year ?? ''} className={inputClass} />
+        {state.fieldErrors?.year ? <span className="text-xs text-danger">{state.fieldErrors.year}</span> : null}
       </label>
       <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
         VIN / серійний номер
-        <input name="vinOrSerial" defaultValue={vehicle?.vinOrSerial ?? ''} className={inputClass} />
+        <input name="vinOrSerial" maxLength={120} defaultValue={values?.vinOrSerial ?? vehicle?.vinOrSerial ?? ''} className={inputClass} />
+        {state.fieldErrors?.vinOrSerial ? <span className="text-xs text-danger">{state.fieldErrors.vinOrSerial}</span> : null}
       </label>
       <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
         Коментар
         <textarea
           name="comment"
-          defaultValue={vehicle?.comment ?? ''}
+          defaultValue={values?.comment ?? vehicle?.comment ?? ''}
+          maxLength={5000}
           className="min-h-28 rounded-md border border-border bg-white px-3 py-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
           placeholder="Напрацювання, особливості, комплектація або інші дані для підбору запчастин."
         />
@@ -94,9 +127,9 @@ export function VehicleForm({ action, submitLabel, taxonomy, vehicle }: VehicleF
       <p className="rounded-md border border-dashed border-border bg-surface-muted p-4 text-xs leading-5 text-muted md:col-span-2">
         Після збереження ви перейдете до додавання фотографій. Документи можна переглядати в картці техніки.
       </p>
-      <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover md:col-span-2">
+      <button type="submit" disabled={isPending} className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2">
         <ActionIcon name="save" />
-        {submitLabel}
+        {isPending ? 'Збереження...' : submitLabel}
       </button>
     </form>
   );

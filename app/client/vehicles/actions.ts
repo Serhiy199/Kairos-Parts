@@ -4,29 +4,65 @@ import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { getClientAccessContext, requireClientSession } from '@/lib/client/access';
+import { getClientAccessContext, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
 import { createAuditLog } from '@/lib/audit-log/service';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { prisma } from '@/lib/prisma';
 import { findVehicleVinDuplicate } from '@/lib/vehicles/duplicates';
 import { vehicleOwnershipForClient } from '@/lib/vehicles/ownership';
-import { pickEditableVehicleFields } from '@/lib/vehicles/change-snapshot';
-import { normalizeVehicleVin } from '@/lib/vehicles/vin';
+import { diffVehicleFields, pickEditableVehicleFields } from '@/lib/vehicles/change-snapshot';
+import {
+  getAdminVehicleFormValues,
+  type AdminVehicleFormState,
+  validateAdminVehicleForm
+} from '@/lib/vehicles/admin-validation';
 import { validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
-function readString(formData: FormData, key: string) {
-  const value = formData.get(key);
-  return typeof value === 'string' ? value.trim() : '';
+function errorState(
+  values: ReturnType<typeof getAdminVehicleFormValues>,
+  message: string,
+  fieldErrors?: AdminVehicleFormState['fieldErrors']
+): AdminVehicleFormState {
+  return { status: 'error', message, values, fieldErrors };
 }
 
-function readYear(formData: FormData) {
-  const value = readString(formData, 'year');
-  if (!value) {
-    return null;
+async function validateClientVehicleForm(formData: FormData) {
+  const values = getAdminVehicleFormValues(formData);
+  const validation = validateAdminVehicleForm(values);
+
+  if (!validation.ok) {
+    return { ok: false as const, state: errorState(values, 'Перевірте поля форми.', validation.fieldErrors) };
   }
 
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 1900 && parsed < 2200 ? parsed : null;
+  const taxonomy = EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED
+    ? await validateEquipmentTaxonomySelection({
+        equipmentType: validation.data.equipmentType,
+        manufacturerId: validation.data.manufacturerId
+      })
+    : null;
+
+  if (taxonomy && !taxonomy.ok) {
+    return {
+      ok: false as const,
+      state: errorState(values, 'Перевірте поля форми.', {
+        [taxonomy.field === 'equipmentType' ? 'equipmentType' : 'manufacturerId']: taxonomy.message
+      })
+    };
+  }
+
+  return {
+    ok: true as const,
+    values,
+    data: {
+      type: taxonomy?.ok ? taxonomy.equipmentType.name : validation.data.equipmentType,
+      manufacturer: taxonomy?.ok ? taxonomy.manufacturer.name : validation.data.manufacturer,
+      model: validation.data.model,
+      year: validation.data.year,
+      vinOrSerial: validation.data.vinOrSerial,
+      comment: validation.data.comment
+    }
+  };
 }
 
 async function getClientAccess() {
@@ -45,26 +81,19 @@ async function getClientAccess() {
   return access;
 }
 
-export async function createVehicle(formData: FormData) {
+export async function createVehicle(
+  _state: AdminVehicleFormState,
+  formData: FormData
+): Promise<AdminVehicleFormState> {
   const access = await getClientAccess();
-  const type = readString(formData, 'type');
-  const manufacturerId = readString(formData, 'manufacturerId');
-  const model = readString(formData, 'model');
-  const vinSource = readString(formData, 'vinOrSerial');
-
-  if (!type || !manufacturerId || !model || vinSource.length > 120) {
-    redirect('/client/vehicles/new?error=validation');
-  }
-
-  const taxonomy = await validateEquipmentTaxonomySelection({ equipmentType: type, manufacturerId });
-  if (!taxonomy.ok) {
-    redirect('/client/vehicles/new?error=validation');
+  const validation = await validateClientVehicleForm(formData);
+  if (!validation.ok) {
+    return validation.state;
   }
 
   const owner = vehicleOwnershipForClient(access);
-  const vinOrSerial = normalizeVehicleVin(vinSource);
   const result = await prisma.$transaction(async (tx) => {
-    const found = await findVehicleVinDuplicate({ db: tx, owner, normalizedVin: vinOrSerial });
+    const found = await findVehicleVinDuplicate({ db: tx, owner, normalizedVin: validation.data.vinOrSerial });
 
     if (found) {
       return { duplicate: found, createdId: null };
@@ -73,12 +102,7 @@ export async function createVehicle(formData: FormData) {
     const created = await tx.vehicle.create({
       data: {
         ...owner,
-        type: taxonomy.equipmentType.name,
-        manufacturer: taxonomy.manufacturer.name,
-        model,
-        year: readYear(formData),
-        vinOrSerial,
-        comment: readString(formData, 'comment') || null
+        ...validation.data
       }
     });
     await createAuditLog(tx, {
@@ -99,9 +123,90 @@ export async function createVehicle(formData: FormData) {
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
   if (result.duplicate) {
-    redirect('/client/vehicles/new?error=duplicate');
+    return errorState(validation.values, 'Техніка з таким VIN або серійним номером уже є у вашому парку.', {
+      vinOrSerial: 'Перевірте VIN або серійний номер.'
+    });
   }
 
   revalidatePath('/client/vehicles');
   redirect(`/client/vehicles/${result.createdId}/photos?created=1`);
+}
+
+export async function updateClientVehicle(
+  vehicleId: string,
+  _state: AdminVehicleFormState,
+  formData: FormData
+): Promise<AdminVehicleFormState> {
+  const access = await getClientAccess();
+  const values = getAdminVehicleFormValues(formData);
+  const vehicle = await prisma.vehicle.findFirst({
+    where: { id: vehicleId, AND: [vehicleAccessWhere(access)] },
+    select: {
+      id: true,
+      clientId: true,
+      companyId: true,
+      type: true,
+      manufacturer: true,
+      model: true,
+      year: true,
+      vinOrSerial: true,
+      comment: true
+    }
+  });
+
+  if (!vehicle) {
+    return errorState(values, 'Техніку не знайдено або вона недоступна.');
+  }
+
+  const validation = await validateClientVehicleForm(formData);
+  if (!validation.ok) {
+    return validation.state;
+  }
+
+  const owner = vehicleOwnershipForClient(access);
+  const duplicate = await prisma.$transaction(async (tx) => {
+    const found = await findVehicleVinDuplicate({
+      db: tx,
+      owner,
+      normalizedVin: validation.data.vinOrSerial,
+      excludeVehicleId: vehicle.id
+    });
+
+    if (found) return found;
+
+    const before = pickEditableVehicleFields(vehicle);
+    const updated = await tx.vehicle.update({ where: { id: vehicle.id }, data: validation.data });
+    const changes = diffVehicleFields(before, pickEditableVehicleFields(updated));
+
+    if (changes.changedFields.length > 0) {
+      await createAuditLog(tx, {
+        actorId: access.userId,
+        companyId: access.companyId,
+        entityType: 'VEHICLE',
+        entityId: vehicle.id,
+        action: 'ENTITY_UPDATED',
+        oldValue: changes.oldValue,
+        newValue: changes.newValue,
+        metadata: {
+          event: 'VEHICLE_UPDATED',
+          actorRole: 'CLIENT',
+          changedFields: changes.changedFields,
+          ownerType: access.companyId ? 'company' : 'client',
+          ownerId: access.companyId ?? access.clientProfileId
+        }
+      });
+    }
+
+    return null;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  if (duplicate) {
+    return errorState(validation.values, 'Техніка з таким VIN або серійним номером уже є у вашому парку.', {
+      vinOrSerial: 'Перевірте VIN або серійний номер.'
+    });
+  }
+
+  revalidatePath('/client/vehicles');
+  revalidatePath(`/client/vehicles/${vehicle.id}`);
+  redirect(`/client/vehicles/${vehicle.id}?updated=1`);
 }

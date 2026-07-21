@@ -1,5 +1,6 @@
 import { VehicleForm } from '../vehicle-form';
 import { createVehicle } from '../actions';
+import { EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
 export default async function NewVehiclePage({
@@ -8,7 +9,7 @@ export default async function NewVehiclePage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const params = await searchParams;
-  const taxonomy = await getActiveEquipmentTaxonomy();
+  const taxonomy = EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED ? await getActiveEquipmentTaxonomy() : [];
 
   return (
     <div className="grid gap-6">

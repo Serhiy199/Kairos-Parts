@@ -1,8 +1,13 @@
 import { normalizeVehicleVin } from '@/lib/vehicles/vin';
+import {
+  EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED,
+  EQUIPMENT_TEXT_FIELD_MAX_LENGTH
+} from '@/lib/features/equipment-taxonomy';
 
 export type AdminVehicleFormField =
   | 'equipmentType'
   | 'manufacturerId'
+  | 'manufacturer'
   | 'model'
   | 'year'
   | 'vinOrSerial'
@@ -11,6 +16,7 @@ export type AdminVehicleFormField =
 export type AdminVehicleFormValues = {
   equipmentType: string;
   manufacturerId: string;
+  manufacturer: string;
   model: string;
   year: string;
   vinOrSerial: string;
@@ -28,6 +34,7 @@ export type AdminVehicleFormState = {
 export type ValidAdminVehicleInput = {
   equipmentType: string;
   manufacturerId: string;
+  manufacturer: string;
   model: string;
   year: number | null;
   vinOrSerial: string | null;
@@ -41,6 +48,7 @@ export const EMPTY_ADMIN_VEHICLE_FORM_STATE: AdminVehicleFormState = {
 export const EMPTY_ADMIN_VEHICLE_FORM_VALUES: AdminVehicleFormValues = {
   equipmentType: '',
   manufacturerId: '',
+  manufacturer: '',
   model: '',
   year: '',
   vinOrSerial: '',
@@ -51,6 +59,7 @@ export function getAdminVehicleFormValues(formData: FormData): AdminVehicleFormV
   return {
     equipmentType: String(formData.get('equipmentType') ?? ''),
     manufacturerId: String(formData.get('manufacturerId') ?? ''),
+    manufacturer: String(formData.get('manufacturer') ?? ''),
     model: String(formData.get('model') ?? ''),
     year: String(formData.get('year') ?? ''),
     vinOrSerial: String(formData.get('vinOrSerial') ?? ''),
@@ -62,6 +71,7 @@ export function validateAdminVehicleForm(values: AdminVehicleFormValues) {
   const fieldErrors: Partial<Record<AdminVehicleFormField, string>> = {};
   const equipmentType = values.equipmentType.trim();
   const manufacturerId = values.manufacturerId.trim();
+  const manufacturer = values.manufacturer.trim();
   const model = values.model.trim();
   const yearValue = values.year.trim();
   const vinSource = values.vinOrSerial.trim();
@@ -69,11 +79,19 @@ export function validateAdminVehicleForm(values: AdminVehicleFormValues) {
   const comment = values.comment.trim();
 
   if (!equipmentType) {
-    fieldErrors.equipmentType = 'Оберіть тип техніки зі списку.';
+    fieldErrors.equipmentType = EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED
+      ? 'Оберіть тип техніки зі списку.'
+      : 'Вкажіть тип техніки.';
+  } else if (equipmentType.length > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
+    fieldErrors.equipmentType = `Тип техніки має бути не довшим за ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.`;
   }
 
-  if (!manufacturerId) {
+  if (EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED && !manufacturerId) {
     fieldErrors.manufacturerId = 'Оберіть виробника зі списку.';
+  } else if (!EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED && !manufacturer) {
+    fieldErrors.manufacturer = 'Вкажіть виробника або марку.';
+  } else if (!EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED && manufacturer.length > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
+    fieldErrors.manufacturer = `Виробник або марка має бути не довшим за ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.`;
   }
 
   if (model.length < 2) {
@@ -111,6 +129,7 @@ export function validateAdminVehicleForm(values: AdminVehicleFormValues) {
     data: {
       equipmentType,
       manufacturerId,
+      manufacturer,
       model,
       year,
       vinOrSerial,

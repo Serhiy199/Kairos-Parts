@@ -6,6 +6,8 @@ import { useActionState, useEffect, useId, useMemo, useState } from 'react';
 import { LuSave } from 'react-icons/lu';
 
 import { SearchableCombobox, type SearchableComboboxOption } from '@/components/ui/searchable-combobox';
+import { ManualEquipmentFields } from '@/components/vehicles/manual-equipment-fields';
+import { EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import {
   EMPTY_ADMIN_VEHICLE_FORM_STATE,
   type AdminVehicleFormField,
@@ -111,32 +113,44 @@ export function AdminVehicleForm({
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <SearchableCombobox
-          variant="light"
-          label="Тип техніки"
-          name="equipmentType"
-          options={equipmentTypeOptions}
-          value={equipmentType}
-          onChange={setEquipmentType}
-          placeholder="Оберіть тип техніки"
-          emptyMessage="Тип техніки не знайдено"
-          required
-          error={state.fieldErrors?.equipmentType}
-        />
-
-        <SearchableCombobox
-          variant="light"
-          label="Виробник / марка"
-          name="manufacturerId"
-          options={manufacturerOptions}
-          value={manufacturerId}
-          onChange={setManufacturerId}
-          placeholder={equipmentType ? 'Оберіть виробника' : 'Спочатку оберіть тип техніки'}
-          emptyMessage="Виробника не знайдено"
-          disabled={!equipmentType}
-          required
-          error={state.fieldErrors?.manufacturerId}
-        />
+        {EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED ? (
+          <>
+            <SearchableCombobox
+              variant="light"
+              label="Тип техніки"
+              name="equipmentType"
+              options={equipmentTypeOptions}
+              value={equipmentType}
+              onChange={setEquipmentType}
+              placeholder="Оберіть тип техніки"
+              emptyMessage="Тип техніки не знайдено"
+              required
+              error={state.fieldErrors?.equipmentType}
+            />
+            <SearchableCombobox
+              variant="light"
+              label="Виробник / марка"
+              name="manufacturerId"
+              options={manufacturerOptions}
+              value={manufacturerId}
+              onChange={setManufacturerId}
+              placeholder={equipmentType ? 'Оберіть виробника' : 'Спочатку оберіть тип техніки'}
+              emptyMessage="Виробника не знайдено"
+              disabled={!equipmentType}
+              required
+              error={state.fieldErrors?.manufacturerId}
+            />
+          </>
+        ) : (
+          <ManualEquipmentFields
+            typeName="equipmentType"
+            manufacturerName="manufacturer"
+            typeDefaultValue={values.equipmentType}
+            manufacturerDefaultValue={values.manufacturer}
+            typeError={state.fieldErrors?.equipmentType}
+            manufacturerError={state.fieldErrors?.manufacturer}
+          />
+        )}
 
         <VehicleInput
           label="Модель"
