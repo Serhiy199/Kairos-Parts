@@ -22,12 +22,6 @@ const testAccounts = {
   }
 } as const;
 
-const seedRequestNumbers = {
-  clientJohnDeere: 'KP-DEV-0001',
-  websiteMan: 'KP-DEV-0002',
-  guestTires: 'KP-DEV-0003'
-} as const;
-
 function publicToken(key: string) {
   return `dev_${key}_status_token`;
 }
@@ -315,7 +309,7 @@ async function main() {
   });
 
   const clientRequest = await prisma.request.upsert({
-    where: { requestNumber: seedRequestNumbers.clientJohnDeere },
+    where: { publicStatusToken: publicToken('client_john_deere_8430') },
     update: {
       source: RequestSource.CLIENT_DASHBOARD,
       clientId: clientProfile.id,
@@ -330,7 +324,6 @@ async function main() {
       assignedManagerId: managerUser.id
     },
     create: {
-      requestNumber: seedRequestNumbers.clientJohnDeere,
       publicStatusToken: publicToken('client_john_deere_8430'),
       source: RequestSource.CLIENT_DASHBOARD,
       clientId: clientProfile.id,
@@ -347,7 +340,7 @@ async function main() {
   });
 
   const websiteRequest = await prisma.request.upsert({
-    where: { requestNumber: seedRequestNumbers.websiteMan },
+    where: { publicStatusToken: publicToken('website_man_tgx') },
     update: {
       source: RequestSource.WEBSITE,
       clientId: clientProfile.id,
@@ -362,7 +355,6 @@ async function main() {
       assignedManagerId: managerUser.id
     },
     create: {
-      requestNumber: seedRequestNumbers.websiteMan,
       publicStatusToken: publicToken('website_man_tgx'),
       source: RequestSource.WEBSITE,
       clientId: clientProfile.id,
@@ -379,7 +371,7 @@ async function main() {
   });
 
   const guestRequest = await prisma.request.upsert({
-    where: { requestNumber: seedRequestNumbers.guestTires },
+    where: { publicStatusToken: publicToken('guest_tires') },
     update: {
       source: RequestSource.WEBSITE,
       clientId: null,
@@ -398,7 +390,6 @@ async function main() {
       assignedManagerId: managerUser.id
     },
     create: {
-      requestNumber: seedRequestNumbers.guestTires,
       publicStatusToken: publicToken('guest_tires'),
       source: RequestSource.WEBSITE,
       status: RequestStatus.WAITING_APPROVAL,

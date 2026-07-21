@@ -422,7 +422,7 @@ model ManagerInvitation {
 
 model Request {
   id                String                 @id @default(cuid())
-  requestNumber     String                 @unique
+  requestNumber     String                 @unique @default(dbgenerated("'KP-'::text || nextval('request_number_seq'::regclass)::text"))
   publicStatusToken String                 @unique
   source            RequestSource
   status            RequestStatus          @default(NEW)

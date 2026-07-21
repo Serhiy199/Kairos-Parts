@@ -1,7 +1,7 @@
 import { saveRequestFileBufferLocal } from '@/lib/files/local-storage';
 import { getPhoneLookupTail, normalizePhoneDigits, phoneNumbersMatch } from '@/lib/phone/normalize';
 import { prisma } from '@/lib/prisma';
-import { generatePublicStatusToken, generateRequestNumber } from '@/lib/requests/identifiers';
+import { generatePublicStatusToken } from '@/lib/requests/identifiers';
 import { getActiveEquipmentTypeNames, getActiveManufacturerNamesForType, validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
 import { answerCallbackQuery, downloadTelegramFile, getTelegramFile, sendTelegramMessage } from './bot';
@@ -745,7 +745,6 @@ async function createTelegramRequest(draft: TelegramDraft) {
     throw new Error('Registered client profile is required for Telegram request.');
   }
 
-  const requestNumber = generateRequestNumber();
   const publicStatusToken = generatePublicStatusToken();
   const files = metadata.files;
   const company = clientProfile.user.companyMemberships[0]?.company ?? null;
@@ -767,7 +766,6 @@ async function createTelegramRequest(draft: TelegramDraft) {
 
   const createdRequest = await prisma.request.create({
     data: {
-      requestNumber,
       publicStatusToken,
       source: 'TELEGRAM',
       status: 'NEW',

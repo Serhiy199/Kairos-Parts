@@ -2,7 +2,7 @@ import { getClientApiSession, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { saveRequestFileLocal } from '@/lib/files/local-storage';
 import { prisma } from '@/lib/prisma';
-import { generatePublicStatusToken, generateRequestNumber } from '@/lib/requests/identifiers';
+import { generatePublicStatusToken } from '@/lib/requests/identifiers';
 import { parseRequestFormData } from '@/lib/requests/validation';
 import { validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
@@ -104,7 +104,6 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const requestNumber = generateRequestNumber();
     const publicStatusToken = generatePublicStatusToken();
     const vehicle = parsed.data.vehicleId
       ? await prisma.vehicle.findFirst({
@@ -118,7 +117,6 @@ export async function POST(request: Request) {
 
     const createdRequest = await prisma.request.create({
       data: {
-        requestNumber,
         publicStatusToken,
         source: 'CLIENT_DASHBOARD',
         status: 'NEW',
