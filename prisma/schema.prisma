@@ -604,7 +604,7 @@ model Invoice {
   company        Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
   clientId       String?
   client         User?         @relation("InvoiceClient", fields: [clientId], references: [id], onDelete: SetNull)
-  invoiceNumber  String        @unique
+  invoiceNumber  String        @unique @default(dbgenerated("nextval('invoice_number_seq'::regclass)::text"))
   status         InvoiceStatus @default(DRAFT)
   currency       String        @default("UAH")
   subtotal       Decimal       @default(0) @db.Decimal(12, 2)

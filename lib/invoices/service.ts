@@ -97,20 +97,6 @@ function clientBillingDetailsSnapshot(details: (Omit<ClientBillingInput, 'legalN
   };
 }
 
-export async function generateInvoiceNumber(requestId: string) {
-  const request = await prisma.request.findUnique({
-    where: { id: requestId },
-    select: { requestNumber: true }
-  });
-
-  if (!request) {
-    throw new Error('request_not_found');
-  }
-
-  const count = await prisma.invoice.count({ where: { requestId } });
-  return `${request.requestNumber}-INV-${String(count + 1).padStart(2, '0')}`;
-}
-
 export async function createInvoiceFromApprovedRequestItems({
   requestId,
   createdById,
@@ -183,7 +169,6 @@ export async function createInvoiceFromApprovedRequestItems({
     ?? clientBillingDetailsSnapshot(request.client?.billingDetails)
     ?? fallbackBuyerSnapshot(request);
 
-  const invoiceNumber = await generateInvoiceNumber(request.id);
   const createItems = request.items.map((item) => {
     const price = item.salePrice ?? new Prisma.Decimal(0);
     const total = calculateInvoiceLineTotal(item.quantity, price);
@@ -207,7 +192,6 @@ export async function createInvoiceFromApprovedRequestItems({
       requestId: request.id,
       companyId: request.companyId,
       clientId: request.client?.userId ?? null,
-      invoiceNumber,
       currency: 'UAH',
       subtotal,
       totalAmount: subtotal,
