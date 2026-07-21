@@ -604,13 +604,6 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
         </div>
         <div className="grid w-full min-w-0 gap-3 xl:w-auto xl:min-w-[280px] xl:max-w-[320px] xl:shrink-0">
           <span className="w-fit rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{items.length} позицій</span>
-          <form action={sendAdminRequestItemsForApproval} className="w-full">
-            <input type="hidden" name="requestId" value={requestId} />
-            <button className="inline-flex min-h-11 w-full items-center justify-center gap-2 whitespace-normal rounded-md bg-accent px-4 py-3 text-center text-sm font-bold leading-5 text-foreground transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-              <ActionIcon name="send" />
-              Відправити на погодження
-            </button>
-          </form>
           <p className="text-xs leading-5 text-muted">
             {hiddenItemCount > 0
               ? `${hiddenItemCount} нових позицій ще не відправлено клієнту.`
@@ -706,6 +699,16 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
           <RequestItemForm action={createAdminRequestItem} requestId={requestId} submitLabel="Додати позицію" />
         </div>
       </details>
+
+      <div className="mt-5 flex min-w-0 border-t border-border pt-5 sm:justify-end">
+        <form action={sendAdminRequestItemsForApproval} className="w-full sm:w-auto">
+          <input type="hidden" name="requestId" value={requestId} />
+          <button className="inline-flex min-h-11 w-full items-center justify-center gap-2 whitespace-normal rounded-md bg-accent px-4 py-3 text-center text-sm font-bold leading-5 text-foreground transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto">
+            <ActionIcon name="send" />
+            Відправити на погодження
+          </button>
+        </form>
+      </div>
     </section>
   );
 }
@@ -767,71 +770,23 @@ function InvoicesSection({
 
             return (
               <article key={invoice.id} className="min-w-0 rounded-md border border-border p-4">
-                <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="break-words text-lg font-bold text-foreground">{invoice.invoiceNumber}</h4>
-                      <InvoiceStatusBadge status={invoice.status} />
-                    </div>
-                    <p className="mt-2 break-words text-sm text-muted">
-                      Створено {invoice.createdAt.toLocaleString('uk-UA')} · {invoice.createdBy?.name ?? invoice.createdBy?.email ?? 'CRM'}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="break-words text-lg font-bold text-foreground">{invoice.invoiceNumber}</h4>
+                    <InvoiceStatusBadge status={invoice.status} />
+                  </div>
+                  <p className="mt-2 break-words text-sm text-muted">
+                    Створено {invoice.createdAt.toLocaleString('uk-UA')} · {invoice.createdBy?.name ?? invoice.createdBy?.email ?? 'CRM'}
+                  </p>
+                  <p className="mt-1 text-xs text-muted">{invoice.items.length} позицій</p>
+                  {invoice.sentAt ? <p className="mt-1 text-xs text-muted">Надіслано: {invoice.sentAt.toLocaleString('uk-UA')}</p> : null}
+                  {invoice.paidAt ? <p className="mt-1 text-xs text-success">Оплачено: {invoice.paidAt.toLocaleString('uk-UA')}</p> : null}
+                  {invoice.cancelledAt ? <p className="mt-1 text-xs text-danger">Скасовано: {invoice.cancelledAt.toLocaleString('uk-UA')}</p> : null}
+                  {!invoice.buyerSnapshot ? (
+                    <p className="mt-2 rounded-md border border-warning/30 bg-[#FFF7E0] px-3 py-2 text-xs font-semibold text-[#8A5B24]">
+                      Реквізити покупця не заповнені у snapshot.
                     </p>
-                    <p className="mt-1 text-xs text-muted">{invoice.items.length} позицій</p>
-                    {invoice.sentAt ? <p className="mt-1 text-xs text-muted">Надіслано: {invoice.sentAt.toLocaleString('uk-UA')}</p> : null}
-                    {invoice.paidAt ? <p className="mt-1 text-xs text-success">Оплачено: {invoice.paidAt.toLocaleString('uk-UA')}</p> : null}
-                    {invoice.cancelledAt ? <p className="mt-1 text-xs text-danger">Скасовано: {invoice.cancelledAt.toLocaleString('uk-UA')}</p> : null}
-                    {!invoice.buyerSnapshot ? (
-                      <p className="mt-2 rounded-md border border-warning/30 bg-[#FFF7E0] px-3 py-2 text-xs font-semibold text-[#8A5B24]">
-                        Реквізити покупця не заповнені у snapshot.
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="grid w-full min-w-0 gap-2 sm:flex sm:flex-wrap xl:w-auto">
-                    <Link
-                      href={`/admin/invoices/${invoice.id}/print`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex w-full items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted sm:w-auto"
-                    >
-                      Переглянути рахунок
-                    </Link>
-                    <Link
-                      href={`/admin/invoices/${invoice.id}/print`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex w-full items-center justify-center rounded-md border border-accent/60 px-4 py-2 text-sm font-bold text-[#8A5B24] transition hover:bg-[#FFF7E0] sm:w-auto"
-                    >
-                      Друк / PDF
-                    </Link>
-                    {canSend ? (
-                      <form action={sendAdminInvoice}>
-                        <input type="hidden" name="requestId" value={requestId} />
-                        <input type="hidden" name="invoiceId" value={invoice.id} />
-                        <button className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent-hover sm:w-auto">
-                          <ActionIcon name="send" />
-                          Надіслати клієнту
-                        </button>
-                      </form>
-                    ) : null}
-                    {canMarkPaid ? (
-                      <form action={markAdminInvoicePaid}>
-                        <input type="hidden" name="requestId" value={requestId} />
-                        <input type="hidden" name="invoiceId" value={invoice.id} />
-                        <button className="w-full rounded-md border border-success/40 px-4 py-2 text-sm font-bold text-success transition hover:bg-success/10 sm:w-auto">
-                          Позначити як оплачено
-                        </button>
-                      </form>
-                    ) : null}
-                    {canCancel ? (
-                      <form action={cancelAdminInvoice}>
-                        <input type="hidden" name="requestId" value={requestId} />
-                        <input type="hidden" name="invoiceId" value={invoice.id} />
-                        <button className="w-full rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted sm:w-auto">
-                          Скасувати
-                        </button>
-                      </form>
-                    ) : null}
-                  </div>
+                  ) : null}
                 </div>
 
                 <div className="mt-4 grid gap-4 xl:grid-cols-2">
@@ -887,6 +842,55 @@ function InvoicesSection({
                     </div>
                   </div>
                 </details>
+
+                <div className="mt-5 border-t border-border pt-5">
+                  <div className="grid min-w-0 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+                    <Link
+                      href={`/admin/invoices/${invoice.id}/print`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex w-full items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted sm:w-auto"
+                    >
+                      Переглянути рахунок
+                    </Link>
+                    <Link
+                      href={`/admin/invoices/${invoice.id}/print`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex w-full items-center justify-center rounded-md border border-accent/60 px-4 py-2 text-sm font-bold text-[#8A5B24] transition hover:bg-[#FFF7E0] sm:w-auto"
+                    >
+                      Друк / PDF
+                    </Link>
+                    {canSend ? (
+                      <form action={sendAdminInvoice} className="w-full sm:w-auto">
+                        <input type="hidden" name="requestId" value={requestId} />
+                        <input type="hidden" name="invoiceId" value={invoice.id} />
+                        <button className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent-hover sm:w-auto">
+                          <ActionIcon name="send" />
+                          Надіслати клієнту
+                        </button>
+                      </form>
+                    ) : null}
+                    {canMarkPaid ? (
+                      <form action={markAdminInvoicePaid} className="w-full sm:w-auto">
+                        <input type="hidden" name="requestId" value={requestId} />
+                        <input type="hidden" name="invoiceId" value={invoice.id} />
+                        <button className="w-full rounded-md border border-success/40 px-4 py-2 text-sm font-bold text-success transition hover:bg-success/10 sm:w-auto">
+                          Позначити як оплачено
+                        </button>
+                      </form>
+                    ) : null}
+                    {canCancel ? (
+                      <form action={cancelAdminInvoice} className="w-full sm:w-auto">
+                        <input type="hidden" name="requestId" value={requestId} />
+                        <input type="hidden" name="invoiceId" value={invoice.id} />
+                        <button className="w-full rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted sm:w-auto">
+                          Скасувати
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
+                </div>
               </article>
             );
           })
