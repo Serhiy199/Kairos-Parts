@@ -66,8 +66,8 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
               />
             </div>
             <p className="mt-4 max-w-md text-sm leading-6 text-public-muted">
-              Єдина точка контакту для підбору та постачання запчастин для аграрної, вантажної,
-              комерційної та спеціальної техніки.
+              Єдина точка контакту для підбору та постачання запчастин для аграрної, вантажної та
+              спеціальної техніки.
             </p>
           </div>
           <div>

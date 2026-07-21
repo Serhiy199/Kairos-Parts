@@ -77,9 +77,11 @@ export default async function UsedEquipmentPage({
         <div className="kp-container">
           <div className="max-w-4xl">
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent sm:text-sm">Майданчик БВ техніки</p>
-            <h1 className="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Перевірена техніка для роботи</h1>
+            <h1 className="mt-4 text-4xl font-bold leading-tight sm:text-5xl">
+              Перевірена техніка від наших партнерів
+            </h1>
             <p className="mt-5 max-w-3xl text-base leading-7 text-sidebar-text sm:text-lg sm:leading-8">
-              Переглядайте доступну вживану аграрну, вантажну та спеціальну техніку, яку менеджери Kairos Parts підготували до публічного показу.
+              Добірка техніки від підприємств, з якими ми співпрацюємо та які обслуговуємо.
             </p>
           </div>
         </div>
