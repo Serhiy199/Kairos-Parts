@@ -1,5 +1,9 @@
 import type { AuditAction, AuditEntityType, ChangeRequest, Prisma } from '@prisma/client';
 
+import {
+  EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED,
+  EQUIPMENT_TEXT_FIELD_MAX_LENGTH
+} from '@/lib/features/equipment-taxonomy';
 import { findVehicleVinDuplicate } from '@/lib/vehicles/duplicates';
 import { isValidVehicleOwnership } from '@/lib/vehicles/ownership';
 import { normalizeTaxonomyName } from '@/lib/vehicles/taxonomy-normalization';
@@ -314,7 +318,15 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
       return { ok: false, status: 'change-request-invalid-value' };
     }
 
-    if (field === 'type' && typeof canonicalNewValue === 'string') {
+    if (
+      (field === 'type' || field === 'manufacturer') &&
+      typeof canonicalNewValue === 'string' &&
+      canonicalNewValue.length > EQUIPMENT_TEXT_FIELD_MAX_LENGTH
+    ) {
+      return { ok: false, status: 'change-request-invalid-value' };
+    }
+
+    if (EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED && field === 'type' && typeof canonicalNewValue === 'string') {
       const equipmentType = await tx.equipmentType.findFirst({
         where: {
           normalizedName: normalizeTaxonomyName(canonicalNewValue),
@@ -329,7 +341,7 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
       canonicalNewValue = equipmentType.name;
     }
 
-    if (field === 'manufacturer' && typeof canonicalNewValue === 'string') {
+    if (EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED && field === 'manufacturer' && typeof canonicalNewValue === 'string') {
       const manufacturer = await tx.manufacturer.findFirst({
         where: {
           name: { equals: canonicalNewValue, mode: 'insensitive' },

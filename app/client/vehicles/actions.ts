@@ -7,16 +7,19 @@ import { redirect } from 'next/navigation';
 import { getClientAccessContext, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
 import { createAuditLog } from '@/lib/audit-log/service';
 import { hasDatabaseUrl } from '@/lib/env/database';
-import { EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
+import {
+  EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED,
+  EQUIPMENT_TEXT_FIELD_MAX_LENGTH
+} from '@/lib/features/equipment-taxonomy';
 import { prisma } from '@/lib/prisma';
 import { findVehicleVinDuplicate } from '@/lib/vehicles/duplicates';
 import { vehicleOwnershipForClient } from '@/lib/vehicles/ownership';
 import { diffVehicleFields, pickEditableVehicleFields } from '@/lib/vehicles/change-snapshot';
 import {
   getAdminVehicleFormValues,
-  type AdminVehicleFormState,
-  validateAdminVehicleForm
+  type AdminVehicleFormState
 } from '@/lib/vehicles/admin-validation';
+import { normalizeVehicleVin } from '@/lib/vehicles/vin';
 import { validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
 function errorState(
@@ -29,16 +32,41 @@ function errorState(
 
 async function validateClientVehicleForm(formData: FormData) {
   const values = getAdminVehicleFormValues(formData);
-  const validation = validateAdminVehicleForm(values);
+  const equipmentType = values.equipmentType.trim();
+  const manufacturerId = values.manufacturerId.trim();
+  const manufacturer = values.manufacturer.trim();
+  const model = values.model.trim();
+  const vinSource = values.vinOrSerial.trim();
+  const fieldErrors: AdminVehicleFormState['fieldErrors'] = {};
 
-  if (!validation.ok) {
-    return { ok: false as const, state: errorState(values, 'Перевірте поля форми.', validation.fieldErrors) };
+  if (!equipmentType) fieldErrors.equipmentType = 'Вкажіть тип техніки.';
+  else if (equipmentType.length > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
+    fieldErrors.equipmentType = `Тип техніки має бути не довшим за ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.`;
   }
+
+  if (EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED && !manufacturerId) {
+    fieldErrors.manufacturerId = 'Оберіть виробника зі списку.';
+  } else if (!EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED && !manufacturer) {
+    fieldErrors.manufacturer = 'Вкажіть виробника або марку.';
+  } else if (!EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED && manufacturer.length > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
+    fieldErrors.manufacturer = `Виробник або марка має бути не довшим за ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.`;
+  }
+
+  if (!model) fieldErrors.model = 'Вкажіть модель.';
+  if (vinSource.length > 120) fieldErrors.vinOrSerial = 'VIN або серійний номер має бути не довшим за 120 символів.';
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return { ok: false as const, state: errorState(values, 'Перевірте поля форми.', fieldErrors) };
+  }
+
+  const yearValue = values.year.trim();
+  const parsedYear = Number(yearValue);
+  const year = yearValue && Number.isInteger(parsedYear) && parsedYear > 1900 && parsedYear < 2200 ? parsedYear : null;
 
   const taxonomy = EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED
     ? await validateEquipmentTaxonomySelection({
-        equipmentType: validation.data.equipmentType,
-        manufacturerId: validation.data.manufacturerId
+        equipmentType,
+        manufacturerId
       })
     : null;
 
@@ -55,12 +83,12 @@ async function validateClientVehicleForm(formData: FormData) {
     ok: true as const,
     values,
     data: {
-      type: taxonomy?.ok ? taxonomy.equipmentType.name : validation.data.equipmentType,
-      manufacturer: taxonomy?.ok ? taxonomy.manufacturer.name : validation.data.manufacturer,
-      model: validation.data.model,
-      year: validation.data.year,
-      vinOrSerial: validation.data.vinOrSerial,
-      comment: validation.data.comment
+      type: taxonomy?.ok ? taxonomy.equipmentType.name : equipmentType,
+      manufacturer: taxonomy?.ok ? taxonomy.manufacturer.name : manufacturer,
+      model,
+      year,
+      vinOrSerial: normalizeVehicleVin(vinSource),
+      comment: values.comment.trim() || null
     }
   };
 }

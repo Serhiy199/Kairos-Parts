@@ -101,12 +101,12 @@ export function VehicleForm({ action, submitLabel, taxonomy, vehicle }: VehicleF
       )}
       <label className="grid gap-2 text-sm font-semibold text-foreground">
         Модель *
-        <input name="model" required maxLength={120} defaultValue={values?.model ?? vehicle?.model} className={inputClass} />
+        <input name="model" required defaultValue={values?.model ?? vehicle?.model} className={inputClass} />
         {state.fieldErrors?.model ? <span className="text-xs text-danger">{state.fieldErrors.model}</span> : null}
       </label>
       <label className="grid gap-2 text-sm font-semibold text-foreground">
         Рік
-        <input name="year" type="number" min={1950} max={2100} defaultValue={values?.year ?? vehicle?.year ?? ''} className={inputClass} />
+        <input name="year" type="number" min={1901} max={2199} defaultValue={values?.year ?? vehicle?.year ?? ''} className={inputClass} />
         {state.fieldErrors?.year ? <span className="text-xs text-danger">{state.fieldErrors.year}</span> : null}
       </label>
       <label className="grid gap-2 text-sm font-semibold text-foreground md:col-span-2">
@@ -119,7 +119,6 @@ export function VehicleForm({ action, submitLabel, taxonomy, vehicle }: VehicleF
         <textarea
           name="comment"
           defaultValue={values?.comment ?? vehicle?.comment ?? ''}
-          maxLength={5000}
           className="min-h-28 rounded-md border border-border bg-white px-3 py-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
           placeholder="Напрацювання, особливості, комплектація або інші дані для підбору запчастин."
         />
