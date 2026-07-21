@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import { TbBrandTelegram, TbClock, TbMail, TbPhone } from 'react-icons/tb';
+import { TbBrandTelegram, TbClock, TbMail, TbMapPin, TbPhone } from 'react-icons/tb';
 
+import { siteContacts } from '@/lib/site-contacts';
 
 import { ContactForm } from './contact-form';
 
@@ -11,35 +12,47 @@ export const metadata: Metadata = {
     'Зв’яжіться з Kairos Parts щодо підбору запчастин, комерційної пропозиції, співпраці або статусу заявки.'
 };
 
-const telegramBotUrl = 'https://t.me/kairos_parts_bot';
-
 const contacts = [
   {
     label: 'ТЕЛЕФОН',
-    value: '+38 (000) 000 00 00',
+    value: siteContacts.phone.display,
     description: 'Для оперативного зв’язку з менеджером.',
-    icon: TbPhone
+    icon: TbPhone,
+    href: siteContacts.phone.href,
+    ariaLabel: `Зателефонувати за номером ${siteContacts.phone.display}`
   },
   {
     label: 'EMAIL',
-    value: 'hello@kairos-parts.example',
+    value: siteContacts.email.display,
     description: 'Для списків позицій, документів і B2B-звернень.',
     icon: TbMail,
-    href: 'mailto:hello@kairos-parts.example'
+    href: siteContacts.email.href,
+    ariaLabel: `Написати на email ${siteContacts.email.display}`
+  },
+  {
+    label: 'АДРЕСА',
+    value: siteContacts.address.display,
+    description: 'Відкрийте адресу в Google Maps, щоб прокласти маршрут.',
+    icon: TbMapPin,
+    href: siteContacts.address.href,
+    external: true,
+    ariaLabel: `Відкрити адресу ${siteContacts.address.display} у Google Maps`
   },
   {
     label: 'TELEGRAM',
-    value: '@kairos_parts_bot',
+    value: siteContacts.telegram.display,
     description: 'Створення заявки після підтвердження номера телефону.',
     icon: TbBrandTelegram,
-    href: telegramBotUrl,
-    external: true
+    href: siteContacts.telegram.href,
+    external: true,
+    ariaLabel: `Відкрити Telegram ${siteContacts.telegram.display}`
   },
   {
     label: 'ГРАФІК РОБОТИ',
-    value: 'Пн-Пт, 09:00-18:00',
+    value: siteContacts.workingHours.display,
     description: 'Звернення поза графіком опрацьовуються наступного робочого дня.',
-    icon: TbClock
+    icon: TbClock,
+    ariaLabel: undefined
   }
 ];
 
@@ -106,37 +119,40 @@ export default function ContactsPage() {
                 Оберіть канал залежно від типу звернення.
               </p>
 
-              <div className="mt-8 divide-y divide-public-border">
-                {contacts.map((contact) => {
-                  const Icon = contact.icon;
-                  const valueClassName =
-                    'mt-1 inline-block text-lg font-bold leading-7 text-public-primary transition sm:text-xl';
+              <address className="mt-8 not-italic">
+                <div className="divide-y divide-public-border">
+                  {contacts.map((contact) => {
+                    const Icon = contact.icon;
+                    const valueClassName =
+                      'mt-1 inline-block text-lg font-bold leading-7 text-public-primary transition sm:text-xl';
 
-                  return (
-                    <div key={contact.label} className="flex gap-4 py-6 first:pt-0 last:pb-0">
-                      <Icon aria-hidden="true" className="mt-1 h-8 w-8 shrink-0 text-accent" />
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
-                          {contact.label}
-                        </p>
-                        {contact.href ? (
-                          <a
-                            href={contact.href}
-                            target={contact.external ? '_blank' : undefined}
-                            rel={contact.external ? 'noreferrer' : undefined}
-                            className={`${valueClassName} break-words hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent`}
-                          >
-                            {contact.value}
-                          </a>
-                        ) : (
-                          <p className={`${valueClassName} break-words`}>{contact.value}</p>
-                        )}
-                        <p className="mt-2 text-sm leading-6 text-public-muted">{contact.description}</p>
+                    return (
+                      <div key={contact.label} className="flex gap-4 py-6 first:pt-0 last:pb-0">
+                        <Icon aria-hidden="true" className="mt-1 h-8 w-8 shrink-0 text-accent" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
+                            {contact.label}
+                          </p>
+                          {contact.href ? (
+                            <a
+                              href={contact.href}
+                              target={contact.external ? '_blank' : undefined}
+                              rel={contact.external ? 'noopener noreferrer' : undefined}
+                              aria-label={contact.ariaLabel}
+                              className={`${valueClassName} break-words hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent`}
+                            >
+                              {contact.value}
+                            </a>
+                          ) : (
+                            <p className={`${valueClassName} break-words`}>{contact.value}</p>
+                          )}
+                          <p className="mt-2 text-sm leading-6 text-public-muted">{contact.description}</p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              </address>
             </div>
 
             <ContactForm />

@@ -1,12 +1,12 @@
 ﻿import Image from 'next/image';
 import Link from 'next/link';
+import { TbMapPin } from 'react-icons/tb';
 
 import { ActionIcon } from '@/components/ui/action-icons';
+import { siteContacts } from '@/lib/site-contacts';
 
 import { PublicDesktopNavigation } from './public-desktop-navigation';
 import { PublicMobileMenu } from './public-mobile-menu';
-
-const telegramBotUrl = 'https://t.me/kairos_parts_bot';
 
 const navItems = [
   { href: '/about', label: 'Про нас' },
@@ -82,20 +82,44 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
           </div>
           <div>
             <p className="text-sm font-bold text-public-primary">Контакти</p>
-            <div className="mt-3 grid gap-2 text-sm text-public-muted">
-              <a href="tel:+380000000000" className="inline-flex items-center gap-2 transition hover:text-public-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+            <address className="mt-3 grid min-w-0 gap-2 text-sm not-italic text-public-muted">
+              <a
+                href={siteContacts.phone.href}
+                aria-label={`Зателефонувати за номером ${siteContacts.phone.display}`}
+                className="inline-flex min-h-9 min-w-0 items-center gap-2 transition hover:text-public-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
                 <ActionIcon name="phone" className="size-4 text-accent" />
-                <span>Телефон: +38 (000) 000 00 00</span>
+                <span>Телефон: {siteContacts.phone.display}</span>
               </a>
-              <a href="mailto:hello@kairos-parts.example" className="inline-flex items-center gap-2 transition hover:text-public-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+              <a
+                href={siteContacts.email.href}
+                aria-label={`Написати на email ${siteContacts.email.display}`}
+                className="inline-flex min-h-9 min-w-0 items-center gap-2 transition hover:text-public-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
                 <ActionIcon name="mail" className="size-4 text-accent" />
-                <span>Email: hello@kairos-parts.example</span>
+                <span className="min-w-0 break-all">Email: {siteContacts.email.display}</span>
               </a>
-              <a href={telegramBotUrl} className="inline-flex items-center gap-2 transition hover:text-public-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+              <a
+                href={siteContacts.address.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Відкрити адресу ${siteContacts.address.display} у Google Maps`}
+                className="inline-flex min-h-9 min-w-0 items-center gap-2 transition hover:text-public-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                <TbMapPin aria-hidden="true" className="size-4 shrink-0 text-accent" />
+                <span className="min-w-0 break-words">Адреса: {siteContacts.address.display}</span>
+              </a>
+              <a
+                href={siteContacts.telegram.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Відкрити Telegram ${siteContacts.telegram.display}`}
+                className="inline-flex min-h-9 min-w-0 items-center gap-2 transition hover:text-public-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
                 <ActionIcon name="telegram" className="size-4 text-accent" />
-                <span>Telegram: @kairos_parts_bot</span>
+                <span>Telegram: {siteContacts.telegram.display}</span>
               </a>
-            </div>
+            </address>
           </div>
         </div>
         <div className="border-t border-public-border">
