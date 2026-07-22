@@ -3,6 +3,13 @@ import Credentials from 'next-auth/providers/credentials';
 
 import { evaluateCredentialCandidate, parseLoginIdentifier, parseLoginScope } from '@/lib/auth/credentials';
 import { validateJwtClaimsAgainstCurrentUser } from '@/lib/auth/current-user-access';
+import {
+  logRateLimitDatabaseError,
+  maybeCleanupExpiredRateLimits,
+  prepareCredentialsRateLimit,
+  recordCredentialsFailure,
+  resetSuccessfulIdentifier
+} from '@/lib/auth/rate-limit';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword } from '@/lib/auth/password';
 import type { UserRole } from './roles';
@@ -13,6 +20,14 @@ class AccountInvitedError extends CredentialsSignin {
 
 class AccountDisabledError extends CredentialsSignin {
   code = 'account-disabled';
+}
+
+class CredentialsRateLimitError extends CredentialsSignin {
+  code = 'rate-limit';
+}
+
+class CredentialsUnavailableError extends CredentialsSignin {
+  code = 'auth-unavailable';
 }
 
 export const authConfig = {
@@ -30,7 +45,7 @@ export const authConfig = {
         password: { label: 'Password', type: 'password' },
         loginScope: { label: 'Login scope', type: 'text' }
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const scope = parseLoginScope(credentials?.loginScope);
         const password = typeof credentials?.password === 'string' ? credentials.password : null;
         const identifier = scope ? parseLoginIdentifier(credentials?.identifier, scope) : null;
@@ -38,6 +53,24 @@ export const authConfig = {
         if (!scope || !password) {
           return null;
         }
+
+        let rateLimit;
+        try {
+          rateLimit = await prepareCredentialsRateLimit({
+            identifier: credentials?.identifier,
+            request
+          });
+        } catch (error) {
+          logRateLimitDatabaseError('pre_check', error);
+          throw new CredentialsUnavailableError();
+        }
+
+        if (rateLimit.decision.blocked) {
+          console.warn('Credentials login blocked.', { category: 'auth_rate_limit_blocked' });
+          throw new CredentialsRateLimitError();
+        }
+
+        await maybeCleanupExpiredRateLimits();
 
         const user = identifier ? await prisma.user.findFirst({
           where: identifier.kind === 'phone'
@@ -57,6 +90,21 @@ export const authConfig = {
         }) : null;
 
         const decision = await evaluateCredentialCandidate({ candidate: user, password, scope, verify: verifyPassword });
+        if (!decision.ok) {
+          let failureDecision;
+          try {
+            failureDecision = await recordCredentialsFailure(rateLimit.keys);
+          } catch (error) {
+            logRateLimitDatabaseError('failure_increment', error);
+            throw new CredentialsUnavailableError();
+          }
+
+          if (failureDecision.blocked) {
+            console.warn('Credentials login blocked.', { category: 'auth_rate_limit_blocked' });
+            throw new CredentialsRateLimitError();
+          }
+        }
+
         if (!decision.ok && decision.reason === 'account_invited') {
           throw new AccountInvitedError();
         }
@@ -65,6 +113,13 @@ export const authConfig = {
         }
         if (!decision.ok) {
           return null;
+        }
+
+        try {
+          await resetSuccessfulIdentifier(rateLimit.keys);
+        } catch (error) {
+          logRateLimitDatabaseError('success_reset', error);
+          throw new CredentialsUnavailableError();
         }
 
         const authenticatedUser = decision.user;

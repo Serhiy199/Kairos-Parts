@@ -3,6 +3,8 @@ import { LoginForm } from './login-form';
 const errorMessages: Record<string, string> = {
   validation: 'Невірний email, номер телефону або пароль.',
   credentials: 'Невірний email, номер телефону або пароль.',
+  'rate-limit': 'Забагато спроб входу. Спробуйте ще раз пізніше.',
+  'auth-unavailable': 'Не вдалося виконати вхід. Спробуйте ще раз пізніше.',
   'account-invited': 'Невірний email, номер телефону або пароль.',
   'account-disabled': 'Невірний email, номер телефону або пароль.',
   'session-expired': 'Сесію завершено після зміни доступу. Увійдіть повторно.',

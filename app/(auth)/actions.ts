@@ -31,6 +31,36 @@ function accountLifecycleError(error: AuthError) {
   return null;
 }
 
+function credentialsSecurityError(error: AuthError) {
+  if (!(error instanceof CredentialsSignin)) {
+    return null;
+  }
+
+  if (error.code === 'rate-limit') return 'rate-limit';
+  if (error.code === 'auth-unavailable') return 'auth-unavailable';
+
+  return null;
+}
+
+function credentialsSignInCode(result: unknown) {
+  const resultUrl =
+    typeof result === 'string'
+      ? result
+      : result && typeof result === 'object' && 'url' in result && typeof result.url === 'string'
+        ? result.url
+        : null;
+
+  if (!resultUrl) return null;
+
+  try {
+    const url = new URL(resultUrl, 'http://localhost');
+    if (url.searchParams.get('error') !== 'CredentialsSignin') return null;
+    return url.searchParams.get('code') ?? 'credentials';
+  } catch {
+    return null;
+  }
+}
+
 function getClientNextPath(nextPath: string) {
   if (nextPath === '/request' || nextPath.startsWith('/request?')) {
     return nextPath;
@@ -152,14 +182,28 @@ export async function loginClient(formData: FormData) {
   }
 
   try {
-    await signIn('credentials', {
+    const result: unknown = await signIn('credentials', {
       identifier: authIdentifier,
       password,
       loginScope: 'CLIENT',
       redirect: false
     });
+    const code = credentialsSignInCode(result);
+
+    if (code === 'rate-limit' || code === 'auth-unavailable') {
+      redirect(appendNextParam(`/login?error=${code}`, nextPath));
+    }
+
+    if (code) {
+      redirect(appendNextParam('/login?error=credentials', nextPath));
+    }
   } catch (error) {
     if (error instanceof AuthError) {
+      const securityError = credentialsSecurityError(error);
+      if (securityError) {
+        redirect(appendNextParam(`/login?error=${securityError}`, nextPath));
+      }
+
       redirect(appendNextParam('/login?error=credentials', nextPath));
     }
 
@@ -178,28 +222,33 @@ export async function loginStaff(formData: FormData) {
     redirect('/admin/login?error=validation');
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { role: true }
-  });
-
-  if (user?.role === 'CLIENT') {
-    redirect('/admin/login?error=client-login');
-  }
-
-  if (user?.role !== 'MANAGER' && user?.role !== 'ADMIN') {
-    redirect('/admin/login?error=credentials');
-  }
-
   try {
-    await signIn('credentials', {
+    const result: unknown = await signIn('credentials', {
       identifier: email,
       password,
       loginScope: 'STAFF',
       redirect: false
     });
+    const code = credentialsSignInCode(result);
+
+    if (code === 'rate-limit' || code === 'auth-unavailable') {
+      redirect(`/admin/login?error=${code}`);
+    }
+
+    if (code === 'account-invited' || code === 'account-disabled') {
+      redirect(`/admin/login?error=${code}`);
+    }
+
+    if (code) {
+      redirect('/admin/login?error=credentials');
+    }
   } catch (error) {
     if (error instanceof AuthError) {
+      const securityError = credentialsSecurityError(error);
+      if (securityError) {
+        redirect(`/admin/login?error=${securityError}`);
+      }
+
       const lifecycleError = accountLifecycleError(error);
 
       if (lifecycleError) {
