@@ -291,6 +291,7 @@ export default async function ClientRequestDetailPage({
                     <Link
                       href={`/client/invoices/${invoice.id}/print`}
                       target="_blank"
+                      prefetch={false}
                       rel="noreferrer"
                       className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted"
                     >

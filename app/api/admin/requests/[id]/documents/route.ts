@@ -1,4 +1,6 @@
 import { crmAccessError, getCrmApiSession } from '@/lib/admin/access';
+import { auditRequestContextFromHeaders } from '@/lib/audit-log/request-context';
+import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { saveRequestDocumentLocal } from '@/lib/files/local-storage';
 import { prisma } from '@/lib/prisma';
 import { parseRequestDocumentMetadata, readRequiredRequestDocumentFile } from '@/lib/request-documents/validation';
@@ -44,7 +46,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const requestRecord = await prisma.request.findUnique({
     where: { id },
-    select: { id: true }
+    select: { id: true, requestNumber: true, companyId: true }
   });
 
   if (!requestRecord) {
@@ -53,19 +55,42 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   try {
     const savedFile = await saveRequestDocumentLocal(requestRecord.id, fileResult.file);
-    const document = await prisma.requestDocument.create({
-      data: {
-        requestId: requestRecord.id,
-        type: metadata.data.type,
-        title: metadata.data.title,
-        fileName: savedFile.fileName,
-        fileUrl: savedFile.fileUrl,
-        storageKey: savedFile.storageKey,
-        mimeType: savedFile.mimeType,
-        size: savedFile.size,
-        visibleToClient: metadata.data.visibleToClient,
-        uploadedById: access.session.user.id
-      }
+    const document = await prisma.$transaction(async (tx) => {
+      const created = await tx.requestDocument.create({
+        data: {
+          requestId: requestRecord.id,
+          type: metadata.data.type,
+          title: metadata.data.title,
+          fileName: savedFile.fileName,
+          fileUrl: savedFile.fileUrl,
+          storageKey: savedFile.storageKey,
+          mimeType: savedFile.mimeType,
+          size: savedFile.size,
+          visibleToClient: metadata.data.visibleToClient,
+          uploadedById: access.session.user.id
+        }
+      });
+      await writeAuditLog(tx, {
+        actor: auditUserActor(access.session.user.id),
+        companyId: requestRecord.companyId,
+        entityType: 'REQUEST_DOCUMENT',
+        entityId: created.id,
+        entityLabel: created.title || created.fileName,
+        action: 'DOCUMENT_UPLOADED',
+        category: 'STANDARD',
+        newValue: {
+          documentId: created.id, fileName: created.fileName, documentType: created.type,
+          title: created.title, visibility: created.visibleToClient, requestId: created.requestId,
+          size: created.size, mimeType: created.mimeType
+        },
+        metadata: { source: 'ADMIN_CRM', requestNumber: requestRecord.requestNumber },
+        allowedFields: {
+          newValue: ['documentId', 'fileName', 'documentType', 'title', 'visibility', 'requestId', 'size', 'mimeType'],
+          metadata: ['source', 'requestNumber']
+        },
+        requestContext: auditRequestContextFromHeaders(request.headers)
+      });
+      return created;
     });
 
     return Response.json({ document }, { status: 201 });

@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
+import { getServerAuditRequestContext } from '@/lib/audit-log/request-context';
+import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { createChangeRequest } from '@/lib/change-requests/service';
 import { approveClientCommercialOffer, rejectClientCommercialOffer } from '@/lib/commercial-offers/service';
 import { parseClientOfferComment } from '@/lib/commercial-offers/validation';
@@ -44,7 +46,7 @@ export async function approveClientCommercialOfferAction(formData: FormData) {
     redirect('/login');
   }
 
-  const result = await approveClientCommercialOffer(offerId, access);
+  const result = await approveClientCommercialOffer(offerId, access, await getServerAuditRequestContext());
 
   if (!result.ok) {
     redirectBack(requestId, result.status);
@@ -70,7 +72,12 @@ export async function rejectClientCommercialOfferAction(formData: FormData) {
     redirect('/login');
   }
 
-  const result = await rejectClientCommercialOffer(offerId, access, parseClientOfferComment(formData));
+  const result = await rejectClientCommercialOffer(
+    offerId,
+    access,
+    parseClientOfferComment(formData),
+    await getServerAuditRequestContext()
+  );
 
   if (!result.ok) {
     redirectBack(requestId, result.status);
@@ -104,9 +111,11 @@ export async function approveClientRequestItemsAction(formData: FormData) {
     where: { id: requestId, AND: [requestAccessWhere(access)] },
     select: {
       id: true,
+      requestNumber: true,
+      companyId: true,
       items: {
         where: { visibleToClient: true },
-        select: { id: true }
+        select: { id: true, approvedByClient: true }
       }
     }
   });
@@ -123,17 +132,43 @@ export async function approveClientRequestItemsAction(formData: FormData) {
   }
 
   const now = new Date();
+  const previouslyApprovedIds = request.items.filter((item) => item.approvedByClient).map((item) => item.id);
+  const rejectedIds = request.items.map((item) => item.id).filter((itemId) => !selectedVisibleIds.includes(itemId));
+  const requestContext = await getServerAuditRequestContext();
 
-  await prisma.$transaction([
-    prisma.requestItem.updateMany({
+  await prisma.$transaction(async (tx) => {
+    await tx.requestItem.updateMany({
       where: { requestId: request.id, visibleToClient: true, id: { in: selectedVisibleIds } },
       data: { includeInInvoice: true, approvedByClient: true, approvedAt: now }
-    }),
-    prisma.requestItem.updateMany({
+    });
+    await tx.requestItem.updateMany({
       where: { requestId: request.id, visibleToClient: true, id: { notIn: selectedVisibleIds } },
       data: { includeInInvoice: false, approvedByClient: false, approvedAt: null }
-    })
-  ]);
+    });
+    await writeAuditLog(tx, {
+      actor: auditUserActor(session.user.id),
+      companyId: request.companyId,
+      entityType: 'REQUEST',
+      entityId: request.id,
+      entityLabel: `Заявка ${request.requestNumber}`,
+      action: 'REQUEST_ITEMS_CLIENT_APPROVAL_CHANGED',
+      category: 'STANDARD',
+      oldValue: { approvedItemIds: previouslyApprovedIds.slice(0, 50) },
+      newValue: { approvedItemIds: selectedVisibleIds.slice(0, 50) },
+      metadata: {
+        source: 'CLIENT_CABINET',
+        approvedItemCount: selectedVisibleIds.length,
+        rejectedItemCount: rejectedIds.length,
+        rejectedItemIds: rejectedIds.slice(0, 50)
+      },
+      allowedFields: {
+        oldValue: ['approvedItemIds'],
+        newValue: ['approvedItemIds'],
+        metadata: ['source', 'approvedItemCount', 'rejectedItemCount', 'rejectedItemIds']
+      },
+      requestContext
+    });
+  });
 
   revalidatePath(`/client/requests/${request.id}`);
   revalidatePath('/client');

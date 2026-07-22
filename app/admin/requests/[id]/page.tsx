@@ -858,6 +858,7 @@ function InvoicesSection({
                     <Link
                       href={`/admin/invoices/${invoice.id}/print`}
                       target="_blank"
+                      prefetch={false}
                       rel="noreferrer"
                       className="inline-flex w-full items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted sm:w-auto"
                     >
@@ -866,6 +867,7 @@ function InvoicesSection({
                     <Link
                       href={`/admin/invoices/${invoice.id}/print`}
                       target="_blank"
+                      prefetch={false}
                       rel="noreferrer"
                       className="inline-flex w-full items-center justify-center rounded-md border border-accent/60 px-4 py-2 text-sm font-bold text-[#8A5B24] transition hover:bg-[#FFF7E0] sm:w-auto"
                     >

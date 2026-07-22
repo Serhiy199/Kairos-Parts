@@ -44,7 +44,42 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   MANAGER_INVITATION_REGENERATED: 'Запрошення менеджера оновлено',
   MANAGER_ACTIVATED: 'Менеджера активовано',
   MANAGER_DISABLED: 'Доступ менеджера вимкнено',
-  MANAGER_ENABLED: 'Доступ менеджера увімкнено'
+  MANAGER_ENABLED: 'Доступ менеджера увімкнено',
+  REQUEST_STATUS_CHANGED: 'Статус заявки змінено',
+  REQUEST_MANAGER_ASSIGNED: 'Менеджера призначено',
+  REQUEST_MANAGER_REASSIGNED: 'Менеджера перепризначено',
+  REQUEST_MANAGER_UNASSIGNED: 'Менеджера знято із заявки',
+  REQUEST_COMPANY_CHANGED: 'Компанію заявки змінено',
+  REQUEST_ITEM_CREATED: 'Позицію заявки створено',
+  REQUEST_ITEM_UPDATED: 'Позицію заявки оновлено',
+  REQUEST_ITEM_DELETED: 'Позицію заявки видалено',
+  REQUEST_ITEMS_SENT_FOR_APPROVAL: 'Позиції надіслано на погодження',
+  REQUEST_ITEMS_CLIENT_APPROVAL_CHANGED: 'Вибір позицій клієнтом змінено',
+  COMMERCIAL_OFFER_CREATED: 'Комерційну пропозицію створено',
+  COMMERCIAL_OFFER_UPDATED: 'Комерційну пропозицію оновлено',
+  COMMERCIAL_OFFER_ITEMS_CHANGED: 'Позиції комерційної пропозиції змінено',
+  COMMERCIAL_OFFER_SENT: 'Комерційну пропозицію надіслано',
+  COMMERCIAL_OFFER_APPROVED: 'Комерційну пропозицію погоджено',
+  COMMERCIAL_OFFER_REJECTED: 'Комерційну пропозицію відхилено',
+  COMMERCIAL_OFFER_CANCELLED: 'Комерційну пропозицію скасовано',
+  COMMERCIAL_OFFER_DELETED: 'Комерційну пропозицію видалено',
+  INVOICE_CREATED: 'Рахунок створено',
+  INVOICE_SENT: 'Рахунок надіслано',
+  INVOICE_MARKED_PAID: 'Рахунок позначено оплаченим',
+  INVOICE_CANCELLED: 'Рахунок скасовано',
+  INVOICE_PDF_OPENED: 'Друкований перегляд рахунку відкрито',
+  DOCUMENT_UPLOADED: 'Документ завантажено',
+  DOCUMENT_UPDATED: 'Документ оновлено',
+  DOCUMENT_RENAMED: 'Документ перейменовано',
+  DOCUMENT_VISIBILITY_CHANGED: 'Видимість документа змінено',
+  DOCUMENT_DELETED: 'Документ видалено',
+  DOCUMENT_DOWNLOADED: 'Документ завантажено користувачем',
+  COMPANY_UPDATED: 'Компанію оновлено',
+  COMPANY_BILLING_UPDATED: 'Реквізити компанії оновлено',
+  COMPANY_PRIMARY_CONTACT_CHANGED: 'Основний контакт компанії змінено',
+  COMPANY_MEMBER_ADDED: 'Учасника компанії додано',
+  COMPANY_MEMBER_REMOVED: 'Учасника компанії видалено',
+  CLIENT_BILLING_UPDATED: 'Реквізити клієнта оновлено'
 };
 
 export const AUDIT_EVENT_LABELS: Record<string, string> = {
@@ -90,7 +125,11 @@ const KEY_LABELS: Record<string, string> = {
   actorRole: 'Роль виконавця',
   ownerType: 'Тип власника',
   visibleToClient: 'Видимість клієнту',
-  changedFields: 'Змінені поля'
+  changedFields: 'Змінені поля',
+  source: 'Джерело',
+  itemCount: 'Кількість позицій',
+  approvedItemCount: 'Погоджено позицій',
+  rejectedItemCount: 'Відхилено позицій'
 };
 
 const VALUE_LABELS: Record<string, string> = {

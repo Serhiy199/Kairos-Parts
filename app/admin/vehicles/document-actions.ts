@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { requireCrmSession } from '@/lib/admin/access';
+import { getServerAuditRequestContext } from '@/lib/audit-log/request-context';
 import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { hasCloudinaryConfig } from '@/lib/cloudinary/server';
 import {
@@ -56,6 +57,7 @@ export async function uploadAdminVehicleDocuments(
   formData: FormData
 ): Promise<VehicleDocumentActionState> {
   const session = await requireCrmSession();
+  const requestContext = await getServerAuditRequestContext();
   const vehicle = await getVehicleDocumentContext(vehicleId);
 
   if (!vehicle) return { status: 'error', message: 'Техніку не знайдено.' };
@@ -89,12 +91,13 @@ export async function uploadAdminVehicleDocuments(
       } })));
       await writeAuditLog(tx, {
         actor: auditUserActor(session.user.id), companyId: vehicle.companyId, entityType: 'VEHICLE', entityId: vehicle.id,
-        action: 'ENTITY_UPDATED', category: 'STANDARD',
+        action: 'DOCUMENT_UPLOADED', category: 'STANDARD',
         metadata: {
           event: 'VEHICLE_DOCUMENT_UPLOADED', actorRole: session.user.role,
           documents: created.map((document) => ({ id: document.id, originalName: document.fileName, mimeType: document.mimeType, size: document.size, visibleToClient: document.visibleToClient }))
         },
-        allowedFields: { metadata: VEHICLE_DOCUMENT_AUDIT_METADATA_FIELDS }
+        allowedFields: { metadata: VEHICLE_DOCUMENT_AUDIT_METADATA_FIELDS },
+        requestContext
       });
     });
   } catch {
@@ -108,6 +111,7 @@ export async function uploadAdminVehicleDocuments(
 
 export async function setVehicleDocumentVisibility(vehicleId: string, documentId: string, visibleToClient: boolean) {
   const session = await requireCrmSession();
+  const requestContext = await getServerAuditRequestContext();
   const vehicle = await getVehicleDocumentContext(vehicleId);
   const document = vehicle
     ? await prisma.document.findFirst({ where: { id: documentId, vehicleId: vehicle.id }, select: { id: true, visibleToClient: true } })
@@ -125,9 +129,10 @@ export async function setVehicleDocumentVisibility(vehicleId: string, documentId
       await tx.document.update({ where: { id: document.id }, data: { visibleToClient } });
       await writeAuditLog(tx, {
         actor: auditUserActor(session.user.id), companyId: vehicle.companyId, entityType: 'VEHICLE', entityId: vehicle.id,
-        action: 'ENTITY_UPDATED', category: 'STANDARD', oldValue: { visibleToClient: document.visibleToClient }, newValue: { visibleToClient },
+        action: 'DOCUMENT_VISIBILITY_CHANGED', category: 'STANDARD', oldValue: { visibleToClient: document.visibleToClient }, newValue: { visibleToClient },
         metadata: { event: 'VEHICLE_DOCUMENT_VISIBILITY_CHANGED', actorRole: session.user.role, documentId: document.id },
-        allowedFields: { oldValue: ['visibleToClient'], newValue: ['visibleToClient'], metadata: VEHICLE_DOCUMENT_AUDIT_METADATA_FIELDS }
+        allowedFields: { oldValue: ['visibleToClient'], newValue: ['visibleToClient'], metadata: VEHICLE_DOCUMENT_AUDIT_METADATA_FIELDS },
+        requestContext
       });
     });
   } catch {
@@ -143,6 +148,7 @@ export async function setVehicleDocumentVisibility(vehicleId: string, documentId
 
 export async function deleteAdminVehicleDocument(vehicleId: string, documentId: string) {
   const session = await requireCrmSession();
+  const requestContext = await getServerAuditRequestContext();
   const vehicle = await getVehicleDocumentContext(vehicleId);
   const document = vehicle
     ? await prisma.document.findFirst({
@@ -170,12 +176,13 @@ export async function deleteAdminVehicleDocument(vehicleId: string, documentId: 
       await tx.document.deleteMany({ where: { id: document.id, vehicleId: vehicle.id } });
       await writeAuditLog(tx, {
         actor: auditUserActor(session.user.id), companyId: vehicle.companyId, entityType: 'VEHICLE', entityId: vehicle.id,
-        action: 'ENTITY_UPDATED', category: 'STANDARD',
+        action: 'DOCUMENT_DELETED', category: 'STANDARD',
         metadata: {
           event: 'VEHICLE_DOCUMENT_DELETED', actorRole: session.user.role, documentId: document.id,
           originalName: document.fileName, visibleToClient: document.visibleToClient, mimeType: document.mimeType, size: document.size
         },
-        allowedFields: { metadata: VEHICLE_DOCUMENT_AUDIT_METADATA_FIELDS }
+        allowedFields: { metadata: VEHICLE_DOCUMENT_AUDIT_METADATA_FIELDS },
+        requestContext
       });
     });
   } catch {

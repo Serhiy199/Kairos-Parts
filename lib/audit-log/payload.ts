@@ -53,8 +53,19 @@ function boundedPrimitive<T extends null | boolean | number>(value: T, budget: B
 }
 
 function decimalLikeValue(value: object) {
-  const candidate = value as { constructor?: { name?: string }; toString?: () => string };
-  if (candidate.constructor?.name !== 'Decimal' || typeof candidate.toString !== 'function') {
+  const candidate = value as {
+    constructor?: { name?: string };
+    d?: unknown;
+    e?: unknown;
+    s?: unknown;
+    toFixed?: unknown;
+    toString?: () => string;
+  };
+  const hasDecimalShape = Array.isArray(candidate.d)
+    && typeof candidate.e === 'number'
+    && (candidate.s === 1 || candidate.s === -1)
+    && typeof candidate.toFixed === 'function';
+  if ((candidate.constructor?.name !== 'Decimal' && !hasDecimalShape) || typeof candidate.toString !== 'function') {
     return undefined;
   }
 

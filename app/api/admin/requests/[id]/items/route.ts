@@ -1,4 +1,6 @@
 import { crmAccessError, getCrmApiSession } from '@/lib/admin/access';
+import { auditRequestContextFromHeaders } from '@/lib/audit-log/request-context';
+import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { prisma } from '@/lib/prisma';
 import { parseRequestItemInput } from '@/lib/request-items/validation';
 
@@ -42,20 +44,50 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const requestRecord = await prisma.request.findUnique({
     where: { id },
-    select: { id: true, vehicleId: true }
+    select: { id: true, requestNumber: true, vehicleId: true, companyId: true }
   });
 
   if (!requestRecord) {
     return Response.json({ status: 'not_found' }, { status: 404 });
   }
 
-  const item = await prisma.requestItem.create({
-    data: {
-      requestId: requestRecord.id,
-      vehicleId: requestRecord.vehicleId,
-      ...parsed.data,
-      visibleToClient: false
-    }
+  const requestContext = auditRequestContextFromHeaders(request.headers);
+  const item = await prisma.$transaction(async (tx) => {
+    const created = await tx.requestItem.create({
+      data: {
+        requestId: requestRecord.id,
+        vehicleId: requestRecord.vehicleId,
+        ...parsed.data,
+        visibleToClient: false
+      }
+    });
+    await writeAuditLog(tx, {
+      actor: auditUserActor(access.session.user.id),
+      companyId: requestRecord.companyId,
+      entityType: 'REQUEST_ITEM',
+      entityId: created.id,
+      entityLabel: created.catalogNumber ? `${created.name} · ${created.catalogNumber}` : created.name,
+      action: 'REQUEST_ITEM_CREATED',
+      category: created.salePrice !== null || created.quantity !== 1 ? 'FINANCIAL_CRITICAL' : 'STANDARD',
+      newValue: {
+        name: created.name,
+        brand: created.brand,
+        catalogNumber: created.catalogNumber,
+        analogNumber: created.analogNumber,
+        quantity: created.quantity,
+        availability: created.availability,
+        salePrice: created.salePrice?.toString() ?? null,
+        visibleToClient: created.visibleToClient,
+        includeInInvoice: created.includeInInvoice
+      },
+      metadata: { source: 'ADMIN_CRM', requestNumber: requestRecord.requestNumber },
+      allowedFields: {
+        newValue: ['name', 'brand', 'catalogNumber', 'analogNumber', 'quantity', 'availability', 'salePrice', 'visibleToClient', 'includeInInvoice'],
+        metadata: ['source', 'requestNumber']
+      },
+      requestContext
+    });
+    return created;
   });
 
   return Response.json({ item }, { status: 201 });

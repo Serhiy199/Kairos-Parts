@@ -1,4 +1,5 @@
 import { crmAccessError, getCrmApiSession } from '@/lib/admin/access';
+import { auditRequestContextFromHeaders } from '@/lib/audit-log/request-context';
 import { updateCommercialOfferItem } from '@/lib/commercial-offers/service';
 import { parseCommercialOfferItemInput } from '@/lib/commercial-offers/validation';
 
@@ -24,7 +25,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ of
     return Response.json({ status: 'validation_error', message: parsed.error }, { status: 400 });
   }
 
-  const result = await updateCommercialOfferItem(offerId, itemId, parsed.data);
+  const result = await updateCommercialOfferItem(offerId, itemId, parsed.data, {
+    actorId: access.session.user.id,
+    source: 'ADMIN_CRM',
+    requestContext: auditRequestContextFromHeaders(request.headers)
+  });
 
   if (!result.ok) {
     return Response.json({ status: result.status }, { status: result.status === 'offer-item-not-found' ? 404 : 400 });

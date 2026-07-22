@@ -1,6 +1,6 @@
 import type { AuditAction, AuditEntityType, Prisma } from '@prisma/client';
 
-import type { AuditActor, AuditActorSnapshot, AuditCategory } from '@/lib/audit-log/contracts';
+import type { AuditActor, AuditActorSnapshot, AuditCategory, AuditRequestContext } from '@/lib/audit-log/contracts';
 import { sanitizeAuditPayload } from '@/lib/audit-log/payload';
 import { getAuditExpiry } from '@/lib/audit-log/retention';
 import { prisma } from '@/lib/prisma';
@@ -28,10 +28,7 @@ export type AuditLogInput = {
   newValue?: unknown;
   metadata?: unknown;
   allowedFields: AuditPayloadAllowlists;
-  requestContext?: {
-    ipAddress?: string | null;
-    userAgent?: string | null;
-  };
+  requestContext?: AuditRequestContext;
   createdAt?: Date;
 };
 

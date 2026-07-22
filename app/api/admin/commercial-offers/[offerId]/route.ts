@@ -1,4 +1,5 @@
 import { crmAccessError, getCrmApiSession } from '@/lib/admin/access';
+import { auditRequestContextFromHeaders } from '@/lib/audit-log/request-context';
 import {
   cancelCommercialOffer,
   deleteDraftCommercialOffer,
@@ -52,7 +53,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ of
     return Response.json({ status: 'validation_error', message: parsed.error }, { status: 400 });
   }
 
-  const result = await updateCommercialOfferMetadata(offerId, parsed.data);
+  const result = await updateCommercialOfferMetadata(offerId, parsed.data, {
+    actorId: access.session.user.id,
+    source: 'ADMIN_CRM',
+    requestContext: auditRequestContextFromHeaders(request.headers)
+  });
 
   if (!result.ok) {
     return Response.json({ status: result.status }, { status: result.status === 'offer-not-found' ? 404 : 400 });
@@ -61,7 +66,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ of
   return Response.json({ offer: result.offer });
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ offerId: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ offerId: string }> }) {
   const access = await getCrmApiSession();
 
   if (!access.ok) {
@@ -69,7 +74,11 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   }
 
   const { offerId } = await params;
-  const result = await deleteDraftCommercialOffer(offerId);
+  const result = await deleteDraftCommercialOffer(offerId, {
+    actorId: access.session.user.id,
+    source: 'ADMIN_CRM',
+    requestContext: auditRequestContextFromHeaders(request.headers)
+  });
 
   if (!result.ok) {
     return Response.json({ status: result.status }, { status: result.status === 'offer-not-found' ? 404 : 400 });
@@ -78,7 +87,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   return Response.json({ status: 'deleted' });
 }
 
-export async function POST(_request: Request, { params }: { params: Promise<{ offerId: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ offerId: string }> }) {
   const access = await getCrmApiSession();
 
   if (!access.ok) {
@@ -86,7 +95,11 @@ export async function POST(_request: Request, { params }: { params: Promise<{ of
   }
 
   const { offerId } = await params;
-  const result = await cancelCommercialOffer(offerId);
+  const result = await cancelCommercialOffer(offerId, {
+    actorId: access.session.user.id,
+    source: 'ADMIN_CRM',
+    requestContext: auditRequestContextFromHeaders(request.headers)
+  });
 
   if (!result.ok) {
     return Response.json({ status: result.status }, { status: result.status === 'offer-not-found' ? 404 : 400 });

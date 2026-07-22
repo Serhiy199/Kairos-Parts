@@ -1,5 +1,8 @@
 import { Prisma, UserRole } from '@prisma/client';
 
+import type { AuditRequestContext } from '@/lib/audit-log/contracts';
+import { buildAuditDiff } from '@/lib/audit-log/payload';
+import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import type { ClientAccessContext } from '@/lib/client/access';
 import { requestAccessWhere } from '@/lib/client/access';
 import { buyerBillingSnapshot, sellerBillingSnapshot, type ClientBillingInput, type CompanyBillingInput } from '@/lib/billing/validation';
@@ -8,6 +11,79 @@ import { prisma } from '@/lib/prisma';
 import { sendTelegramInvoiceSentNotification } from '@/lib/telegram/notifications';
 
 const crmRoles: UserRole[] = ['MANAGER', 'ADMIN'];
+const INVOICE_AUDIT_FIELDS = [
+  'invoiceNumber', 'status', 'currency', 'subtotal', 'total', 'itemCount',
+  'requestId', 'sentAt', 'paidAt', 'cancelledAt'
+] as const;
+
+export type InvoiceAuditContext = {
+  actorId: string;
+  actorRole: UserRole;
+  requestContext?: AuditRequestContext;
+};
+
+const invoiceAuditSelect = {
+  id: true,
+  requestId: true,
+  companyId: true,
+  invoiceNumber: true,
+  status: true,
+  currency: true,
+  subtotal: true,
+  totalAmount: true,
+  sentAt: true,
+  paidAt: true,
+  cancelledAt: true,
+  request: { select: { requestNumber: true } },
+  _count: { select: { items: true } }
+} satisfies Prisma.InvoiceSelect;
+
+type InvoiceAuditRecord = Prisma.InvoiceGetPayload<{ select: typeof invoiceAuditSelect }>;
+
+function invoiceSnapshot(invoice: InvoiceAuditRecord) {
+  return {
+    invoiceNumber: invoice.invoiceNumber,
+    status: invoice.status,
+    currency: invoice.currency,
+    subtotal: invoice.subtotal.toString(),
+    total: invoice.totalAmount.toString(),
+    itemCount: invoice._count.items,
+    requestId: invoice.requestId,
+    sentAt: invoice.sentAt,
+    paidAt: invoice.paidAt,
+    cancelledAt: invoice.cancelledAt
+  };
+}
+
+async function writeInvoiceAudit(
+  tx: Prisma.TransactionClient,
+  audit: InvoiceAuditContext,
+  invoice: InvoiceAuditRecord,
+  input: {
+    action: 'INVOICE_CREATED' | 'INVOICE_SENT' | 'INVOICE_MARKED_PAID' | 'INVOICE_CANCELLED';
+    oldValue?: unknown;
+    newValue?: unknown;
+  }
+) {
+  await writeAuditLog(tx, {
+    actor: auditUserActor(audit.actorId),
+    companyId: invoice.companyId,
+    entityType: 'INVOICE',
+    entityId: invoice.id,
+    entityLabel: `Рахунок ${invoice.invoiceNumber}`,
+    action: input.action,
+    category: 'FINANCIAL_CRITICAL',
+    oldValue: input.oldValue,
+    newValue: input.newValue,
+    metadata: { source: 'ADMIN_CRM', requestId: invoice.requestId },
+    allowedFields: {
+      oldValue: INVOICE_AUDIT_FIELDS,
+      newValue: INVOICE_AUDIT_FIELDS,
+      metadata: ['source', 'requestId']
+    },
+    requestContext: audit.requestContext
+  });
+}
 
 function isCrmRole(role: UserRole) {
   return crmRoles.includes(role);
@@ -100,11 +176,13 @@ function clientBillingDetailsSnapshot(details: (Omit<ClientBillingInput, 'legalN
 export async function createInvoiceFromApprovedRequestItems({
   requestId,
   createdById,
-  createdByRole
+  createdByRole,
+  requestContext
 }: {
   requestId: string;
   createdById: string;
   createdByRole: UserRole;
+  requestContext?: AuditRequestContext;
 }) {
   if (!isCrmRole(createdByRole)) {
     return { ok: false as const, status: 'invoice-forbidden' };
@@ -114,6 +192,7 @@ export async function createInvoiceFromApprovedRequestItems({
     where: { id: requestId },
     select: {
       id: true,
+      requestNumber: true,
       companyId: true,
       company: {
         select: {
@@ -187,20 +266,33 @@ export async function createInvoiceFromApprovedRequestItems({
   });
   const subtotal = createItems.reduce((sum, item) => sum.add(item.total), new Prisma.Decimal(0));
 
-  const invoice = await prisma.invoice.create({
-    data: {
-      requestId: request.id,
-      companyId: request.companyId,
-      clientId: request.client?.userId ?? null,
-      currency: 'UAH',
-      subtotal,
-      totalAmount: subtotal,
-      sellerSnapshot: sellerBillingSnapshot(sellerDetails),
-      buyerSnapshot: buyerBillingSnapshot(buyerDetails),
-      createdById,
-      items: { create: createItems }
-    },
-    include: { items: { orderBy: { createdAt: 'asc' } } }
+  const invoice = await prisma.$transaction(async (tx) => {
+    const created = await tx.invoice.create({
+      data: {
+        requestId: request.id,
+        companyId: request.companyId,
+        clientId: request.client?.userId ?? null,
+        currency: 'UAH',
+        subtotal,
+        totalAmount: subtotal,
+        sellerSnapshot: sellerBillingSnapshot(sellerDetails),
+        buyerSnapshot: buyerBillingSnapshot(buyerDetails),
+        createdById,
+        items: { create: createItems }
+      },
+      include: { items: { orderBy: { createdAt: 'asc' } } }
+    });
+    const auditInvoice = await tx.invoice.findUniqueOrThrow({
+      where: { id: created.id },
+      select: invoiceAuditSelect
+    });
+    await writeInvoiceAudit(
+      tx,
+      { actorId: createdById, actorRole: createdByRole, requestContext },
+      auditInvoice,
+      { action: 'INVOICE_CREATED', newValue: invoiceSnapshot(auditInvoice) }
+    );
+    return created;
   });
 
   return { ok: true as const, invoice };
@@ -228,92 +320,90 @@ export async function getInvoiceForAdmin(invoiceId: string) {
   });
 }
 
-export async function sendInvoiceToClient(invoiceId: string, actorRole: UserRole) {
-  if (!isCrmRole(actorRole)) {
+export async function sendInvoiceToClient(invoiceId: string, audit: InvoiceAuditContext) {
+  if (!isCrmRole(audit.actorRole)) {
     return { ok: false as const, status: 'invoice-forbidden' };
   }
 
-  const invoice = await prisma.invoice.findUnique({
-    where: { id: invoiceId },
-    include: { items: { select: { id: true } } }
+  const result = await prisma.$transaction(async (tx) => {
+    const invoice = await tx.invoice.findUnique({ where: { id: invoiceId }, select: invoiceAuditSelect });
+    if (!invoice) return { ok: false as const, status: 'invoice-not-found' };
+    if (invoice.status !== 'DRAFT') return { ok: false as const, status: 'invoice-invalid-transition' };
+    if (invoice._count.items === 0) return { ok: false as const, status: 'invoice-empty' };
+
+    const updated = await tx.invoice.update({
+      where: { id: invoice.id },
+      data: { status: 'SENT', sentAt: new Date() }
+    });
+    const auditUpdated = await tx.invoice.findUniqueOrThrow({ where: { id: invoice.id }, select: invoiceAuditSelect });
+    const diff = buildAuditDiff(invoiceSnapshot(invoice), invoiceSnapshot(auditUpdated), INVOICE_AUDIT_FIELDS);
+    await writeInvoiceAudit(tx, audit, auditUpdated, {
+      action: 'INVOICE_SENT',
+      oldValue: diff.before,
+      newValue: diff.after
+    });
+    return { ok: true as const, invoice: updated };
   });
 
-  if (!invoice) {
-    return { ok: false as const, status: 'invoice-not-found' };
-  }
-
-  if (invoice.status !== 'DRAFT') {
-    return { ok: false as const, status: 'invoice-invalid-transition' };
-  }
-
-  if (invoice.items.length === 0) {
-    return { ok: false as const, status: 'invoice-empty' };
-  }
-
-  const updated = await prisma.invoice.update({
-    where: { id: invoice.id },
-    data: { status: 'SENT', sentAt: new Date() }
-  });
+  if (!result.ok) return result;
 
   try {
-    await sendTelegramInvoiceSentNotification({ invoiceId: updated.id });
+    await sendTelegramInvoiceSentNotification({ invoiceId: result.invoice.id });
   } catch {
     // Telegram delivery must not block the invoice status transition.
   }
 
-  return { ok: true as const, invoice: updated };
+  return result;
 }
 
-export async function cancelInvoice(invoiceId: string, actorRole: UserRole) {
-  if (!isCrmRole(actorRole)) {
+export async function cancelInvoice(invoiceId: string, audit: InvoiceAuditContext) {
+  if (!isCrmRole(audit.actorRole)) {
     return { ok: false as const, status: 'invoice-forbidden' };
   }
 
-  const invoice = await prisma.invoice.findUnique({
-    where: { id: invoiceId },
-    select: { id: true, status: true }
+  return prisma.$transaction(async (tx) => {
+    const invoice = await tx.invoice.findUnique({ where: { id: invoiceId }, select: invoiceAuditSelect });
+    if (!invoice) return { ok: false as const, status: 'invoice-not-found' };
+    if (!['DRAFT', 'SENT'].includes(invoice.status)) return { ok: false as const, status: 'invoice-invalid-transition' };
+
+    const updated = await tx.invoice.update({
+      where: { id: invoice.id },
+      data: { status: 'CANCELLED', cancelledAt: new Date() }
+    });
+    const auditUpdated = await tx.invoice.findUniqueOrThrow({ where: { id: invoice.id }, select: invoiceAuditSelect });
+    const diff = buildAuditDiff(invoiceSnapshot(invoice), invoiceSnapshot(auditUpdated), INVOICE_AUDIT_FIELDS);
+    await writeInvoiceAudit(tx, audit, auditUpdated, {
+      action: 'INVOICE_CANCELLED',
+      oldValue: diff.before,
+      newValue: diff.after
+    });
+    return { ok: true as const, invoice: updated };
   });
-
-  if (!invoice) {
-    return { ok: false as const, status: 'invoice-not-found' };
-  }
-
-  if (!['DRAFT', 'SENT'].includes(invoice.status)) {
-    return { ok: false as const, status: 'invoice-invalid-transition' };
-  }
-
-  const updated = await prisma.invoice.update({
-    where: { id: invoice.id },
-    data: { status: 'CANCELLED', cancelledAt: new Date() }
-  });
-
-  return { ok: true as const, invoice: updated };
 }
 
-export async function markInvoicePaid(invoiceId: string, actorRole: UserRole) {
-  if (!isCrmRole(actorRole)) {
+export async function markInvoicePaid(invoiceId: string, audit: InvoiceAuditContext) {
+  if (!isCrmRole(audit.actorRole)) {
     return { ok: false as const, status: 'invoice-forbidden' };
   }
 
-  const invoice = await prisma.invoice.findUnique({
-    where: { id: invoiceId },
-    select: { id: true, status: true }
+  return prisma.$transaction(async (tx) => {
+    const invoice = await tx.invoice.findUnique({ where: { id: invoiceId }, select: invoiceAuditSelect });
+    if (!invoice) return { ok: false as const, status: 'invoice-not-found' };
+    if (invoice.status !== 'SENT') return { ok: false as const, status: 'invoice-invalid-transition' };
+
+    const updated = await tx.invoice.update({
+      where: { id: invoice.id },
+      data: { status: 'PAID', paidAt: new Date() }
+    });
+    const auditUpdated = await tx.invoice.findUniqueOrThrow({ where: { id: invoice.id }, select: invoiceAuditSelect });
+    const diff = buildAuditDiff(invoiceSnapshot(invoice), invoiceSnapshot(auditUpdated), INVOICE_AUDIT_FIELDS);
+    await writeInvoiceAudit(tx, audit, auditUpdated, {
+      action: 'INVOICE_MARKED_PAID',
+      oldValue: diff.before,
+      newValue: diff.after
+    });
+    return { ok: true as const, invoice: updated };
   });
-
-  if (!invoice) {
-    return { ok: false as const, status: 'invoice-not-found' };
-  }
-
-  if (invoice.status !== 'SENT') {
-    return { ok: false as const, status: 'invoice-invalid-transition' };
-  }
-
-  const updated = await prisma.invoice.update({
-    where: { id: invoice.id },
-    data: { status: 'PAID', paidAt: new Date() }
-  });
-
-  return { ok: true as const, invoice: updated };
 }
 
 export async function listInvoicesForClientRequest(requestId: string, access: ClientAccessContext) {
