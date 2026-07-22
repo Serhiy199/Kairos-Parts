@@ -142,6 +142,8 @@ export async function registerClient(formData: FormData) {
 
 export async function loginClient(formData: FormData) {
   const identifier = readString(formData, 'identifier');
+  const canonicalPhone = normalizeUkrainianPhone(identifier);
+  const authIdentifier = canonicalPhone ?? identifier;
   const password = readString(formData, 'password');
   const nextPath = readString(formData, 'next');
 
@@ -151,7 +153,7 @@ export async function loginClient(formData: FormData) {
 
   try {
     await signIn('credentials', {
-      identifier,
+      identifier: authIdentifier,
       password,
       loginScope: 'CLIENT',
       redirect: false
