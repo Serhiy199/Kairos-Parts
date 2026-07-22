@@ -14,6 +14,7 @@ import { EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED } from '@/lib/features/equipm
 import { prisma } from '@/lib/prisma';
 import type { AdminVehicleFormValues } from '@/lib/vehicles/admin-validation';
 import { isValidVehicleOwnership } from '@/lib/vehicles/ownership';
+import { getVehicleDisplay } from '@/lib/vehicles/name';
 import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
 export const dynamic = 'force-dynamic';
@@ -37,6 +38,7 @@ export default async function AdminVehicleEditPage({
       where: { id: vehicleId },
       select: {
         id: true,
+        name: true,
         clientId: true,
         companyId: true,
         type: true,
@@ -104,6 +106,7 @@ export default async function AdminVehicleEditPage({
     .find((manufacturer) => manufacturer.name.toLocaleLowerCase('uk-UA') === vehicle.manufacturer.toLocaleLowerCase('uk-UA'));
 
   const initialValues: AdminVehicleFormValues = {
+    name: vehicle.name,
     equipmentType: vehicle.type,
     manufacturerId: matchingManufacturer?.id ?? '',
     manufacturer: vehicle.manufacturer,
@@ -144,6 +147,7 @@ export default async function AdminVehicleEditPage({
   }
 
   const action = updateAdminVehicle.bind(null, vehicle.id);
+  const vehicleDisplay = getVehicleDisplay(vehicle);
   const uploadAction = uploadAdminVehicleImages.bind(null, vehicle.id);
   const setPrimaryAction = setPrimaryVehicleImage.bind(null, vehicle.id);
   const reorderAction = reorderAdminVehicleImages.bind(null, vehicle.id);
@@ -163,8 +167,9 @@ export default async function AdminVehicleEditPage({
           <div>
             <p className="text-sm font-bold uppercase text-accent">Редагування техніки</p>
             <h1 className="mt-2 text-2xl font-bold text-foreground">
-              {vehicle.manufacturer} {vehicle.model}
+              {vehicleDisplay.title}
             </h1>
+            {vehicleDisplay.secondary ? <p className="mt-2 text-sm font-semibold text-muted">{vehicleDisplay.secondary}</p> : null}
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
               Можна змінити лише характеристики. Власник техніки залишається незмінним.
             </p>
@@ -190,7 +195,7 @@ export default async function AdminVehicleEditPage({
       <div id="photos" className="scroll-mt-6">
         <VehicleImageManager
           vehicleId={vehicle.id}
-          vehicleLabel={`${vehicle.manufacturer} ${vehicle.model}`}
+          vehicleLabel={vehicleDisplay.title}
           images={vehicle.images}
           uploadAction={uploadAction}
           setPrimaryAction={setPrimaryAction}

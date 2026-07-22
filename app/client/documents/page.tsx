@@ -45,7 +45,7 @@ export default async function ClientDocumentsPage() {
         createdAt: true,
         company: { select: { name: true } },
         request: { select: { id: true, requestNumber: true } },
-        vehicle: { select: { id: true, manufacturer: true, model: true } }
+        vehicle: { select: { id: true, name: true, manufacturer: true, model: true } }
       }
     }),
     prisma.requestFile.findMany({
@@ -113,7 +113,7 @@ export default async function ClientDocumentsPage() {
       size: document.size,
       createdAt: document.createdAt,
       url: `/api/client/documents/${document.id}/download`,
-      context: document.vehicle ? `${document.vehicle.manufacturer} ${document.vehicle.model}` : undefined,
+      context: document.vehicle?.name,
       contextHref: document.vehicle ? `/client/vehicles/${document.vehicle.id}` : undefined
     }));
 

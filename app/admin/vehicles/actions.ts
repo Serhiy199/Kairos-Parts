@@ -84,6 +84,7 @@ async function validateForm(formData: FormData) {
     ok: true as const,
     values,
     data: {
+      name: validation.data.name,
       type: manufacturerResult?.ok ? manufacturerResult.equipmentType.name : validation.data.equipmentType,
       manufacturer: manufacturerResult?.ok ? manufacturerResult.manufacturer.name : validation.data.manufacturer,
       model: validation.data.model,
@@ -244,6 +245,7 @@ export async function updateAdminVehicle(
     where: { id: vehicleId },
     select: {
       id: true,
+      name: true,
       clientId: true,
       companyId: true,
       client: {

@@ -404,6 +404,7 @@ function vehicleAccessContext(clientProfile: FoundClientProfile) {
 
 const telegramVehicleSelect = {
   id: true,
+  name: true,
   type: true,
   manufacturer: true,
   model: true,

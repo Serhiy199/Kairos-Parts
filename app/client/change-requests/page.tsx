@@ -4,6 +4,7 @@ import { listChangeRequestsForClient } from '@/lib/change-requests/service';
 import { CHANGE_ACTION_LABELS, CHANGE_ENTITY_TYPE_LABELS, CHANGE_STATUS_LABELS } from '@/lib/change-requests/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import { getVehicleDisplay } from '@/lib/vehicles/name';
 
 import { cancelClientChangeRequestAction, createClientChangeRequestAction } from './actions';
 
@@ -70,7 +71,7 @@ async function buildEntityLabels(changeRequests: Awaited<ReturnType<typeof listC
         })
       : Promise.resolve([]),
     vehicleIds.length
-      ? prisma.vehicle.findMany({ where: { id: { in: vehicleIds } }, select: { id: true, manufacturer: true, model: true, vinOrSerial: true } })
+      ? prisma.vehicle.findMany({ where: { id: { in: vehicleIds } }, select: { id: true, name: true, manufacturer: true, model: true, vinOrSerial: true } })
       : Promise.resolve([]),
     documentIds.length
       ? prisma.requestDocument.findMany({ where: { id: { in: documentIds } }, select: { id: true, title: true, fileName: true } })
@@ -81,7 +82,7 @@ async function buildEntityLabels(changeRequests: Awaited<ReturnType<typeof listC
 
   requests.forEach((request) => labels.set(`REQUEST:${request.id}`, `${request.requestNumber} · ${request.description.slice(0, 70)}`));
   requestItems.forEach((item) => labels.set(`REQUEST_ITEM:${item.id}`, `${item.name}${item.catalogNumber ? ` · ${item.catalogNumber}` : ''} · ${item.request.requestNumber}`));
-  vehicles.forEach((vehicle) => labels.set(`VEHICLE:${vehicle.id}`, `${vehicle.manufacturer} ${vehicle.model}${vehicle.vinOrSerial ? ` · ${vehicle.vinOrSerial}` : ''}`));
+  vehicles.forEach((vehicle) => labels.set(`VEHICLE:${vehicle.id}`, `${getVehicleDisplay(vehicle).title}${vehicle.vinOrSerial ? ` · ${vehicle.vinOrSerial}` : ''}`));
   documents.forEach((document) => labels.set(`REQUEST_DOCUMENT:${document.id}`, `${document.title} · ${document.fileName}`));
 
   return labels;

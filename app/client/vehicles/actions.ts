@@ -23,6 +23,7 @@ import {
   type AdminVehicleFormState
 } from '@/lib/vehicles/admin-validation';
 import { normalizeVehicleVin } from '@/lib/vehicles/vin';
+import { validateVehicleName } from '@/lib/vehicles/name';
 import { validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
 function errorState(
@@ -35,12 +36,15 @@ function errorState(
 
 async function validateClientVehicleForm(formData: FormData) {
   const values = getAdminVehicleFormValues(formData);
+  const nameResult = validateVehicleName(values.name);
   const equipmentType = values.equipmentType.trim();
   const manufacturerId = values.manufacturerId.trim();
   const manufacturer = values.manufacturer.trim();
   const model = values.model.trim();
   const vinSource = values.vinOrSerial.trim();
   const fieldErrors: AdminVehicleFormState['fieldErrors'] = {};
+
+  if (!nameResult.ok) fieldErrors.name = nameResult.message;
 
   if (!equipmentType) fieldErrors.equipmentType = 'Вкажіть тип техніки.';
   else if (equipmentType.length > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
@@ -86,6 +90,7 @@ async function validateClientVehicleForm(formData: FormData) {
     ok: true as const,
     values,
     data: {
+      name: nameResult.ok ? nameResult.name : '',
       type: taxonomy?.ok ? taxonomy.equipmentType.name : equipmentType,
       manufacturer: taxonomy?.ok ? taxonomy.manufacturer.name : manufacturer,
       model,
@@ -209,6 +214,7 @@ export async function updateClientVehicle(
     where: { id: vehicleId, AND: [vehicleAccessWhere(access)] },
     select: {
       id: true,
+      name: true,
       clientId: true,
       companyId: true,
       type: true,

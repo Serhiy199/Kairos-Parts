@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 
 const adminVehicleSummarySelect = {
   id: true,
+  name: true,
   type: true,
   manufacturer: true,
   model: true,

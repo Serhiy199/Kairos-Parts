@@ -1,10 +1,12 @@
 import { normalizeVehicleVin } from '@/lib/vehicles/vin';
+import { validateVehicleName } from '@/lib/vehicles/name';
 import {
   EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED,
   EQUIPMENT_TEXT_FIELD_MAX_LENGTH
 } from '@/lib/features/equipment-taxonomy';
 
 export type AdminVehicleFormField =
+  | 'name'
   | 'equipmentType'
   | 'manufacturerId'
   | 'manufacturer'
@@ -14,6 +16,7 @@ export type AdminVehicleFormField =
   | 'comment';
 
 export type AdminVehicleFormValues = {
+  name: string;
   equipmentType: string;
   manufacturerId: string;
   manufacturer: string;
@@ -32,6 +35,7 @@ export type AdminVehicleFormState = {
 };
 
 export type ValidAdminVehicleInput = {
+  name: string;
   equipmentType: string;
   manufacturerId: string;
   manufacturer: string;
@@ -46,6 +50,7 @@ export const EMPTY_ADMIN_VEHICLE_FORM_STATE: AdminVehicleFormState = {
 };
 
 export const EMPTY_ADMIN_VEHICLE_FORM_VALUES: AdminVehicleFormValues = {
+  name: '',
   equipmentType: '',
   manufacturerId: '',
   manufacturer: '',
@@ -57,6 +62,7 @@ export const EMPTY_ADMIN_VEHICLE_FORM_VALUES: AdminVehicleFormValues = {
 
 export function getAdminVehicleFormValues(formData: FormData): AdminVehicleFormValues {
   return {
+    name: String(formData.get('name') ?? ''),
     equipmentType: String(formData.get('equipmentType') ?? ''),
     manufacturerId: String(formData.get('manufacturerId') ?? ''),
     manufacturer: String(formData.get('manufacturer') ?? ''),
@@ -69,6 +75,7 @@ export function getAdminVehicleFormValues(formData: FormData): AdminVehicleFormV
 
 export function validateAdminVehicleForm(values: AdminVehicleFormValues) {
   const fieldErrors: Partial<Record<AdminVehicleFormField, string>> = {};
+  const nameResult = validateVehicleName(values.name);
   const equipmentType = values.equipmentType.trim();
   const manufacturerId = values.manufacturerId.trim();
   const manufacturer = values.manufacturer.trim();
@@ -77,6 +84,8 @@ export function validateAdminVehicleForm(values: AdminVehicleFormValues) {
   const vinSource = values.vinOrSerial.trim();
   const vinOrSerial = normalizeVehicleVin(vinSource);
   const comment = values.comment.trim();
+
+  if (!nameResult.ok) fieldErrors.name = nameResult.message;
 
   if (!equipmentType) {
     fieldErrors.equipmentType = EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED
@@ -127,6 +136,7 @@ export function validateAdminVehicleForm(values: AdminVehicleFormValues) {
   return {
     ok: true as const,
     data: {
+      name: nameResult.ok ? nameResult.name : '',
       equipmentType,
       manufacturerId,
       manufacturer,

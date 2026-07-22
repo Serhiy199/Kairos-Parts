@@ -57,6 +57,7 @@ export function AdminVehicleForm({
   const values = state.values ?? initialValues;
   const [equipmentType, setEquipmentType] = useState(values.equipmentType);
   const [manufacturerId, setManufacturerId] = useState(values.manufacturerId);
+  const nameErrorId = useId();
   const modelErrorId = useId();
   const yearErrorId = useId();
   const vinErrorId = useId();
@@ -113,6 +114,18 @@ export function AdminVehicleForm({
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
+        <div className="lg:col-span-2">
+          <VehicleInput
+            label="Назва техніки"
+            name="name"
+            defaultValue={values.name}
+            required
+            maxLength={120}
+            placeholder="Наприклад, Основний навантажувач"
+            error={state.fieldErrors?.name}
+            errorId={nameErrorId}
+          />
+        </div>
         {EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED ? (
           <>
             <SearchableCombobox
@@ -229,6 +242,7 @@ type VehicleInputProps = {
   name: AdminVehicleFormField;
   defaultValue: string;
   required?: boolean;
+  maxLength?: number;
   inputMode?: 'text' | 'numeric';
   placeholder?: string;
   error?: string;
@@ -241,6 +255,7 @@ function VehicleInput({
   name,
   defaultValue,
   required = false,
+  maxLength,
   inputMode = 'text',
   placeholder,
   error,
@@ -257,6 +272,7 @@ function VehicleInput({
         name={name}
         defaultValue={defaultValue}
         required={required}
+        maxLength={maxLength}
         inputMode={inputMode}
         placeholder={placeholder}
         aria-invalid={Boolean(error)}

@@ -28,7 +28,7 @@ export async function GET() {
         vehicleId: true,
         company: { select: { id: true, name: true } },
         request: { select: { id: true, requestNumber: true } },
-        vehicle: { select: { id: true, manufacturer: true, model: true } }
+        vehicle: { select: { id: true, name: true, manufacturer: true, model: true } }
       }
     }),
     prisma.requestFile.findMany({

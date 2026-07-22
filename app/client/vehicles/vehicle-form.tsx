@@ -20,6 +20,7 @@ type VehicleFormProps = {
   taxonomy: EquipmentTaxonomyType[];
   vehicle?: {
     id: string;
+    name: string;
     type: string;
     manufacturer: string;
     model: string;
@@ -63,6 +64,19 @@ export function VehicleForm({ action, submitLabel, taxonomy, vehicle }: VehicleF
           {state.message}
         </div>
       ) : null}
+      <label className="grid gap-2 text-sm font-semibold text-foreground lg:col-span-2">
+        Назва техніки <span aria-hidden="true">*</span>
+        <input
+          name="name"
+          defaultValue={values?.name ?? vehicle?.name ?? ''}
+          required
+          maxLength={120}
+          placeholder="Наприклад, Основний навантажувач"
+          aria-invalid={Boolean(state.fieldErrors?.name)}
+          className={inputClass}
+        />
+        {state.fieldErrors?.name ? <span className="text-xs font-semibold text-danger">{state.fieldErrors.name}</span> : null}
+      </label>
       {EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED ? (
         <>
           <SearchableCombobox

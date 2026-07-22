@@ -268,6 +268,7 @@ async function main() {
   const johnDeereVehicle = await prisma.vehicle.upsert({
     where: { id: 'dev_vehicle_john_deere_8430' },
     update: {
+      name: 'John Deere 8430',
       clientId: clientProfile.id,
       companyId: null,
       type: 'Сільгосптехніка',
@@ -279,6 +280,7 @@ async function main() {
     },
     create: {
       id: 'dev_vehicle_john_deere_8430',
+      name: 'John Deere 8430',
       clientId: clientProfile.id,
       companyId: null,
       type: 'Сільгосптехніка',
@@ -293,6 +295,7 @@ async function main() {
   const manVehicle = await prisma.vehicle.upsert({
     where: { id: 'dev_vehicle_man_tgx_18440' },
     update: {
+      name: 'MAN TGX 18.440',
       clientId: clientProfile.id,
       companyId: null,
       type: 'Вантажний транспорт',
@@ -304,6 +307,7 @@ async function main() {
     },
     create: {
       id: 'dev_vehicle_man_tgx_18440',
+      name: 'MAN TGX 18.440',
       clientId: clientProfile.id,
       companyId: null,
       type: 'Вантажний транспорт',

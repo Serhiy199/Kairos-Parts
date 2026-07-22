@@ -726,6 +726,7 @@ model Vehicle {
   client       ClientProfile? @relation(fields: [clientId], references: [id], onDelete: Restrict)
   companyId    String?
   company      Company?       @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  name         String
   type         String
   manufacturer String
   model        String

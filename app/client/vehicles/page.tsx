@@ -6,6 +6,7 @@ import { ClientVehicleImage } from '@/components/vehicles/client-vehicle-image';
 import { getClientAccessContext, requireClientSession } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { getClientVehicleOverview } from '@/lib/vehicles/client-queries';
+import { getVehicleDisplay } from '@/lib/vehicles/name';
 
 export const dynamic = 'force-dynamic';
 
@@ -149,7 +150,7 @@ function VehicleGroup({
 }
 
 function VehicleCard({ vehicle, ownerLabel, showOwner }: { vehicle: VehicleCardItem; ownerLabel: string; showOwner: boolean }) {
-  const vehicleLabel = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ');
+  const display = getVehicleDisplay(vehicle);
 
   return (
     <article className="group min-w-0 overflow-hidden rounded-lg border border-border bg-card shadow-card transition hover:border-accent/70 hover:shadow-lg">
@@ -157,7 +158,7 @@ function VehicleCard({ vehicle, ownerLabel, showOwner }: { vehicle: VehicleCardI
         <div className="relative aspect-[16/10] bg-surface-muted">
           <ClientVehicleImage
             src={vehicle.images[0]?.secureUrl}
-            alt={vehicleLabel}
+            alt={display.title}
             sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 33vw"
           />
         </div>
@@ -165,7 +166,8 @@ function VehicleCard({ vehicle, ownerLabel, showOwner }: { vehicle: VehicleCardI
           <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs font-bold uppercase text-accent">{vehicle.type}</p>
-              <h3 className="mt-1 break-words text-lg font-bold text-foreground">{vehicleLabel}</h3>
+              <h3 className="mt-1 break-words text-lg font-bold text-foreground">{display.title}</h3>
+              {display.secondary ? <p className="mt-1 break-words text-sm font-semibold text-muted">{display.secondary}</p> : null}
             </div>
             {vehicle.archivedAt ? (
               <span className="shrink-0 rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">Архів</span>

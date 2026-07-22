@@ -60,6 +60,7 @@ const REQUEST_ITEM_FIELD_ALIASES = {
 } as const;
 
 const VEHICLE_FIELD_ALIASES = {
+  name: 'name',
   type: 'type',
   brand: 'manufacturer',
   manufacturer: 'manufacturer',
@@ -287,6 +288,7 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
         : { id: changeRequest.entityId, client: { userId: changeRequest.requestedById } },
       select: {
         id: true,
+        name: true,
         clientId: true,
         companyId: true,
         type: true,

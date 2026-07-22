@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 const inputClass = 'rounded-md border border-border px-3 py-2 text-xs outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25';
 
 const CHANGE_FIELD_LABELS: Record<string, string> = {
+  name: 'Назва техніки',
   type: 'Тип техніки',
   manufacturer: 'Виробник',
   model: 'Модель',

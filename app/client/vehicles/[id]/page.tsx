@@ -12,6 +12,7 @@ import { getClientAccessContext, requireClientSession } from '@/lib/client/acces
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { getClientVehicleDetail } from '@/lib/vehicles/client-queries';
+import { getVehicleDisplay } from '@/lib/vehicles/name';
 import { formatVehicleDocumentSize, vehicleDocumentTypeLabel } from '@/lib/vehicles/documents';
 import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
@@ -53,7 +54,8 @@ export default async function ClientVehicleDetailPage({
     ? await getActiveEquipmentTaxonomy({ equipmentType: vehicle.type, manufacturer: vehicle.manufacturer })
     : [];
 
-  const vehicleLabel = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ');
+  const vehicleDisplay = getVehicleDisplay(vehicle);
+  const vehicleLabel = vehicleDisplay.title;
   const isCompanyVehicle = vehicle.companyId !== null;
   const ownerLabel = isCompanyVehicle ? 'Техніка компанії' : 'Особиста техніка';
   const currentPath = `/client/vehicles/${vehicle.id}`;
@@ -108,6 +110,7 @@ export default async function ClientVehicleDetailPage({
           </div>
 
           <h1 id="vehicle-title" className="mt-4 break-words text-2xl font-bold text-foreground sm:text-3xl">{vehicleLabel}</h1>
+          {vehicleDisplay.secondary ? <p className="mt-2 text-sm font-semibold text-muted">{vehicleDisplay.secondary}</p> : null}
           <p className="mt-2 text-base font-semibold text-muted">{vehicle.type}</p>
           {isCompanyVehicle && vehicle.company?.name ? (
             <p className="mt-3 break-words text-sm font-semibold text-foreground">{vehicle.company.name}</p>
@@ -162,6 +165,7 @@ export default async function ClientVehicleDetailPage({
           action="UPDATE"
           redirectTo={currentPath}
           fieldOptions={[
+            { value: 'name', label: 'Назва техніки', currentValue: vehicle.name },
             { value: 'type', label: 'Тип техніки', currentValue: vehicle.type },
             { value: 'manufacturer', label: 'Виробник', currentValue: vehicle.manufacturer },
             { value: 'model', label: 'Модель', currentValue: vehicle.model },

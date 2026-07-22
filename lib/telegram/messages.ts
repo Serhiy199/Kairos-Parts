@@ -15,6 +15,7 @@ export const TELEGRAM_VEHICLE_PAGE_SIZE = 8;
 
 type TelegramVehicleOption = {
   id: string;
+  name: string;
   type: string | null;
   manufacturer: string | null;
   model: string | null;
@@ -70,8 +71,9 @@ export function buildManufacturerKeyboard(manufacturers: string[]) {
 }
 
 export function buildVehicleLabel(vehicle: Omit<TelegramVehicleOption, 'id'>) {
-  const name = [vehicle.manufacturer || vehicle.type, vehicle.model].filter(Boolean).join(' ').trim() || 'Техніка';
-  const label = vehicle.year ? `${name} — ${vehicle.year}` : name;
+  const secondary = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').trim();
+  const details = [secondary && secondary.toLocaleLowerCase('uk-UA') !== vehicle.name.toLocaleLowerCase('uk-UA') ? secondary : null, vehicle.year].filter(Boolean).join(' · ');
+  const label = details ? `${vehicle.name} — ${details}` : vehicle.name;
 
   return label.length > 56 ? `${label.slice(0, 53).trimEnd()}…` : label;
 }

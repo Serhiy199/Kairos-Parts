@@ -91,7 +91,7 @@ export async function createChangeRequest(access: ClientAccessContext, input: Ch
         where: access.companyId
           ? { id: input.entityId, companyId: access.companyId, clientId: null }
           : { id: input.entityId, companyId: null, client: { userId: access.userId } },
-        select: { type: true, manufacturer: true, model: true, year: true, vinOrSerial: true, comment: true }
+        select: { name: true, type: true, manufacturer: true, model: true, year: true, vinOrSerial: true, comment: true }
       });
 
       if (!vehicle) return { ok: false as const, status: 'entity-not-found-or-forbidden' };

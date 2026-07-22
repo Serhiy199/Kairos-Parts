@@ -16,6 +16,7 @@ export async function getClientVehicleOverview(access: ClientAccessContext) {
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     select: {
       id: true,
+      name: true,
       clientId: true,
       companyId: true,
       type: true,
@@ -52,6 +53,7 @@ export async function getClientVehicleDetail(vehicleId: string, access: ClientAc
     where: { id: vehicleId, AND: [vehicleAccessWhere(access)] },
     select: {
       id: true,
+      name: true,
       clientId: true,
       companyId: true,
       type: true,

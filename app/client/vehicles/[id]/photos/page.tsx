@@ -6,6 +6,7 @@ import { deleteClientVehicleImage, reorderClientVehicleImages, setPrimaryClientV
 import { VehicleImageManager } from '@/components/vehicles/vehicle-image-manager';
 import { getClientAccessContext, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
 import { prisma } from '@/lib/prisma';
+import { getVehicleDisplay } from '@/lib/vehicles/name';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,11 +24,12 @@ export default async function ClientVehiclePhotosPage({
   const vehicle = await prisma.vehicle.findFirst({
     where: { id, AND: [vehicleAccessWhere(access)] },
     select: {
-      id: true, manufacturer: true, model: true,
+      id: true, name: true, manufacturer: true, model: true,
       images: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }], select: { id: true, secureUrl: true, width: true, height: true, sortOrder: true, isPrimary: true } }
     }
   });
   if (!vehicle) notFound();
+  const vehicleDisplay = getVehicleDisplay(vehicle);
   const query = await searchParams;
 
   return (
@@ -47,7 +49,7 @@ export default async function ClientVehiclePhotosPage({
 
       <VehicleImageManager
         vehicleId={vehicle.id}
-        vehicleLabel={`${vehicle.manufacturer} ${vehicle.model}`}
+        vehicleLabel={vehicleDisplay.title}
         images={vehicle.images}
         uploadAction={uploadClientVehicleImages.bind(null, vehicle.id)}
         setPrimaryAction={setPrimaryClientVehicleImage.bind(null, vehicle.id)}

@@ -48,13 +48,14 @@ assert.deepEqual(registrationKeyboard.inline_keyboard.flat().map((button) => but
 assert.equal(registrationKeyboard.inline_keyboard[0][0].url, 'https://example.test/register?next=/request');
 assert.doesNotMatch(buildRegistrationRequiredMessage(), /увій/i);
 
-assert.equal(buildVehicleLabel({ type: 'Трактор', manufacturer: 'John Deere', model: '8430', year: 2018 }), 'John Deere 8430 — 2018');
-assert.equal(buildVehicleLabel({ type: 'Трактор', manufacturer: '', model: '8430', year: null }), 'Трактор 8430');
-assert.equal(buildVehicleLabel({ type: '', manufacturer: '', model: '', year: null }), 'Техніка');
-assert.ok(buildVehicleLabel({ type: 'x'.repeat(80), manufacturer: '', model: '', year: null }).length <= 56);
+assert.equal(buildVehicleLabel({ name: 'Основний трактор', type: 'Трактор', manufacturer: 'John Deere', model: '8430', year: 2018 }), 'Основний трактор — John Deere 8430 · 2018');
+assert.equal(buildVehicleLabel({ name: 'John Deere 8430', type: 'Трактор', manufacturer: 'John Deere', model: '8430', year: null }), 'John Deere 8430');
+assert.equal(buildVehicleLabel({ name: 'Техніка', type: '', manufacturer: '', model: '', year: null }), 'Техніка');
+assert.ok(buildVehicleLabel({ name: 'x'.repeat(80), type: '', manufacturer: '', model: '', year: null }).length <= 56);
 
 const vehicleOptions = Array.from({ length: TELEGRAM_VEHICLE_PAGE_SIZE }, (_, index) => ({
   id: `cmr-vehicle-${index}`,
+  name: `Трактор ${index + 1}`,
   type: 'Трактор',
   manufacturer: 'John Deere',
   model: String(8430 + index),

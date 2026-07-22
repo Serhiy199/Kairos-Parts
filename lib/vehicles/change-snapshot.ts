@@ -1,8 +1,10 @@
 import type { Prisma, Vehicle } from '@prisma/client';
 
 import { normalizeVehicleVin } from '@/lib/vehicles/vin';
+import { validateVehicleName } from '@/lib/vehicles/name';
 
 export const EDITABLE_VEHICLE_FIELDS = [
+  'name',
   'type',
   'manufacturer',
   'model',
@@ -22,6 +24,7 @@ export function isEditableVehicleField(value: string | null): value is EditableV
 
 export function pickEditableVehicleFields(vehicle: VehicleSource): VehicleChangeSnapshot {
   return {
+    name: vehicle.name.trim(),
     type: vehicle.type.trim(),
     manufacturer: vehicle.manufacturer.trim(),
     model: vehicle.model.trim(),
@@ -43,6 +46,11 @@ export function normalizeEditableVehicleValue(
 
   if (typeof value !== 'string' && typeof value !== 'number' && value !== null) return undefined;
   const text = value === null ? '' : String(value).trim();
+
+  if (field === 'name') {
+    const result = validateVehicleName(text);
+    return result.ok ? result.name : undefined;
+  }
 
   if (field === 'vinOrSerial') {
     return text.length <= 120 ? normalizeVehicleVin(text) : undefined;

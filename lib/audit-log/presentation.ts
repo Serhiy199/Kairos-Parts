@@ -92,6 +92,7 @@ const VALUE_LABELS: Record<string, string> = {
   UPDATE: 'Оновлення',
   CREATE: 'Створення',
   DELETE: 'Видалення',
+  name: 'Назва техніки',
   equipmentType: 'Тип техніки',
   manufacturer: 'Виробник',
   model: 'Модель',

@@ -72,6 +72,7 @@ function runHelperChecks() {
   assert.equal(normalizeEditableVehicleValue('year', 'invalid'), undefined);
 
   const snapshot = {
+    name: 'Основний трактор',
     type: 'Трактор',
     manufacturer: 'John Deere',
     model: '6155M',

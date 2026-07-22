@@ -10,6 +10,7 @@ import {
 import { vehicleOwnershipForClient } from '@/lib/vehicles/ownership';
 import { pickEditableVehicleFields } from '@/lib/vehicles/change-snapshot';
 import { normalizeVehicleVin } from '@/lib/vehicles/vin';
+import { validateVehicleName } from '@/lib/vehicles/name';
 
 export const runtime = 'nodejs';
 
@@ -47,12 +48,20 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json()) as Record<string, unknown>;
+  const nameResult = validateVehicleName(body.name);
   const type = readString(body.type);
   const manufacturer = readString(body.manufacturer);
   const model = readString(body.model);
   const vinSource = readString(body.vinOrSerial);
   const yearValue = typeof body.year === 'number' ? body.year : Number(readString(body.year));
   const year = Number.isInteger(yearValue) && yearValue > 1900 && yearValue < 2200 ? yearValue : null;
+
+  if (!nameResult.ok) {
+    return Response.json(
+      { status: 'validation_error', message: nameResult.message, field: 'name' },
+      { status: 400 }
+    );
+  }
 
   if (!type || !manufacturer || !model || vinSource.length > 120) {
     return Response.json(
@@ -73,6 +82,7 @@ export async function POST(request: Request) {
     const vehicle = await tx.vehicle.create({
       data: {
         ...owner,
+        name: nameResult.name,
         type,
         manufacturer,
         model,

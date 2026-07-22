@@ -28,6 +28,7 @@ import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { calculateInvoiceLineTotal, calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
+import { getVehicleDisplay } from '@/lib/vehicles/name';
 import { INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 import { PART_MANUFACTURERS } from '@/lib/parts/part-manufacturers';
 import { prisma } from '@/lib/prisma';
@@ -243,6 +244,7 @@ export default async function AdminRequestDetailPage({
             <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
               <p className="text-sm font-bold uppercase text-accent">Привʼязана техніка</p>
               <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-2">
+                <Info label="Назва техніки" value={request.vehicle.name} />
                 <Info label="Тип" value={request.vehicle.type} />
                 <Info label="Виробник" value={request.vehicle.manufacturer} />
                 <Info label="Модель" value={request.vehicle.model} />
@@ -362,11 +364,15 @@ export default async function AdminRequestDetailPage({
                 <div className="min-w-0">
                   <h3 className="font-bold text-foreground">Техніка клієнта</h3>
                   <div className="mt-3 grid gap-2">
-                    {request.client.vehicles.length === 0 ? <p className="text-sm text-muted">Техніки немає.</p> : request.client.vehicles.map((vehicle) => (
-                      <div key={vehicle.id} className="rounded-md border border-border p-3 text-sm text-muted">
-                        <span className="font-bold text-foreground">{vehicle.manufacturer} {vehicle.model}</span> · {vehicle.type}
-                      </div>
-                    ))}
+                    {request.client.vehicles.length === 0 ? <p className="text-sm text-muted">Техніки немає.</p> : request.client.vehicles.map((vehicle) => {
+                      const display = getVehicleDisplay(vehicle);
+                      return (
+                        <div key={vehicle.id} className="rounded-md border border-border p-3 text-sm text-muted">
+                          <span className="font-bold text-foreground">{display.title}</span>
+                          {display.secondary ? ` · ${display.secondary}` : ''} · {vehicle.type}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
                 <div className="min-w-0">

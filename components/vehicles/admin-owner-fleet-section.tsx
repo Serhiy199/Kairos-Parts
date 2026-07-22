@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { LuPencil, LuPlus } from 'react-icons/lu';
 
 import type { AdminVehicleSummary } from '@/lib/vehicles/admin-queries';
+import { getVehicleDisplay } from '@/lib/vehicles/name';
 
 type AdminOwnerFleetSectionProps = {
   ownerType: 'company' | 'client';
@@ -63,17 +64,23 @@ export function AdminOwnerFleetSection({
         </div>
       ) : (
         <div className="mt-5 grid gap-3">
-          {vehicles.map((vehicle) => (
+          {vehicles.map((vehicle) => {
+            const display = getVehicleDisplay(vehicle);
+            return (
             <article
               key={vehicle.id}
-              className="grid gap-4 rounded-md border border-border p-4 sm:grid-cols-2 xl:grid-cols-[6rem_1fr_1fr_1fr_0.55fr_1.3fr_0.8fr_auto] xl:items-center"
+              className="grid gap-4 rounded-md border border-border p-4 sm:grid-cols-2 xl:grid-cols-[6rem_1.2fr_1fr_1fr_1fr_0.55fr_1.3fr_0.8fr_auto] xl:items-center"
             >
               <div className="relative aspect-[4/3] overflow-hidden rounded-md bg-surface-muted sm:col-span-2 xl:col-span-1 xl:w-24">
                 {vehicle.images[0] ? (
-                  <Image src={vehicle.images[0].secureUrl} alt={`${vehicle.manufacturer} ${vehicle.model}`} fill sizes="96px" className="object-cover" />
+                  <Image src={vehicle.images[0].secureUrl} alt={display.title} fill sizes="96px" className="object-cover" />
                 ) : (
                   <div className="flex h-full items-center justify-center px-2 text-center text-xs font-semibold text-muted">Фото відсутнє</div>
                 )}
+              </div>
+              <div className="min-w-0">
+                <p className="break-words text-base font-bold text-foreground">{display.title}</p>
+                {display.secondary ? <p className="mt-1 break-words text-xs font-semibold text-muted">{display.secondary}</p> : null}
               </div>
               <VehicleField label="Тип техніки" value={vehicle.type} />
               <VehicleField label="Виробник" value={vehicle.manufacturer} />
@@ -89,7 +96,8 @@ export function AdminOwnerFleetSection({
                 Редагувати
               </Link>
             </article>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>
