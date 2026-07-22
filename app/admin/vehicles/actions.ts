@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { requireCrmSession } from '@/lib/admin/access';
-import { createAuditLog } from '@/lib/audit-log/service';
+import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { prisma } from '@/lib/prisma';
@@ -28,6 +28,8 @@ import { diffVehicleFields, pickEditableVehicleFields } from '@/lib/vehicles/cha
 import { validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
 const GENERIC_ERROR = 'Не вдалося зберегти техніку. Спробуйте ще раз.';
+const VEHICLE_AUDIT_VALUE_FIELDS = ['name', 'type', 'manufacturer', 'model', 'year', 'vinOrSerial', 'comment'] as const;
+const VEHICLE_AUDIT_METADATA_FIELDS = ['event', 'actorRole', 'changedFields', 'ownerType', 'ownerId'] as const;
 
 function errorState(
   values: ReturnType<typeof getAdminVehicleFormValues>,
@@ -136,14 +138,16 @@ export async function createAdminVehicleForCompany(
       }
 
       const created = await tx.vehicle.create({ data: { ...owner, ...validation.data } });
-      await createAuditLog(tx, {
-        actorId: session.user.id,
+      await writeAuditLog(tx, {
+        actor: auditUserActor(session.user.id),
         companyId: company.id,
         entityType: 'VEHICLE',
         entityId: created.id,
         action: 'ENTITY_UPDATED',
+        category: 'STANDARD',
         newValue: pickEditableVehicleFields(created),
-        metadata: { event: 'VEHICLE_CREATED', actorRole: session.user.role, ownerType: 'company', ownerId: company.id }
+        metadata: { event: 'VEHICLE_CREATED', actorRole: session.user.role, ownerType: 'company', ownerId: company.id },
+        allowedFields: { newValue: VEHICLE_AUDIT_VALUE_FIELDS, metadata: VEHICLE_AUDIT_METADATA_FIELDS }
       });
       return { duplicate: null, createdId: created.id };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
@@ -205,13 +209,15 @@ export async function createAdminVehicleForClient(
       }
 
       const created = await tx.vehicle.create({ data: { ...owner, ...validation.data } });
-      await createAuditLog(tx, {
-        actorId: session.user.id,
+      await writeAuditLog(tx, {
+        actor: auditUserActor(session.user.id),
         entityType: 'VEHICLE',
         entityId: created.id,
         action: 'ENTITY_UPDATED',
+        category: 'STANDARD',
         newValue: pickEditableVehicleFields(created),
-        metadata: { event: 'VEHICLE_CREATED', actorRole: session.user.role, ownerType: 'client', ownerId: client.id }
+        metadata: { event: 'VEHICLE_CREATED', actorRole: session.user.role, ownerType: 'client', ownerId: client.id },
+        allowedFields: { newValue: VEHICLE_AUDIT_VALUE_FIELDS, metadata: VEHICLE_AUDIT_METADATA_FIELDS }
       });
       return { duplicate: null, createdId: created.id };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
@@ -299,12 +305,13 @@ export async function updateAdminVehicle(
       const changes = diffVehicleFields(before, pickEditableVehicleFields(updated));
 
       if (changes.changedFields.length > 0) {
-        await createAuditLog(tx, {
-          actorId: session.user.id,
+        await writeAuditLog(tx, {
+          actor: auditUserActor(session.user.id),
           companyId: vehicle.companyId,
           entityType: 'VEHICLE',
           entityId: vehicle.id,
           action: 'ENTITY_UPDATED',
+          category: 'STANDARD',
           oldValue: changes.oldValue,
           newValue: changes.newValue,
           metadata: {
@@ -313,7 +320,8 @@ export async function updateAdminVehicle(
             changedFields: changes.changedFields,
             ownerType: vehicle.companyId ? 'company' : 'client',
             ownerId: vehicle.companyId ?? vehicle.clientId
-          }
+          },
+          allowedFields: { oldValue: VEHICLE_AUDIT_VALUE_FIELDS, newValue: VEHICLE_AUDIT_VALUE_FIELDS, metadata: VEHICLE_AUDIT_METADATA_FIELDS }
         });
       }
       return null;

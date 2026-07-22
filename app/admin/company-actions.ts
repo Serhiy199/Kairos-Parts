@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { notFound, redirect } from 'next/navigation';
 
 import { requireAdminSession, requireCrmSession } from '@/lib/admin/access';
-import { createAuditLog } from '@/lib/audit-log/service';
+import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { parseCompanyBillingInput } from '@/lib/billing/validation';
 import { parseCompanyInput, readCompanyMemberInput } from '@/lib/companies/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
@@ -288,17 +288,23 @@ export async function assignVehicleToCompany(formData: FormData) {
       data: { ...owner, vinOrSerial: normalizedVin }
     });
 
-    await createAuditLog(tx, {
-      actorId: session.user.id,
+    await writeAuditLog(tx, {
+      actor: auditUserActor(session.user.id),
       companyId: company.id,
       entityType: 'VEHICLE',
       entityId: vehicle.id,
       action: 'ENTITY_UPDATED',
+      category: 'STANDARD',
       oldValue: { ownerType: 'client', ownerId: vehicle.clientId },
       newValue: { ownerType: 'company', ownerId: company.id },
       metadata: {
         event: 'VEHICLE_OWNER_TRANSFERRED',
         actorRole: session.user.role
+      },
+      allowedFields: {
+        oldValue: ['ownerType', 'ownerId'],
+        newValue: ['ownerType', 'ownerId'],
+        metadata: ['event', 'actorRole']
       }
     });
     return false;

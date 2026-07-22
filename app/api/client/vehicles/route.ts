@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 
-import { createAuditLog } from '@/lib/audit-log/service';
+import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { getClientApiSession, vehicleAccessWhere } from '@/lib/client/access';
 import { prisma } from '@/lib/prisma';
 import {
@@ -91,18 +91,23 @@ export async function POST(request: Request) {
         comment: readString(body.comment) || null
       }
     });
-    await createAuditLog(tx, {
-      actorId: result.access.userId,
+    await writeAuditLog(tx, {
+      actor: auditUserActor(result.access.userId),
       companyId: result.access.companyId,
       entityType: 'VEHICLE',
       entityId: vehicle.id,
       action: 'ENTITY_UPDATED',
+      category: 'STANDARD',
       newValue: pickEditableVehicleFields(vehicle),
       metadata: {
         event: 'VEHICLE_CREATED',
         actorRole: 'CLIENT',
         ownerType: result.access.companyId ? 'company' : 'client',
         ownerId: result.access.companyId ?? result.access.clientProfileId
+      },
+      allowedFields: {
+        newValue: ['name', 'type', 'manufacturer', 'model', 'year', 'vinOrSerial', 'comment'],
+        metadata: ['event', 'actorRole', 'ownerType', 'ownerId']
       }
     });
     return { duplicate: false as const, vehicle };

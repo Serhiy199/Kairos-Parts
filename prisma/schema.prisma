@@ -122,12 +122,19 @@ enum AuditEntityType {
   REQUEST_ITEM
   VEHICLE
   REQUEST_DOCUMENT
+  DOCUMENT
   COMMERCIAL_OFFER
+  INVOICE
   COMPANY
   CHANGE_REQUEST
   USER
+  TEAM_MEMBER
+  CLIENT
   EQUIPMENT_TYPE
   MANUFACTURER
+  AUTH_SESSION
+  TELEGRAM_REQUEST
+  SYSTEM
 }
 
 enum AuditAction {
@@ -141,6 +148,16 @@ enum AuditAction {
   MANAGER_INVITATION_CREATED
   MANAGER_INVITATION_REGENERATED
   MANAGER_ACTIVATED
+  MANAGER_DISABLED
+  MANAGER_ENABLED
+}
+
+enum AuditLogCategory {
+  TECHNICAL
+  LOGIN
+  CRITICAL_READ
+  STANDARD
+  FINANCIAL_CRITICAL
 }
 
 enum UsedEquipmentStatus {
@@ -376,27 +393,37 @@ model ChangeRequest {
 }
 
 model AuditLog {
-  id              String          @id @default(cuid())
+  id              String           @id @default(cuid())
   actorId         String?
-  actor           User?           @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actor           User?            @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorName       String?
+  actorEmail      String?
+  actorRole       UserRole?
   companyId       String?
-  company         Company?        @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  company         Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
   changeRequestId String?
-  changeRequest   ChangeRequest?  @relation(fields: [changeRequestId], references: [id], onDelete: SetNull)
+  changeRequest   ChangeRequest?   @relation(fields: [changeRequestId], references: [id], onDelete: SetNull)
   entityType      AuditEntityType
   entityId        String
+  entityLabel     String?
   action          AuditAction
+  category        AuditLogCategory
   oldValue        Json?
   newValue        Json?
   metadata        Json?
-  createdAt       DateTime        @default(now())
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime         @default(now())
+  expiresAt       DateTime
 
-  @@index([actorId])
   @@index([companyId])
   @@index([changeRequestId])
-  @@index([entityType, entityId])
   @@index([action])
   @@index([createdAt])
+  @@index([expiresAt])
+  @@index([category, createdAt])
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId, createdAt])
 }
 
 model CompanyMember {

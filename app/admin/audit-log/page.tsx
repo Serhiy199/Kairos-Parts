@@ -1,8 +1,12 @@
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
-import { requireCrmSession } from '@/lib/admin/access';
+import { requireAdminSession } from '@/lib/admin/access';
 import {
   AUDIT_ACTION_LABELS,
+  AUDIT_CATEGORY_LABELS,
   AUDIT_ENTITY_LABELS,
+  auditActorEmail,
+  auditActorLabel,
+  auditActorRole,
   auditEventLabel,
   formatAuditMetadata,
   formatAuditValue
@@ -13,7 +17,7 @@ import { hasDatabaseUrl } from '@/lib/env/database';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminAuditLogPage() {
-  await requireCrmSession();
+  await requireAdminSession();
 
   if (!hasDatabaseUrl()) {
     return <AdminDbBlocker />;
@@ -44,10 +48,11 @@ export default async function AdminAuditLogPage() {
                 <time className="text-sm text-muted">{item.createdAt.toLocaleDateString('uk-UA')} {item.createdAt.toLocaleTimeString('uk-UA')}</time>
               </div>
               <dl className="cabinet-record-grid mt-4">
-                <AuditCardField label="Actor" value={item.actor ? (item.actor.name ?? item.actor.email ?? '—') : '—'} />
-                <AuditCardField label="Роль" value={item.actor?.role ?? '—'} />
+                <AuditCardField label="Actor" value={auditActorLabel(item)} />
+                <AuditCardField label="Роль" value={auditActorRole(item)} />
+                <AuditCardField label="Категорія" value={AUDIT_CATEGORY_LABELS[item.category] ?? item.category} />
                 <AuditCardField label="Компанія" value={item.company?.name ?? 'Personal'} />
-                <AuditCardField label="ID об’єкта" value={item.entityId} mono />
+                <AuditCardField label="Об’єкт" value={item.entityLabel ?? AUDIT_ENTITY_LABELS[item.entityType] ?? item.entityType} />
                 <AuditCardField label="Old value" value={formatAuditValue(item.oldValue)} />
                 <AuditCardField label="New value" value={formatAuditValue(item.newValue)} />
               </dl>
@@ -66,6 +71,7 @@ export default async function AdminAuditLogPage() {
                 <th className="px-4 py-3 font-bold">Actor</th>
                 <th className="px-4 py-3 font-bold">Компанія</th>
                 <th className="px-4 py-3 font-bold">Дія</th>
+                <th className="px-4 py-3 font-bold">Категорія</th>
                 <th className="px-4 py-3 font-bold">Об’єкт</th>
                 <th className="px-4 py-3 font-bold">ChangeRequest</th>
                 <th className="px-4 py-3 font-bold">Old value</th>
@@ -81,15 +87,9 @@ export default async function AdminAuditLogPage() {
                     <p className="mt-1 text-xs">{item.createdAt.toLocaleTimeString('uk-UA')}</p>
                   </td>
                   <td className="px-4 py-3 text-muted">
-                    {item.actor ? (
-                      <>
-                        <p className="font-semibold text-foreground">{item.actor.name ?? item.actor.email}</p>
-                        <p className="mt-1">{item.actor.email}</p>
-                        <p className="mt-1 text-xs">{item.actor.role}</p>
-                      </>
-                    ) : (
-                      '—'
-                    )}
+                    <p className="font-semibold text-foreground">{auditActorLabel(item)}</p>
+                    {auditActorEmail(item) ? <p className="mt-1">{auditActorEmail(item)}</p> : null}
+                    <p className="mt-1 text-xs">{auditActorRole(item)}</p>
                   </td>
                   <td className="px-4 py-3 text-muted">
                     {item.company ? (
@@ -105,8 +105,10 @@ export default async function AdminAuditLogPage() {
                     <p>{auditEventLabel(item.metadata) ?? AUDIT_ACTION_LABELS[item.action] ?? item.action}</p>
                     {auditEventLabel(item.metadata) ? <p className="mt-1 text-xs font-normal text-muted">{AUDIT_ACTION_LABELS[item.action] ?? item.action}</p> : null}
                   </td>
+                  <td className="px-4 py-3 text-muted">{AUDIT_CATEGORY_LABELS[item.category] ?? item.category}</td>
                   <td className="px-4 py-3 text-muted">
                     <p className="font-semibold text-foreground">{AUDIT_ENTITY_LABELS[item.entityType] ?? item.entityType}</p>
+                    {item.entityLabel ? <p className="mt-1">{item.entityLabel}</p> : null}
                     <p className="mt-1 font-mono text-xs">{item.entityId}</p>
                   </td>
                   <td className="px-4 py-3 text-muted">

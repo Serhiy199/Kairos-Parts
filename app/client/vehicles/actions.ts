@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { getClientAccessContext, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
-import { createAuditLog } from '@/lib/audit-log/service';
+import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { hasCloudinaryConfig } from '@/lib/cloudinary/server';
 import {
@@ -23,6 +23,9 @@ import {
   type AdminVehicleFormState
 } from '@/lib/vehicles/admin-validation';
 import { normalizeVehicleVin } from '@/lib/vehicles/vin';
+
+const VEHICLE_AUDIT_VALUE_FIELDS = ['name', 'type', 'manufacturer', 'model', 'year', 'vinOrSerial', 'comment'] as const;
+const VEHICLE_AUDIT_METADATA_FIELDS = ['event', 'actorRole', 'changedFields', 'ownerType', 'ownerId'] as const;
 import { validateVehicleName } from '@/lib/vehicles/name';
 import { validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
@@ -152,19 +155,21 @@ export async function createVehicle(
         ...validation.data
       }
     });
-    await createAuditLog(tx, {
-      actorId: access.userId,
+    await writeAuditLog(tx, {
+      actor: auditUserActor(access.userId),
       companyId: access.companyId,
       entityType: 'VEHICLE',
       entityId: created.id,
       action: 'ENTITY_UPDATED',
+      category: 'STANDARD',
       newValue: pickEditableVehicleFields(created),
       metadata: {
         event: 'VEHICLE_CREATED',
         actorRole: 'CLIENT',
         ownerType: access.companyId ? 'company' : 'client',
         ownerId: access.companyId ?? access.clientProfileId
-      }
+      },
+      allowedFields: { newValue: VEHICLE_AUDIT_VALUE_FIELDS, metadata: VEHICLE_AUDIT_METADATA_FIELDS }
     });
     return {
       duplicate: null,
@@ -251,12 +256,13 @@ export async function updateClientVehicle(
     const changes = diffVehicleFields(before, pickEditableVehicleFields(updated));
 
     if (changes.changedFields.length > 0) {
-      await createAuditLog(tx, {
-        actorId: access.userId,
+      await writeAuditLog(tx, {
+        actor: auditUserActor(access.userId),
         companyId: access.companyId,
         entityType: 'VEHICLE',
         entityId: vehicle.id,
         action: 'ENTITY_UPDATED',
+        category: 'STANDARD',
         oldValue: changes.oldValue,
         newValue: changes.newValue,
         metadata: {
@@ -265,7 +271,8 @@ export async function updateClientVehicle(
           changedFields: changes.changedFields,
           ownerType: access.companyId ? 'company' : 'client',
           ownerId: access.companyId ?? access.clientProfileId
-        }
+        },
+        allowedFields: { oldValue: VEHICLE_AUDIT_VALUE_FIELDS, newValue: VEHICLE_AUDIT_VALUE_FIELDS, metadata: VEHICLE_AUDIT_METADATA_FIELDS }
       });
     }
 

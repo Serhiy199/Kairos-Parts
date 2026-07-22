@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { requireCrmSession } from '@/lib/admin/access';
-import { createAuditLog } from '@/lib/audit-log/service';
+import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { hasCloudinaryConfig } from '@/lib/cloudinary/server';
 import { documentOwnerData, hasExactlyOneDocumentOwner, ownerDocumentWhere, type DocumentOwnerContext, type OwnerDocumentType } from '@/lib/documents/ownership';
 import {
@@ -21,6 +21,10 @@ import {
 } from '@/lib/vehicles/documents';
 
 const GENERIC_UPLOAD_ERROR = 'Не вдалося завантажити документ.';
+const OWNER_DOCUMENT_AUDIT_METADATA_FIELDS = [
+  'event', 'actorRole', 'documentOwnerType', 'documents', 'documentId',
+  'originalName', 'visibleToClient', 'mimeType', 'size'
+] as const;
 
 function ownerAuditTarget(owner: DocumentOwnerContext) {
   if (owner.type === 'company') return { entityType: 'COMPANY' as const, entityId: owner.companyId, companyId: owner.companyId };
@@ -99,15 +103,17 @@ export async function uploadAdminOwnerDocuments(
         uploadedById: session.user.id
       } })));
       const auditTarget = ownerAuditTarget(owner);
-      await createAuditLog(tx, {
-        actorId: session.user.id,
+      await writeAuditLog(tx, {
+        actor: auditUserActor(session.user.id),
         ...auditTarget,
         action: 'ENTITY_UPDATED',
+        category: 'STANDARD',
         metadata: {
           event: owner.type === 'company' ? 'COMPANY_DOCUMENT_UPLOADED' : 'CLIENT_DOCUMENT_UPLOADED',
           actorRole: session.user.role, documentOwnerType: owner.type,
           documents: created.map((document) => ({ id: document.id, originalName: document.fileName, mimeType: document.mimeType, size: document.size, visibleToClient: document.visibleToClient }))
-        }
+        },
+        allowedFields: { metadata: OWNER_DOCUMENT_AUDIT_METADATA_FIELDS }
       });
     });
   } catch {
@@ -138,10 +144,11 @@ export async function setOwnerDocumentVisibility(
     await prisma.$transaction(async (tx) => {
       await tx.document.update({ where: { id: document.id }, data: { visibleToClient } });
       const auditTarget = ownerAuditTarget(owner);
-      await createAuditLog(tx, {
-        actorId: session.user.id, ...auditTarget,
-        action: 'ENTITY_UPDATED', oldValue: { visibleToClient: document.visibleToClient }, newValue: { visibleToClient },
-        metadata: { event: owner.type === 'company' ? 'COMPANY_DOCUMENT_VISIBILITY_CHANGED' : 'CLIENT_DOCUMENT_VISIBILITY_CHANGED', actorRole: session.user.role, documentOwnerType: owner.type, documentId: document.id }
+      await writeAuditLog(tx, {
+        actor: auditUserActor(session.user.id), ...auditTarget,
+        action: 'ENTITY_UPDATED', category: 'STANDARD', oldValue: { visibleToClient: document.visibleToClient }, newValue: { visibleToClient },
+        metadata: { event: owner.type === 'company' ? 'COMPANY_DOCUMENT_VISIBILITY_CHANGED' : 'CLIENT_DOCUMENT_VISIBILITY_CHANGED', actorRole: session.user.role, documentOwnerType: owner.type, documentId: document.id },
+        allowedFields: { oldValue: ['visibleToClient'], newValue: ['visibleToClient'], metadata: OWNER_DOCUMENT_AUDIT_METADATA_FIELDS }
       });
     });
   } catch {
@@ -182,14 +189,16 @@ export async function deleteAdminOwnerDocument(
     await prisma.$transaction(async (tx) => {
       await tx.document.deleteMany({ where: { id: document.id, ...ownerDocumentWhere(owner) } });
       const auditTarget = ownerAuditTarget(owner);
-      await createAuditLog(tx, {
-        actorId: session.user.id, ...auditTarget,
+      await writeAuditLog(tx, {
+        actor: auditUserActor(session.user.id), ...auditTarget,
         action: 'ENTITY_UPDATED',
+        category: 'STANDARD',
         metadata: {
           event: owner.type === 'company' ? 'COMPANY_DOCUMENT_DELETED' : 'CLIENT_DOCUMENT_DELETED', actorRole: session.user.role,
           documentOwnerType: owner.type, documentId: document.id, originalName: document.fileName,
           visibleToClient: document.visibleToClient, mimeType: document.mimeType, size: document.size
-        }
+        },
+        allowedFields: { metadata: OWNER_DOCUMENT_AUDIT_METADATA_FIELDS }
       });
     });
   } catch {

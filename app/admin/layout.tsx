@@ -26,7 +26,7 @@ const adminNavItems = [
   { href: '/admin/team', label: 'Команда', icon: 'team' as const }
 ];
 
-const ADMIN_ONLY_ROUTES = ['/admin/change-requests', '/admin/billing-settings', '/admin/team'];
+const ADMIN_ONLY_ROUTES = ['/admin/change-requests', '/admin/audit-log', '/admin/billing-settings', '/admin/team'];
 
 async function getNewContactMessagesCount() {
   try {

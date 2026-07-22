@@ -2,7 +2,7 @@ import 'server-only';
 
 import { revalidatePath } from 'next/cache';
 
-import { createAuditLog } from '@/lib/audit-log/service';
+import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { cleanupCloudinaryAssets, deleteCloudinaryAsset, hasCloudinaryConfig, uploadVehicleImage, type CloudinaryVehicleUpload } from '@/lib/cloudinary/server';
 import { prisma } from '@/lib/prisma';
 import { getVehicleImageFiles, mapVehicleUploadToCreateInput, type VehicleImageActionState, validateVehicleImageFiles, validateVehicleImageOrder } from '@/lib/vehicles/images';
@@ -27,8 +27,13 @@ export function revalidateVehiclePhotoPaths(vehicle: Pick<VehiclePhotoContext, '
 }
 
 function auditContext(vehicle: VehiclePhotoContext, actor: VehiclePhotoActor) {
-  return { actorId: actor.userId, companyId: vehicle.companyId, entityType: 'VEHICLE' as const, entityId: vehicle.id, action: 'ENTITY_UPDATED' as const };
+  return { actor: auditUserActor(actor.userId), companyId: vehicle.companyId, entityType: 'VEHICLE' as const, entityId: vehicle.id, action: 'ENTITY_UPDATED' as const, category: 'STANDARD' as const };
 }
+
+const VEHICLE_IMAGE_AUDIT_METADATA_FIELDS = [
+  'event', 'actorRole', 'imageIds', 'count', 'primaryImageId', 'ownerType',
+  'ownerId', 'imageId', 'wasPrimary', 'sortOrder'
+] as const;
 
 export async function uploadVehicleImagesForActor(vehicle: VehiclePhotoContext, actor: VehiclePhotoActor, formData: FormData): Promise<VehicleImageActionState> {
   const files = getVehicleImageFiles(formData);
@@ -43,9 +48,10 @@ export async function uploadVehicleImagesForActor(vehicle: VehiclePhotoContext, 
     const hasPrimary = vehicle.images.some((image) => image.isPrimary);
     await prisma.$transaction(async (tx) => {
       const created = await Promise.all(uploads.map((upload, index) => tx.vehicleImage.create({ data: mapVehicleUploadToCreateInput({ vehicleId: vehicle.id, upload, sortOrder: maxSortOrder + index + 1, isPrimary: !hasPrimary && index === 0 }) })));
-      await createAuditLog(tx, {
+      await writeAuditLog(tx, {
         ...auditContext(vehicle, actor),
-        metadata: { event: 'VEHICLE_IMAGE_UPLOADED', actorRole: actor.role, imageIds: created.map((image) => image.id), count: created.length, primaryImageId: created.find((image) => image.isPrimary)?.id ?? null, ownerType: vehicle.companyId ? 'company' : 'client', ownerId: vehicle.companyId ?? vehicle.clientId }
+        metadata: { event: 'VEHICLE_IMAGE_UPLOADED', actorRole: actor.role, imageIds: created.map((image) => image.id), count: created.length, primaryImageId: created.find((image) => image.isPrimary)?.id ?? null, ownerType: vehicle.companyId ? 'company' : 'client', ownerId: vehicle.companyId ?? vehicle.clientId },
+        allowedFields: { metadata: VEHICLE_IMAGE_AUDIT_METADATA_FIELDS }
       });
     });
   } catch {
@@ -64,7 +70,7 @@ export async function setPrimaryVehicleImageForActor(vehicle: VehiclePhotoContex
     await prisma.$transaction(async (tx) => {
       await tx.vehicleImage.updateMany({ where: { vehicleId: vehicle.id }, data: { isPrimary: false } });
       await tx.vehicleImage.update({ where: { id: imageId, vehicleId: vehicle.id }, data: { isPrimary: true } });
-      await createAuditLog(tx, { ...auditContext(vehicle, actor), oldValue: { primaryImageId: oldPrimaryImageId }, newValue: { primaryImageId: imageId }, metadata: { event: 'VEHICLE_IMAGE_PRIMARY_CHANGED', actorRole: actor.role } });
+      await writeAuditLog(tx, { ...auditContext(vehicle, actor), oldValue: { primaryImageId: oldPrimaryImageId }, newValue: { primaryImageId: imageId }, metadata: { event: 'VEHICLE_IMAGE_PRIMARY_CHANGED', actorRole: actor.role }, allowedFields: { oldValue: ['primaryImageId'], newValue: ['primaryImageId'], metadata: VEHICLE_IMAGE_AUDIT_METADATA_FIELDS } });
     });
   } catch {
     return { status: 'error', message: 'Не вдалося змінити головне фото.' } satisfies VehicleImageActionState;
@@ -80,7 +86,7 @@ export async function reorderVehicleImagesForActor(vehicle: VehiclePhotoContext,
   try {
     await prisma.$transaction(async (tx) => {
       await Promise.all(orderedImageIds.map((id, sortOrder) => tx.vehicleImage.update({ where: { id, vehicleId: vehicle.id }, data: { sortOrder } })));
-      await createAuditLog(tx, { ...auditContext(vehicle, actor), oldValue: { imageOrder: oldOrder }, newValue: { imageOrder: orderedImageIds }, metadata: { event: 'VEHICLE_IMAGES_REORDERED', actorRole: actor.role } });
+      await writeAuditLog(tx, { ...auditContext(vehicle, actor), oldValue: { imageOrder: oldOrder }, newValue: { imageOrder: orderedImageIds }, metadata: { event: 'VEHICLE_IMAGES_REORDERED', actorRole: actor.role }, allowedFields: { oldValue: ['imageOrder'], newValue: ['imageOrder'], metadata: VEHICLE_IMAGE_AUDIT_METADATA_FIELDS } });
     });
   } catch {
     return { status: 'error', message: 'Не вдалося змінити порядок фотографій.' } satisfies VehicleImageActionState;
@@ -103,7 +109,7 @@ export async function deleteVehicleImageForActor(vehicle: VehiclePhotoContext, a
       await tx.vehicleImage.deleteMany({ where: { id: image.id, vehicleId: vehicle.id } });
       const remaining = vehicle.images.filter((candidate) => candidate.id !== image.id);
       await Promise.all(remaining.map((candidate, sortOrder) => tx.vehicleImage.update({ where: { id: candidate.id, vehicleId: vehicle.id }, data: { sortOrder, isPrimary: image.isPrimary ? sortOrder === 0 : candidate.isPrimary } })));
-      await createAuditLog(tx, { ...auditContext(vehicle, actor), metadata: { event: 'VEHICLE_IMAGE_DELETED', actorRole: actor.role, imageId: image.id, wasPrimary: image.isPrimary, sortOrder: image.sortOrder } });
+      await writeAuditLog(tx, { ...auditContext(vehicle, actor), metadata: { event: 'VEHICLE_IMAGE_DELETED', actorRole: actor.role, imageId: image.id, wasPrimary: image.isPrimary, sortOrder: image.sortOrder }, allowedFields: { metadata: VEHICLE_IMAGE_AUDIT_METADATA_FIELDS } });
     });
   } catch {
     return { status: 'error', message: 'Фотографію видалено зі сховища, але не вдалося оновити галерею.' } satisfies VehicleImageActionState;

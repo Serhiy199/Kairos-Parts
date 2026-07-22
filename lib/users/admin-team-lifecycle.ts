@@ -2,7 +2,7 @@ import 'server-only';
 
 import { Prisma } from '@prisma/client';
 
-import { createAuditLog } from '@/lib/audit-log/service';
+import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { prisma } from '@/lib/prisma';
 import { assertCanDisableOrDemoteAdmin } from './lifecycle';
 import { assertUserStatusTransition } from './lifecycle-rules';
@@ -80,11 +80,12 @@ export async function setManagerAccessStatus(input: {
 
       const event = input.targetStatus === 'DISABLED' ? 'MANAGER_DISABLED' : 'MANAGER_ENABLED';
 
-      await createAuditLog(tx, {
-        actorId: actor.id,
+      await writeAuditLog(tx, {
+        actor: auditUserActor(actor.id),
         entityType: 'USER',
         entityId: manager.id,
-        action: 'ENTITY_UPDATED',
+        action: input.targetStatus === 'DISABLED' ? 'MANAGER_DISABLED' : 'MANAGER_ENABLED',
+        category: 'STANDARD',
         oldValue: { role: 'MANAGER', status: manager.status },
         newValue: { role: 'MANAGER', status: input.targetStatus },
         metadata: {
@@ -93,6 +94,11 @@ export async function setManagerAccessStatus(input: {
           previousStatus: manager.status,
           newStatus: input.targetStatus,
           actorRole: 'ADMIN'
+        },
+        allowedFields: {
+          oldValue: ['role', 'status'],
+          newValue: ['role', 'status'],
+          metadata: ['event', 'managerId', 'previousStatus', 'newStatus', 'actorRole']
         }
       });
 

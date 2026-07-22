@@ -3,7 +3,7 @@ import 'server-only';
 import { createHash, randomBytes } from 'node:crypto';
 import { Prisma, type UserRole, type UserStatus } from '@prisma/client';
 
-import { createAuditLog } from '@/lib/audit-log/service';
+import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { hashPassword } from '@/lib/auth/password';
 import { prisma } from '@/lib/prisma';
 import { buildAbsoluteUrl } from '@/lib/site-url';
@@ -114,11 +114,13 @@ export async function createInvitedManager(input: {
         select: { id: true }
       });
 
-        await createAuditLog(tx, {
-        actorId: input.createdByAdminId,
+        await writeAuditLog(tx, {
+        actor: auditUserActor(input.createdByAdminId),
         entityType: 'USER',
         entityId: created.id,
+        entityLabel: created.name ?? email,
         action: 'MANAGER_INVITATION_CREATED',
+        category: 'STANDARD',
         newValue: { role: 'MANAGER', status: 'INVITED' },
         metadata: {
           event: 'MANAGER_INVITATION_CREATED',
@@ -127,6 +129,10 @@ export async function createInvitedManager(input: {
           createdById: input.createdByAdminId,
           invitationId: invitation.id,
           expiresAt: expiresAt.toISOString()
+        },
+        allowedFields: {
+          newValue: ['role', 'status'],
+          metadata: ['event', 'managerId', 'email', 'createdById', 'invitationId', 'expiresAt']
         }
       });
 
@@ -279,11 +285,12 @@ export async function activateManagerInvitation(input: { token: string; password
         data: { revokedAt: now }
       });
 
-      await createAuditLog(tx, {
-        actorId: invitation.userId,
+      await writeAuditLog(tx, {
+        actor: auditUserActor(invitation.userId),
         entityType: 'USER',
         entityId: invitation.userId,
         action: 'MANAGER_ACTIVATED',
+        category: 'STANDARD',
         oldValue: { role: 'MANAGER', status: 'INVITED' },
         newValue: { role: 'MANAGER', status: 'ACTIVE' },
         metadata: {
@@ -291,6 +298,11 @@ export async function activateManagerInvitation(input: { token: string; password
           managerId: invitation.userId,
           activatedAt: now.toISOString(),
           invitationId: invitation.id
+        },
+        allowedFields: {
+          oldValue: ['role', 'status'],
+          newValue: ['role', 'status'],
+          metadata: ['event', 'managerId', 'activatedAt', 'invitationId']
         }
       });
 
@@ -341,11 +353,12 @@ export async function regenerateManagerInvitation(input: { userId: string; actor
         select: { id: true }
       });
 
-      await createAuditLog(tx, {
-        actorId: input.actorAdminId,
+      await writeAuditLog(tx, {
+        actor: auditUserActor(input.actorAdminId),
         entityType: 'USER',
         entityId: manager.id,
         action: 'MANAGER_INVITATION_REGENERATED',
+        category: 'STANDARD',
         metadata: {
           event: 'MANAGER_INVITATION_REGENERATED',
           managerId: manager.id,
@@ -353,6 +366,9 @@ export async function regenerateManagerInvitation(input: { userId: string; actor
           invitationId: invitation.id,
           expiresAt: expiresAt.toISOString(),
           revokedInvitationCount: revoked.count
+        },
+        allowedFields: {
+          metadata: ['event', 'managerId', 'createdById', 'invitationId', 'expiresAt', 'revokedInvitationCount']
         }
       });
 

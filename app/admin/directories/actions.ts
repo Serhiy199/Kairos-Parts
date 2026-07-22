@@ -4,10 +4,13 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { requireAdminSession } from '@/lib/admin/access';
-import { createAuditLog } from '@/lib/audit-log/service';
+import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { prisma } from '@/lib/prisma';
 import { normalizeTaxonomyName, taxonomySlug, uniqueTaxonomySlug } from '@/lib/vehicles/taxonomy-normalization';
 import { parseTaxonomySortOrder } from '@/lib/vehicles/taxonomy-sort-order';
+
+const DIRECTORY_AUDIT_VALUE_FIELDS = ['name', 'slug', 'isActive', 'sortOrder', 'equipmentTypeIds'] as const;
+const DIRECTORY_AUDIT_METADATA_FIELDS = ['event', 'actorRole'] as const;
 
 function value(formData: FormData, key: string) {
   const entry = formData.get(key);
@@ -50,10 +53,11 @@ export async function createEquipmentType(formData: FormData) {
   const slug = uniqueTaxonomySlug(name, new Set(matchingSlugs.map((item) => item.slug)));
   await prisma.$transaction(async (tx) => {
     const created = await tx.equipmentType.create({ data: { name, normalizedName, slug, sortOrder } });
-    await createAuditLog(tx, {
-      actorId: session.user.id, entityType: 'EQUIPMENT_TYPE', entityId: created.id, action: 'ENTITY_UPDATED',
+    await writeAuditLog(tx, {
+      actor: auditUserActor(session.user.id), entityType: 'EQUIPMENT_TYPE', entityId: created.id, action: 'ENTITY_UPDATED', category: 'STANDARD',
       newValue: { name: created.name, slug: created.slug, isActive: created.isActive, sortOrder: created.sortOrder },
-      metadata: { event: 'EQUIPMENT_TYPE_CREATED', actorRole: session.user.role }
+      metadata: { event: 'EQUIPMENT_TYPE_CREATED', actorRole: session.user.role },
+      allowedFields: { newValue: DIRECTORY_AUDIT_VALUE_FIELDS, metadata: DIRECTORY_AUDIT_METADATA_FIELDS }
     });
   });
   revalidateDirectories();
@@ -80,11 +84,12 @@ export async function updateEquipmentType(formData: FormData) {
   try {
     await prisma.$transaction(async (tx) => {
       const updated = await tx.equipmentType.update({ where: { id }, data: next });
-      await createAuditLog(tx, {
-        actorId: session.user.id, entityType: 'EQUIPMENT_TYPE', entityId: id, action: 'ENTITY_UPDATED',
+      await writeAuditLog(tx, {
+        actor: auditUserActor(session.user.id), entityType: 'EQUIPMENT_TYPE', entityId: id, action: 'ENTITY_UPDATED', category: 'STANDARD',
         oldValue: { name: current.name, slug: current.slug, isActive: current.isActive, sortOrder: current.sortOrder },
         newValue: { name: updated.name, slug: updated.slug, isActive: updated.isActive, sortOrder: updated.sortOrder },
-        metadata: { event: current.isActive !== updated.isActive ? 'EQUIPMENT_TYPE_ACTIVATION_CHANGED' : current.sortOrder !== updated.sortOrder ? 'EQUIPMENT_TYPE_ORDER_CHANGED' : 'EQUIPMENT_TYPE_UPDATED', actorRole: session.user.role }
+        metadata: { event: current.isActive !== updated.isActive ? 'EQUIPMENT_TYPE_ACTIVATION_CHANGED' : current.sortOrder !== updated.sortOrder ? 'EQUIPMENT_TYPE_ORDER_CHANGED' : 'EQUIPMENT_TYPE_UPDATED', actorRole: session.user.role },
+        allowedFields: { oldValue: DIRECTORY_AUDIT_VALUE_FIELDS, newValue: DIRECTORY_AUDIT_VALUE_FIELDS, metadata: DIRECTORY_AUDIT_METADATA_FIELDS }
       });
     });
   } catch {
@@ -109,10 +114,11 @@ export async function createManufacturer(formData: FormData) {
     const created = await tx.manufacturer.create({
       data: { name, slug, sortOrder, equipmentTypes: { create: validTypes.map((type) => ({ equipmentTypeId: type.id })) } }
     });
-    await createAuditLog(tx, {
-      actorId: session.user.id, entityType: 'MANUFACTURER', entityId: created.id, action: 'ENTITY_UPDATED',
+    await writeAuditLog(tx, {
+      actor: auditUserActor(session.user.id), entityType: 'MANUFACTURER', entityId: created.id, action: 'ENTITY_UPDATED', category: 'STANDARD',
       newValue: { name: created.name, isActive: created.isActive, sortOrder: created.sortOrder, equipmentTypeIds: validTypes.map((type) => type.id) },
-      metadata: { event: 'MANUFACTURER_CREATED', actorRole: session.user.role }
+      metadata: { event: 'MANUFACTURER_CREATED', actorRole: session.user.role },
+      allowedFields: { newValue: DIRECTORY_AUDIT_VALUE_FIELDS, metadata: DIRECTORY_AUDIT_METADATA_FIELDS }
     });
   });
   revalidateDirectories();
@@ -150,11 +156,12 @@ export async function updateManufacturer(formData: FormData) {
       await tx.manufacturerEquipmentType.deleteMany({ where: { manufacturerId: id } });
       if (nextTypeIds.length) await tx.manufacturerEquipmentType.createMany({ data: nextTypeIds.map((equipmentTypeId) => ({ manufacturerId: id, equipmentTypeId })) });
     }
-    await createAuditLog(tx, {
-      actorId: session.user.id, entityType: 'MANUFACTURER', entityId: id, action: 'ENTITY_UPDATED',
+    await writeAuditLog(tx, {
+      actor: auditUserActor(session.user.id), entityType: 'MANUFACTURER', entityId: id, action: 'ENTITY_UPDATED', category: 'STANDARD',
       oldValue: { name: current.name, isActive: current.isActive, sortOrder: current.sortOrder, equipmentTypeIds: oldTypeIds },
       newValue: { name: updated.name, isActive: updated.isActive, sortOrder: updated.sortOrder, equipmentTypeIds: nextTypeIds },
-      metadata: { event: typesChanged ? 'MANUFACTURER_TYPES_CHANGED' : current.isActive !== updated.isActive ? 'MANUFACTURER_ACTIVATION_CHANGED' : current.sortOrder !== updated.sortOrder ? 'MANUFACTURER_ORDER_CHANGED' : 'MANUFACTURER_UPDATED', actorRole: session.user.role }
+      metadata: { event: typesChanged ? 'MANUFACTURER_TYPES_CHANGED' : current.isActive !== updated.isActive ? 'MANUFACTURER_ACTIVATION_CHANGED' : current.sortOrder !== updated.sortOrder ? 'MANUFACTURER_ORDER_CHANGED' : 'MANUFACTURER_UPDATED', actorRole: session.user.role },
+      allowedFields: { oldValue: DIRECTORY_AUDIT_VALUE_FIELDS, newValue: DIRECTORY_AUDIT_VALUE_FIELDS, metadata: DIRECTORY_AUDIT_METADATA_FIELDS }
     });
   });
   revalidateDirectories();

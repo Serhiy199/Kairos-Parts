@@ -1,7 +1,7 @@
 import { ChangeRequestStatus } from '@prisma/client';
 import type { ChangeAction, ChangeEntityType, Prisma } from '@prisma/client';
 
-import { createAuditLog, createChangeRequestAuditLog } from '@/lib/audit-log/service';
+import { auditUserActor, createChangeRequestAuditLog, writeAuditLog } from '@/lib/audit-log/service';
 import type { ClientAccessContext } from '@/lib/client/access';
 import { requestAccessWhere, vehicleAccessWhere } from '@/lib/client/access';
 import { applyChangeRequest } from '@/lib/change-requests/apply';
@@ -21,6 +21,16 @@ type ChangeRequestInput = {
   newValue?: Prisma.InputJsonValue;
   reason: string | null;
 };
+
+const CHANGE_REQUEST_AUDIT_VALUE_FIELDS = [
+  'name', 'description', 'equipmentType', 'model', 'vinOrSerial', 'brand',
+  'catalogNumber', 'analogNumber', 'quantity', 'unit', 'comment', 'type',
+  'manufacturer', 'year', 'archivedAt', 'archivedById'
+] as const;
+const CHANGE_REQUEST_AUDIT_METADATA_FIELDS = [
+  'adminComment', 'entityType', 'originalEntityId', 'action', 'fieldName',
+  'normalizedField', 'reason', 'source'
+] as const;
 
 function clientChangeRequestWhere(access: ClientAccessContext): Prisma.ChangeRequestWhereInput {
   if (access.companyId) {
@@ -138,11 +148,12 @@ export async function createChangeRequest(access: ClientAccessContext, input: Ch
     });
 
     await createChangeRequestAuditLog(tx, {
-      actorId: access.userId,
+      actor: auditUserActor(access.userId),
       companyId: access.companyId,
       changeRequestId: created.id,
       entityId: created.id,
       action: 'CHANGE_REQUEST_CREATED',
+      category: 'STANDARD',
       oldValue,
       newValue,
       metadata: {
@@ -151,6 +162,11 @@ export async function createChangeRequest(access: ClientAccessContext, input: Ch
         action: input.action,
         fieldName: input.fieldName,
         reason: input.reason
+      },
+      allowedFields: {
+        oldValue: CHANGE_REQUEST_AUDIT_VALUE_FIELDS,
+        newValue: CHANGE_REQUEST_AUDIT_VALUE_FIELDS,
+        metadata: CHANGE_REQUEST_AUDIT_METADATA_FIELDS
       }
     });
 
@@ -201,11 +217,12 @@ export async function cancelOwnPendingChangeRequest(access: ClientAccessContext,
     });
 
     await createChangeRequestAuditLog(tx, {
-      actorId: access.userId,
+      actor: auditUserActor(access.userId),
       companyId: cancelled.companyId,
       changeRequestId: cancelled.id,
       entityId: cancelled.id,
       action: 'CHANGE_REQUEST_CANCELLED',
+      category: 'STANDARD',
       oldValue: cancelled.oldValue ?? undefined,
       newValue: cancelled.newValue ?? undefined,
       metadata: {
@@ -214,6 +231,11 @@ export async function cancelOwnPendingChangeRequest(access: ClientAccessContext,
         action: cancelled.action,
         fieldName: cancelled.fieldName,
         reason: cancelled.reason
+      },
+      allowedFields: {
+        oldValue: CHANGE_REQUEST_AUDIT_VALUE_FIELDS,
+        newValue: CHANGE_REQUEST_AUDIT_VALUE_FIELDS,
+        metadata: CHANGE_REQUEST_AUDIT_METADATA_FIELDS
       }
     });
 
@@ -251,11 +273,12 @@ export async function approveChangeRequest(id: string, reviewedById: string, adm
     });
 
     await createChangeRequestAuditLog(tx, {
-      actorId: reviewedById,
+      actor: auditUserActor(reviewedById),
       companyId: changeRequest.companyId,
       changeRequestId: changeRequest.id,
       entityId: changeRequest.id,
       action: 'CHANGE_REQUEST_APPROVED',
+      category: 'STANDARD',
       oldValue: changeRequest.oldValue ?? undefined,
       newValue: changeRequest.newValue ?? undefined,
       metadata: {
@@ -265,19 +288,30 @@ export async function approveChangeRequest(id: string, reviewedById: string, adm
         action: changeRequest.action,
         fieldName: changeRequest.fieldName,
         reason: changeRequest.reason
+      },
+      allowedFields: {
+        oldValue: CHANGE_REQUEST_AUDIT_VALUE_FIELDS,
+        newValue: CHANGE_REQUEST_AUDIT_VALUE_FIELDS,
+        metadata: CHANGE_REQUEST_AUDIT_METADATA_FIELDS
       }
     });
 
-    await createAuditLog(tx, {
-      actorId: reviewedById,
+    await writeAuditLog(tx, {
+      actor: auditUserActor(reviewedById),
       companyId: changeRequest.companyId,
       changeRequestId: changeRequest.id,
       entityType: applyResult.audit.entityType,
       entityId: applyResult.audit.entityId,
       action: applyResult.audit.action,
+      category: 'STANDARD',
       oldValue: applyResult.audit.oldValue,
       newValue: applyResult.audit.newValue,
-      metadata: applyResult.audit.metadata
+      metadata: applyResult.audit.metadata,
+      allowedFields: {
+        oldValue: CHANGE_REQUEST_AUDIT_VALUE_FIELDS,
+        newValue: CHANGE_REQUEST_AUDIT_VALUE_FIELDS,
+        metadata: CHANGE_REQUEST_AUDIT_METADATA_FIELDS
+      }
     });
 
     return { ok: true as const, changeRequest: updated };
@@ -313,11 +347,12 @@ async function reviewPendingChangeRequest(id: string, reviewedById: string, stat
     });
 
     await createChangeRequestAuditLog(tx, {
-      actorId: reviewedById,
+      actor: auditUserActor(reviewedById),
       companyId: reviewed.companyId,
       changeRequestId: reviewed.id,
       entityId: reviewed.id,
       action: status === 'REJECTED' ? 'CHANGE_REQUEST_REJECTED' : 'CHANGE_REQUEST_APPROVED',
+      category: 'STANDARD',
       oldValue: reviewed.oldValue ?? undefined,
       newValue: reviewed.newValue ?? undefined,
       metadata: {
@@ -327,6 +362,11 @@ async function reviewPendingChangeRequest(id: string, reviewedById: string, stat
         action: reviewed.action,
         fieldName: reviewed.fieldName,
         reason: reviewed.reason
+      },
+      allowedFields: {
+        oldValue: CHANGE_REQUEST_AUDIT_VALUE_FIELDS,
+        newValue: CHANGE_REQUEST_AUDIT_VALUE_FIELDS,
+        metadata: CHANGE_REQUEST_AUDIT_METADATA_FIELDS
       }
     });
 

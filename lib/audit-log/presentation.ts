@@ -9,12 +9,27 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   REQUEST_ITEM: 'Позиція заявки',
   VEHICLE: 'Техніка',
   REQUEST_DOCUMENT: 'Документ заявки',
+  DOCUMENT: 'Документ',
   COMMERCIAL_OFFER: 'Комерційна пропозиція',
+  INVOICE: 'Рахунок',
   COMPANY: 'Компанія',
   CHANGE_REQUEST: 'Запит зміни',
   USER: 'Користувач',
+  TEAM_MEMBER: 'Учасник команди',
+  CLIENT: 'Клієнт',
   EQUIPMENT_TYPE: 'Тип техніки',
-  MANUFACTURER: 'Виробник'
+  MANUFACTURER: 'Виробник',
+  AUTH_SESSION: 'Сесія',
+  TELEGRAM_REQUEST: 'Telegram-заявка',
+  SYSTEM: 'Система'
+};
+
+export const AUDIT_CATEGORY_LABELS: Record<string, string> = {
+  TECHNICAL: 'Технічна',
+  LOGIN: 'Вхід',
+  CRITICAL_READ: 'Критичний перегляд',
+  STANDARD: 'Стандартна',
+  FINANCIAL_CRITICAL: 'Фінансово-критична'
 };
 
 export const AUDIT_ACTION_LABELS: Record<string, string> = {
@@ -190,4 +205,26 @@ export function formatAuditMetadata(metadata: unknown): AuditDetail[] {
 export function auditEventLabel(metadata: unknown) {
   const event = asRecord(metadata)?.event;
   return typeof event === 'string' ? AUDIT_EVENT_LABELS[event] ?? event : null;
+}
+
+type AuditActorPresentation = {
+  actorName: string | null;
+  actorEmail: string | null;
+  actorRole: string | null;
+  actor: { name: string | null; email: string | null; role: string } | null;
+};
+
+export function auditActorLabel(item: AuditActorPresentation) {
+  return item.actorName
+    ?? item.actor?.name
+    ?? item.actorEmail
+    ?? 'Системна дія';
+}
+
+export function auditActorEmail(item: AuditActorPresentation) {
+  return item.actorEmail ?? item.actor?.email ?? null;
+}
+
+export function auditActorRole(item: AuditActorPresentation) {
+  return item.actorRole ?? item.actor?.role ?? '—';
 }

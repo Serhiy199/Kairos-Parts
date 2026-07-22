@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { requireCrmSession } from '@/lib/admin/access';
-import { createAuditLog } from '@/lib/audit-log/service';
+import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { hasCloudinaryConfig } from '@/lib/cloudinary/server';
 import {
   cleanupVehicleDocumentAssets,
@@ -20,6 +20,10 @@ import {
 } from '@/lib/vehicles/documents';
 
 const GENERIC_UPLOAD_ERROR = 'Не вдалося завантажити документи.';
+const VEHICLE_DOCUMENT_AUDIT_METADATA_FIELDS = [
+  'event', 'actorRole', 'documents', 'documentId', 'originalName',
+  'visibleToClient', 'mimeType', 'size'
+] as const;
 
 async function getVehicleDocumentContext(vehicleId: string) {
   return prisma.vehicle.findUnique({
@@ -83,13 +87,14 @@ export async function uploadAdminVehicleDocuments(
         visibleToClient,
         uploadedById: session.user.id
       } })));
-      await createAuditLog(tx, {
-        actorId: session.user.id, companyId: vehicle.companyId, entityType: 'VEHICLE', entityId: vehicle.id,
-        action: 'ENTITY_UPDATED',
+      await writeAuditLog(tx, {
+        actor: auditUserActor(session.user.id), companyId: vehicle.companyId, entityType: 'VEHICLE', entityId: vehicle.id,
+        action: 'ENTITY_UPDATED', category: 'STANDARD',
         metadata: {
           event: 'VEHICLE_DOCUMENT_UPLOADED', actorRole: session.user.role,
           documents: created.map((document) => ({ id: document.id, originalName: document.fileName, mimeType: document.mimeType, size: document.size, visibleToClient: document.visibleToClient }))
-        }
+        },
+        allowedFields: { metadata: VEHICLE_DOCUMENT_AUDIT_METADATA_FIELDS }
       });
     });
   } catch {
@@ -118,10 +123,11 @@ export async function setVehicleDocumentVisibility(vehicleId: string, documentId
   try {
     await prisma.$transaction(async (tx) => {
       await tx.document.update({ where: { id: document.id }, data: { visibleToClient } });
-      await createAuditLog(tx, {
-        actorId: session.user.id, companyId: vehicle.companyId, entityType: 'VEHICLE', entityId: vehicle.id,
-        action: 'ENTITY_UPDATED', oldValue: { visibleToClient: document.visibleToClient }, newValue: { visibleToClient },
-        metadata: { event: 'VEHICLE_DOCUMENT_VISIBILITY_CHANGED', actorRole: session.user.role, documentId: document.id }
+      await writeAuditLog(tx, {
+        actor: auditUserActor(session.user.id), companyId: vehicle.companyId, entityType: 'VEHICLE', entityId: vehicle.id,
+        action: 'ENTITY_UPDATED', category: 'STANDARD', oldValue: { visibleToClient: document.visibleToClient }, newValue: { visibleToClient },
+        metadata: { event: 'VEHICLE_DOCUMENT_VISIBILITY_CHANGED', actorRole: session.user.role, documentId: document.id },
+        allowedFields: { oldValue: ['visibleToClient'], newValue: ['visibleToClient'], metadata: VEHICLE_DOCUMENT_AUDIT_METADATA_FIELDS }
       });
     });
   } catch {
@@ -162,13 +168,14 @@ export async function deleteAdminVehicleDocument(vehicleId: string, documentId: 
   try {
     await prisma.$transaction(async (tx) => {
       await tx.document.deleteMany({ where: { id: document.id, vehicleId: vehicle.id } });
-      await createAuditLog(tx, {
-        actorId: session.user.id, companyId: vehicle.companyId, entityType: 'VEHICLE', entityId: vehicle.id,
-        action: 'ENTITY_UPDATED',
+      await writeAuditLog(tx, {
+        actor: auditUserActor(session.user.id), companyId: vehicle.companyId, entityType: 'VEHICLE', entityId: vehicle.id,
+        action: 'ENTITY_UPDATED', category: 'STANDARD',
         metadata: {
           event: 'VEHICLE_DOCUMENT_DELETED', actorRole: session.user.role, documentId: document.id,
           originalName: document.fileName, visibleToClient: document.visibleToClient, mimeType: document.mimeType, size: document.size
-        }
+        },
+        allowedFields: { metadata: VEHICLE_DOCUMENT_AUDIT_METADATA_FIELDS }
       });
     });
   } catch {
