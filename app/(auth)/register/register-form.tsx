@@ -1,9 +1,15 @@
 ﻿'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { FormEvent, KeyboardEvent, useLayoutEffect, useRef, useState } from 'react';
 
 import { ActionIcon } from '@/components/ui/action-icons';
+import {
+  formatPhoneIdentifierInput,
+  getLocalDigitCountBeforeCaret,
+  getPhoneCaretPosition,
+  removeMaskedPhoneDigit
+} from '@/lib/phone/client-format';
 
 import { registerClient } from '../actions';
 
@@ -14,7 +20,61 @@ const inputClass =
 
 export function RegisterForm({ nextPath }: { nextPath?: string }) {
   const [accountType, setAccountType] = useState<AccountType>('BUSINESS');
+  const [phone, setPhone] = useState('');
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const pendingPhoneCaretRef = useRef<number | null>(null);
   const loginHref = nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : '/login';
+
+  useLayoutEffect(() => {
+    if (pendingPhoneCaretRef.current === null) return;
+
+    phoneRef.current?.setSelectionRange(pendingPhoneCaretRef.current, pendingPhoneCaretRef.current);
+    pendingPhoneCaretRef.current = null;
+  }, [phone]);
+
+  function updatePhone(value: string, caret: number) {
+    if (!value) {
+      setPhone('');
+      phoneRef.current?.setCustomValidity('');
+      return;
+    }
+
+    const parsed = formatPhoneIdentifierInput(value);
+    if (!parsed.isPhoneLike) return;
+
+    const localDigitsBeforeCaret = getLocalDigitCountBeforeCaret(value, caret);
+    pendingPhoneCaretRef.current = getPhoneCaretPosition(parsed.display, localDigitsBeforeCaret);
+    setPhone(parsed.display);
+    phoneRef.current?.setCustomValidity('');
+  }
+
+  function handlePhoneKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== 'Backspace' && event.key !== 'Delete') return;
+
+    const input = event.currentTarget;
+    const edit = removeMaskedPhoneDigit(
+      phone,
+      input.selectionStart ?? phone.length,
+      input.selectionEnd ?? phone.length,
+      event.key === 'Backspace' ? 'backward' : 'forward'
+    );
+
+    if (!edit) return;
+
+    event.preventDefault();
+    pendingPhoneCaretRef.current = edit.caret;
+    setPhone(edit.display);
+    input.setCustomValidity('');
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    const parsed = formatPhoneIdentifierInput(phone);
+    if (parsed.canonical) return;
+
+    event.preventDefault();
+    phoneRef.current?.setCustomValidity('Введіть повний номер телефону.');
+    phoneRef.current?.reportValidity();
+  }
 
   return (
     <>
@@ -35,7 +95,7 @@ export function RegisterForm({ nextPath }: { nextPath?: string }) {
         ))}
       </div>
 
-      <form action={registerClient} className="mt-6 grid gap-4 md:grid-cols-2">
+      <form action={registerClient} onSubmit={handleSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
         <input type="hidden" name="accountType" value={accountType} />
         {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
 
@@ -69,7 +129,21 @@ export function RegisterForm({ nextPath }: { nextPath?: string }) {
 
         <label className="grid gap-2 text-sm font-semibold text-foreground">
           Телефон *
-          <input name="phone" type="tel" autoComplete="tel" placeholder="+380XXXXXXXXX" required className={inputClass} />
+          <input
+            ref={phoneRef}
+            name="phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            value={phone}
+            onChange={(event) => updatePhone(event.target.value, event.target.selectionStart ?? event.target.value.length)}
+            onKeyDown={handlePhoneKeyDown}
+            pattern="\+38 \(0\d{2}\) \d{3}-\d{2}-\d{2}"
+            title="Введіть повний номер у форматі +38 (0XX) XXX-XX-XX."
+            placeholder="+38 (0XX) XXX-XX-XX"
+            required
+            className={inputClass}
+          />
         </label>
         <label className="grid gap-2 text-sm font-semibold text-foreground">
           Email *
