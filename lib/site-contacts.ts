@@ -8,7 +8,7 @@ export const siteContacts = {
     href: 'mailto:kairos_parts@ukr.net'
   },
   address: {
-    display: 'вул. Миронівська, 33д',
+    display: 'м. Кагарлик, вул. Миронівська, 33д',
     href: 'https://maps.app.goo.gl/rfnXF6WgSMuvKLAK6?g_st=it'
   },
   workingHours: {
