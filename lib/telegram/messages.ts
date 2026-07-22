@@ -3,6 +3,7 @@ import type { TelegramDraftFile } from './types';
 export const TELEGRAM_CALLBACKS = {
   continueRequest: 'telegram_request_continue',
   confirm: 'telegram_request_confirm',
+  edit: 'telegram_request_edit',
   cancel: 'telegram_request_cancel',
   restart: 'telegram_request_restart'
 } as const;
@@ -62,6 +63,7 @@ export const continueRequestKeyboard = {
 export const confirmationKeyboard = {
   inline_keyboard: [
     [{ text: 'Створити заявку', callback_data: TELEGRAM_CALLBACKS.confirm }],
+    [{ text: 'Редагувати дані', callback_data: TELEGRAM_CALLBACKS.edit }],
     [
       { text: 'Скасувати', callback_data: TELEGRAM_CALLBACKS.cancel },
       { text: 'Почати заново', callback_data: TELEGRAM_CALLBACKS.restart }
@@ -77,13 +79,16 @@ export function buildRegistrationKeyboard(baseUrl: string) {
   const normalizedBaseUrl = baseUrl.replace(/\/$/, '');
 
   return {
-    inline_keyboard: [
-      [
-        { text: 'Зареєструватися', url: `${normalizedBaseUrl}/register?next=/request` },
-        { text: 'Увійти', url: `${normalizedBaseUrl}/login?next=/request` }
-      ]
-    ]
+    inline_keyboard: [[{ text: 'Зареєструватися', url: `${normalizedBaseUrl}/register?next=/request` }]]
   };
+}
+
+export function buildEquipmentTypePrompt() {
+  return 'Вкажіть тип техніки.\n\nНаприклад: Комбайн, Трактор, Сівалка';
+}
+
+export function buildManufacturerPrompt() {
+  return 'Вкажіть виробника або марку техніки.\n\nНаприклад: John Deere, MAN, Claas';
 }
 
 export function isSkipText(text: string) {
@@ -121,9 +126,11 @@ export function buildProfileFoundMessage(input: {
 
 export function buildRegistrationRequiredMessage() {
   return [
-    'Ми не знайшли клієнтський кабінет із цим номером телефону.',
+    'Ми не знайшли клієнтський кабінет, привʼязаний до цього номера телефону.',
     '',
-    'Щоб створити заявку через Telegram, спочатку зареєструйтеся або увійдіть у кабінет Kairos Parts.'
+    'Щоб продовжити створення заявки, спочатку зареєструйтеся в Kairos Parts.',
+    '',
+    'Після реєстрації поверніться до бота та надішліть /start — повторно підтверджувати номер не потрібно.'
   ].join('\n');
 }
 

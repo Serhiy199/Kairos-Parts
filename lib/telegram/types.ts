@@ -1,5 +1,6 @@
 export type TelegramDraftStep =
   | 'AWAITING_CONTACT'
+  | 'AWAITING_REGISTRATION'
   | 'CONFIRM_PROFILE'
   | 'ASK_EQUIPMENT'
   | 'ASK_MANUFACTURER'

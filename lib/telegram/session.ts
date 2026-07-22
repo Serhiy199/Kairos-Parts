@@ -1,4 +1,8 @@
 import { saveRequestFileBufferLocal } from '@/lib/files/local-storage';
+import {
+  EQUIPMENT_TAXONOMY_TELEGRAM_FIELDS_ENABLED,
+  EQUIPMENT_TEXT_FIELD_MAX_LENGTH
+} from '@/lib/features/equipment-taxonomy';
 import { getPhoneLookupTail, normalizeUkrainianPhone, phoneNumbersMatch } from '@/lib/phone/normalize';
 import { prisma } from '@/lib/prisma';
 import { generatePublicStatusToken } from '@/lib/requests/identifiers';
@@ -9,6 +13,8 @@ import {
   buildManufacturerKeyboard,
   buildEquipmentTypeKeyboard,
   buildCreatedMessage,
+  buildEquipmentTypePrompt,
+  buildManufacturerPrompt,
   buildProfileFoundMessage,
   buildRegistrationKeyboard,
   buildRegistrationRequiredMessage,
@@ -23,9 +29,11 @@ import {
   skipKeyboard,
   TELEGRAM_CALLBACKS
 } from './messages';
+import { validateManualEquipmentField } from './request-fields';
 import type { TelegramCallbackQuery, TelegramDraftFile, TelegramMessage, TelegramUpdate } from './types';
 
 type TelegramDraft = NonNullable<Awaited<ReturnType<typeof getDraft>>>;
+type FoundClientProfile = NonNullable<Awaited<ReturnType<typeof findClientProfileByPhone>>>;
 
 type TelegramDraftMetadata = {
   files: TelegramDraftFile[];
@@ -270,6 +278,112 @@ async function showConfirmation(draft: TelegramDraft) {
   );
 }
 
+async function showRegistrationRequired(input: {
+  telegramUserId: string;
+  chatId: string;
+  phone: string;
+  contactName?: string | null;
+}) {
+  await prisma.telegramDraftRequest.upsert({
+    where: { telegramUserId: input.telegramUserId },
+    create: {
+      telegramUserId: input.telegramUserId,
+      chatId: input.chatId,
+      step: 'AWAITING_REGISTRATION',
+      phone: input.phone,
+      contactName: input.contactName ?? null,
+      fileMetadata: buildDraftMetadata({ files: [] })
+    },
+    update: {
+      chatId: input.chatId,
+      step: 'AWAITING_REGISTRATION',
+      phone: input.phone,
+      contactName: input.contactName ?? undefined
+    }
+  });
+
+  await sendTelegramMessage(input.chatId, buildRegistrationRequiredMessage(), {
+    replyMarkup: buildRegistrationKeyboard(getAppBaseUrl())
+  });
+}
+
+async function confirmClientProfile(input: {
+  telegramUserId: string;
+  chatId: string;
+  phone: string;
+  clientProfile: FoundClientProfile;
+  contactNameFallback?: string | null;
+}) {
+  const { clientProfile } = input;
+  const contactName = clientProfile.contactName ?? input.contactNameFallback ?? clientProfile.user.name;
+  const companyName = clientProfile.companyName ?? clientProfile.user.companyMemberships[0]?.company.name ?? null;
+  const email = clientProfile.email ?? clientProfile.user.email;
+
+  await linkTelegramClient({
+    clientProfileId: clientProfile.id,
+    telegramUserId: input.telegramUserId,
+    chatId: input.chatId,
+    phone: input.phone
+  });
+
+  await prisma.telegramDraftRequest.upsert({
+    where: { telegramUserId: input.telegramUserId },
+    create: {
+      telegramUserId: input.telegramUserId,
+      chatId: input.chatId,
+      step: 'CONFIRM_PROFILE',
+      phone: input.phone,
+      contactName,
+      companyName,
+      fileMetadata: buildDraftMetadata({ files: [], email })
+    },
+    update: {
+      chatId: input.chatId,
+      step: 'CONFIRM_PROFILE',
+      phone: input.phone,
+      contactName,
+      companyName,
+      equipmentType: null,
+      description: null,
+      fileMetadata: buildDraftMetadata({ files: [], email })
+    }
+  });
+
+  await sendTelegramMessage(input.chatId, 'Номер підтверджено.', { replyMarkup: removeKeyboard });
+  await sendTelegramMessage(
+    input.chatId,
+    buildProfileFoundMessage({ contactName, companyName, phone: input.phone, email }),
+    { replyMarkup: continueRequestKeyboard }
+  );
+}
+
+async function resumeAfterRegistration(draft: TelegramDraft) {
+  if (!draft.phone) {
+    return false;
+  }
+
+  const clientProfile = await findClientProfileByPhone(draft.phone);
+
+  if (!clientProfile) {
+    await showRegistrationRequired({
+      telegramUserId: draft.telegramUserId,
+      chatId: draft.chatId,
+      phone: draft.phone,
+      contactName: draft.contactName
+    });
+    return true;
+  }
+
+  await confirmClientProfile({
+    telegramUserId: draft.telegramUserId,
+    chatId: draft.chatId,
+    phone: draft.phone,
+    clientProfile,
+    contactNameFallback: draft.contactName
+  });
+  return true;
+}
+
 async function handleContact(message: TelegramMessage) {
   const telegramUserId = toStringId(message.from?.id ?? message.chat.id);
   const chatId = toStringId(message.chat.id);
@@ -303,62 +417,22 @@ async function handleContact(message: TelegramMessage) {
   const clientProfile = await findClientProfileByPhone(phone);
 
   if (!clientProfile) {
-    await prisma.telegramDraftRequest.deleteMany({ where: { telegramUserId } });
-    await sendTelegramMessage(
-      message.chat.id,
-      buildRegistrationRequiredMessage(),
-      { replyMarkup: buildRegistrationKeyboard(getAppBaseUrl()) }
-    );
+    await showRegistrationRequired({
+      telegramUserId,
+      chatId,
+      phone,
+      contactName: getContactNameFromMessage(message)
+    });
     return;
   }
 
-  await linkTelegramClient({
-    clientProfileId: clientProfile.id,
+  await confirmClientProfile({
     telegramUserId,
     chatId,
-    phone
+    phone,
+    clientProfile,
+    contactNameFallback: getContactNameFromMessage(message)
   });
-
-  await prisma.telegramDraftRequest.upsert({
-    where: { telegramUserId },
-    create: {
-      telegramUserId,
-      chatId,
-      step: 'CONFIRM_PROFILE',
-      phone,
-      contactName: clientProfile.contactName ?? getContactNameFromMessage(message) ?? clientProfile.user.name,
-      companyName: clientProfile.companyName ?? clientProfile.user.companyMemberships[0]?.company.name ?? null,
-      fileMetadata: buildDraftMetadata({
-        files: [],
-        email: clientProfile.email ?? clientProfile.user.email
-      })
-    },
-    update: {
-      chatId,
-      step: 'CONFIRM_PROFILE',
-      phone,
-      contactName: clientProfile.contactName ?? getContactNameFromMessage(message) ?? clientProfile.user.name,
-      companyName: clientProfile.companyName ?? clientProfile.user.companyMemberships[0]?.company.name ?? null,
-      equipmentType: null,
-      description: null,
-      fileMetadata: buildDraftMetadata({
-        files: [],
-        email: clientProfile.email ?? clientProfile.user.email
-      })
-    }
-  });
-
-  await sendTelegramMessage(message.chat.id, 'Номер підтверджено.', { replyMarkup: removeKeyboard });
-  await sendTelegramMessage(
-    message.chat.id,
-    buildProfileFoundMessage({
-      contactName: clientProfile.contactName ?? getContactNameFromMessage(message) ?? clientProfile.user.name,
-      companyName: clientProfile.companyName ?? clientProfile.user.companyMemberships[0]?.company.name ?? null,
-      phone,
-      email: clientProfile.email ?? clientProfile.user.email
-    }),
-    { replyMarkup: continueRequestKeyboard }
-  );
 }
 
 async function handleFileMessage(message: TelegramMessage, draft: TelegramDraft) {
@@ -436,7 +510,35 @@ async function handleTextMessage(message: TelegramMessage, draft: TelegramDraft)
     return;
   }
 
+  if (draft.step === 'AWAITING_REGISTRATION') {
+    await sendTelegramMessage(
+      message.chat.id,
+      'Після реєстрації поверніться до бота та надішліть /start. Бот повторно перевірить уже підтверджений номер.',
+      { replyMarkup: buildRegistrationKeyboard(getAppBaseUrl()) }
+    );
+    return;
+  }
+
   if (draft.step === 'ASK_EQUIPMENT') {
+    if (!EQUIPMENT_TAXONOMY_TELEGRAM_FIELDS_ENABLED) {
+      const result = validateManualEquipmentField(text);
+
+      if (!result.ok) {
+        const messageText = result.reason === 'too_long'
+          ? `Тип техніки не може перевищувати ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.`
+          : 'Вкажіть тип техніки текстом.';
+        await sendTelegramMessage(message.chat.id, messageText);
+        return;
+      }
+
+      await prisma.telegramDraftRequest.update({
+        where: { telegramUserId: draft.telegramUserId },
+        data: { equipmentType: result.value, step: 'ASK_MANUFACTURER' }
+      });
+      await sendTelegramMessage(message.chat.id, buildManufacturerPrompt(), { replyMarkup: removeKeyboard });
+      return;
+    }
+
     const equipmentTypeOptions = await getActiveEquipmentTypeNames();
     if (!equipmentTypeOptions.includes(text)) {
       await sendTelegramMessage(message.chat.id, 'Оберіть тип техніки зі списку або введіть власний варіант.', {
@@ -465,6 +567,28 @@ async function handleTextMessage(message: TelegramMessage, draft: TelegramDraft)
   }
 
   if (draft.step === 'ASK_MANUFACTURER') {
+    if (!EQUIPMENT_TAXONOMY_TELEGRAM_FIELDS_ENABLED) {
+      const result = validateManualEquipmentField(text);
+
+      if (!result.ok) {
+        const messageText = result.reason === 'too_long'
+          ? `Виробник або марка не може перевищувати ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.`
+          : 'Вкажіть виробника або марку техніки текстом.';
+        await sendTelegramMessage(message.chat.id, messageText);
+        return;
+      }
+
+      await prisma.telegramDraftRequest.update({
+        where: { telegramUserId: draft.telegramUserId },
+        data: {
+          step: 'ASK_MODEL',
+          fileMetadata: mergeDraftMetadata(draft.fileMetadata, { manufacturer: result.value })
+        }
+      });
+      await sendTelegramMessage(message.chat.id, 'Вкажіть модель техніки.\n\nНаприклад: MAN TGX 18.440, John Deere 8430');
+      return;
+    }
+
     const manufacturerOptions = await getActiveManufacturerNamesForType(draft.equipmentType ?? '');
     if (!manufacturerOptions.includes(text)) {
       await sendTelegramMessage(message.chat.id, 'Оберіть виробника / марку зі списку.', {
@@ -592,12 +716,18 @@ async function findClientProfileByPhone(phone: string) {
 
   const candidates = await prisma.clientProfile.findMany({
     where: {
+      user: {
+        is: { role: 'CLIENT' }
+      },
       OR: [
         { phone: { contains: phoneTail } },
         {
           user: {
             is: {
-              phone: { contains: phoneTail }
+              OR: [
+                { normalizedPhone },
+                { phone: { contains: phoneTail } }
+              ]
             }
           }
         }
@@ -619,57 +749,14 @@ async function findClientProfileByPhone(phone: string) {
 
   const profile = candidates.find((candidate) => (
     candidate.user.role === 'CLIENT' &&
-    (phoneNumbersMatch(candidate.phone, normalizedPhone) || phoneNumbersMatch(candidate.user.phone, normalizedPhone))
+    (
+      candidate.user.normalizedPhone === normalizedPhone ||
+      phoneNumbersMatch(candidate.phone, normalizedPhone) ||
+      phoneNumbersMatch(candidate.user.phone, normalizedPhone)
+    )
   ));
 
-  if (profile) {
-    return profile;
-  }
-
-  const users = await prisma.user.findMany({
-    where: {
-      role: 'CLIENT',
-      phone: { contains: phoneTail }
-    },
-    include: { clientProfile: true },
-    take: 20
-  });
-  const user = users.find((candidate) => phoneNumbersMatch(candidate.phone, normalizedPhone));
-
-  if (!user) {
-    return null;
-  }
-
-  const createdProfile = user.clientProfile ?? await prisma.$transaction(async (tx) => {
-    await tx.user.update({
-      where: { id: user.id },
-      data: { phone: normalizedPhone, normalizedPhone }
-    });
-
-    return tx.clientProfile.create({
-      data: {
-        userId: user.id,
-        phone: normalizedPhone,
-        contactName: user.name,
-        email: user.email
-      }
-    });
-  });
-
-  return prisma.clientProfile.findUnique({
-    where: { id: createdProfile.id },
-    include: {
-      user: {
-        include: {
-          companyMemberships: {
-            take: 1,
-            orderBy: { createdAt: 'asc' },
-            include: { company: { select: { id: true, name: true } } }
-          }
-        }
-      }
-    }
-  });
+  return profile ?? null;
 }
 
 async function linkTelegramClient(input: { clientProfileId: string; telegramUserId: string; chatId: string; phone: string }) {
@@ -776,12 +863,22 @@ async function createTelegramRequest(draft: TelegramDraft) {
   const publicStatusToken = generatePublicStatusToken();
   const files = metadata.files;
   const company = clientProfile.user.companyMemberships[0]?.company ?? null;
-  const taxonomy = await validateEquipmentTaxonomySelection({
-    equipmentType: draft.equipmentType,
-    manufacturer: metadata.manufacturer
-  });
-  if (!taxonomy.ok) {
-    throw new Error('Telegram equipment taxonomy selection is no longer active.');
+  let equipmentType = draft.equipmentType;
+  let manufacturerId: string | null = null;
+  let manufacturerName = metadata.manufacturer;
+
+  if (EQUIPMENT_TAXONOMY_TELEGRAM_FIELDS_ENABLED) {
+    const taxonomy = await validateEquipmentTaxonomySelection({
+      equipmentType,
+      manufacturer: manufacturerName
+    });
+    if (!taxonomy.ok) {
+      throw new Error('Telegram equipment taxonomy selection is no longer active.');
+    }
+
+    equipmentType = taxonomy.equipmentType.name;
+    manufacturerId = taxonomy.manufacturer.id;
+    manufacturerName = taxonomy.manufacturer.name;
   }
   const description = buildTelegramRequestDescription({
     equipmentType: draft.equipmentType,
@@ -802,8 +899,9 @@ async function createTelegramRequest(draft: TelegramDraft) {
       guestName: null,
       guestPhone: null,
       companyName: draft.companyName ?? clientProfile.companyName ?? company?.name ?? draft.contactName,
-      manufacturerId: taxonomy.manufacturer.id,
-      equipmentType: taxonomy.equipmentType.name,
+      manufacturerId,
+      manufacturerName,
+      equipmentType,
       model: metadata.model,
       vehicleYear: metadata.vehicleYear,
       vinOrSerial: metadata.vinOrSerial,
@@ -880,6 +978,36 @@ async function handleCallback(callbackQuery: TelegramCallbackQuery) {
       data: { step: 'ASK_EQUIPMENT' }
     });
     await answerCallbackQuery(callbackQuery.id);
+
+    if (!EQUIPMENT_TAXONOMY_TELEGRAM_FIELDS_ENABLED) {
+      await sendTelegramMessage(chatId, buildEquipmentTypePrompt(), { replyMarkup: removeKeyboard });
+      return;
+    }
+
+    const equipmentTypeOptions = await getActiveEquipmentTypeNames();
+    await sendTelegramMessage(chatId, 'Оберіть тип техніки:', { replyMarkup: buildEquipmentTypeKeyboard(equipmentTypeOptions) });
+    return;
+  }
+
+  if (data === TELEGRAM_CALLBACKS.edit) {
+    const draft = await getDraft(telegramUserId);
+
+    if (!draft || draft.step !== 'CONFIRM') {
+      await answerCallbackQuery(callbackQuery.id, 'Дані заявки недоступні для редагування.');
+      return;
+    }
+
+    await prisma.telegramDraftRequest.update({
+      where: { telegramUserId },
+      data: { step: 'ASK_EQUIPMENT' }
+    });
+    await answerCallbackQuery(callbackQuery.id, 'Оновіть дані заявки.');
+
+    if (!EQUIPMENT_TAXONOMY_TELEGRAM_FIELDS_ENABLED) {
+      await sendTelegramMessage(chatId, buildEquipmentTypePrompt(), { replyMarkup: removeKeyboard });
+      return;
+    }
+
     const equipmentTypeOptions = await getActiveEquipmentTypeNames();
     await sendTelegramMessage(chatId, 'Оберіть тип техніки:', { replyMarkup: buildEquipmentTypeKeyboard(equipmentTypeOptions) });
     return;
@@ -898,6 +1026,16 @@ async function handleCallback(callbackQuery: TelegramCallbackQuery) {
     return;
   }
 
+  const claim = await prisma.telegramDraftRequest.updateMany({
+    where: { id: draft.id, step: 'CONFIRM' },
+    data: { step: 'CREATING' }
+  });
+
+  if (claim.count !== 1) {
+    await answerCallbackQuery(callbackQuery.id, 'Заявка вже обробляється.');
+    return;
+  }
+
   try {
     const createdRequest = await createTelegramRequest(draft);
     await answerCallbackQuery(callbackQuery.id, 'Заявку створено.');
@@ -911,16 +1049,24 @@ async function handleCallback(callbackQuery: TelegramCallbackQuery) {
     );
   } catch (error) {
     if (error instanceof Error && error.message === 'Registered client profile is required for Telegram request.') {
-      await prisma.telegramDraftRequest.deleteMany({ where: { telegramUserId } });
+      await prisma.telegramDraftRequest.updateMany({
+        where: { telegramUserId, step: 'CREATING' },
+        data: { step: 'AWAITING_REGISTRATION' }
+      });
       await answerCallbackQuery(callbackQuery.id, 'Потрібен клієнтський кабінет.');
-      await sendTelegramMessage(
-        chatId,
-        buildRegistrationRequiredMessage(),
-        { replyMarkup: buildRegistrationKeyboard(getAppBaseUrl()) }
-      );
+      await showRegistrationRequired({
+        telegramUserId,
+        chatId: toStringId(chatId),
+        phone: draft.phone ?? '',
+        contactName: draft.contactName
+      });
       return;
     }
 
+    await prisma.telegramDraftRequest.updateMany({
+      where: { telegramUserId, step: 'CREATING' },
+      data: { step: 'CONFIRM' }
+    });
     throw error;
   }
 }
@@ -930,6 +1076,12 @@ async function handleMessage(message: TelegramMessage) {
   const text = getMessageText(message);
 
   if (text === '/start') {
+    const existingDraft = await getDraft(telegramUserId);
+
+    if (existingDraft?.step === 'AWAITING_REGISTRATION' && await resumeAfterRegistration(existingDraft)) {
+      return;
+    }
+
     await askForContact(message);
     return;
   }
