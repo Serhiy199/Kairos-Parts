@@ -2,11 +2,24 @@ import type { TelegramDraftFile } from './types';
 
 export const TELEGRAM_CALLBACKS = {
   continueRequest: 'telegram_request_continue',
+  vehiclePrefix: 'vehicle:',
+  vehiclePagePrefix: 'vehicle_page:',
+  vehicleSkip: 'vehicle_skip',
   confirm: 'telegram_request_confirm',
   edit: 'telegram_request_edit',
   cancel: 'telegram_request_cancel',
   restart: 'telegram_request_restart'
 } as const;
+
+export const TELEGRAM_VEHICLE_PAGE_SIZE = 8;
+
+type TelegramVehicleOption = {
+  id: string;
+  type: string | null;
+  manufacturer: string | null;
+  model: string | null;
+  year: number | null;
+};
 
 export const contactKeyboard = {
   keyboard: [[{ text: 'Поділитися номером телефону', request_contact: true }]],
@@ -54,6 +67,46 @@ export function buildManufacturerKeyboard(manufacturers: string[]) {
     resize_keyboard: true,
     one_time_keyboard: true
   };
+}
+
+export function buildVehicleLabel(vehicle: Omit<TelegramVehicleOption, 'id'>) {
+  const name = [vehicle.manufacturer || vehicle.type, vehicle.model].filter(Boolean).join(' ').trim() || 'Техніка';
+  const label = vehicle.year ? `${name} — ${vehicle.year}` : name;
+
+  return label.length > 56 ? `${label.slice(0, 53).trimEnd()}…` : label;
+}
+
+export function buildVehicleSelectionMessage() {
+  return [
+    'Оберіть техніку з вашого парку, до якої потрібно прив’язати заявку.',
+    '',
+    'Якщо потрібної техніки немає у списку, натисніть «Пропустити» та введіть дані вручну.'
+  ].join('\n');
+}
+
+export function buildVehicleSelectionKeyboard(input: {
+  vehicles: TelegramVehicleOption[];
+  page: number;
+  totalPages: number;
+}) {
+  const rows = input.vehicles.map((vehicle) => [{
+    text: buildVehicleLabel(vehicle),
+    callback_data: `${TELEGRAM_CALLBACKS.vehiclePrefix}${vehicle.id}`
+  }]);
+  const navigation = [];
+
+  if (input.page > 0) {
+    navigation.push({ text: '← Назад', callback_data: `${TELEGRAM_CALLBACKS.vehiclePagePrefix}${input.page - 1}` });
+  }
+  if (input.page + 1 < input.totalPages) {
+    navigation.push({ text: 'Далі →', callback_data: `${TELEGRAM_CALLBACKS.vehiclePagePrefix}${input.page + 1}` });
+  }
+  if (navigation.length) {
+    rows.push(navigation);
+  }
+  rows.push([{ text: 'Пропустити', callback_data: TELEGRAM_CALLBACKS.vehicleSkip }]);
+
+  return { inline_keyboard: rows };
 }
 
 export const continueRequestKeyboard = {
@@ -144,10 +197,22 @@ export function buildSummary(input: {
   model?: string | null;
   vehicleYear?: number | null;
   vinOrSerial?: string | null;
+  selectedVehicle?: boolean;
   description?: string | null;
   files: TelegramDraftFile[];
 }) {
   const fileNames = input.files.length ? input.files.map((file) => `- ${file.fileName}`).join('\n') : 'не додано';
+
+  const vehicleBlock = input.selectedVehicle
+    ? [
+        'Техніка з парку:',
+        `${input.manufacturer || input.equipmentType || '—'}${input.model ? ` ${input.model}` : ''}`,
+        `Рік: ${input.vehicleYear ?? '—'}`,
+        `VIN: ${input.vinOrSerial || '—'}`,
+        'Заявка буде прив’язана до цієї техніки.',
+        ''
+      ]
+    : [];
 
   return [
     'Перевірте заявку перед створенням:',
@@ -157,6 +222,7 @@ export function buildSummary(input: {
     `Телефон: ${input.phone || '—'}`,
     `Email: ${input.email || '—'}`,
     '',
+    ...vehicleBlock,
     `Тип техніки: ${input.equipmentType || '—'}`,
     `Виробник / марка: ${input.manufacturer || '—'}`,
     `Модель: ${input.model || '—'}`,

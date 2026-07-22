@@ -11,9 +11,14 @@ import {
   buildEquipmentTypePrompt,
   buildManufacturerPrompt,
   buildRegistrationKeyboard,
-  buildRegistrationRequiredMessage
+  buildRegistrationRequiredMessage,
+  buildVehicleLabel,
+  buildVehicleSelectionKeyboard,
+  TELEGRAM_CALLBACKS,
+  TELEGRAM_VEHICLE_PAGE_SIZE
 } from '@/lib/telegram/messages';
 import { validateManualEquipmentField } from '@/lib/telegram/request-fields';
+import { vehicleAccessWhereForClient } from '@/lib/vehicles/ownership';
 
 const projectRoot = resolve(import.meta.dirname, '..');
 const sessionSource = readFileSync(resolve(projectRoot, 'lib/telegram/session.ts'), 'utf8');
@@ -43,6 +48,36 @@ assert.deepEqual(registrationKeyboard.inline_keyboard.flat().map((button) => but
 assert.equal(registrationKeyboard.inline_keyboard[0][0].url, 'https://example.test/register?next=/request');
 assert.doesNotMatch(buildRegistrationRequiredMessage(), /увій/i);
 
+assert.equal(buildVehicleLabel({ type: 'Трактор', manufacturer: 'John Deere', model: '8430', year: 2018 }), 'John Deere 8430 — 2018');
+assert.equal(buildVehicleLabel({ type: 'Трактор', manufacturer: '', model: '8430', year: null }), 'Трактор 8430');
+assert.equal(buildVehicleLabel({ type: '', manufacturer: '', model: '', year: null }), 'Техніка');
+assert.ok(buildVehicleLabel({ type: 'x'.repeat(80), manufacturer: '', model: '', year: null }).length <= 56);
+
+const vehicleOptions = Array.from({ length: TELEGRAM_VEHICLE_PAGE_SIZE }, (_, index) => ({
+  id: `cmr-vehicle-${index}`,
+  type: 'Трактор',
+  manufacturer: 'John Deere',
+  model: String(8430 + index),
+  year: 2018
+}));
+const vehicleKeyboard = buildVehicleSelectionKeyboard({ vehicles: vehicleOptions, page: 0, totalPages: 2 });
+const vehicleButtons = vehicleKeyboard.inline_keyboard.flat();
+assert.equal(vehicleButtons.filter((button) => button.callback_data.startsWith(TELEGRAM_CALLBACKS.vehiclePrefix)).length, TELEGRAM_VEHICLE_PAGE_SIZE);
+assert.ok(vehicleButtons.some((button) => button.callback_data === `${TELEGRAM_CALLBACKS.vehiclePagePrefix}1`));
+assert.ok(vehicleButtons.some((button) => button.callback_data === TELEGRAM_CALLBACKS.vehicleSkip));
+assert.ok(vehicleButtons.every((button) => Buffer.byteLength(button.callback_data, 'utf8') <= 64));
+
+assert.deepEqual(vehicleAccessWhereForClient({ clientProfileId: 'client-1', companyId: null }), {
+  clientId: 'client-1',
+  companyId: null
+});
+assert.deepEqual(vehicleAccessWhereForClient({ clientProfileId: 'client-1', companyId: 'company-1' }), {
+  OR: [
+    { companyId: 'company-1', clientId: null },
+    { clientId: 'client-1', companyId: null }
+  ]
+});
+
 const requestCreateBlock = sessionSource.match(/const createdRequest = await prisma\.request\.create\(\{[\s\S]*?\n  \}\);/u)?.[0];
 assert.ok(requestCreateBlock, 'Telegram request create block must exist.');
 assert.doesNotMatch(requestCreateBlock, /requestNumber\s*:/u);
@@ -50,7 +85,12 @@ assert.match(requestCreateBlock, /source:\s*'TELEGRAM'/u);
 assert.match(requestCreateBlock, /manufacturerId,/u);
 assert.match(requestCreateBlock, /manufacturerName,/u);
 assert.match(requestCreateBlock, /equipmentType,/u);
+assert.match(requestCreateBlock, /vehicleId,/u);
 assert.match(sessionSource, /step:\s*'CREATING'/u);
 assert.match(sessionSource, /step:\s*'AWAITING_REGISTRATION'/u);
+assert.match(sessionSource, /step:\s*'SELECT_VEHICLE'/u);
+assert.match(sessionSource, /vehicleAccessWhereForClient/u);
+assert.match(sessionSource, /archivedAt:\s*null/u);
+assert.match(sessionSource, /await findAvailableVehicle\(clientProfile, metadata\.vehicleId\)/u);
 
 console.log('Telegram request flow checks passed.');

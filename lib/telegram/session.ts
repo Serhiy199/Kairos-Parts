@@ -6,6 +6,7 @@ import {
 import { getPhoneLookupTail, normalizeUkrainianPhone, phoneNumbersMatch } from '@/lib/phone/normalize';
 import { prisma } from '@/lib/prisma';
 import { generatePublicStatusToken } from '@/lib/requests/identifiers';
+import { vehicleAccessWhereForClient } from '@/lib/vehicles/ownership';
 import { getActiveEquipmentTypeNames, getActiveManufacturerNamesForType, validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
 import { answerCallbackQuery, downloadTelegramFile, getTelegramFile, sendTelegramMessage } from './bot';
@@ -20,6 +21,8 @@ import {
   buildRegistrationRequiredMessage,
   buildStartMessage,
   buildSummary,
+  buildVehicleSelectionKeyboard,
+  buildVehicleSelectionMessage,
   confirmationKeyboard,
   contactKeyboard,
   continueRequestKeyboard,
@@ -27,7 +30,8 @@ import {
   isSkipText,
   removeKeyboard,
   skipKeyboard,
-  TELEGRAM_CALLBACKS
+  TELEGRAM_CALLBACKS,
+  TELEGRAM_VEHICLE_PAGE_SIZE
 } from './messages';
 import { validateManualEquipmentField } from './request-fields';
 import type { TelegramCallbackQuery, TelegramDraftFile, TelegramMessage, TelegramUpdate } from './types';
@@ -43,6 +47,7 @@ type TelegramDraftMetadata = {
   vehicleYear: number | null;
   vinOrSerial: string | null;
   email: string | null;
+  vehicleId: string | null;
 };
 
 const MAX_TELEGRAM_FILE_SIZE_BYTES = 20 * 1024 * 1024;
@@ -81,7 +86,8 @@ function readDraftMetadata(value: unknown): TelegramDraftMetadata {
       model: null,
       vehicleYear: null,
       vinOrSerial: null,
-      email: null
+      email: null,
+      vehicleId: null
     };
   }
 
@@ -93,7 +99,8 @@ function readDraftMetadata(value: unknown): TelegramDraftMetadata {
       model: null,
       vehicleYear: null,
       vinOrSerial: null,
-      email: null
+      email: null,
+      vehicleId: null
     };
   }
 
@@ -105,6 +112,7 @@ function readDraftMetadata(value: unknown): TelegramDraftMetadata {
     vehicleYear?: unknown;
     vinOrSerial?: unknown;
     email?: unknown;
+    vehicleId?: unknown;
   };
   const vehicleYear = typeof candidate.vehicleYear === 'number' && Number.isInteger(candidate.vehicleYear) ? candidate.vehicleYear : null;
 
@@ -115,7 +123,8 @@ function readDraftMetadata(value: unknown): TelegramDraftMetadata {
     model: typeof candidate.model === 'string' && candidate.model.trim() ? candidate.model.trim() : null,
     vehicleYear,
     vinOrSerial: typeof candidate.vinOrSerial === 'string' && candidate.vinOrSerial.trim() ? candidate.vinOrSerial.trim() : null,
-    email: typeof candidate.email === 'string' && candidate.email.trim() ? candidate.email.trim() : null
+    email: typeof candidate.email === 'string' && candidate.email.trim() ? candidate.email.trim() : null,
+    vehicleId: typeof candidate.vehicleId === 'string' && candidate.vehicleId.trim() ? candidate.vehicleId.trim() : null
   };
 }
 
@@ -127,7 +136,8 @@ function buildDraftMetadata(input: Partial<TelegramDraftMetadata> & { files: Tel
     model: input.model?.trim() || null,
     vehicleYear: input.vehicleYear ?? null,
     vinOrSerial: input.vinOrSerial?.trim() || null,
-    email: input.email?.trim() || null
+    email: input.email?.trim() || null,
+    vehicleId: input.vehicleId?.trim() || null
   };
 }
 
@@ -271,6 +281,7 @@ async function showConfirmation(draft: TelegramDraft) {
       model: metadata.model,
       vehicleYear: metadata.vehicleYear,
       vinOrSerial: metadata.vinOrSerial,
+      selectedVehicle: Boolean(metadata.vehicleId),
       description: updatedDraft.description,
       files: metadata.files
     }),
@@ -382,6 +393,121 @@ async function resumeAfterRegistration(draft: TelegramDraft) {
     contactNameFallback: draft.contactName
   });
   return true;
+}
+
+function vehicleAccessContext(clientProfile: FoundClientProfile) {
+  return {
+    clientProfileId: clientProfile.id,
+    companyId: clientProfile.user.companyMemberships[0]?.companyId ?? null
+  };
+}
+
+const telegramVehicleSelect = {
+  id: true,
+  type: true,
+  manufacturer: true,
+  model: true,
+  year: true,
+  vinOrSerial: true
+} as const;
+
+async function getAvailableVehicles(clientProfile: FoundClientProfile) {
+  return prisma.vehicle.findMany({
+    where: {
+      AND: [
+        vehicleAccessWhereForClient(vehicleAccessContext(clientProfile)),
+        { archivedAt: null }
+      ]
+    },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    select: telegramVehicleSelect
+  });
+}
+
+async function findAvailableVehicle(clientProfile: FoundClientProfile, vehicleId: string) {
+  return prisma.vehicle.findFirst({
+    where: {
+      id: vehicleId,
+      AND: [
+        vehicleAccessWhereForClient(vehicleAccessContext(clientProfile)),
+        { archivedAt: null }
+      ]
+    },
+    select: telegramVehicleSelect
+  });
+}
+
+function clearVehicleMetadata(value: unknown) {
+  return mergeDraftMetadata(value, {
+    vehicleId: null,
+    manufacturer: null,
+    model: null,
+    vehicleYear: null,
+    vinOrSerial: null
+  });
+}
+
+async function beginManualEquipmentFlow(draft: TelegramDraft, chatId: number | string) {
+  await prisma.telegramDraftRequest.update({
+    where: { telegramUserId: draft.telegramUserId },
+    data: {
+      step: 'ASK_EQUIPMENT',
+      equipmentType: null,
+      fileMetadata: clearVehicleMetadata(draft.fileMetadata)
+    }
+  });
+
+  if (!EQUIPMENT_TAXONOMY_TELEGRAM_FIELDS_ENABLED) {
+    await sendTelegramMessage(chatId, buildEquipmentTypePrompt(), { replyMarkup: removeKeyboard });
+    return;
+  }
+
+  const equipmentTypeOptions = await getActiveEquipmentTypeNames();
+  await sendTelegramMessage(chatId, 'Оберіть тип техніки:', {
+    replyMarkup: buildEquipmentTypeKeyboard(equipmentTypeOptions)
+  });
+}
+
+async function openVehicleSelectionOrManual(draft: TelegramDraft, chatId: number | string, requestedPage = 0) {
+  const clientProfile = draft.phone ? await findClientProfileByPhone(draft.phone) : null;
+
+  if (!clientProfile) {
+    if (draft.phone) {
+      await showRegistrationRequired({
+        telegramUserId: draft.telegramUserId,
+        chatId: toStringId(chatId),
+        phone: draft.phone,
+        contactName: draft.contactName
+      });
+    }
+    return;
+  }
+
+  const vehicles = await getAvailableVehicles(clientProfile);
+
+  if (vehicles.length === 0) {
+    await beginManualEquipmentFlow(draft, chatId);
+    return;
+  }
+
+  const totalPages = Math.ceil(vehicles.length / TELEGRAM_VEHICLE_PAGE_SIZE);
+  const page = Number.isInteger(requestedPage) && requestedPage >= 0 && requestedPage < totalPages ? requestedPage : 0;
+  const pageVehicles = vehicles.slice(page * TELEGRAM_VEHICLE_PAGE_SIZE, (page + 1) * TELEGRAM_VEHICLE_PAGE_SIZE);
+
+  await prisma.telegramDraftRequest.update({
+    where: { telegramUserId: draft.telegramUserId },
+    data: { step: 'SELECT_VEHICLE' }
+  });
+  await sendTelegramMessage(chatId, buildVehicleSelectionMessage(), {
+    replyMarkup: buildVehicleSelectionKeyboard({ vehicles: pageVehicles, page, totalPages })
+  });
+}
+
+async function sendDescriptionPrompt(chatId: number | string) {
+  await sendTelegramMessage(
+    chatId,
+    'Вкажіть каталожний номер та назву запчастини, яку шукаєте.\n\nЯкщо позицій декілька — напишіть їх одним повідомленням.'
+  );
 }
 
 async function handleContact(message: TelegramMessage) {
@@ -519,6 +645,12 @@ async function handleTextMessage(message: TelegramMessage, draft: TelegramDraft)
     return;
   }
 
+  if (draft.step === 'SELECT_VEHICLE') {
+    await sendTelegramMessage(message.chat.id, 'Оберіть техніку кнопкою зі списку або натисніть «Пропустити».');
+    await openVehicleSelectionOrManual(draft, message.chat.id);
+    return;
+  }
+
   if (draft.step === 'ASK_EQUIPMENT') {
     if (!EQUIPMENT_TAXONOMY_TELEGRAM_FIELDS_ENABLED) {
       const result = validateManualEquipmentField(text);
@@ -533,7 +665,11 @@ async function handleTextMessage(message: TelegramMessage, draft: TelegramDraft)
 
       await prisma.telegramDraftRequest.update({
         where: { telegramUserId: draft.telegramUserId },
-        data: { equipmentType: result.value, step: 'ASK_MANUFACTURER' }
+        data: {
+          equipmentType: result.value,
+          step: 'ASK_MANUFACTURER',
+          fileMetadata: mergeDraftMetadata(draft.fileMetadata, { vehicleId: null })
+        }
       });
       await sendTelegramMessage(message.chat.id, buildManufacturerPrompt(), { replyMarkup: removeKeyboard });
       return;
@@ -647,10 +783,7 @@ async function handleTextMessage(message: TelegramMessage, draft: TelegramDraft)
         fileMetadata: mergeDraftMetadata(draft.fileMetadata, { vinOrSerial: text })
       }
     });
-    await sendTelegramMessage(
-      message.chat.id,
-      'Вкажіть каталожний номер та назву запчастини, яку шукаєте.\n\nЯкщо позицій декілька — напишіть їх одним повідомленням.'
-    );
+    await sendDescriptionPrompt(message.chat.id);
     return;
   }
 
@@ -782,14 +915,7 @@ function getContactNameFromMessage(message: TelegramMessage) {
   return [message.contact?.first_name, message.contact?.last_name].filter(Boolean).join(' ') || null;
 }
 
-function buildTelegramRequestDescription(input: {
-  equipmentType: string;
-  manufacturer: string;
-  model: string;
-  vehicleYear: number;
-  vinOrSerial: string;
-  description?: string | null;
-}) {
+function buildTelegramRequestDescription(input: { description?: string | null }) {
   return input.description?.trim() || 'Не вказано';
 }
 
@@ -844,11 +970,6 @@ async function createTelegramRequest(draft: TelegramDraft) {
   if (
     !draft.phone ||
     !draft.contactName ||
-    !draft.equipmentType ||
-    !metadata.manufacturer ||
-    !metadata.model ||
-    !metadata.vehicleYear ||
-    !metadata.vinOrSerial ||
     !draft.description
   ) {
     throw new Error('Telegram draft is incomplete.');
@@ -863,11 +984,33 @@ async function createTelegramRequest(draft: TelegramDraft) {
   const publicStatusToken = generatePublicStatusToken();
   const files = metadata.files;
   const company = clientProfile.user.companyMemberships[0]?.company ?? null;
-  let equipmentType = draft.equipmentType;
-  let manufacturerId: string | null = null;
-  let manufacturerName = metadata.manufacturer;
+  const selectedVehicle = metadata.vehicleId
+    ? await findAvailableVehicle(clientProfile, metadata.vehicleId)
+    : null;
 
-  if (EQUIPMENT_TAXONOMY_TELEGRAM_FIELDS_ENABLED) {
+  if (metadata.vehicleId && !selectedVehicle) {
+    throw new Error('Selected vehicle is no longer available.');
+  }
+
+  if (
+    !selectedVehicle &&
+    (!draft.equipmentType || !metadata.manufacturer || !metadata.model || !metadata.vehicleYear || !metadata.vinOrSerial)
+  ) {
+    throw new Error('Telegram draft is incomplete.');
+  }
+
+  const vehicleId = selectedVehicle?.id ?? null;
+  let equipmentType = selectedVehicle ? draft.equipmentType ?? selectedVehicle.type : draft.equipmentType;
+  let manufacturerId: string | null = null;
+  let manufacturerName = selectedVehicle ? metadata.manufacturer ?? selectedVehicle.manufacturer : metadata.manufacturer;
+  const model = selectedVehicle ? metadata.model ?? selectedVehicle.model : metadata.model;
+  const vehicleYear = metadata.vehicleYear;
+  const vinOrSerial = metadata.vinOrSerial;
+
+  if (!selectedVehicle && EQUIPMENT_TAXONOMY_TELEGRAM_FIELDS_ENABLED) {
+    if (!equipmentType || !manufacturerName) {
+      throw new Error('Telegram draft is incomplete.');
+    }
     const taxonomy = await validateEquipmentTaxonomySelection({
       equipmentType,
       manufacturer: manufacturerName
@@ -880,14 +1023,7 @@ async function createTelegramRequest(draft: TelegramDraft) {
     manufacturerId = taxonomy.manufacturer.id;
     manufacturerName = taxonomy.manufacturer.name;
   }
-  const description = buildTelegramRequestDescription({
-    equipmentType: draft.equipmentType,
-    manufacturer: metadata.manufacturer,
-    model: metadata.model,
-    vehicleYear: metadata.vehicleYear,
-    vinOrSerial: metadata.vinOrSerial,
-    description: draft.description
-  });
+  const description = buildTelegramRequestDescription({ description: draft.description });
 
   const createdRequest = await prisma.request.create({
     data: {
@@ -899,12 +1035,13 @@ async function createTelegramRequest(draft: TelegramDraft) {
       guestName: null,
       guestPhone: null,
       companyName: draft.companyName ?? clientProfile.companyName ?? company?.name ?? draft.contactName,
+      vehicleId,
       manufacturerId,
       manufacturerName,
       equipmentType,
-      model: metadata.model,
-      vehicleYear: metadata.vehicleYear,
-      vinOrSerial: metadata.vinOrSerial,
+      model,
+      vehicleYear,
+      vinOrSerial,
       description,
       statusHistory: {
         create: {
@@ -919,10 +1056,11 @@ async function createTelegramRequest(draft: TelegramDraft) {
             `telegramUserId: ${draft.telegramUserId}`,
             `chatId: ${draft.chatId}`,
             `attachedFiles: ${files.length}`,
-            `manufacturer: ${metadata.manufacturer}`,
-            `model: ${metadata.model}`,
-            `vehicleYear: ${metadata.vehicleYear}`,
-            `vinOrSerial: ${metadata.vinOrSerial}`
+            `vehicleSelected: ${Boolean(vehicleId)}`,
+            `manufacturer: ${manufacturerName}`,
+            `model: ${model}`,
+            `vehicleYear: ${vehicleYear}`,
+            `vinOrSerial: ${vinOrSerial}`
           ].join('\n')
         }
       }
@@ -973,19 +1111,8 @@ async function handleCallback(callbackQuery: TelegramCallbackQuery) {
       return;
     }
 
-    await prisma.telegramDraftRequest.update({
-      where: { telegramUserId },
-      data: { step: 'ASK_EQUIPMENT' }
-    });
     await answerCallbackQuery(callbackQuery.id);
-
-    if (!EQUIPMENT_TAXONOMY_TELEGRAM_FIELDS_ENABLED) {
-      await sendTelegramMessage(chatId, buildEquipmentTypePrompt(), { replyMarkup: removeKeyboard });
-      return;
-    }
-
-    const equipmentTypeOptions = await getActiveEquipmentTypeNames();
-    await sendTelegramMessage(chatId, 'Оберіть тип техніки:', { replyMarkup: buildEquipmentTypeKeyboard(equipmentTypeOptions) });
+    await openVehicleSelectionOrManual(draft, chatId);
     return;
   }
 
@@ -997,19 +1124,73 @@ async function handleCallback(callbackQuery: TelegramCallbackQuery) {
       return;
     }
 
-    await prisma.telegramDraftRequest.update({
-      where: { telegramUserId },
-      data: { step: 'ASK_EQUIPMENT' }
-    });
     await answerCallbackQuery(callbackQuery.id, 'Оновіть дані заявки.');
+    await openVehicleSelectionOrManual(draft, chatId);
+    return;
+  }
 
-    if (!EQUIPMENT_TAXONOMY_TELEGRAM_FIELDS_ENABLED) {
-      await sendTelegramMessage(chatId, buildEquipmentTypePrompt(), { replyMarkup: removeKeyboard });
+  if (data?.startsWith(TELEGRAM_CALLBACKS.vehiclePagePrefix)) {
+    const draft = await getDraft(telegramUserId);
+    const pageText = data.slice(TELEGRAM_CALLBACKS.vehiclePagePrefix.length);
+    const page = /^\d+$/.test(pageText) ? Number(pageText) : 0;
+
+    if (!draft || draft.step !== 'SELECT_VEHICLE') {
+      await answerCallbackQuery(callbackQuery.id, 'Список техніки вже неактуальний.');
       return;
     }
 
-    const equipmentTypeOptions = await getActiveEquipmentTypeNames();
-    await sendTelegramMessage(chatId, 'Оберіть тип техніки:', { replyMarkup: buildEquipmentTypeKeyboard(equipmentTypeOptions) });
+    await answerCallbackQuery(callbackQuery.id);
+    await openVehicleSelectionOrManual(draft, chatId, page);
+    return;
+  }
+
+  if (data === TELEGRAM_CALLBACKS.vehicleSkip) {
+    const draft = await getDraft(telegramUserId);
+
+    if (!draft || draft.step !== 'SELECT_VEHICLE') {
+      await answerCallbackQuery(callbackQuery.id, 'Список техніки вже неактуальний.');
+      return;
+    }
+
+    await answerCallbackQuery(callbackQuery.id, 'Введіть дані техніки вручну.');
+    await beginManualEquipmentFlow(draft, chatId);
+    return;
+  }
+
+  if (data?.startsWith(TELEGRAM_CALLBACKS.vehiclePrefix)) {
+    const draft = await getDraft(telegramUserId);
+    const vehicleId = data.slice(TELEGRAM_CALLBACKS.vehiclePrefix.length);
+
+    if (!draft || draft.step !== 'SELECT_VEHICLE') {
+      await answerCallbackQuery(callbackQuery.id, 'Список техніки вже неактуальний.');
+      return;
+    }
+
+    const clientProfile = draft.phone ? await findClientProfileByPhone(draft.phone) : null;
+    const vehicle = clientProfile && vehicleId ? await findAvailableVehicle(clientProfile, vehicleId) : null;
+
+    if (!vehicle) {
+      await answerCallbackQuery(callbackQuery.id, 'Ця техніка більше недоступна. Оновлюємо список.');
+      await openVehicleSelectionOrManual(draft, chatId);
+      return;
+    }
+
+    await prisma.telegramDraftRequest.update({
+      where: { telegramUserId },
+      data: {
+        step: 'ASK_DESCRIPTION',
+        equipmentType: vehicle.type,
+        fileMetadata: mergeDraftMetadata(draft.fileMetadata, {
+          vehicleId: vehicle.id,
+          manufacturer: vehicle.manufacturer,
+          model: vehicle.model,
+          vehicleYear: vehicle.year,
+          vinOrSerial: vehicle.vinOrSerial
+        })
+      }
+    });
+    await answerCallbackQuery(callbackQuery.id, 'Техніку обрано.');
+    await sendDescriptionPrompt(chatId);
     return;
   }
 
@@ -1048,6 +1229,12 @@ async function handleCallback(callbackQuery: TelegramCallbackQuery) {
       { replyMarkup: createdRequestKeyboard }
     );
   } catch (error) {
+    if (error instanceof Error && error.message === 'Selected vehicle is no longer available.') {
+      await answerCallbackQuery(callbackQuery.id, 'Обрана техніка більше недоступна.');
+      await openVehicleSelectionOrManual(draft, chatId);
+      return;
+    }
+
     if (error instanceof Error && error.message === 'Registered client profile is required for Telegram request.') {
       await prisma.telegramDraftRequest.updateMany({
         where: { telegramUserId, step: 'CREATING' },
