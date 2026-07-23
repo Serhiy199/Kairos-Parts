@@ -20,6 +20,8 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   EQUIPMENT_TYPE: 'Тип техніки',
   MANUFACTURER: 'Виробник',
   AUTH_SESSION: 'Сесія',
+  AUTH_ATTEMPT: 'Спроба входу',
+  INVITATION: 'Запрошення',
   TELEGRAM_REQUEST: 'Telegram-заявка',
   SYSTEM: 'Система'
 };
@@ -45,6 +47,13 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   MANAGER_ACTIVATED: 'Менеджера активовано',
   MANAGER_DISABLED: 'Доступ менеджера вимкнено',
   MANAGER_ENABLED: 'Доступ менеджера увімкнено',
+  AUTH_LOGIN_SUCCEEDED: 'Вхід виконано',
+  AUTH_LOGIN_FAILED: 'Невдала спроба входу',
+  AUTH_LOGIN_BLOCKED_DISABLED: 'Вхід заблоковано: доступ вимкнено',
+  AUTH_LOGIN_BLOCKED_PENDING: 'Вхід заблоковано: акаунт не активований',
+  AUTH_LOGOUT: 'Вихід із системи',
+  AUTH_INVITATION_ACCEPTED: 'Запрошення прийнято',
+  AUTH_SESSION_INVALIDATED: 'Сесії анульовано',
   REQUEST_STATUS_CHANGED: 'Статус заявки змінено',
   REQUEST_MANAGER_ASSIGNED: 'Менеджера призначено',
   REQUEST_MANAGER_REASSIGNED: 'Менеджера перепризначено',

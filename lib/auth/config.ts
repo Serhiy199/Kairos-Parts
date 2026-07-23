@@ -1,6 +1,8 @@
 import { CredentialsSignin, type NextAuthConfig } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 
+import { writeBestEffortLoginAudit } from '@/lib/audit-log/auth-events';
+import { auditRequestContextFromHeaders } from '@/lib/audit-log/request-context';
 import { evaluateCredentialCandidate, parseLoginIdentifier, parseLoginScope } from '@/lib/auth/credentials';
 import { validateJwtClaimsAgainstCurrentUser } from '@/lib/auth/current-user-access';
 import {
@@ -49,6 +51,7 @@ export const authConfig = {
         const scope = parseLoginScope(credentials?.loginScope);
         const password = typeof credentials?.password === 'string' ? credentials.password : null;
         const identifier = scope ? parseLoginIdentifier(credentials?.identifier, scope) : null;
+        const requestContext = auditRequestContextFromHeaders(request.headers);
 
         if (!scope || !password) {
           return null;
@@ -67,6 +70,13 @@ export const authConfig = {
 
         if (rateLimit.decision.blocked) {
           console.warn('Credentials login blocked.', { category: 'auth_rate_limit_blocked' });
+          await writeBestEffortLoginAudit({
+            action: 'AUTH_LOGIN_FAILED',
+            scope,
+            identifier: credentials?.identifier,
+            reason: 'RATE_LIMITED',
+            requestContext
+          });
           throw new CredentialsRateLimitError();
         }
 
@@ -101,17 +111,49 @@ export const authConfig = {
 
           if (failureDecision.blocked) {
             console.warn('Credentials login blocked.', { category: 'auth_rate_limit_blocked' });
+            await writeBestEffortLoginAudit({
+              action: 'AUTH_LOGIN_FAILED',
+              scope,
+              identifier: credentials?.identifier,
+              reason: 'RATE_LIMITED',
+              requestContext,
+              user
+            });
             throw new CredentialsRateLimitError();
           }
         }
 
         if (!decision.ok && decision.reason === 'account_invited') {
+          await writeBestEffortLoginAudit({
+            action: 'AUTH_LOGIN_BLOCKED_PENDING',
+            scope,
+            identifier: credentials?.identifier,
+            reason: 'ACCOUNT_INVITED',
+            requestContext,
+            user
+          });
           throw new AccountInvitedError();
         }
         if (!decision.ok && decision.reason === 'account_disabled') {
+          await writeBestEffortLoginAudit({
+            action: 'AUTH_LOGIN_BLOCKED_DISABLED',
+            scope,
+            identifier: credentials?.identifier,
+            reason: 'ACCOUNT_DISABLED',
+            requestContext,
+            user
+          });
           throw new AccountDisabledError();
         }
         if (!decision.ok) {
+          await writeBestEffortLoginAudit({
+            action: 'AUTH_LOGIN_FAILED',
+            scope,
+            identifier: credentials?.identifier,
+            reason: user ? 'INVALID_PASSWORD' : 'USER_NOT_FOUND',
+            requestContext,
+            user
+          });
           return null;
         }
 
@@ -123,6 +165,14 @@ export const authConfig = {
         }
 
         const authenticatedUser = decision.user;
+        await writeBestEffortLoginAudit({
+          action: 'AUTH_LOGIN_SUCCEEDED',
+          scope,
+          identifier: credentials?.identifier,
+          reason: 'AUTHENTICATED',
+          requestContext,
+          user: authenticatedUser
+        });
         return {
           id: authenticatedUser.id,
           email: authenticatedUser.email,

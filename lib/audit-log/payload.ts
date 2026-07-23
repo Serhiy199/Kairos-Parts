@@ -18,6 +18,13 @@ const DENIED_KEY_PARTS = [
   'secret',
   'apikey',
   'telegrambottoken',
+  'rawurl',
+  'callbackurl',
+  'reseturl',
+  'invitationurl',
+  'sessionpayload',
+  'rawbody',
+  'requestbody',
   'privateurl',
   'signedurl'
 ];

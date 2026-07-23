@@ -3,6 +3,7 @@ import 'server-only';
 import { createHash, randomBytes } from 'node:crypto';
 import { Prisma, type UserRole, type UserStatus } from '@prisma/client';
 
+import type { AuditRequestContext } from '@/lib/audit-log/contracts';
 import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { hashPassword } from '@/lib/auth/password';
 import { prisma } from '@/lib/prisma';
@@ -199,7 +200,11 @@ export async function validateManagerInvitationToken(token: string): Promise<Man
   };
 }
 
-export async function activateManagerInvitation(input: { token: string; password: string }) {
+export async function activateManagerInvitation(input: {
+  token: string;
+  password: string;
+  requestContext?: AuditRequestContext;
+}) {
   if (!TOKEN_PATTERN.test(input.token)) {
     throw inactiveInvitationError();
   }
@@ -303,7 +308,33 @@ export async function activateManagerInvitation(input: { token: string; password
           oldValue: ['role', 'status'],
           newValue: ['role', 'status'],
           metadata: ['event', 'managerId', 'activatedAt', 'invitationId']
-        }
+        },
+        requestContext: input.requestContext
+      });
+
+      await writeAuditLog(tx, {
+        actor: auditUserActor(invitation.userId),
+        entityType: 'INVITATION',
+        entityId: invitation.id,
+        entityLabel: 'Запрошення менеджера',
+        action: 'AUTH_INVITATION_ACCEPTED',
+        category: 'LOGIN',
+        oldValue: { status: 'INVITED' },
+        newValue: { status: 'ACTIVE' },
+        metadata: {
+          event: 'AUTH_INVITATION_ACCEPTED',
+          reason: 'PASSWORD_CREATED',
+          managerId: invitation.userId,
+          invitationId: invitation.id,
+          role: 'MANAGER',
+          source: 'MANAGER_INVITATION'
+        },
+        allowedFields: {
+          oldValue: ['status'],
+          newValue: ['status'],
+          metadata: ['event', 'reason', 'managerId', 'invitationId', 'role', 'source']
+        },
+        requestContext: input.requestContext
       });
 
       return { managerId: invitation.userId, activatedAt: now };

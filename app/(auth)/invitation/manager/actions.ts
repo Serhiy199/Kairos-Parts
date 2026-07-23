@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 
+import { getServerAuditRequestContext } from '@/lib/audit-log/request-context';
 import {
   activateManagerInvitation,
   ManagerInvitationError
@@ -42,7 +43,8 @@ export async function setManagerPassword(
   }
 
   try {
-    await activateManagerInvitation({ token, password });
+    const requestContext = await getServerAuditRequestContext();
+    await activateManagerInvitation({ token, password, requestContext });
   } catch (error) {
     if (error instanceof ManagerInvitationError) {
       return {

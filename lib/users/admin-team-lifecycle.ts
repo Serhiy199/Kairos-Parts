@@ -2,6 +2,7 @@ import 'server-only';
 
 import { Prisma } from '@prisma/client';
 
+import type { AuditRequestContext } from '@/lib/audit-log/contracts';
 import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { prisma } from '@/lib/prisma';
 import { assertCanDisableOrDemoteAdmin } from './lifecycle';
@@ -32,13 +33,14 @@ export async function setManagerAccessStatus(input: {
   managerId: string;
   actorAdminId: string;
   targetStatus: ManagerAccessTargetStatus;
+  requestContext?: AuditRequestContext;
 }) {
   return prisma.$transaction(
     async (tx) => {
       const actor = await requireActiveAdmin(tx, input.actorAdminId);
       const manager = await tx.user.findUnique({
         where: { id: input.managerId },
-        select: { id: true, role: true, status: true, passwordHash: true }
+        select: { id: true, role: true, status: true, passwordHash: true, authVersion: true, name: true }
       });
 
       assertManagerLifecycleTransition({
@@ -99,8 +101,34 @@ export async function setManagerAccessStatus(input: {
           oldValue: ['role', 'status'],
           newValue: ['role', 'status'],
           metadata: ['event', 'managerId', 'previousStatus', 'newStatus', 'actorRole']
-        }
+        },
+        requestContext: input.requestContext
       });
+
+      if (input.targetStatus === 'DISABLED') {
+        await writeAuditLog(tx, {
+          actor: auditUserActor(actor.id),
+          entityType: 'AUTH_SESSION',
+          entityId: manager.id,
+          entityLabel: manager.name ?? 'Сесії менеджера',
+          action: 'AUTH_SESSION_INVALIDATED',
+          category: 'TECHNICAL',
+          oldValue: { authVersion: manager.authVersion },
+          newValue: { authVersion: manager.authVersion + 1 },
+          metadata: {
+            event: 'AUTH_SESSION_INVALIDATED',
+            reason: 'ACCOUNT_DISABLED',
+            managerId: manager.id,
+            source: 'ADMIN_TEAM'
+          },
+          allowedFields: {
+            oldValue: ['authVersion'],
+            newValue: ['authVersion'],
+            metadata: ['event', 'reason', 'managerId', 'source']
+          },
+          requestContext: input.requestContext
+        });
+      }
 
       return { managerId: manager.id, status: input.targetStatus };
     },

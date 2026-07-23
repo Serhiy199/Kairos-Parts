@@ -4,7 +4,9 @@ import { Prisma } from '@prisma/client';
 import { AuthError, CredentialsSignin } from 'next-auth';
 import { redirect } from 'next/navigation';
 
-import { signIn, signOut } from '@/auth';
+import { auth, signIn, signOut } from '@/auth';
+import { writeBestEffortLogoutAudit } from '@/lib/audit-log/auth-events';
+import { getServerAuditRequestContext } from '@/lib/audit-log/request-context';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { hashPassword } from '@/lib/auth/password';
 import { normalizeUkrainianPhone } from '@/lib/phone/normalize';
@@ -265,9 +267,34 @@ export async function loginStaff(formData: FormData) {
 }
 
 export async function logoutClient() {
+  const [session, requestContext] = await Promise.all([auth(), getServerAuditRequestContext()]);
+
+  if (session?.user.id && session.user.role === 'CLIENT') {
+    await writeBestEffortLogoutAudit({
+      userId: session.user.id,
+      role: session.user.role,
+      source: 'CLIENT_LOGOUT',
+      requestContext
+    });
+  }
+
   await signOut({ redirectTo: '/login' });
 }
 
 export async function logoutStaff() {
+  const [session, requestContext] = await Promise.all([auth(), getServerAuditRequestContext()]);
+
+  if (
+    session?.user.id
+    && (session.user.role === 'ADMIN' || session.user.role === 'MANAGER')
+  ) {
+    await writeBestEffortLogoutAudit({
+      userId: session.user.id,
+      role: session.user.role,
+      source: 'STAFF_LOGOUT',
+      requestContext
+    });
+  }
+
   await signOut({ redirectTo: '/admin/login' });
 }

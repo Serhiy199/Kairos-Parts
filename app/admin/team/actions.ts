@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { requireAdminSession } from '@/lib/admin/access';
+import { getServerAuditRequestContext } from '@/lib/audit-log/request-context';
 import {
   createInvitedManager,
   ManagerInvitationError,
@@ -83,10 +84,12 @@ async function updateManagerAccess(
   const session = await requireAdminSession();
 
   try {
+    const requestContext = await getServerAuditRequestContext();
     await setManagerAccessStatus({
       managerId,
       actorAdminId: session.user.id,
-      targetStatus
+      targetStatus,
+      requestContext
     });
 
     revalidatePath('/admin/team');
