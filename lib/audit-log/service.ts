@@ -115,16 +115,8 @@ export async function createChangeRequestAuditLog(
   return writeAuditLog(writer, { ...input, entityType: 'CHANGE_REQUEST' });
 }
 
-export async function listAuditLogsForAdmin() {
-  return prisma.auditLog.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 200,
-    include: auditLogInclude
-  });
-}
-
 export const auditLogInclude = {
-  actor: { select: { id: true, name: true, email: true, role: true } },
+  actor: { select: { id: true, name: true, email: true, role: true, status: true } },
   company: { select: { id: true, name: true, edrpou: true } },
   changeRequest: { select: { id: true, entityType: true, entityId: true, action: true, fieldName: true, status: true } }
 } satisfies Prisma.AuditLogInclude;

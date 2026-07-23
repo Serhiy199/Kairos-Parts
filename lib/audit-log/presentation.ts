@@ -129,7 +129,38 @@ const KEY_LABELS: Record<string, string> = {
   source: 'Джерело',
   itemCount: 'Кількість позицій',
   approvedItemCount: 'Погоджено позицій',
-  rejectedItemCount: 'Відхилено позицій'
+  rejectedItemCount: 'Відхилено позицій',
+  status: 'Статус',
+  managerName: 'Менеджер',
+  previousManagerName: 'Попередній менеджер',
+  quantity: 'Кількість',
+  unitPriceExVat: 'Ціна без ПДВ',
+  totalExVat: 'Сума без ПДВ',
+  vatAmount: 'Сума ПДВ',
+  total: 'Усього',
+  visibility: 'Видимість',
+  fileName: 'Назва файлу',
+  fileSize: 'Розмір файлу',
+  size: 'Розмір файлу',
+  documentType: 'Тип документа',
+  companyName: 'Компанія',
+  phone: 'Телефон',
+  email: 'Email',
+  iban: 'IBAN',
+  requestId: 'ID заявки',
+  requestNumber: 'Номер заявки',
+  invoiceNumber: 'Номер рахунку',
+  commercialOfferNumber: 'Номер пропозиції',
+  currency: 'Валюта',
+  paidAt: 'Дата оплати',
+  sentAt: 'Дата надсилання',
+  cancelledAt: 'Дата скасування',
+  createdAt: 'Дата створення',
+  updatedAt: 'Дата оновлення',
+  mimeType: 'MIME-тип',
+  oldStatus: 'Попередній статус',
+  newStatus: 'Новий статус',
+  clientVisible: 'Видимість клієнту'
 };
 
 const VALUE_LABELS: Record<string, string> = {
@@ -146,6 +177,22 @@ const VALUE_LABELS: Record<string, string> = {
   UPDATE: 'Оновлення',
   CREATE: 'Створення',
   DELETE: 'Видалення',
+  ACTIVE: 'Активний',
+  INVITED: 'Очікує активації',
+  DISABLED: 'Вимкнений',
+  NEW: 'Нова заявка',
+  IN_PROGRESS: 'Підбір у роботі',
+  AWAITING_CLIENT: 'Очікує клієнта',
+  COMPLETED: 'Завершено',
+  CANCELLED: 'Скасовано',
+  SENT: 'Надіслано',
+  PAID: 'Оплачено',
+  APPROVED: 'Погоджено',
+  REJECTED: 'Відхилено',
+  UAH: 'UAH',
+  ADMIN_CRM: 'CRM адміністратора',
+  CLIENT_CABINET: 'Кабінет клієнта',
+  SYSTEM: 'Система',
   name: 'Назва техніки',
   equipmentType: 'Тип техніки',
   manufacturer: 'Виробник',
@@ -155,18 +202,34 @@ const VALUE_LABELS: Record<string, string> = {
   comment: 'Коментар'
 };
 
-function asRecord(value: unknown): Record<string, unknown> | null {
+const FINANCIAL_KEYS = new Set([
+  'unitPriceExVat',
+  'totalExVat',
+  'vatAmount',
+  'total',
+  'price',
+  'amount'
+]);
+
+const DATE_KEYS = new Set([
+  'createdAt',
+  'updatedAt',
+  'sentAt',
+  'paidAt',
+  'cancelledAt',
+  'expiresAt',
+  'approvedAt',
+  'rejectedAt'
+]);
+
+export function asAuditRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
 }
 
-function isTechnicalIdKey(key: string) {
+function isSensitivePresentationKey(key: string) {
   const lowerKey = key.toLowerCase();
-  if (key === 'id' || /(?:Id|Ids)$/.test(key)) {
-    return true;
-  }
-
   const technicalKeys = new Set([
     'password',
     'passwordhash',
@@ -180,18 +243,46 @@ function isTechnicalIdKey(key: string) {
     'api_secret_key_hash',
     'webhook_secret',
     'bot_token',
-    'sessionid',
-    'useragent'
+    'sessiontoken',
+    'signedurl',
+    'storagekey',
+    'privateurl',
+    'downloadurl'
   ]);
 
-  return technicalKeys.has(lowerKey);
+  return technicalKeys.has(lowerKey)
+    || lowerKey.includes('token')
+    || lowerKey.includes('secret')
+    || lowerKey.includes('password');
 }
 
-function humanizeKey(key: string) {
-  return KEY_LABELS[key] ?? key.replace(/([a-zа-яіїєґ])([A-ZА-ЯІЇЄҐ])/g, '$1 $2').replace(/[_-]+/g, ' ').trim();
+export function auditFieldLabel(key: string) {
+  const humanized = KEY_LABELS[key]
+    ?? key.replace(/([a-zа-яіїєґ])([A-ZА-ЯІЇЄҐ])/g, '$1 $2').replace(/[_-]+/g, ' ').trim();
+  return humanized ? humanized.charAt(0).toUpperCase() + humanized.slice(1) : 'Поле';
 }
 
-export function formatAuditValue(value: unknown): string {
+function formatDateValue(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toLocaleString('uk-UA');
+}
+
+function formatFinancialValue(value: unknown) {
+  const amount = typeof value === 'number'
+    ? value
+    : typeof value === 'string' && /^-?\d+(?:\.\d+)?$/.test(value)
+      ? Number(value)
+      : Number.NaN;
+  if (!Number.isFinite(amount)) return null;
+
+  return `${amount.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} UAH`;
+}
+
+function shorten(value: string, maxLength = 320) {
+  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
+}
+
+export function formatAuditValue(value: unknown, key?: string): string {
   if (value === null || value === undefined || value === '') {
     return '—';
   }
@@ -201,48 +292,57 @@ export function formatAuditValue(value: unknown): string {
   }
 
   if (typeof value === 'string') {
-    return VALUE_LABELS[value] ?? value;
+    if (key && FINANCIAL_KEYS.has(key)) {
+      return formatFinancialValue(value) ?? shorten(value);
+    }
+    if (key && DATE_KEYS.has(key)) {
+      return formatDateValue(value) ?? shorten(value);
+    }
+    return VALUE_LABELS[value] ?? shorten(value);
   }
 
   if (typeof value === 'number' || typeof value === 'bigint') {
+    if (key && FINANCIAL_KEYS.has(key)) {
+      return formatFinancialValue(value) ?? String(value);
+    }
     return String(value);
   }
 
   if (Array.isArray(value)) {
-    const formatted = value.map(formatAuditValue).filter((entry) => entry !== '—');
+    const formatted = value.map((entry) => formatAuditValue(entry, key)).filter((entry) => entry !== '—');
     return formatted.length ? formatted.join(', ') : '—';
   }
 
-  const record = asRecord(value);
+  const record = asAuditRecord(value);
   if (!record) {
     return '—';
   }
 
   const parts = Object.entries(record)
-    .filter(([key]) => !isTechnicalIdKey(key))
-    .map(([key, entry]) => `${humanizeKey(key)}: ${formatAuditValue(entry)}`);
+    .filter(([entryKey]) => !isSensitivePresentationKey(entryKey))
+    .map(([entryKey, entry]) => `${auditFieldLabel(entryKey)}: ${formatAuditValue(entry, entryKey)}`);
 
   return parts.length ? parts.join('; ') : '—';
 }
 
 export function formatAuditMetadata(metadata: unknown): AuditDetail[] {
-  const record = asRecord(metadata);
+  const record = asAuditRecord(metadata);
   if (!record) {
     return [];
   }
 
   return Object.entries(record)
-    .filter(([key]) => !isTechnicalIdKey(key))
+    .filter(([key]) => !isSensitivePresentationKey(key))
     .map(([key, value]) => ({
       key,
-      label: humanizeKey(key),
-      value: formatAuditValue(value)
+      label: auditFieldLabel(key),
+      value: formatAuditValue(value, key)
     }))
     .filter((detail) => detail.value !== '—');
 }
 
 export function auditEventLabel(metadata: unknown) {
-  const event = asRecord(metadata)?.event;
+  const event = asAuditRecord(metadata)?.event;
   return typeof event === 'string' ? AUDIT_EVENT_LABELS[event] ?? event : null;
 }
 
@@ -250,7 +350,7 @@ type AuditActorPresentation = {
   actorName: string | null;
   actorEmail: string | null;
   actorRole: string | null;
-  actor: { name: string | null; email: string | null; role: string } | null;
+  actor: { name: string | null; email: string | null; role: string; status?: string } | null;
 };
 
 export function auditActorLabel(item: AuditActorPresentation) {
@@ -265,5 +365,116 @@ export function auditActorEmail(item: AuditActorPresentation) {
 }
 
 export function auditActorRole(item: AuditActorPresentation) {
-  return item.actorRole ?? item.actor?.role ?? '—';
+  const role = item.actorRole ?? item.actor?.role;
+  return role ? VALUE_LABELS[role] ?? role : '—';
+}
+
+export function auditActorStatus(item: AuditActorPresentation) {
+  const status = item.actor?.status;
+  return status ? VALUE_LABELS[status] ?? status : null;
+}
+
+export function auditActionLabel(action: string, metadata?: unknown) {
+  return auditEventLabel(metadata) ?? AUDIT_ACTION_LABELS[action] ?? action;
+}
+
+export function auditCategoryLabel(category: string) {
+  return AUDIT_CATEGORY_LABELS[category] ?? category;
+}
+
+export function auditEntityLabel(item: { entityType: string; entityId: string; entityLabel: string | null }) {
+  if (item.entityLabel) return item.entityLabel;
+  const type = AUDIT_ENTITY_LABELS[item.entityType] ?? item.entityType;
+  const shortId = item.entityId.length > 12 ? `${item.entityId.slice(0, 12)}…` : item.entityId;
+  return `${type} ${shortId}`;
+}
+
+export function auditEntityHref(item: {
+  entityType: string;
+  entityId: string;
+  metadata: unknown;
+}) {
+  if (item.entityType === 'REQUEST') return `/admin/requests/${item.entityId}`;
+  if (item.entityType === 'COMPANY') return `/admin/companies/${item.entityId}`;
+  if (item.entityType === 'CLIENT') return `/admin/clients/${item.entityId}`;
+  if (item.entityType === 'VEHICLE') return `/admin/vehicles/${item.entityId}/edit`;
+
+  if (item.entityType === 'INVOICE' || item.entityType === 'COMMERCIAL_OFFER' || item.entityType === 'REQUEST_ITEM') {
+    const requestId = asAuditRecord(item.metadata)?.requestId;
+    return typeof requestId === 'string' && requestId.length <= 64
+      ? `/admin/requests/${requestId}`
+      : null;
+  }
+
+  return null;
+}
+
+export function formatAuditDateTime(value: Date) {
+  return {
+    date: value.toLocaleDateString('uk-UA'),
+    time: value.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+    full: value.toLocaleString('uk-UA')
+  };
+}
+
+export type AuditValueRow = {
+  key: string;
+  label: string;
+  value: string;
+};
+
+export function auditValueRows(value: unknown): AuditValueRow[] {
+  const record = asAuditRecord(value);
+  if (!record) {
+    return value === null || value === undefined
+      ? []
+      : [{ key: 'value', label: 'Значення', value: formatAuditValue(value) }];
+  }
+
+  return Object.entries(record)
+    .filter(([key]) => !isSensitivePresentationKey(key))
+    .map(([key, entry]) => ({
+      key,
+      label: auditFieldLabel(key),
+      value: formatAuditValue(entry, key)
+    }));
+}
+
+export type AuditDiffRow = {
+  key: string;
+  label: string;
+  before: string;
+  after: string;
+  changed: boolean;
+};
+
+export function auditDiffRows(oldValue: unknown, newValue: unknown): AuditDiffRow[] {
+  const before = asAuditRecord(oldValue) ?? {};
+  const after = asAuditRecord(newValue) ?? {};
+  const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
+    .filter((key) => !isSensitivePresentationKey(key));
+
+  if (!keys.length && (oldValue !== null || newValue !== null)) {
+    const oldFormatted = formatAuditValue(oldValue);
+    const newFormatted = formatAuditValue(newValue);
+    return [{
+      key: 'value',
+      label: 'Значення',
+      before: oldFormatted,
+      after: newFormatted,
+      changed: oldFormatted !== newFormatted
+    }];
+  }
+
+  return keys.map((key) => {
+    const oldFormatted = formatAuditValue(before[key], key);
+    const newFormatted = formatAuditValue(after[key], key);
+    return {
+      key,
+      label: auditFieldLabel(key),
+      before: oldFormatted,
+      after: newFormatted,
+      changed: oldFormatted !== newFormatted
+    };
+  });
 }

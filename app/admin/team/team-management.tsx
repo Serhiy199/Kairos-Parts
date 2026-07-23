@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useFormStatus } from 'react-dom';
-import { TbCopy, TbLinkPlus, TbLockOff, TbLockOpen, TbUserPlus, TbUsersGroup, TbX } from 'react-icons/tb';
+import Link from 'next/link';
+import { TbCopy, TbHistory, TbLinkPlus, TbLockOff, TbLockOpen, TbUserPlus, TbUsersGroup, TbX } from 'react-icons/tb';
 
 import type { AdminTeamMember, TeamInvitationState } from '@/lib/users/admin-team-queries';
 import { TEAM_ROLE_LABELS, TEAM_STATUS_LABELS } from '@/lib/users/admin-team-rules';
@@ -128,7 +129,7 @@ function ManagerActionButton({ member, onConfirm }: {
   onConfirm: (action: ConfirmAction, member: AdminTeamMember) => void;
 }) {
   if (member.role === 'ADMIN') {
-    return <span className="text-xs font-semibold text-muted">Лише перегляд</span>;
+    return null;
   }
 
   if (member.status === 'INVITED') {
@@ -158,6 +159,21 @@ function ManagerActionButton({ member, onConfirm }: {
       <TbLockOpen aria-hidden="true" className="size-4" />
       Увімкнути доступ
     </button>
+  );
+}
+
+function MemberActions({ member, onConfirm }: {
+  member: AdminTeamMember;
+  onConfirm: (action: ConfirmAction, member: AdminTeamMember) => void;
+}) {
+  return (
+    <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap">
+      <Link href={`/admin/team/${member.id}/activity`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-bold text-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+        <TbHistory aria-hidden="true" className="size-4" />
+        Переглянути історію
+      </Link>
+      <ManagerActionButton member={member} onConfirm={onConfirm} />
+    </div>
   );
 }
 
@@ -331,7 +347,7 @@ export function TeamManagement({ members }: { members: AdminTeamMember[] }) {
         <div className="hidden overflow-x-auto xl:block">
           <table className="w-full min-w-[1050px] border-collapse text-left text-sm">
             <thead><tr className="border-b border-border bg-surface-muted text-muted"><th className="px-4 py-3">Ім’я</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Роль</th><th className="px-4 py-3">Статус</th><th className="px-4 py-3">Створено</th><th className="px-4 py-3">Запрошення</th><th className="px-4 py-3">Дії</th></tr></thead>
-            <tbody>{members.map((member) => <tr key={member.id} className="border-b border-border align-top last:border-0"><td className="px-4 py-4 font-bold text-foreground">{member.name || 'Без імені'}</td><td className="max-w-64 break-all px-4 py-4 text-muted">{member.email || '—'}</td><td className="px-4 py-4 font-semibold text-foreground">{TEAM_ROLE_LABELS[member.role]}</td><td className="px-4 py-4"><StatusBadge member={member} /></td><td className="whitespace-nowrap px-4 py-4 text-muted">{new Date(member.createdAt).toLocaleDateString('uk-UA')}</td><td className="px-4 py-4"><InvitationSummary member={member} /></td><td className="px-4 py-4"><ManagerActionButton member={member} onConfirm={(action, target) => setConfirmation({ action, member: target })} /></td></tr>)}</tbody>
+            <tbody>{members.map((member) => <tr key={member.id} className="border-b border-border align-top last:border-0"><td className="px-4 py-4 font-bold text-foreground">{member.name || 'Без імені'}</td><td className="max-w-64 break-all px-4 py-4 text-muted">{member.email || '—'}</td><td className="px-4 py-4 font-semibold text-foreground">{TEAM_ROLE_LABELS[member.role]}</td><td className="px-4 py-4"><StatusBadge member={member} /></td><td className="whitespace-nowrap px-4 py-4 text-muted">{new Date(member.createdAt).toLocaleDateString('uk-UA')}</td><td className="px-4 py-4"><InvitationSummary member={member} /></td><td className="px-4 py-4"><MemberActions member={member} onConfirm={(action, target) => setConfirmation({ action, member: target })} /></td></tr>)}</tbody>
           </table>
         </div>
 
@@ -340,7 +356,7 @@ export function TeamManagement({ members }: { members: AdminTeamMember[] }) {
             <article key={member.id} className="rounded-lg border border-border p-4">
               <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words font-bold text-foreground">{member.name || 'Без імені'}</h3><p className="mt-1 break-all text-sm text-muted">{member.email || '—'}</p></div><StatusBadge member={member} /></div>
               <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><div><dt className="font-semibold text-muted">Роль</dt><dd className="mt-1 font-semibold text-foreground">{TEAM_ROLE_LABELS[member.role]}</dd></div><div><dt className="font-semibold text-muted">Створено</dt><dd className="mt-1 text-foreground">{new Date(member.createdAt).toLocaleDateString('uk-UA')}</dd></div><div className="sm:col-span-2"><dt className="font-semibold text-muted">Запрошення</dt><dd className="mt-1"><InvitationSummary member={member} /></dd></div></dl>
-              <div className="mt-4 border-t border-border pt-4"><ManagerActionButton member={member} onConfirm={(action, target) => setConfirmation({ action, member: target })} /></div>
+              <div className="mt-4 border-t border-border pt-4"><MemberActions member={member} onConfirm={(action, target) => setConfirmation({ action, member: target })} /></div>
             </article>
           ))}
         </div>
