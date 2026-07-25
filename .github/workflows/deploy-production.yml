@@ -1,0 +1,235 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type DEPLOY to confirm production deployment
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kairos-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy production release
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CI: 'true'
+      DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build?schema=public
+      DATABASE_URL_UNPOOLED: postgresql://build:build@127.0.0.1:5432/build?schema=public
+      AUTH_SECRET: github-actions-build-only-not-a-production-secret
+
+    steps:
+      - name: Require explicit production confirmation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ '${{ inputs.confirm }}' != 'DEPLOY' ]]; then
+            echo 'Production deployment was not confirmed.' >&2
+            exit 1
+          fi
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build production application
+        run: npm run build
+
+      - name: Add dependency audit summary
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          npm audit --omit=dev --json > "$RUNNER_TEMP/npm-audit.json" || true
+          node <<'NODE'
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/npm-audit.json`, 'utf8'));
+          const vulnerabilities = report.metadata?.vulnerabilities ?? {};
+          const lines = [
+            '### Runtime dependency audit',
+            '',
+            `- info: ${vulnerabilities.info ?? 0}`,
+            `- low: ${vulnerabilities.low ?? 0}`,
+            `- moderate: ${vulnerabilities.moderate ?? 0}`,
+            `- high: ${vulnerabilities.high ?? 0}`,
+            `- critical: ${vulnerabilities.critical ?? 0}`,
+            '',
+            'No dependency changes or automatic fixes were performed.'
+          ];
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
+          NODE
+
+      - name: Build deterministic release archive
+        id: release
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          release_id="${GITHUB_SHA}-$(date -u +%Y%m%dT%H%M%SZ)"
+          artifact_root="$RUNNER_TEMP/kairos-release"
+          archive_name="kairos-${release_id}.tar.gz"
+          archive_path="$RUNNER_TEMP/$archive_name"
+
+          install -d "$artifact_root/.next" "$artifact_root/prisma" "$artifact_root/scripts"
+          rsync -a --exclude cache .next/ "$artifact_root/.next/"
+          cp -a public "$artifact_root/public"
+          cp -a prisma/. "$artifact_root/prisma/"
+          cp package.json package-lock.json next.config.ts prisma.config.ts ecosystem.config.cjs "$artifact_root/"
+          cp scripts/deploy-production.sh scripts/rollback-production.sh "$artifact_root/scripts/"
+
+          forbidden_path="$(
+            find "$artifact_root" \
+              \( -name '.env*' -o -name '.git' -o -name node_modules -o -name uploads \
+                 -o -name logs -o -name tmp -o -name coverage -o -path '*/.next/cache' \) \
+              -print -quit
+          )"
+          if [[ -n "$forbidden_path" ]]; then
+            echo "Forbidden artifact path detected: $forbidden_path" >&2
+            exit 1
+          fi
+
+          private_key_match="$(
+            grep -RIl --binary-files=without-match \
+              -E 'BEGIN (OPENSSH|RSA|EC|DSA) PRIVATE KEY' "$artifact_root" \
+              | head -n 1 || true
+          )"
+          if [[ -n "$private_key_match" ]]; then
+            echo 'Private-key material detected in artifact.' >&2
+            exit 1
+          fi
+
+          tar --sort=name --mtime='UTC 1970-01-01' \
+            --owner=0 --group=0 --numeric-owner \
+            -cf - -C "$artifact_root" . | gzip -n -9 > "$archive_path"
+
+          (
+            cd "$RUNNER_TEMP"
+            sha256sum "$archive_name" > "${archive_name}.sha256"
+          )
+
+          echo "release_id=$release_id" >> "$GITHUB_OUTPUT"
+          echo "archive_name=$archive_name" >> "$GITHUB_OUTPUT"
+          echo "archive_path=$archive_path" >> "$GITHUB_OUTPUT"
+          echo "checksum_path=${archive_path}.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Verify pinned VPS host key and deploy
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_APP_PATH: ${{ vars.VPS_APP_PATH }}
+          EXPECTED_HOST_FINGERPRINT: SHA256:n79Tt0Poo/oDsjoMiCtGhHvfZwul8HwdauS0NYNiJGI
+          RELEASE_ID: ${{ steps.release.outputs.release_id }}
+          ARCHIVE_NAME: ${{ steps.release.outputs.archive_name }}
+          ARCHIVE_PATH: ${{ steps.release.outputs.archive_path }}
+          CHECKSUM_PATH: ${{ steps.release.outputs.checksum_path }}
+        run: |
+          set -Eeuo pipefail
+          key_path="$RUNNER_TEMP/kairos-vps-key"
+          known_hosts_path="$RUNNER_TEMP/kairos-known-hosts"
+          trap 'rm -f "$key_path" "$known_hosts_path"' EXIT
+
+          : "${VPS_HOST:?VPS_HOST is required}"
+          : "${VPS_USER:?VPS_USER is required}"
+          : "${VPS_PORT:?VPS_PORT is required}"
+          : "${VPS_SSH_KEY:?VPS_SSH_KEY is required}"
+          : "${VPS_APP_PATH:?VPS_APP_PATH is required}"
+
+          [[ "$VPS_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || {
+            echo 'VPS_HOST has an unsafe format.' >&2
+            exit 1
+          }
+          [[ "$VPS_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || {
+            echo 'VPS_USER has an unsafe format.' >&2
+            exit 1
+          }
+          [[ "$VPS_PORT" =~ ^[0-9]+$ ]] || {
+            echo 'VPS_PORT must be numeric.' >&2
+            exit 1
+          }
+          (( VPS_PORT >= 1 && VPS_PORT <= 65535 )) || {
+            echo 'VPS_PORT is outside the valid range.' >&2
+            exit 1
+          }
+          [[ "$VPS_APP_PATH" == '/var/www/kairos-parts' ]] || {
+            echo 'VPS_APP_PATH does not match the reviewed production path.' >&2
+            exit 1
+          }
+
+          printf '%s\n' "$VPS_SSH_KEY" | tr -d '\r' > "$key_path"
+          chmod 600 "$key_path"
+          ssh-keyscan -p "$VPS_PORT" -t ed25519 "$VPS_HOST" \
+            > "$known_hosts_path" 2>/dev/null
+          [[ -s "$known_hosts_path" ]] || {
+            echo 'Unable to retrieve the VPS ED25519 host key.' >&2
+            exit 1
+          }
+
+          actual_fingerprint="$(ssh-keygen -lf "$known_hosts_path" -E sha256 | awk 'NR == 1 { print $2 }')"
+          [[ "$actual_fingerprint" == "$EXPECTED_HOST_FINGERPRINT" ]] || {
+            echo 'VPS host-key fingerprint mismatch.' >&2
+            exit 1
+          }
+
+          ssh_options=(
+            -i "$key_path"
+            -p "$VPS_PORT"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o "UserKnownHostsFile=$known_hosts_path"
+          )
+          remote_incoming="$VPS_APP_PATH/releases/.incoming/$RELEASE_ID"
+          remote_target="$VPS_USER@$VPS_HOST"
+
+          printf -v prepare_command 'mkdir -p %q' "$remote_incoming"
+          ssh "${ssh_options[@]}" "$remote_target" "$prepare_command"
+
+          scp -i "$key_path" -P "$VPS_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$known_hosts_path" \
+            "$ARCHIVE_PATH" "$CHECKSUM_PATH" scripts/deploy-production.sh \
+            "$remote_target:$remote_incoming/"
+
+          remote_artifact="$remote_incoming/$ARCHIVE_NAME"
+          remote_checksum="$remote_incoming/$ARCHIVE_NAME.sha256"
+          remote_script="$remote_incoming/deploy-production.sh"
+          printf -v deploy_command \
+            'APP_PATH=%q RELEASE_ID=%q ARTIFACT_PATH=%q CHECKSUM_PATH=%q bash %q' \
+            "$VPS_APP_PATH" "$RELEASE_ID" "$remote_artifact" "$remote_checksum" "$remote_script"
+          ssh "${ssh_options[@]}" "$remote_target" "$deploy_command"
+
+          {
+            echo '### Production deployment'
+            echo
+            echo "- Release ID: \`$RELEASE_ID\`"
+            echo "- Commit SHA: \`$GITHUB_SHA\`"
+            echo '- Artifact checksum: verified'
+            echo '- Prisma migration command: succeeded'
+            echo '- PM2 reload: succeeded'
+            echo '- Health check: succeeded'
+          } >> "$GITHUB_STEP_SUMMARY"
