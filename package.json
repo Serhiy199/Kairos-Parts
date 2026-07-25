@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "admin:bootstrap": "tsx scripts/bootstrap-production-admin.ts",
+    "admin:bootstrap:check": "tsx scripts/check-production-admin-bootstrap.ts",
     "db:seed": "prisma db seed"
   },
   "dependencies": {
