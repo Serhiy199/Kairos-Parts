@@ -56,7 +56,9 @@ Commit message:
 chore: add PM2 production baseline
 ```
 
-Точний фінальний hash task-коміту зафіксовано у completion summary після створення commit. Початковий hash чистого cherry-pick до додавання звіту: `628bf59`.
+Фінальний hash PM2 integration commit: `231a781324b60088bbf1ce57e749fdce07b67bd8`.
+
+Початковий hash чистого cherry-pick до додавання звіту: `628bf59`.
 
 ## 8. Перевірка PM2 baseline
 
@@ -85,7 +87,13 @@ chore: add PM2 production baseline
 
 ## 10. Push
 
-Результат push і фінальну синхронізацію `main` / `origin/main` зафіксовано у completion summary після завершення Git-перевірок.
+Звичайний non-force push виконано:
+
+```text
+63a20ff..231a781 main -> main
+```
+
+Після `git fetch origin` гілки `main` та `origin/main` були синхронізовані, робоче дерево — чисте.
 
 Force push не використовувався.
 
@@ -118,7 +126,7 @@ PM2 integration не додає:
 1. підтвердити provisioning Ubuntu/Nginx/Node.js 24/PM2 і права на `/var/www/kairos-parts`;
 2. безпечно налаштувати production environment variables поза Git;
 3. створити та перевірити каталог `/var/www/kairos-parts/logs`;
-4. окремо погодити й застосувати pending Prisma migration `20260723120000_add_auth_audit_events`;
+4. перед deploy повторити `prisma migrate status`; на момент фінальної перевірки всі 36 migrations застосовані й database schema up to date;
 5. виконати security triage 7 dependency vulnerabilities без автоматичного оновлення production dependencies;
 6. перевірити backup/restore, Nginx health check і rollback procedure.
 
