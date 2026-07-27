@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:request-status": "tsx scripts/check-request-status-transition.ts",
+    "test:request-status-stage3": "tsx scripts/check-request-status-stage3-draft-trigger.ts",
     "db:seed": "prisma db seed"
   },
   "dependencies": {

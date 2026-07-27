@@ -67,6 +67,7 @@ function resultMessage(result?: string) {
     'items-send-empty': 'Немає нових позицій для відправлення на погодження.',
     'items-send-error': 'Не вдалося відправити позиції на погодження.',
     'item-error': 'Перевірте дані позиції.',
+    'item-status-locked': 'Не можна додавати позиції до виконаної або скасованої заявки.',
     'item-not-found': 'Позицію не знайдено.',
     'document-created': 'Документ додано.',
     'document-updated': 'Документ оновлено.',

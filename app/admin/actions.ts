@@ -29,6 +29,10 @@ import { notifyRequestStatusChange } from '@/lib/notifications/status-change';
 import { runOcrForRequestFile, updateOcrCorrection } from '@/lib/ocr/service';
 import { prisma } from '@/lib/prisma';
 import { parseRequestDocumentMetadata, readRequiredRequestDocumentFile } from '@/lib/request-documents/validation';
+import {
+  createRequestItemDraft,
+  RequestItemDraftCreateError
+} from '@/lib/request-items/create-draft';
 import { parseRequestItemInput } from '@/lib/request-items/validation';
 import { REQUEST_STATUSES } from '@/lib/requests/statuses';
 import { sendTelegramRequestItemsApprovalNotification } from '@/lib/telegram/notifications';
@@ -348,48 +352,36 @@ export async function createAdminRequestItem(formData: FormData) {
     redirectBack(requestId, 'item-error');
   }
 
-  const request = await prisma.request.findUnique({
-    where: { id: requestId },
-    select: { id: true, requestNumber: true, vehicleId: true, clientId: true, companyId: true }
-  });
-
-  if (!request) {
-    redirect('/admin/requests?result=request-not-found');
-  }
-
   const requestContext = await getServerAuditRequestContext();
-  await prisma.$transaction(async (tx) => {
-    const item = await tx.requestItem.create({
-      data: {
-        requestId: request.id,
-        vehicleId: request.vehicleId,
-        ...parsed.data,
-        visibleToClient: false
-      }
-    });
-    const snapshot = requestItemSnapshot(item);
-    await writeAuditLog(tx, {
-      actor: auditUserActor(session.user.id),
-      companyId: request.companyId,
-      entityType: 'REQUEST_ITEM',
-      entityId: item.id,
-      entityLabel: requestItemLabel(item.name, item.catalogNumber),
-      action: 'REQUEST_ITEM_CREATED',
-      category: requestItemAuditCategory(snapshot),
-      newValue: snapshot,
-      metadata: { source: 'ADMIN_CRM' },
-      allowedFields: { newValue: REQUEST_ITEM_AUDIT_FIELDS, metadata: ['source'] },
+  let result: Awaited<ReturnType<typeof createRequestItemDraft>>;
+
+  try {
+    result = await createRequestItemDraft({
+      requestId,
+      data: parsed.data,
+      actor: { id: session.user.id },
       requestContext
     });
-  });
-
-  revalidatePath(`/admin/requests/${request.id}`);
-
-  if (request.vehicleId) {
-    revalidatePath(`/client/vehicles/${request.vehicleId}`);
+  } catch (error) {
+    if (error instanceof RequestItemDraftCreateError && error.code === 'REQUEST_NOT_FOUND') {
+      redirect('/admin/requests?result=request-not-found');
+    }
+    if (error instanceof RequestItemDraftCreateError
+      && error.code === 'REQUEST_STATUS_DOES_NOT_ALLOW_ITEM_CREATION') {
+      redirectBack(requestId, 'item-status-locked');
+    }
+    redirectBack(requestId, 'item-error');
   }
 
-  redirectBack(request.id, 'item-created');
+  revalidatePath('/admin');
+  revalidatePath('/admin/requests');
+  revalidatePath(`/admin/requests/${result.request.id}`);
+
+  if (result.request.vehicleId) {
+    revalidatePath(`/client/vehicles/${result.request.vehicleId}`);
+  }
+
+  redirectBack(result.request.id, 'item-created');
 }
 
 export async function updateAdminRequestItem(formData: FormData) {
