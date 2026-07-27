@@ -21,10 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
-      CI: 'true'
+      CI: "true"
       DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build?schema=public
       DATABASE_URL_UNPOOLED: postgresql://build:build@127.0.0.1:5432/build?schema=public
-      AUTH_SECRET: github-actions-build-only-not-a-production-secret
+      APP_BASE_URL: ${{ vars.APP_BASE_URL }}
 
     steps:
       - name: Require explicit production confirmation
