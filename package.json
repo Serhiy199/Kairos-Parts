@@ -37,6 +37,7 @@
     "audit:request-file-storage": "tsx scripts/audit-request-file-storage.ts",
     "migrate:request-files-cloudinary": "tsx scripts/migrate-request-files-to-cloudinary.ts",
     "test:logistics-address-combobox": "tsx scripts/check-logistics-request-form.ts",
+    "auth:redirect-origin:check": "tsx scripts/check-production-redirect-origin.ts",
     "db:seed": "prisma db seed"
   },
   "dependencies": {

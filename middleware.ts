@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
 import { canAccessPath, defaultRedirectForRole, isPublicPath, requiredRolesForPath } from '@/lib/auth/permissions';
+import { buildPublicRedirectUrl } from '@/lib/auth/redirect-url';
 import type { UserRole } from '@/lib/auth/roles';
 
 function nextWithPathname(request: NextRequest, pathname: string) {
@@ -33,19 +34,19 @@ export async function middleware(request: NextRequest) {
   const role = hasCurrentLifecycleClaims ? (token?.role as UserRole | undefined) : undefined;
 
   if (pathname === '/login' && role === 'CLIENT') {
-    return NextResponse.redirect(new URL('/client', request.url));
+    return NextResponse.redirect(buildPublicRedirectUrl(request, '/client'));
   }
 
   if (pathname === '/login' && (role === 'MANAGER' || role === 'ADMIN')) {
-    return NextResponse.redirect(new URL('/admin', request.url));
+    return NextResponse.redirect(buildPublicRedirectUrl(request, '/admin'));
   }
 
   if (pathname === '/admin/login' && role === 'CLIENT') {
-    return NextResponse.redirect(new URL('/client', request.url));
+    return NextResponse.redirect(buildPublicRedirectUrl(request, '/client'));
   }
 
   if (pathname === '/admin/login' && (role === 'MANAGER' || role === 'ADMIN')) {
-    return NextResponse.redirect(new URL('/admin', request.url));
+    return NextResponse.redirect(buildPublicRedirectUrl(request, '/admin'));
   }
 
   if (!requiredRoles && isPublicPath(pathname)) {
@@ -56,12 +57,12 @@ export async function middleware(request: NextRequest) {
     return nextWithPathname(request, pathname);
   }
 
-  const redirectUrl = request.nextUrl.clone();
-  redirectUrl.pathname = hasCurrentLifecycleClaims
+  const redirectPath = hasCurrentLifecycleClaims
     ? defaultRedirectForRole(role)
     : pathname.startsWith('/admin')
       ? '/admin/login'
       : '/login';
+  const redirectUrl = buildPublicRedirectUrl(request, redirectPath);
   redirectUrl.searchParams.set('next', pathname);
 
   return NextResponse.redirect(redirectUrl);
