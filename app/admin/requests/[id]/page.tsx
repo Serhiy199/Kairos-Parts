@@ -21,6 +21,7 @@ import {
   updateAdminRequestStatus
 } from '@/app/admin/actions';
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
+import { RequestSelectionSubmitButton } from '@/components/admin/request-selection-submit-button';
 import { StatusBadge } from '@/components/client/status-badge';
 import { ActionIcon } from '@/components/ui/action-icons';
 import { ManualEquipmentFields } from '@/components/vehicles/manual-equipment-fields';
@@ -64,7 +65,11 @@ function resultMessage(result?: string) {
     'item-updated': 'Позицію оновлено.',
     'item-deleted': 'Позицію видалено.',
     'items-sent-for-approval': 'Позиції відправлено клієнту на погодження.',
+    'items-sent-for-approval-notification-failed': 'Позиції відправлено на погодження, але Telegram-повідомлення не доставлено. Цикл погодження збережено.',
     'items-send-empty': 'Немає нових позицій для відправлення на погодження.',
+    'items-send-stale': 'Позиції змінилися після відкриття сторінки. Оновіть сторінку та перевірте добірку.',
+    'items-send-duplicate': 'Цю добірку вже відправлено на погодження.',
+    'items-send-status-locked': 'Поточний статус заявки не дозволяє відправити добірку на погодження.',
     'items-send-error': 'Не вдалося відправити позиції на погодження.',
     'item-error': 'Перевірте дані позиції.',
     'item-status-locked': 'Не можна додавати позиції до виконаної або скасованої заявки.',
@@ -490,6 +495,7 @@ export default async function AdminRequestDetailPage({
 
 type RequestItemView = {
   id: string;
+  updatedAt: Date;
   equipmentType: string | null;
   name: string;
   brand: string | null;
@@ -600,7 +606,8 @@ function BillingSnapshotCard({ title, snapshot, buyer = false }: { title: string
 }
 
 function RequestItemsSection({ requestId, items }: { requestId: string; items: RequestItemView[] }) {
-  const hiddenItemCount = items.filter((item) => !item.visibleToClient).length;
+  const hiddenItems = items.filter((item) => !item.visibleToClient);
+  const hiddenItemCount = hiddenItems.length;
 
   return (
     <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
@@ -714,10 +721,17 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
       <div className="mt-5 flex min-w-0 border-t border-border pt-5 sm:justify-end">
         <form action={sendAdminRequestItemsForApproval} className="w-full sm:w-auto">
           <input type="hidden" name="requestId" value={requestId} />
-          <button className="inline-flex min-h-11 w-full items-center justify-center gap-2 whitespace-normal rounded-md bg-accent px-4 py-3 text-center text-sm font-bold leading-5 text-foreground transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto">
-            <ActionIcon name="send" />
-            Відправити на погодження
-          </button>
+          {hiddenItems.map((item) => (
+            <input key={item.id} type="hidden" name="requestItemId" value={item.id} />
+          ))}
+          <input
+            type="hidden"
+            name="requestItemVersions"
+            value={JSON.stringify(
+              hiddenItems.map((item) => ({ id: item.id, updatedAt: item.updatedAt.toISOString() }))
+            )}
+          />
+          <RequestSelectionSubmitButton disabled={hiddenItemCount === 0} />
         </form>
       </div>
     </section>

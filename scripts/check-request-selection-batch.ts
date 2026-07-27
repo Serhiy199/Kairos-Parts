@@ -919,8 +919,17 @@ async function main() {
   assert.match(serviceSource, /selectionRevisionCounter:\s*\{\s*increment:\s*1\s*\}/);
   assert.doesNotMatch(serviceSource, /\.count\(\)[\s\S]{0,100}revision|MAX\s*\(/i);
 
+  const adminActionsSource = readFileSync(resolve(cwd, 'app/admin/actions.ts'), 'utf8');
+  assert.match(
+    adminActionsSource,
+    /from '@\/lib\/request-selection\/send-for-approval'/
+  );
+  assert.doesNotMatch(
+    adminActionsSource,
+    /requestSelectionBatch\.(create|update|updateMany)/
+  );
+
   for (const productionFile of [
-    'app/admin/actions.ts',
     'app/client/actions.ts',
     'lib/telegram/notifications.ts',
     'lib/commercial-offers/service.ts',

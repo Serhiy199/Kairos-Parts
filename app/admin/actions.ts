@@ -34,8 +34,12 @@ import {
   RequestItemDraftCreateError
 } from '@/lib/request-items/create-draft';
 import { parseRequestItemInput } from '@/lib/request-items/validation';
+import {
+  sendRequestSelectionForApproval,
+  SendRequestSelectionForApprovalError,
+  type RequestSelectionSourceVersion
+} from '@/lib/request-selection/send-for-approval';
 import { REQUEST_STATUSES } from '@/lib/requests/statuses';
-import { sendTelegramRequestItemsApprovalNotification } from '@/lib/telegram/notifications';
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -71,7 +75,6 @@ const REQUEST_ITEM_AUDIT_FIELDS = [
   'salePrice', 'visibleToClient', 'includeInInvoice'
 ] as const;
 
-const REQUEST_AUDIT_METADATA_FIELDS = ['source', 'itemCount', 'itemIds'] as const;
 const REQUEST_DOCUMENT_AUDIT_FIELDS = [
   'documentId', 'fileName', 'documentType', 'title', 'visibility',
   'requestId', 'size', 'mimeType'
@@ -458,72 +461,84 @@ export async function updateAdminRequestItem(formData: FormData) {
 export async function sendAdminRequestItemsForApproval(formData: FormData) {
   const session = await requireCrmSession();
   const requestId = readString(formData, 'requestId');
+  const requestItemIds = formData.getAll('requestItemId')
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const rawVersions = readString(formData, 'requestItemVersions');
 
-  if (!hasDatabaseUrl() || !requestId) {
+  if (!hasDatabaseUrl() || !requestId || !rawVersions) {
     redirectBack(requestId, 'items-send-error');
   }
 
-  const request = await prisma.request.findUnique({
-    where: { id: requestId },
-    select: {
-      id: true,
-      requestNumber: true,
-      companyId: true,
-      items: { where: { visibleToClient: false }, select: { id: true } }
-    }
-  });
-
-  if (!request) {
-    redirect('/admin/requests?result=request-not-found');
-  }
-
-  if (request.items.length === 0) {
-    redirectBack(request.id, 'items-send-empty');
-  }
-
-  const itemIds = request.items.map((item) => item.id);
-  const requestContext = await getServerAuditRequestContext();
-  const result = await prisma.$transaction(async (tx) => {
-    const updated = await tx.requestItem.updateMany({
-      where: { requestId: request.id, visibleToClient: false, id: { in: itemIds } },
-      data: { visibleToClient: true }
-    });
-    if (updated.count > 0) {
-      await writeAuditLog(tx, {
-        actor: auditUserActor(session.user.id),
-        companyId: request.companyId,
-        entityType: 'REQUEST',
-        entityId: request.id,
-        entityLabel: requestLabel(request.requestNumber),
-        action: 'REQUEST_ITEMS_SENT_FOR_APPROVAL',
-        category: 'STANDARD',
-        metadata: { source: 'ADMIN_CRM', itemCount: updated.count, itemIds: itemIds.slice(0, 50) },
-        allowedFields: { metadata: REQUEST_AUDIT_METADATA_FIELDS },
-        requestContext
-      });
-    }
-    return updated;
-  });
-
-  if (result.count === 0) {
-    redirectBack(request.id, 'items-send-empty');
-  }
-
+  let expectedRequestItemVersions: RequestSelectionSourceVersion[];
   try {
-    const notificationResult = await sendTelegramRequestItemsApprovalNotification({ requestId: request.id });
-
-    if (notificationResult.status === 'failed') {
-      console.warn(`Telegram items approval notification failed for request ${request.id}.`);
-    }
+    const parsed = JSON.parse(rawVersions) as unknown;
+    if (!Array.isArray(parsed)) throw new Error('Expected an array.');
+    expectedRequestItemVersions = parsed.map((entry) => {
+      if (
+        !entry
+        || typeof entry !== 'object'
+        || !('id' in entry)
+        || !('updatedAt' in entry)
+        || typeof entry.id !== 'string'
+        || typeof entry.updatedAt !== 'string'
+      ) {
+        throw new Error('Invalid request item version.');
+      }
+      return { id: entry.id, updatedAt: new Date(entry.updatedAt) };
+    });
   } catch {
-    console.warn(`Telegram items approval notification could not be processed for request ${request.id}.`);
+    redirectBack(requestId, 'items-send-stale');
   }
 
-  revalidatePath(`/admin/requests/${request.id}`);
+  const requestContext = await getServerAuditRequestContext();
+  let notificationFailed = false;
+  try {
+    const result = await sendRequestSelectionForApproval({
+      requestId,
+      requestItemIds,
+      expectedRequestItemVersions,
+      actor: { id: session.user.id },
+      requestContext
+    });
+    notificationFailed = result.notification.status === 'failed';
+    if (notificationFailed) {
+      console.warn(`Telegram items approval notification failed for request ${requestId}.`);
+    }
+  } catch (error) {
+    if (error instanceof SendRequestSelectionForApprovalError) {
+      if (error.code === 'EMPTY_SELECTION') redirectBack(requestId, 'items-send-empty');
+      if (error.code === 'SOURCE_ITEM_VERSION_CONFLICT') {
+        redirectBack(requestId, 'items-send-stale');
+      }
+      if (error.code === 'DUPLICATE_SEND_OPERATION') {
+        redirectBack(requestId, 'items-send-duplicate');
+      }
+      if (error.code === 'REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND') {
+        redirectBack(requestId, 'items-send-status-locked');
+      }
+      if (error.code === 'REQUEST_NOT_FOUND') {
+        redirect('/admin/requests?result=request-not-found');
+      }
+    }
+    console.error('Failed to send request selection for approval.', {
+      requestId,
+      errorCode: error instanceof SendRequestSelectionForApprovalError ? error.code : 'UNEXPECTED'
+    });
+    redirectBack(requestId, 'items-send-error');
+  }
+
+  revalidatePath(`/admin/requests/${requestId}`);
+  revalidatePath('/admin');
+  revalidatePath('/admin/requests');
   revalidatePath('/client');
   revalidatePath('/client/requests');
-  revalidatePath(`/client/requests/${request.id}`);
-  redirectBack(request.id, 'items-sent-for-approval');
+  revalidatePath(`/client/requests/${requestId}`);
+  if (notificationFailed) {
+    redirectBack(requestId, 'items-sent-for-approval-notification-failed');
+  }
+  redirectBack(requestId, 'items-sent-for-approval');
 }
 
 export async function deleteAdminRequestItem(formData: FormData) {
