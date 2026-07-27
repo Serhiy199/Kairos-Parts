@@ -1,15 +1,21 @@
 ﻿import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { approveClientRequestItemsAction } from '@/app/client/actions';
+import { ClientApprovalBatchSection } from '@/components/client/client-approval-batch-section';
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
+import { ClientLegacySelectionSection } from '@/components/client/client-legacy-selection-section';
 import { StatusBadge } from '@/components/client/status-badge';
 import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
-import { calculateInvoiceLineTotal, calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
+import { calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
 import { CLIENT_INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 import { prisma } from '@/lib/prisma';
 import { REQUEST_DOCUMENT_TYPE_LABELS } from '@/lib/request-documents/validation';
+import {
+  ClientRequestApprovalReadError,
+  getClientRequestApprovalReadModel
+} from '@/lib/request-selection/client-read-model';
+import type { ClientRequestApprovalReadModel } from '@/lib/request-selection/client-read-model';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,10 +96,6 @@ export default async function ClientRequestDetailPage({
     include: {
       manufacturer: true,
       company: { select: { name: true } },
-      items: {
-        where: { visibleToClient: true },
-        orderBy: { createdAt: 'desc' }
-      },
       requestDocuments: {
         where: { visibleToClient: true },
         orderBy: { createdAt: 'desc' }
@@ -116,6 +118,30 @@ export default async function ClientRequestDetailPage({
     notFound();
   }
 
+  let approvalReadModel: ClientRequestApprovalReadModel | null = null;
+  let approvalReadFailed = false;
+  try {
+    approvalReadModel = await getClientRequestApprovalReadModel({
+      requestId: request.id,
+      actorUserId: session.user.id
+    });
+  } catch (error) {
+    if (
+      error instanceof ClientRequestApprovalReadError
+      && (error.code === 'REQUEST_NOT_FOUND'
+        || error.code === 'REQUEST_ACCESS_DENIED'
+        || error.code === 'ACTOR_NOT_FOUND'
+        || error.code === 'ACTOR_NOT_ALLOWED')
+    ) {
+      notFound();
+    }
+    approvalReadFailed = true;
+    console.error('Client request approval read model failed.', {
+      requestId: request.id,
+      code: error instanceof ClientRequestApprovalReadError ? error.code : 'UNKNOWN'
+    });
+  }
+
   const details = [
     ['Дата створення', request.createdAt.toLocaleString('uk-UA')],
     ['Оновлено', request.updatedAt.toLocaleString('uk-UA')],
@@ -126,7 +152,6 @@ export default async function ClientRequestDetailPage({
   ];
   const message = resultMessage(query.result);
   const messageTone = resultMessageTone(query.result);
-  const pendingApprovalItems = request.items.filter((item) => !item.approvedByClient);
 
   return (
     <div className="grid gap-6">
@@ -141,12 +166,6 @@ export default async function ClientRequestDetailPage({
           {message}
         </div>
       ) : null}
-      {pendingApprovalItems.length > 0 ? (
-        <div className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">
-          У цій заявці є {pendingApprovalItems.length} {pendingApprovalItems.length === 1 ? 'позиція' : 'позиції'} на погодження. Оберіть потрібні позиції та натисніть “Погодити вибрані позиції”.
-        </div>
-      ) : null}
-
       <div className="rounded-lg border border-border bg-card p-6 shadow-card">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
@@ -177,90 +196,22 @@ export default async function ClientRequestDetailPage({
         ))}
       </div>
 
-      {request.items.length > 0 ? (
-        <div className="min-w-0 rounded-lg border border-border bg-card p-6 shadow-card">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h3 className="text-lg font-bold text-foreground">Підібрані позиції</h3>
-              <p className="mt-2 text-sm text-muted">
-                Оберіть позиції, які потрібно включити у рахунок.
-              </p>
-            </div>
-            {pendingApprovalItems.length > 0 ? (
-              <span className="w-fit rounded-full bg-[#E7F6EC] px-3 py-1 text-xs font-bold text-success">
-                {pendingApprovalItems.length} на погодження
-              </span>
-            ) : null}
-            <form id="approve-request-items" action={approveClientRequestItemsAction}>
-              <input type="hidden" name="requestId" value={request.id} />
-              <button className="inline-flex items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
-                Погодити вибрані позиції
-              </button>
-            </form>
-          </div>
-          <div className="mt-4 grid min-w-0 gap-3">
-            {request.items.map((item) => {
-              const itemTotal = item.salePrice ? calculateInvoiceLineTotal(item.quantity, item.salePrice) : null;
-
-              return (
-              <article key={item.id} className="min-w-0 rounded-md border border-border p-4">
-                  <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,auto)] xl:items-start">
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
-                      <p className="mt-2 font-bold text-foreground">{item.name}</p>
-                      <p className="mt-1 text-xs text-muted">{item.brand ?? 'Виробник уточнюється'}</p>
-                      {item.comment ? <p className="mt-2 text-xs leading-5 text-muted">{item.comment}</p> : null}
-                    </div>
-                    <div className="text-sm text-muted">
-                      <p className="text-xs font-bold uppercase text-muted">Номери</p>
-                      <p className="mt-2">Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold uppercase text-muted">К-сть</p>
-                      <p className="mt-2 font-semibold text-foreground">{item.quantity} {item.unit}</p>
-                    </div>
-                    <div className="text-sm text-muted">
-                      <p className="text-xs font-bold uppercase text-muted">Наявність</p>
-                      <p className="mt-2">{item.availability ?? 'Уточнюється'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold uppercase text-muted">Ціна без ПДВ</p>
-                      <p className="mt-2 font-semibold text-foreground">{formatMoney(item.salePrice, item.currency) ?? 'Уточнюється'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold uppercase text-muted">Сума без ПДВ</p>
-                      <p className="mt-2 font-semibold text-foreground">{formatMoney(itemTotal, item.currency) ?? 'Уточнюється'}</p>
-                    </div>
-                    <div className="grid gap-2">
-                      <label className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">
-                        <input
-                          form="approve-request-items"
-                          type="checkbox"
-                          name="itemIds"
-                          value={item.id}
-                          defaultChecked={item.includeInInvoice}
-                          className="h-4 w-4 accent-[var(--accent)]"
-                        />
-                        Включити у рахунок
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {item.approvedByClient ? (
-                          <span className="rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success">Погоджено</span>
-                        ) : (
-                          <span className="rounded-full bg-[#FFF7E0] px-2.5 py-1 text-xs font-bold text-[#8A5B24]">Очікує погодження</span>
-                        )}
-                        {item.includeInInvoice ? (
-                          <span className="rounded-full bg-[#E8F1FF] px-2.5 py-1 text-xs font-bold text-info">Включено у рахунок</span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-              </article>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
+      {approvalReadFailed ? (
+        <section className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+          Не вдалося завантажити добірку позицій. Оновіть сторінку або зверніться до менеджера.
+        </section>
+      ) : approvalReadModel?.mode === 'BATCH' ? (
+        <ClientApprovalBatchSection model={approvalReadModel} />
+      ) : approvalReadModel?.mode === 'LEGACY' ? (
+        <ClientLegacySelectionSection
+          requestId={request.id}
+          items={approvalReadModel.legacyItems}
+        />
+      ) : (
+        <section className="rounded-lg border border-border bg-card p-6 text-sm text-muted shadow-card">
+          Підібраних позицій для цієї заявки поки немає.
+        </section>
+      )}
 
       {request.invoices.length > 0 ? (
         <div className="rounded-lg border border-border bg-card p-6 shadow-card">

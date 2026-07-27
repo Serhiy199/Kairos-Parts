@@ -13,6 +13,7 @@
     "test:request-status-stage3": "tsx scripts/check-request-status-stage3-draft-trigger.ts",
     "test:request-selection-batch": "tsx scripts/check-request-selection-batch.ts",
     "test:request-status-stage4c": "tsx scripts/check-request-status-stage4c-send-trigger.ts",
+    "test:request-status-stage4d": "tsx scripts/check-request-status-stage4d-read-model.ts",
     "db:seed": "prisma db seed"
   },
   "dependencies": {
