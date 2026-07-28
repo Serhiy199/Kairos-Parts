@@ -1,0 +1,486 @@
+import type { Prisma, RequestSelectionBatchItemStatus } from '@prisma/client';
+import sanitizeHtml from 'sanitize-html';
+
+import type { AuditRequestContext, AuditSource } from '@/lib/audit-log/contracts';
+import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
+import { prisma } from '@/lib/prisma';
+import {
+  RequestSelectionBatchError,
+  transitionRequestSelectionBatchStatus
+} from '@/lib/request-selection/service';
+import {
+  REQUEST_STATUS_EVENTS,
+  RequestStatusTransitionError,
+  transitionRequestStatus
+} from '@/lib/requests/status-transition';
+
+export const CLIENT_SELECTION_DECISIONS = {
+  APPROVE: 'APPROVE',
+  REJECT: 'REJECT'
+} as const;
+
+export type ClientSelectionDecision =
+  (typeof CLIENT_SELECTION_DECISIONS)[keyof typeof CLIENT_SELECTION_DECISIONS];
+
+export type DecideClientSelectionItemInput = {
+  requestId: string;
+  batchId: string;
+  batchItemId: string;
+  expectedRevision: number;
+  decision: ClientSelectionDecision;
+  clientComment?: string | null;
+  actor: { id: string };
+  source?: AuditSource;
+  requestContext?: AuditRequestContext;
+  tx?: Prisma.TransactionClient;
+};
+
+export type ClientSelectionDecisionErrorCode =
+  | 'REQUEST_NOT_FOUND'
+  | 'ACTOR_NOT_FOUND'
+  | 'ACTOR_NOT_ALLOWED'
+  | 'REQUEST_ACCESS_DENIED'
+  | 'BATCH_NOT_FOUND'
+  | 'BATCH_ITEM_NOT_FOUND'
+  | 'BATCH_NOT_ACTIVE'
+  | 'STALE_SELECTION_REVISION'
+  | 'REQUEST_STATUS_DOES_NOT_ALLOW_CLIENT_DECISION'
+  | 'BATCH_ITEM_ALREADY_DECIDED'
+  | 'BATCH_ITEM_DECISION_CONFLICT'
+  | 'REJECTION_COMMENT_REQUIRED'
+  | 'REJECTION_COMMENT_INVALID'
+  | 'BATCH_TRANSITION_FAILED'
+  | 'REQUEST_STATUS_TRANSITION_FAILED'
+  | 'CONCURRENT_SELECTION_DECISION'
+  | 'DATABASE_TRANSACTION_FAILED';
+
+export class ClientSelectionDecisionError extends Error {
+  constructor(
+    readonly code: ClientSelectionDecisionErrorCode,
+    readonly context: {
+      requestId: string;
+      batchId?: string;
+      batchItemId?: string;
+      expectedRevision?: number;
+    },
+    options?: ErrorOptions
+  ) {
+    super(`Client selection decision failed: ${code}.`, options);
+    this.name = 'ClientSelectionDecisionError';
+  }
+}
+
+export type ClientSelectionDecisionResult =
+  | {
+      outcome: 'changed';
+      decision: ClientSelectionDecision;
+      itemStatus: RequestSelectionBatchItemStatus;
+      batchOutcome: 'unchanged' | 'approved' | 'rejected';
+      requestOutcome: 'unchanged' | 'awaiting_invoice';
+      auditLogId: string;
+    }
+  | {
+      outcome: 'noop';
+      decision: ClientSelectionDecision;
+      itemStatus: RequestSelectionBatchItemStatus;
+      reason: 'same_decision';
+    };
+
+type TransactionRunner = {
+  $transaction<T>(
+    callback: (tx: Prisma.TransactionClient) => Promise<T>,
+    options?: {
+      maxWait?: number;
+      timeout?: number;
+      isolationLevel?: Prisma.TransactionIsolationLevel;
+    }
+  ): Promise<T>;
+};
+
+function decisionError(
+  code: ClientSelectionDecisionErrorCode,
+  input: Pick<
+    DecideClientSelectionItemInput,
+    'requestId' | 'batchId' | 'batchItemId' | 'expectedRevision'
+  >,
+  cause?: unknown
+) {
+  return new ClientSelectionDecisionError(
+    code,
+    {
+      requestId: input.requestId,
+      batchId: input.batchId,
+      batchItemId: input.batchItemId,
+      expectedRevision: input.expectedRevision
+    },
+    cause === undefined ? undefined : { cause }
+  );
+}
+
+function databaseErrorCode(error: unknown) {
+  return error && typeof error === 'object' && 'code' in error
+    ? String((error as { code?: unknown }).code ?? '')
+    : '';
+}
+
+export function parseClientSelectionComment(
+  decision: ClientSelectionDecision,
+  value: string | null | undefined
+) {
+  const comment = value?.trim() ?? '';
+  if (decision === CLIENT_SELECTION_DECISIONS.REJECT && comment.length === 0) {
+    throw new ClientSelectionDecisionError('REJECTION_COMMENT_REQUIRED', {
+      requestId: ''
+    });
+  }
+  if (comment.length === 0) return null;
+  if (
+    comment.length < (decision === CLIENT_SELECTION_DECISIONS.REJECT ? 3 : 1)
+    || comment.length > 500
+    || /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/u.test(comment)
+    || sanitizeHtml(comment, { allowedTags: [], allowedAttributes: {} }) !== comment
+  ) {
+    throw new ClientSelectionDecisionError('REJECTION_COMMENT_INVALID', {
+      requestId: ''
+    });
+  }
+  return comment;
+}
+
+function sameDecisionStatus(
+  status: RequestSelectionBatchItemStatus,
+  decision: ClientSelectionDecision
+) {
+  return (
+    (status === 'APPROVED' && decision === CLIENT_SELECTION_DECISIONS.APPROVE)
+    || (status === 'REJECTED' && decision === CLIENT_SELECTION_DECISIONS.REJECT)
+  );
+}
+
+function actorCanAccessRequest(
+  actor: {
+    clientProfile: { id: string } | null;
+    companyMemberships: Array<{ companyId: string }>;
+  },
+  request: { clientId: string | null; companyId: string | null }
+) {
+  if (!actor.clientProfile) return false;
+  if (request.companyId) {
+    return actor.companyMemberships.some(
+      (membership) => membership.companyId === request.companyId
+    );
+  }
+  return request.clientId === actor.clientProfile.id;
+}
+
+async function executeClientSelectionDecision(
+  tx: Prisma.TransactionClient,
+  input: Omit<DecideClientSelectionItemInput, 'tx'>,
+  comment: string | null
+): Promise<ClientSelectionDecisionResult> {
+  const [actor, request, batch, item] = await Promise.all([
+    tx.user.findUnique({
+      where: { id: input.actor.id },
+      select: {
+        id: true,
+        role: true,
+        status: true,
+        clientProfile: { select: { id: true } },
+        companyMemberships: { select: { companyId: true } }
+      }
+    }),
+    tx.request.findUnique({
+      where: { id: input.requestId },
+      select: {
+        id: true,
+        requestNumber: true,
+        status: true,
+        clientId: true,
+        companyId: true
+      }
+    }),
+    tx.requestSelectionBatch.findUnique({
+      where: { id: input.batchId },
+      select: { id: true, requestId: true, revision: true, status: true }
+    }),
+    tx.requestSelectionBatchItem.findUnique({
+      where: { id: input.batchItemId },
+      select: { id: true, batchId: true, status: true }
+    })
+  ]);
+
+  if (!actor) throw decisionError('ACTOR_NOT_FOUND', input);
+  if (actor.role !== 'CLIENT' || actor.status !== 'ACTIVE' || !actor.clientProfile) {
+    throw decisionError('ACTOR_NOT_ALLOWED', input);
+  }
+  if (!request) throw decisionError('REQUEST_NOT_FOUND', input);
+  if (!actorCanAccessRequest(actor, request)) {
+    throw decisionError('REQUEST_ACCESS_DENIED', input);
+  }
+  if (!batch || batch.requestId !== request.id) {
+    throw decisionError('BATCH_NOT_FOUND', input);
+  }
+  if (!item || item.batchId !== batch.id) {
+    throw decisionError('BATCH_ITEM_NOT_FOUND', input);
+  }
+  if (batch.revision !== input.expectedRevision) {
+    throw decisionError('STALE_SELECTION_REVISION', input);
+  }
+
+  if (sameDecisionStatus(item.status, input.decision)) {
+    const compatibleFinalState =
+      batch.status === 'SENT'
+      || (batch.status === 'APPROVED' && item.status === 'APPROVED')
+      || (batch.status === 'REJECTED' && item.status === 'REJECTED');
+    if (compatibleFinalState) {
+      return {
+        outcome: 'noop',
+        decision: input.decision,
+        itemStatus: item.status,
+        reason: 'same_decision'
+      };
+    }
+  }
+  if (item.status !== 'PENDING') {
+    throw decisionError('BATCH_ITEM_DECISION_CONFLICT', input);
+  }
+
+  if (batch.status !== 'SENT') {
+    throw decisionError(
+      batch.status === 'SUPERSEDED'
+        ? 'STALE_SELECTION_REVISION'
+        : 'BATCH_NOT_ACTIVE',
+      input
+    );
+  }
+  if (request.status !== 'WAITING_APPROVAL') {
+    throw decisionError('REQUEST_STATUS_DOES_NOT_ALLOW_CLIENT_DECISION', input);
+  }
+  const activeBatches = await tx.requestSelectionBatch.findMany({
+    where: { requestId: request.id, status: 'SENT' },
+    orderBy: [{ revision: 'desc' }, { id: 'asc' }],
+    take: 2,
+    select: { id: true, revision: true }
+  });
+  if (
+    activeBatches.length !== 1
+    || activeBatches[0].id !== batch.id
+    || activeBatches[0].revision !== input.expectedRevision
+  ) {
+    throw decisionError('STALE_SELECTION_REVISION', input);
+  }
+
+  const now = new Date();
+  const itemStatus =
+    input.decision === CLIENT_SELECTION_DECISIONS.APPROVE ? 'APPROVED' : 'REJECTED';
+  const updated = await tx.requestSelectionBatchItem.updateMany({
+    where: { id: item.id, batchId: batch.id, status: 'PENDING' },
+    data: {
+      status: itemStatus,
+      decisionByUserId: actor.id,
+      approvedAt: itemStatus === 'APPROVED' ? now : null,
+      rejectedAt: itemStatus === 'REJECTED' ? now : null,
+      clientComment: comment
+    }
+  });
+
+  if (updated.count !== 1) {
+    const latest = await tx.requestSelectionBatchItem.findUnique({
+      where: { id: item.id },
+      select: { batchId: true, status: true }
+    });
+    if (latest?.batchId === batch.id && sameDecisionStatus(latest.status, input.decision)) {
+      return {
+        outcome: 'noop',
+        decision: input.decision,
+        itemStatus: latest.status,
+        reason: 'same_decision'
+      };
+    }
+    if (latest && latest.status !== 'PENDING') {
+      throw decisionError('BATCH_ITEM_DECISION_CONFLICT', input);
+    }
+    throw decisionError('CONCURRENT_SELECTION_DECISION', input);
+  }
+
+  const itemAudit = await writeAuditLog(tx, {
+    actor: auditUserActor(actor.id),
+    companyId: request.companyId,
+    entityType: 'REQUEST_SELECTION_BATCH_ITEM',
+    entityId: item.id,
+    entityLabel: `Позиція погодження ${request.requestNumber} · ревізія ${batch.revision}`,
+    action:
+      itemStatus === 'APPROVED'
+        ? 'REQUEST_SELECTION_ITEM_APPROVED'
+        : 'REQUEST_SELECTION_ITEM_REJECTED',
+    category: 'STANDARD',
+    oldValue: { status: 'PENDING' },
+    newValue: { status: itemStatus },
+    metadata: {
+      source: input.source ?? 'CLIENT_CABINET',
+      requestId: request.id,
+      batchId: batch.id,
+      revision: batch.revision,
+      decision: input.decision,
+      hasComment: comment !== null
+    },
+    allowedFields: {
+      oldValue: ['status'],
+      newValue: ['status'],
+      metadata: [
+        'source',
+        'requestId',
+        'batchId',
+        'revision',
+        'decision',
+        'hasComment'
+      ]
+    },
+    requestContext: input.requestContext
+  });
+
+  if (itemStatus === 'REJECTED') {
+    const batchTransition = await transitionRequestSelectionBatchStatus({
+      batchId: batch.id,
+      event: 'REJECT',
+      actor: input.actor,
+      source: input.source ?? 'CLIENT_CABINET',
+      requestContext: input.requestContext,
+      tx
+    });
+    if (
+      batchTransition.outcome !== 'changed'
+      && batchTransition.outcome !== 'noop'
+    ) {
+      throw decisionError('BATCH_TRANSITION_FAILED', input);
+    }
+    return {
+      outcome: 'changed',
+      decision: input.decision,
+      itemStatus,
+      batchOutcome: 'rejected',
+      requestOutcome: 'unchanged',
+      auditLogId: itemAudit.id
+    };
+  }
+
+  const aggregate = await tx.requestSelectionBatchItem.groupBy({
+    by: ['status'],
+    where: { batchId: batch.id },
+    _count: { _all: true }
+  });
+  const counts = new Map(aggregate.map((entry) => [entry.status, entry._count._all]));
+  const total = [...counts.values()].reduce((sum, count) => sum + count, 0);
+  const allApproved = total > 0 && (counts.get('APPROVED') ?? 0) === total;
+  if (!allApproved) {
+    return {
+      outcome: 'changed',
+      decision: input.decision,
+      itemStatus,
+      batchOutcome: 'unchanged',
+      requestOutcome: 'unchanged',
+      auditLogId: itemAudit.id
+    };
+  }
+
+  const batchTransition = await transitionRequestSelectionBatchStatus({
+    batchId: batch.id,
+    event: 'APPROVE',
+    actor: input.actor,
+    source: input.source ?? 'CLIENT_CABINET',
+    requestContext: input.requestContext,
+    tx
+  });
+  if (batchTransition.outcome !== 'changed' && batchTransition.outcome !== 'noop') {
+    throw decisionError('BATCH_TRANSITION_FAILED', input);
+  }
+
+  let requestTransition;
+  try {
+    requestTransition = await transitionRequestStatus({
+      requestId: request.id,
+      event: REQUEST_STATUS_EVENTS.CLIENT_SELECTION_APPROVED,
+      actor: input.actor,
+      tx,
+      reason: 'Клієнт погодив усі позиції актуальної версії підбору',
+      metadata: {
+        source: 'CLIENT_CABINET',
+        batchId: batch.id,
+        revision: batch.revision
+      }
+    });
+  } catch (error) {
+    if (error instanceof RequestStatusTransitionError) {
+      throw decisionError('REQUEST_STATUS_TRANSITION_FAILED', input, error);
+    }
+    throw error;
+  }
+  if (
+    requestTransition.outcome !== 'changed'
+    && requestTransition.outcome !== 'noop'
+  ) {
+    throw decisionError('REQUEST_STATUS_TRANSITION_FAILED', input);
+  }
+
+  return {
+    outcome: 'changed',
+    decision: input.decision,
+    itemStatus,
+    batchOutcome: 'approved',
+    requestOutcome: 'awaiting_invoice',
+    auditLogId: itemAudit.id
+  };
+}
+
+export function createClientSelectionDecisionService(database: TransactionRunner) {
+  return async function decideClientSelectionItem(
+    input: DecideClientSelectionItemInput
+  ): Promise<ClientSelectionDecisionResult> {
+    let comment: string | null;
+    try {
+      comment = parseClientSelectionComment(input.decision, input.clientComment);
+    } catch (error) {
+      if (error instanceof ClientSelectionDecisionError) {
+        throw decisionError(error.code, input, error);
+      }
+      throw error;
+    }
+
+    const { tx, ...decisionInput } = input;
+    if (tx) return executeClientSelectionDecision(tx, decisionInput, comment);
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        return await database.$transaction(
+          (transaction) =>
+            executeClientSelectionDecision(transaction, decisionInput, comment),
+          {
+            maxWait: 5_000,
+            timeout: 10_000,
+            isolationLevel: 'Serializable'
+          }
+        );
+      } catch (error) {
+        if (error instanceof ClientSelectionDecisionError) throw error;
+        if (error instanceof RequestSelectionBatchError) {
+          throw decisionError('BATCH_TRANSITION_FAILED', input, error);
+        }
+        if (error instanceof RequestStatusTransitionError) {
+          throw decisionError('REQUEST_STATUS_TRANSITION_FAILED', input, error);
+        }
+        if (databaseErrorCode(error) === 'P2034' && attempt === 0) continue;
+        throw decisionError(
+          databaseErrorCode(error) === 'P2034'
+            ? 'CONCURRENT_SELECTION_DECISION'
+            : 'DATABASE_TRANSACTION_FAILED',
+          input,
+          error
+        );
+      }
+    }
+    throw decisionError('CONCURRENT_SELECTION_DECISION', input);
+  };
+}
+
+export const decideClientSelectionItem =
+  createClientSelectionDecisionService(prisma);

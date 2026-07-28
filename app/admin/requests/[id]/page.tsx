@@ -91,6 +91,22 @@ export default async function AdminRequestDetailPage({
         assignedManager: { select: { id: true, name: true, email: true, role: true } },
         files: { orderBy: { createdAt: 'desc' } },
         items: { orderBy: { createdAt: 'desc' } },
+        selectionBatches: {
+          orderBy: [{ revision: 'desc' }, { createdAt: 'desc' }],
+          take: 1,
+          include: {
+            items: {
+              orderBy: [{ position: 'asc' }, { id: 'asc' }],
+              select: {
+                id: true,
+                position: true,
+                itemName: true,
+                status: true,
+                clientComment: true
+              }
+            }
+          }
+        },
         invoices: {
           orderBy: { createdAt: 'desc' },
           include: {
@@ -235,6 +251,7 @@ export default async function AdminRequestDetailPage({
             requestId={request.id}
             items={request.items}
             eligibility={selectionEligibility}
+            latestSelectionBatch={request.selectionBatches[0] ?? null}
           />
 
           <InvoicesSection requestId={request.id} invoices={request.invoices} approvedInvoiceItemCount={approvedInvoiceItemCount} />
@@ -626,11 +643,24 @@ function requestSelectionMessage(
 function RequestItemsSection({
   requestId,
   items,
-  eligibility
+  eligibility,
+  latestSelectionBatch
 }: {
   requestId: string;
   items: RequestItemView[];
   eligibility: RequestSelectionResendEligibility;
+  latestSelectionBatch: {
+    id: string;
+    revision: number;
+    status: string;
+    items: Array<{
+      id: string;
+      position: number;
+      itemName: string;
+      status: 'PENDING' | 'APPROVED' | 'REJECTED';
+      clientComment: string | null;
+    }>;
+  } | null;
 }) {
   const stateByItemId = new Map(
     eligibility.items.map((item) => [item.requestItemId, item.state])
@@ -656,6 +686,53 @@ function RequestItemsSection({
           <p className="text-xs leading-5 text-muted">{requestSelectionMessage(items, eligibility)}</p>
         </div>
       </div>
+
+      {latestSelectionBatch ? (
+        <div className="mt-5 rounded-md border border-border bg-surface-muted p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-bold text-foreground">
+              Рішення клієнта · версія №{latestSelectionBatch.revision}
+            </p>
+            <span className="rounded-full bg-card px-2.5 py-1 text-xs font-bold text-muted">
+              {latestSelectionBatch.status}
+            </span>
+          </div>
+          <div className="mt-3 grid gap-2">
+            {latestSelectionBatch.items.map((batchItem) => (
+              <div
+                key={batchItem.id}
+                className="flex min-w-0 flex-col gap-2 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-start sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="break-words text-sm font-semibold text-foreground">
+                    {batchItem.position}. {batchItem.itemName}
+                  </p>
+                  {batchItem.clientComment ? (
+                    <p className="mt-1 whitespace-pre-wrap break-words text-xs text-red-700">
+                      {batchItem.clientComment}
+                    </p>
+                  ) : null}
+                </div>
+                <span
+                  className={
+                    batchItem.status === 'APPROVED'
+                      ? 'w-fit shrink-0 rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success'
+                      : batchItem.status === 'REJECTED'
+                        ? 'w-fit shrink-0 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700'
+                        : 'w-fit shrink-0 rounded-full bg-[#FFF7E0] px-2.5 py-1 text-xs font-bold text-[#8A5B24]'
+                  }
+                >
+                  {batchItem.status === 'APPROVED'
+                    ? 'Погоджено'
+                    : batchItem.status === 'REJECTED'
+                      ? 'Відхилено'
+                      : 'Очікує рішення'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-5 grid min-w-0 max-w-full gap-3 rounded-md border border-border p-3 sm:p-4">
         {items.map((item) => {

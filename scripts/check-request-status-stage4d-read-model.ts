@@ -334,12 +334,12 @@ test('price and quantity presentation handles null and decimal strings', () => {
   assert.equal(formatClientSelectionQuantity('2.500', 'шт'), '2.500 шт');
 });
 
-test('batch UI is read-only and legacy action stays isolated', () => {
+test('batch UI remains snapshot-based and legacy action stays isolated', () => {
   const batch = readFileSync('components/client/client-approval-batch-section.tsx', 'utf8');
   const legacy = readFileSync('components/client/client-legacy-selection-section.tsx', 'utf8');
   assert.doesNotMatch(batch, /approveClientRequestItemsAction|approvedByClient|includeInInvoice/);
   assert.doesNotMatch(batch, /<form|type="checkbox"|sourceRequestItemId|snapshotHash|vehicleVin/);
-  assert.match(batch, /лише для перегляду/);
+  assert.match(batch, /ClientSelectionDecisionControls/);
   assert.match(legacy, /approveClientRequestItemsAction/);
 });
 

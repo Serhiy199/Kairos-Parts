@@ -211,7 +211,10 @@ function main() {
   assert.match(sendService, /getResendEligibility/);
   assert.match(sendService, /canonicalItemIds/);
   assert.doesNotMatch(sendService, /sourceItem\.visibleToClient\)\s*fail/);
-  assert.doesNotMatch(clientReadModel, /APPROVE|REJECT|AWAITING_INVOICE/);
+  assert.doesNotMatch(
+    clientReadModel,
+    /transitionRequestSelectionBatchStatus|transitionRequestStatus|requestSelectionBatch(Item)?\.(update|updateMany)/
+  );
 
   console.log('Stage 4C1 resend-after-edit checks passed.');
 }

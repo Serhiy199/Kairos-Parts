@@ -930,7 +930,6 @@ async function main() {
   );
 
   for (const productionFile of [
-    'app/client/actions.ts',
     'lib/telegram/notifications.ts',
     'lib/commercial-offers/service.ts',
     'lib/invoices/service.ts'
@@ -938,6 +937,11 @@ async function main() {
     const productionSource = readFileSync(resolve(cwd, productionFile), 'utf8');
     assert.doesNotMatch(productionSource, /request-selection|RequestSelectionBatch/);
   }
+  const clientActionsSource = readFileSync(resolve(cwd, 'app/client/actions.ts'), 'utf8');
+  assert.doesNotMatch(
+    clientActionsSource,
+    /requestSelectionBatch(Item)?\.(create|update|updateMany|delete|deleteMany)/
+  );
 
   console.log('Request selection batch foundation verification passed.');
 }

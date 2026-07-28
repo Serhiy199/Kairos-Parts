@@ -33,6 +33,16 @@ function resultMessage(result?: string) {
     'item-selection-required': 'Оберіть хоча б одну позицію для включення у рахунок.',
     'items-approval-error': 'Не вдалося погодити позиції. Спробуйте ще раз.',
     'items-approval-forbidden': 'Позиції не знайдено або вони недоступні для вашого кабінету.',
+    'selection-item-approved': 'Позицію погоджено. Очікується рішення щодо інших позицій.',
+    'selection-fully-approved': 'Усі позиції погоджено. Заявка очікує рахунок.',
+    'selection-item-rejected': 'Позицію відхилено. Менеджер підготує оновлену версію підбору.',
+    'selection-decision-noop': 'Це рішення вже збережено.',
+    'selection-decision-stale': 'Ця версія підбору вже неактуальна. Оновіть сторінку.',
+    'selection-decision-conflict': 'Рішення для цієї позиції вже зафіксовано й не може бути змінене.',
+    'selection-decision-forbidden': 'Ця добірка недоступна для вашого кабінету.',
+    'selection-rejection-comment-required': 'Вкажіть причину відхилення.',
+    'selection-rejection-comment-invalid': 'Причина має містити від 3 до 500 символів без HTML.',
+    'selection-decision-error': 'Не вдалося зберегти рішення. Спробуйте ще раз.',
     'item-change-created': 'Уточнення по позиції передано менеджеру.',
     'item-change-required': 'Вкажіть нове значення або причину уточнення.',
     'item-change-field-forbidden': 'Це поле не можна змінювати з кабінету клієнта.',
@@ -55,6 +65,11 @@ function resultMessageTone(result?: string) {
     'item-selection-required',
     'items-approval-error',
     'items-approval-forbidden',
+    'selection-decision-conflict',
+    'selection-decision-forbidden',
+    'selection-rejection-comment-required',
+    'selection-rejection-comment-invalid',
+    'selection-decision-error',
     'item-change-required',
     'item-change-field-forbidden',
     'item-change-forbidden',
@@ -67,7 +82,14 @@ function resultMessageTone(result?: string) {
     'entity-not-found-or-forbidden'
   ]);
 
-  return result && errorResults.has(result) ? 'error' : 'success';
+  const warningResults = new Set([
+    'selection-item-rejected',
+    'selection-decision-stale',
+    'selection-decision-conflict'
+  ]);
+  if (result && errorResults.has(result)) return 'error';
+  if (result && warningResults.has(result)) return 'warning';
+  return 'success';
 }
 
 export default async function ClientRequestDetailPage({
@@ -160,7 +182,9 @@ export default async function ClientRequestDetailPage({
           className={
             messageTone === 'error'
               ? 'rounded-md border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700'
-              : 'rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success'
+              : messageTone === 'warning'
+                ? 'rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm font-semibold text-[#8A5B24]'
+                : 'rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success'
           }
         >
           {message}

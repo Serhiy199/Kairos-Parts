@@ -41,6 +41,8 @@ export type RequestStatusTransitionMetadata = {
   correlationId?: string;
   triggerEntityType?: 'REQUEST_ITEM' | 'INVOICE' | 'REQUEST';
   triggerEntityId?: string;
+  batchId?: string;
+  revision?: number;
 };
 
 export type TransitionRequestStatusInput = {
@@ -298,7 +300,9 @@ async function executeRequestStatusTransition(
         'eventKey',
         'correlationId',
         'triggerEntityType',
-        'triggerEntityId'
+        'triggerEntityId',
+        'batchId',
+        'revision'
       ]
     }
   });

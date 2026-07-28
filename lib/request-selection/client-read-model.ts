@@ -22,6 +22,7 @@ export type ClientSelectionItemReadModel = {
   unitPrice: string | null;
   currency: string | null;
   managerComment: string | null;
+  clientComment: string | null;
   vehicle: {
     displayName: string | null;
     brand: string | null;
@@ -61,7 +62,7 @@ export type ClientRequestApprovalReadModel =
       activeBatch: {
         id: string;
         revision: number;
-        status: 'SENT';
+        status: 'SENT' | 'APPROVED' | 'REJECTED';
         sentAt: string | null;
         itemCount: number;
         items: ClientSelectionItemReadModel[];
@@ -137,6 +138,7 @@ const batchItemSelect = {
   approvedUnitPrice: true,
   currency: true,
   managerComment: true,
+  clientComment: true,
   vehicleDisplayName: true,
   vehicleBrand: true,
   vehicleModel: true,
@@ -238,6 +240,7 @@ export function mapClientSelectionItem(
     unitPrice: item.approvedUnitPrice?.toString() ?? null,
     currency: item.approvedUnitPrice === null ? null : item.currency,
     managerComment: item.managerComment,
+    clientComment: item.clientComment,
     vehicle: hasVehicleSnapshot(item)
       ? {
           displayName: item.vehicleDisplayName,
@@ -287,7 +290,7 @@ function batchReadModel(
     activeBatch: {
       id: batch.id,
       revision: batch.revision,
-      status: 'SENT',
+      status: batch.status as 'SENT' | 'APPROVED' | 'REJECTED',
       sentAt: batch.sentAt?.toISOString() ?? null,
       itemCount: batch.items.length,
       items: batch.items.map(mapClientSelectionItem)
@@ -346,9 +349,24 @@ export function createClientRequestApprovalReadService(database: ReadDatabase) {
     if (activeBatches.length > 1) {
       throw readError('ACTIVE_BATCH_INTEGRITY_ERROR', request.id);
     }
-    const activeBatch = activeBatches[0];
+    let activeBatch = activeBatches[0];
+    if (!activeBatch) {
+      try {
+        [activeBatch] = await database.requestSelectionBatch.findMany({
+          where: {
+            requestId: request.id,
+            status: { in: ['APPROVED', 'REJECTED'] }
+          },
+          orderBy: [{ revision: 'desc' }, { id: 'asc' }],
+          take: 1,
+          select: activeBatchSelect
+        });
+      } catch (error) {
+        throw readError('BATCH_READ_FAILED', request.id, error);
+      }
+    }
     if (activeBatch) {
-      if (request.status !== 'WAITING_APPROVAL') {
+      if (activeBatch.status === 'SENT' && request.status !== 'WAITING_APPROVAL') {
         console.warn('Active request selection batch has an unexpected Request status.', {
           requestId: request.id,
           revision: activeBatch.revision,

@@ -1,4 +1,5 @@
 import type { ClientRequestApprovalReadModel } from '@/lib/request-selection/client-read-model';
+import { ClientSelectionDecisionControls } from '@/components/client/client-selection-decision-controls';
 import {
   formatClientSelectionPrice,
   formatClientSelectionQuantity
@@ -58,10 +59,12 @@ export function ClientApprovalBatchSection({
         </div>
       </div>
 
-      <div className="mt-5 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm leading-6 text-[#8A5B24]">
-        Погодження та відхилення позицій буде доступне після активації нового циклу погодження.
-        На цьому етапі добірка доступна лише для перегляду.
-      </div>
+      {activeBatch.status === 'SENT' ? (
+        <div className="mt-5 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm leading-6 text-[#8A5B24]">
+          Перевірте кожну позицію та погодьте її або вкажіть причину відхилення.
+          Після першого відхилення ця версія добірки буде закрита.
+        </div>
+      ) : null}
 
       <div className="mt-5 grid min-w-0 gap-3">
         {activeBatch.items.map((item) => (
@@ -142,6 +145,40 @@ export function ClientApprovalBatchSection({
                 </p>
               </div>
             ) : null}
+
+            {item.clientComment ? (
+              <div className="mt-4 min-w-0 rounded-md bg-red-50 p-3">
+                <p className="text-xs font-bold uppercase text-red-700">Ваш коментар</p>
+                <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-red-700">
+                  {item.clientComment}
+                </p>
+              </div>
+            ) : null}
+
+            <div className="mt-4 border-t border-border pt-4">
+              {activeBatch.status === 'SENT' && item.status === 'PENDING' ? (
+                <ClientSelectionDecisionControls
+                  target={{
+                    requestId: model.request.id,
+                    batchId: activeBatch.id,
+                    batchItemId: item.id,
+                    revision: activeBatch.revision
+                  }}
+                />
+              ) : item.status === 'APPROVED' ? (
+                <p className="text-sm font-semibold text-success">
+                  Ви погодили цю позицію.
+                </p>
+              ) : item.status === 'REJECTED' ? (
+                <p className="text-sm font-semibold text-red-700">
+                  Позицію відхилено.
+                </p>
+              ) : (
+                <p className="text-sm font-semibold text-muted">
+                  Рішення для цієї версії більше не приймаються.
+                </p>
+              )}
+            </div>
           </article>
         ))}
 

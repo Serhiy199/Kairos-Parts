@@ -11,6 +11,11 @@ import { approveClientCommercialOffer, rejectClientCommercialOffer } from '@/lib
 import { parseClientOfferComment } from '@/lib/commercial-offers/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import {
+  CLIENT_SELECTION_DECISIONS,
+  ClientSelectionDecisionError,
+  decideClientSelectionItem
+} from '@/lib/request-selection/client-decision';
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -19,6 +24,89 @@ function readString(formData: FormData, key: string) {
 
 function redirectBack(requestId: string, result: string): never {
   redirect(`/client/requests/${requestId}?result=${result}`);
+}
+
+const selectionDecisionFeedback: Partial<
+  Record<ClientSelectionDecisionError['code'], string>
+> = {
+  REQUEST_ACCESS_DENIED: 'selection-decision-forbidden',
+  ACTOR_NOT_ALLOWED: 'selection-decision-forbidden',
+  BATCH_NOT_FOUND: 'selection-decision-stale',
+  BATCH_ITEM_NOT_FOUND: 'selection-decision-stale',
+  BATCH_NOT_ACTIVE: 'selection-decision-stale',
+  STALE_SELECTION_REVISION: 'selection-decision-stale',
+  REQUEST_STATUS_DOES_NOT_ALLOW_CLIENT_DECISION: 'selection-decision-stale',
+  BATCH_ITEM_ALREADY_DECIDED: 'selection-decision-conflict',
+  BATCH_ITEM_DECISION_CONFLICT: 'selection-decision-conflict',
+  REJECTION_COMMENT_REQUIRED: 'selection-rejection-comment-required',
+  REJECTION_COMMENT_INVALID: 'selection-rejection-comment-invalid',
+  CONCURRENT_SELECTION_DECISION: 'selection-decision-stale'
+};
+
+export async function decideClientSelectionItemAction(formData: FormData) {
+  const session = await requireClientSession();
+  const requestId = readString(formData, 'requestId');
+  const batchId = readString(formData, 'batchId');
+  const batchItemId = readString(formData, 'batchItemId');
+  const revisionValue = Number(readString(formData, 'revision'));
+  const decisionValue = readString(formData, 'decision');
+
+  if (
+    !hasDatabaseUrl()
+    || !requestId
+    || !batchId
+    || !batchItemId
+    || !Number.isSafeInteger(revisionValue)
+    || revisionValue < 1
+    || (decisionValue !== CLIENT_SELECTION_DECISIONS.APPROVE
+      && decisionValue !== CLIENT_SELECTION_DECISIONS.REJECT)
+  ) {
+    redirectBack(requestId, 'selection-decision-error');
+  }
+
+  let feedback: string;
+  try {
+    const result = await decideClientSelectionItem({
+      requestId,
+      batchId,
+      batchItemId,
+      expectedRevision: revisionValue,
+      decision: decisionValue,
+      clientComment: readString(formData, 'clientComment'),
+      actor: { id: session.user.id },
+      source: 'CLIENT_CABINET',
+      requestContext: await getServerAuditRequestContext()
+    });
+    if (result.outcome === 'noop') {
+      feedback = 'selection-decision-noop';
+    } else if (result.batchOutcome === 'approved') {
+      feedback = 'selection-fully-approved';
+    } else if (result.batchOutcome === 'rejected') {
+      feedback = 'selection-item-rejected';
+    } else {
+      feedback = 'selection-item-approved';
+    }
+  } catch (error) {
+    if (error instanceof ClientSelectionDecisionError) {
+      redirectBack(
+        requestId,
+        selectionDecisionFeedback[error.code] ?? 'selection-decision-error'
+      );
+    }
+    console.error('Client selection decision failed.', {
+      requestId,
+      batchId,
+      batchItemId
+    });
+    redirectBack(requestId, 'selection-decision-error');
+  }
+
+  revalidatePath('/client/requests');
+  revalidatePath(`/client/requests/${requestId}`);
+  revalidatePath('/admin');
+  revalidatePath('/admin/requests');
+  revalidatePath(`/admin/requests/${requestId}`);
+  redirectBack(requestId, feedback);
 }
 
 const CLIENT_REQUEST_ITEM_EDIT_FIELDS = new Set(['name', 'catalogNumber', 'quantity', 'comment']);
