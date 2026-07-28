@@ -1,3 +1,5 @@
+import { revalidatePath } from 'next/cache';
+
 import { crmAccessError, getCrmApiSession } from '@/lib/admin/access';
 import { buildAuditDiff } from '@/lib/audit-log/payload';
 import { auditRequestContextFromHeaders } from '@/lib/audit-log/request-context';
@@ -92,6 +94,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ it
     return updated;
   });
 
+  revalidatePath('/admin');
+  revalidatePath('/admin/requests');
+  revalidatePath(`/admin/requests/${existing.requestId}`);
+
   return Response.json({ item });
 }
 
@@ -130,6 +136,10 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       requestContext
     });
   });
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/requests');
+  revalidatePath(`/admin/requests/${existing.requestId}`);
 
   return Response.json({ status: 'deleted' });
 }

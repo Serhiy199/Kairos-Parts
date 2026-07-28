@@ -7,6 +7,7 @@ import { requireAdminSession } from '@/lib/admin/access';
 import { approveChangeRequest, rejectChangeRequest } from '@/lib/change-requests/service';
 import { parseAdminReviewInput } from '@/lib/change-requests/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { prisma } from '@/lib/prisma';
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -33,7 +34,28 @@ export async function approveChangeRequestAction(formData: FormData) {
   }
 
   revalidatePath('/admin/change-requests');
+  if (result.changeRequest.entityType === 'REQUEST_ITEM') {
+    const requestItem = await prisma.requestItem.findUnique({
+      where: { id: result.changeRequest.entityId },
+      select: { requestId: true }
+    });
+    if (requestItem) {
+      revalidatePath('/admin');
+      revalidatePath('/admin/requests');
+      revalidatePath(`/admin/requests/${requestItem.requestId}`);
+    }
+  }
   if (result.changeRequest.entityType === 'VEHICLE') {
+    const affectedRequestItems = await prisma.requestItem.findMany({
+      where: { vehicleId: result.changeRequest.entityId },
+      select: { requestId: true },
+      distinct: ['requestId']
+    });
+    revalidatePath('/admin');
+    revalidatePath('/admin/requests');
+    affectedRequestItems.forEach((item) => {
+      revalidatePath(`/admin/requests/${item.requestId}`);
+    });
     revalidatePath(`/admin/vehicles/${result.changeRequest.entityId}/edit`);
     revalidatePath('/client/vehicles');
     revalidatePath(`/client/vehicles/${result.changeRequest.entityId}`);

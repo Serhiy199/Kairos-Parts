@@ -4,6 +4,11 @@ import type { AuditRequestContext } from '@/lib/audit-log/contracts';
 import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { prisma } from '@/lib/prisma';
 import {
+  getRequestSelectionResendEligibility,
+  RequestSelectionResendEligibilityError,
+  type RequestSelectionResendEligibility
+} from '@/lib/request-selection/resend-eligibility';
+import {
   createRequestSelectionBatchDraft,
   RequestSelectionBatchError,
   transitionRequestSelectionBatchStatus,
@@ -112,13 +117,18 @@ type SendDependencies = {
   ): Promise<RequestSelectionBatchTransitionResult>;
   transitionRequest(input: TransitionRequestStatusInput): Promise<RequestStatusTransitionResult>;
   notify(input: { requestId: string }): ReturnType<typeof sendTelegramRequestItemsApprovalNotification>;
+  getResendEligibility?(input: {
+    requestId: string;
+    tx: Prisma.TransactionClient;
+  }): Promise<RequestSelectionResendEligibility>;
 };
 
 const defaultDependencies: SendDependencies = {
   createBatch: createRequestSelectionBatchDraft,
   transitionBatch: transitionRequestSelectionBatchStatus,
   transitionRequest: transitionRequestStatus,
-  notify: sendTelegramRequestItemsApprovalNotification
+  notify: sendTelegramRequestItemsApprovalNotification,
+  getResendEligibility: getRequestSelectionResendEligibility
 };
 
 function fail(
@@ -157,20 +167,6 @@ function assertInput(input: SendRequestSelectionForApprovalInput) {
       fail('SOURCE_ITEM_VERSION_CONFLICT', input.requestId, { requestItemId });
     }
   }
-}
-
-function isSameOperation(
-  activeItems: Array<{ sourceRequestItemId: string | null; sourceUpdatedAt: Date }>,
-  requestItemIds: string[],
-  expectedVersions: RequestSelectionSourceVersion[]
-) {
-  if (activeItems.length !== requestItemIds.length) return false;
-  const expectedById = new Map(expectedVersions.map((entry) => [entry.id, entry.updatedAt]));
-  return activeItems.every((item, index) => {
-    const requestItemId = requestItemIds[index];
-    return item.sourceRequestItemId === requestItemId
-      && expectedById.get(requestItemId)?.getTime() === item.sourceUpdatedAt.getTime();
-  });
 }
 
 function mapBatchError(
@@ -213,6 +209,9 @@ export function createSendRequestSelectionForApprovalService(
   database: TransactionRunner,
   dependencies: SendDependencies = defaultDependencies
 ) {
+  const resolveResendEligibility =
+    dependencies.getResendEligibility ?? defaultDependencies.getResendEligibility!;
+
   return async function sendRequestSelectionForApproval(
     input: SendRequestSelectionForApprovalInput
   ): Promise<SendRequestSelectionForApprovalResult> {
@@ -238,6 +237,31 @@ export function createSendRequestSelectionForApprovalService(
         fail('REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND', request.id);
       }
 
+      let resendEligibility: RequestSelectionResendEligibility;
+      try {
+        resendEligibility = await resolveResendEligibility({
+          requestId: request.id,
+          tx
+        });
+      } catch (error) {
+        if (
+          error instanceof RequestSelectionResendEligibilityError
+          && error.code === 'REQUEST_NOT_FOUND'
+        ) {
+          fail('REQUEST_NOT_FOUND', request.id, {}, error);
+        }
+        fail('SOURCE_ITEM_INVALID', request.id, {}, error);
+      }
+      if (!resendEligibility.canSend) {
+        if (resendEligibility.reason === 'REQUEST_STATUS_BLOCKED') {
+          fail('REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND', request.id);
+        }
+        fail('DUPLICATE_SEND_OPERATION', request.id, {
+          batchId: resendEligibility.activeBatchId ?? undefined
+        });
+      }
+      const canonicalItemIds = resendEligibility.eligibleItemIds;
+
       const activeBatch = await tx.requestSelectionBatch.findFirst({
         where: { requestId: request.id, status: 'SENT' },
         select: {
@@ -248,16 +272,6 @@ export function createSendRequestSelectionForApprovalService(
           }
         }
       });
-      if (
-        activeBatch
-        && isSameOperation(
-          activeBatch.items,
-          input.requestItemIds,
-          input.expectedRequestItemVersions
-        )
-      ) {
-        fail('DUPLICATE_SEND_OPERATION', request.id, { batchId: activeBatch.id });
-      }
 
       const sourceItems = await tx.requestItem.findMany({
         where: { id: { in: input.requestItemIds } },
@@ -278,9 +292,13 @@ export function createSendRequestSelectionForApprovalService(
         ) {
           fail('SOURCE_ITEM_VERSION_CONFLICT', request.id, { requestItemId });
         }
-        if (sourceItem.visibleToClient) {
-          fail('SOURCE_ITEM_INVALID', request.id, { requestItemId });
-        }
+      }
+      const submittedIds = new Set(input.requestItemIds);
+      if (
+        canonicalItemIds.length !== input.requestItemIds.length
+        || canonicalItemIds.some((id) => !submittedIds.has(id))
+      ) {
+        fail('SOURCE_ITEM_INVALID', request.id);
       }
 
       if (activeBatch) {
@@ -309,7 +327,7 @@ export function createSendRequestSelectionForApprovalService(
       try {
         batch = await dependencies.createBatch({
           requestId: request.id,
-          requestItemIds: input.requestItemIds,
+          requestItemIds: canonicalItemIds,
           expectedRequestItemVersions: input.expectedRequestItemVersions,
           actor: input.actor,
           source: 'ADMIN_CRM',
@@ -346,7 +364,7 @@ export function createSendRequestSelectionForApprovalService(
       const previousSourceIds = activeBatch?.items
         .map((item) => item.sourceRequestItemId)
         .filter((id): id is string => Boolean(id)) ?? [];
-      const selectedIds = new Set(input.requestItemIds);
+      const selectedIds = new Set(canonicalItemIds);
       const sourcesToHide = previousSourceIds.filter((id) => !selectedIds.has(id));
       let hiddenPrevious: { count: number };
       let selected: { count: number };
@@ -359,7 +377,7 @@ export function createSendRequestSelectionForApprovalService(
             });
 
         selected = await tx.requestItem.updateMany({
-          where: { requestId: request.id, id: { in: input.requestItemIds } },
+          where: { requestId: request.id, id: { in: canonicalItemIds } },
           data: {
             visibleToClient: true,
             approvedByClient: false,
@@ -370,7 +388,7 @@ export function createSendRequestSelectionForApprovalService(
       } catch (error) {
         fail('VISIBILITY_UPDATE_FAILED', request.id, { batchId: batch.batchId }, error);
       }
-      if (selected.count !== input.requestItemIds.length) {
+      if (selected.count !== canonicalItemIds.length) {
         fail('VISIBILITY_UPDATE_FAILED', request.id, { batchId: batch.batchId });
       }
 
@@ -386,10 +404,15 @@ export function createSendRequestSelectionForApprovalService(
           metadata: {
             source: 'ADMIN_CRM',
             itemCount: selected.count,
-            itemIds: input.requestItemIds.slice(0, 50),
+            itemIds: canonicalItemIds.slice(0, 50),
             batchId: batch.batchId,
             revision: batch.revision,
-            supersededBatchId: activeBatch?.id ?? null
+            supersededBatchId: activeBatch?.id ?? null,
+            resendReason: resendEligibility.reason,
+            changedItemCount: resendEligibility.changedItemIds.length,
+            newItemCount: resendEligibility.newItemIds.length,
+            removedItemCount: resendEligibility.removedBatchItemIds.length,
+            previousRevision: resendEligibility.activeRevision
           },
           allowedFields: {
             metadata: [
@@ -398,7 +421,12 @@ export function createSendRequestSelectionForApprovalService(
               'itemIds',
               'batchId',
               'revision',
-              'supersededBatchId'
+              'supersededBatchId',
+              'resendReason',
+              'changedItemCount',
+              'newItemCount',
+              'removedItemCount',
+              'previousRevision'
             ]
           },
           requestContext: input.requestContext

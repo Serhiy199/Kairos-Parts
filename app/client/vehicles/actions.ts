@@ -285,6 +285,16 @@ export async function updateClientVehicle(
     });
   }
 
+  const affectedRequestItems = await prisma.requestItem.findMany({
+    where: { vehicleId: vehicle.id },
+    select: { requestId: true },
+    distinct: ['requestId']
+  });
+  revalidatePath('/admin');
+  revalidatePath('/admin/requests');
+  affectedRequestItems.forEach((item) => {
+    revalidatePath(`/admin/requests/${item.requestId}`);
+  });
   revalidatePath('/client/vehicles');
   revalidatePath(`/client/vehicles/${vehicle.id}`);
   redirect(`/client/vehicles/${vehicle.id}?updated=1`);

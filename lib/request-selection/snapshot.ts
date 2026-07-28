@@ -57,6 +57,29 @@ export type RequestSelectionSnapshot = {
   vehicleVin: string | null;
 };
 
+export type RequestSelectionApprovalContent = Pick<
+  RequestSelectionSnapshot,
+  | 'snapshotSchemaVersion'
+  | 'equipmentType'
+  | 'itemName'
+  | 'brand'
+  | 'catalogNumber'
+  | 'analogNumber'
+  | 'quantity'
+  | 'unit'
+  | 'availability'
+  | 'deliveryTime'
+  | 'approvedUnitPrice'
+  | 'currency'
+  | 'managerComment'
+  | 'vehicleIdSnapshot'
+  | 'vehicleDisplayName'
+  | 'vehicleBrand'
+  | 'vehicleModel'
+  | 'vehicleYear'
+  | 'vehicleVin'
+>;
+
 export type RequestSelectionSnapshotErrorCode =
   | 'INVALID_ITEM_NAME'
   | 'INVALID_QUANTITY'
@@ -98,6 +121,36 @@ export function sha256RequestSelectionSnapshot(value: unknown) {
   return createHash('sha256')
     .update(stableSerializeRequestSelectionSnapshot(value), 'utf8')
     .digest('hex');
+}
+
+export function hashRequestSelectionApprovalContent(
+  snapshot: RequestSelectionApprovalContent
+) {
+  return sha256RequestSelectionSnapshot({
+    snapshotSchemaVersion: snapshot.snapshotSchemaVersion,
+    equipmentType: snapshot.equipmentType,
+    itemName: snapshot.itemName,
+    brand: snapshot.brand,
+    catalogNumber: snapshot.catalogNumber,
+    analogNumber: snapshot.analogNumber,
+    quantity: snapshot.quantity,
+    unit: snapshot.unit,
+    availability: snapshot.availability,
+    deliveryTime: snapshot.deliveryTime,
+    approvedUnitPrice: snapshot.approvedUnitPrice,
+    currency: snapshot.currency,
+    managerComment: snapshot.managerComment,
+    vehicle: snapshot.vehicleIdSnapshot
+      ? {
+          id: snapshot.vehicleIdSnapshot,
+          displayName: snapshot.vehicleDisplayName,
+          brand: snapshot.vehicleBrand,
+          model: snapshot.vehicleModel,
+          year: snapshot.vehicleYear,
+          vin: snapshot.vehicleVin
+        }
+      : null
+  });
 }
 
 function canonicalSnapshotContent(

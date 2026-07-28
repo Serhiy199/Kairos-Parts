@@ -337,7 +337,17 @@ export async function updateAdminVehicle(
   const ownerProfilePath = vehicle.companyId
     ? `/admin/companies/${vehicle.companyId}`
     : `/admin/clients/${vehicle.clientId}`;
+  const affectedRequestItems = await prisma.requestItem.findMany({
+    where: { vehicleId: vehicle.id },
+    select: { requestId: true },
+    distinct: ['requestId']
+  });
 
+  revalidatePath('/admin');
+  revalidatePath('/admin/requests');
+  affectedRequestItems.forEach((item) => {
+    revalidatePath(`/admin/requests/${item.requestId}`);
+  });
   revalidatePath(ownerProfilePath);
   revalidatePath(`/admin/vehicles/${vehicle.id}/edit`);
   revalidatePath('/client/vehicles');

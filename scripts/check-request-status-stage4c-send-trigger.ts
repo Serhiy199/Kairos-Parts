@@ -177,7 +177,7 @@ function createHarness(initial: FakeState, failure?: FailurePoint, actorRole = '
         });
       }
       assert.equal(
-        current.items.find((item) => item.id === input.requestItemIds[0])?.salePrice,
+        current.items.find((item) => item.id === 'item-new')?.salePrice,
         null,
         'nullable price must remain null before snapshot delegation'
       );
@@ -271,6 +271,92 @@ function createHarness(initial: FakeState, failure?: FailurePoint, actorRole = '
         nextStatus: 'WAITING_APPROVAL' as const,
         historyId: 'history-1',
         auditLogId: 'audit-status'
+      };
+    },
+    async getResendEligibility() {
+      const current = working!;
+      const requestItems = current.items.filter(
+        (item) => item.requestId === current.request?.id
+      );
+      const activeBySourceId = new Map(
+        (current.activeBatch?.items ?? [])
+          .filter((item): item is { sourceRequestItemId: string; sourceUpdatedAt: Date } =>
+            Boolean(item.sourceRequestItemId)
+          )
+          .map((item) => [item.sourceRequestItemId, item])
+      );
+      const currentIds = new Set(requestItems.map((item) => item.id));
+      const notSentItemIds: string[] = [];
+      const changedItemIds: string[] = [];
+      const newItemIds: string[] = [];
+      const unchangedItemIds: string[] = [];
+      const items = requestItems.map((item) => {
+        const activeItem = activeBySourceId.get(item.id) ?? null;
+        const state = !current.activeBatch
+          ? 'NOT_SENT' as const
+          : !activeItem
+            ? 'NEW_AFTER_SEND' as const
+            : activeItem.sourceUpdatedAt.getTime() === item.updatedAt.getTime()
+              ? 'UNCHANGED' as const
+              : 'CHANGED_AFTER_SEND' as const;
+        if (state === 'NOT_SENT') notSentItemIds.push(item.id);
+        if (state === 'NEW_AFTER_SEND') newItemIds.push(item.id);
+        if (state === 'CHANGED_AFTER_SEND') changedItemIds.push(item.id);
+        if (state === 'UNCHANGED') unchangedItemIds.push(item.id);
+        return {
+          requestItemId: item.id,
+          activeBatchItemId: activeItem ? `active-${item.id}` : null,
+          state,
+          currentUpdatedAt: item.updatedAt.toISOString(),
+          activeBatchSourceUpdatedAt: activeItem?.sourceUpdatedAt.toISOString() ?? null,
+          currentApprovalHash: `current-${item.id}`,
+          activeApprovalHash: activeItem ? `active-${item.id}` : null
+        };
+      });
+      const removedBatchItemIds = (current.activeBatch?.items ?? [])
+        .filter((item) =>
+          item.sourceRequestItemId === null || !currentIds.has(item.sourceRequestItemId)
+        )
+        .map((_, index) => `removed-${index}`);
+      const statusAllowed = new Set([
+        'IN_PROGRESS',
+        'OFFER_PREPARING',
+        'WAITING_APPROVAL'
+      ]).has(current.request?.status ?? '');
+      const dirtyKinds = [
+        notSentItemIds.length > 0,
+        changedItemIds.length > 0,
+        newItemIds.length > 0,
+        removedBatchItemIds.length > 0
+      ].filter(Boolean).length;
+      const canSend = statusAllowed && requestItems.length > 0 && dirtyKinds > 0;
+
+      return {
+        requestId: current.request?.id ?? 'request-1',
+        requestStatus: current.request?.status ?? 'IN_PROGRESS',
+        activeBatchId: current.activeBatch?.id ?? null,
+        activeRevision: current.activeBatch?.revision ?? null,
+        items,
+        eligibleItemIds: canSend ? requestItems.map((item) => item.id) : [],
+        notSentItemIds,
+        changedItemIds,
+        newItemIds,
+        unchangedItemIds,
+        removedBatchItemIds,
+        canSend,
+        reason: !statusAllowed
+          ? 'REQUEST_STATUS_BLOCKED'
+          : !canSend
+            ? 'NOTHING_TO_SEND'
+            : dirtyKinds > 1
+              ? 'HAS_MULTIPLE_CHANGES'
+              : notSentItemIds.length > 0
+                ? 'HAS_NOT_SENT_ITEMS'
+                : newItemIds.length > 0
+                  ? 'HAS_NEW_ITEMS'
+                  : changedItemIds.length > 0
+                    ? 'HAS_CHANGED_ITEMS'
+                    : 'HAS_REMOVED_ITEMS'
       };
     },
     async notify() {
@@ -373,14 +459,22 @@ async function main() {
     };
     state.nextRevision = 2;
     const harness = createHarness(state);
-    const result = await harness.service(input());
+    const result = await harness.service({
+      requestId: 'request-1',
+      requestItemIds: ['item-old', 'item-new'],
+      expectedRequestItemVersions: [
+        { id: 'item-old', updatedAt: oldVersion },
+        { id: 'item-new', updatedAt: state.items[1].updatedAt }
+      ],
+      actor: { id: 'actor-1' }
+    });
     const after = harness.getState();
     assert.equal(result.revision, 2);
     assert.equal(result.supersededBatchId, 'batch-1');
     assert.equal(result.requestStatusTransition, 'noop');
     assert.equal(after.statusHistory, 0);
-    assert.equal(after.items.find((item) => item.id === 'item-old')?.visibleToClient, false);
-    assert.equal(after.items.find((item) => item.id === 'item-old')?.approvedByClient, true);
+    assert.equal(after.items.find((item) => item.id === 'item-old')?.visibleToClient, true);
+    assert.equal(after.items.find((item) => item.id === 'item-old')?.approvedByClient, false);
     assert.equal(after.audits.filter((action) => action === 'REQUEST_STATUS_CHANGED').length, 0);
     assert.ok(after.audits.includes('REQUEST_SELECTION_BATCH_SUPERSEDED'));
   }

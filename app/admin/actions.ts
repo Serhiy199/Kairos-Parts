@@ -449,6 +449,8 @@ export async function updateAdminRequestItem(formData: FormData) {
     });
   });
 
+  revalidatePath('/admin');
+  revalidatePath('/admin/requests');
   revalidatePath(`/admin/requests/${item.requestId}`);
 
   if (item.vehicleId) {
@@ -583,6 +585,8 @@ export async function deleteAdminRequestItem(formData: FormData) {
     });
   });
 
+  revalidatePath('/admin');
+  revalidatePath('/admin/requests');
   revalidatePath(`/admin/requests/${item.requestId}`);
 
   if (item.vehicleId) {

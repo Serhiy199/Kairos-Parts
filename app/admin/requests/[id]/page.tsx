@@ -33,6 +33,11 @@ import { getVehicleDisplay } from '@/lib/vehicles/name';
 import { INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 import { PART_MANUFACTURERS } from '@/lib/parts/part-manufacturers';
 import { prisma } from '@/lib/prisma';
+import {
+  getRequestSelectionResendEligibility,
+  type RequestSelectionResendEligibility,
+  type RequestSelectionResendItemState
+} from '@/lib/request-selection/resend-eligibility';
 import { REQUEST_DOCUMENT_TYPE_LABELS, REQUEST_DOCUMENT_TYPES } from '@/lib/request-documents/validation';
 import { REQUEST_SOURCE_LABELS } from '@/lib/requests/sources';
 import { normalizeRequestStatusForSelection, REQUEST_STATUS_LABELS, REQUEST_STATUSES } from '@/lib/requests/statuses';
@@ -175,6 +180,9 @@ export default async function AdminRequestDetailPage({
     notFound();
   }
 
+  const selectionEligibility = await getRequestSelectionResendEligibility({
+    requestId: request.id
+  });
   const message = resultMessage(query.result);
   const publicStatusUrl = `/request/status/${request.publicStatusToken}`;
   const contactName = request.client?.contactName ?? request.guestName ?? 'Гість';
@@ -261,7 +269,11 @@ export default async function AdminRequestDetailPage({
             </section>
           ) : null}
 
-          <RequestItemsSection requestId={request.id} items={request.items} />
+          <RequestItemsSection
+            requestId={request.id}
+            items={request.items}
+            eligibility={selectionEligibility}
+          />
 
           <InvoicesSection requestId={request.id} invoices={request.invoices} approvedInvoiceItemCount={approvedInvoiceItemCount} />
 
@@ -605,9 +617,67 @@ function BillingSnapshotCard({ title, snapshot, buyer = false }: { title: string
   );
 }
 
-function RequestItemsSection({ requestId, items }: { requestId: string; items: RequestItemView[] }) {
-  const hiddenItems = items.filter((item) => !item.visibleToClient);
-  const hiddenItemCount = hiddenItems.length;
+const resendStatePresentation: Record<
+  RequestSelectionResendItemState,
+  { label: string; className: string }
+> = {
+  NOT_SENT: {
+    label: 'Чернетка',
+    className: 'bg-surface-muted text-muted'
+  },
+  UNCHANGED: {
+    label: 'Надіслано',
+    className: 'bg-[#E8F1FF] text-info'
+  },
+  CHANGED_AFTER_SEND: {
+    label: 'Змінено після надсилання',
+    className: 'bg-[#FFF7E0] text-[#8A5B24]'
+  },
+  NEW_AFTER_SEND: {
+    label: 'Нова позиція',
+    className: 'bg-accent/20 text-foreground'
+  }
+};
+
+function requestSelectionMessage(
+  items: RequestItemView[],
+  eligibility: RequestSelectionResendEligibility
+) {
+  if (eligibility.reason === 'REQUEST_STATUS_BLOCKED') {
+    return 'Поточний статус заявки не дозволяє надсилати нову версію добірки.';
+  }
+  if (items.length === 0) {
+    return 'Позицій ще немає.';
+  }
+  if (eligibility.removedBatchItemIds.length > 0) {
+    return 'Склад добірки змінився після останнього надсилання. Створіть нову версію для клієнта.';
+  }
+  if (eligibility.changedItemIds.length > 0) {
+    return 'Після останнього надсилання позиції було змінено. Надішліть нову версію клієнту на погодження.';
+  }
+  if (eligibility.newItemIds.length > 0 || eligibility.notSentItemIds.length > 0) {
+    return 'Є нові позиції, які ще не входять до надісланої версії.';
+  }
+  return 'Усі актуальні позиції вже входять до останньої надісланої версії.';
+}
+
+function RequestItemsSection({
+  requestId,
+  items,
+  eligibility
+}: {
+  requestId: string;
+  items: RequestItemView[];
+  eligibility: RequestSelectionResendEligibility;
+}) {
+  const stateByItemId = new Map(
+    eligibility.items.map((item) => [item.requestItemId, item.state])
+  );
+  const versionByItemId = new Map(
+    eligibility.items.map((item) => [item.requestItemId, item.currentUpdatedAt])
+  );
+  const eligibleIds = new Set(eligibility.eligibleItemIds);
+  const selectedItems = items.filter((item) => eligibleIds.has(item.id));
 
   return (
     <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
@@ -621,17 +691,15 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
         </div>
         <div className="grid w-full min-w-0 gap-3 xl:w-auto xl:min-w-[280px] xl:max-w-[320px] xl:shrink-0">
           <span className="w-fit rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{items.length} позицій</span>
-          <p className="text-xs leading-5 text-muted">
-            {hiddenItemCount > 0
-              ? `${hiddenItemCount} нових позицій ще не відправлено клієнту.`
-              : 'Усі додані позиції вже відправлені або позицій ще немає.'}
-          </p>
+          <p className="text-xs leading-5 text-muted">{requestSelectionMessage(items, eligibility)}</p>
         </div>
       </div>
 
       <div className="mt-5 grid min-w-0 max-w-full gap-3 rounded-md border border-border p-3 sm:p-4">
         {items.map((item) => {
           const itemTotal = item.salePrice ? calculateInvoiceLineTotal(item.quantity, item.salePrice) : null;
+          const resendState = stateByItemId.get(item.id) ?? 'NOT_SENT';
+          const resendPresentation = resendStatePresentation[resendState];
 
           return (
           <article key={item.id} className="min-w-0 rounded-md border border-border bg-card p-3 sm:p-4">
@@ -666,6 +734,9 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase text-muted">Клієнт</p>
                 <div className="mt-2 flex flex-wrap gap-2">
+                  <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${resendPresentation.className}`}>
+                    {resendPresentation.label}
+                  </span>
                   {!item.visibleToClient ? (
                     <span className="inline-flex rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-muted">Не відправлено клієнту</span>
                   ) : null}
@@ -721,17 +792,20 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
       <div className="mt-5 flex min-w-0 border-t border-border pt-5 sm:justify-end">
         <form action={sendAdminRequestItemsForApproval} className="w-full sm:w-auto">
           <input type="hidden" name="requestId" value={requestId} />
-          {hiddenItems.map((item) => (
+          {selectedItems.map((item) => (
             <input key={item.id} type="hidden" name="requestItemId" value={item.id} />
           ))}
           <input
             type="hidden"
             name="requestItemVersions"
             value={JSON.stringify(
-              hiddenItems.map((item) => ({ id: item.id, updatedAt: item.updatedAt.toISOString() }))
+              selectedItems.map((item) => ({
+                id: item.id,
+                updatedAt: versionByItemId.get(item.id) ?? item.updatedAt.toISOString()
+              }))
             )}
           />
-          <RequestSelectionSubmitButton disabled={hiddenItemCount === 0} />
+          <RequestSelectionSubmitButton disabled={!eligibility.canSend} />
         </form>
       </div>
     </section>
