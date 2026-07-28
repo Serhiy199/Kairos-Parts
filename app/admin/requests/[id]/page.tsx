@@ -26,6 +26,7 @@ import { StatusBadge } from '@/components/client/status-badge';
 import { ActionIcon } from '@/components/ui/action-icons';
 import { ManualEquipmentFields } from '@/components/vehicles/manual-equipment-fields';
 import { requireCrmSession } from '@/lib/admin/access';
+import { getAdminRequestFeedback } from '@/lib/admin/request-feedback';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { calculateInvoiceLineTotal, calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
@@ -50,54 +51,6 @@ function formatSize(size: number) {
 
 function formatMoney(value: { toString: () => string } | null, currency: string) {
   return value ? formatInvoiceMoney(value, currency) : '—';
-}
-
-function resultMessage(result?: string) {
-  const messages: Record<string, string> = {
-    'status-updated': 'Статус оновлено.',
-    assigned: 'Відповідального менеджера оновлено.',
-    'comment-added': 'Внутрішній коментар додано.',
-    'admin-only': 'Призначати менеджера може тільки ADMIN.',
-    'status-error': 'Не вдалося оновити статус.',
-    'ocr-created': 'OCR виконано. Перевірте результат нижче.',
-    'ocr-corrected': 'OCR-текст оновлено.',
-    'ocr-error': 'Не вдалося запустити OCR.',
-    'ocr-correction-error': 'Не вдалося зберегти OCR-корекцію.',
-    'assign-error': 'Не вдалося призначити менеджера.',
-    'comment-error': 'Коментар не може бути порожнім.',
-    'manager-not-found': 'Менеджера не знайдено.',
-    'item-created': 'Позицію додано.',
-    'item-updated': 'Позицію оновлено.',
-    'item-deleted': 'Позицію видалено.',
-    'items-sent-for-approval': 'Позиції відправлено клієнту на погодження.',
-    'items-sent-for-approval-notification-failed': 'Позиції відправлено на погодження, але Telegram-повідомлення не доставлено. Цикл погодження збережено.',
-    'items-send-empty': 'Немає нових позицій для відправлення на погодження.',
-    'items-send-stale': 'Позиції змінилися після відкриття сторінки. Оновіть сторінку та перевірте добірку.',
-    'items-send-duplicate': 'Цю добірку вже відправлено на погодження.',
-    'items-send-status-locked': 'Поточний статус заявки не дозволяє відправити добірку на погодження.',
-    'items-send-error': 'Не вдалося відправити позиції на погодження.',
-    'item-error': 'Перевірте дані позиції.',
-    'item-status-locked': 'Не можна додавати позиції до виконаної або скасованої заявки.',
-    'item-not-found': 'Позицію не знайдено.',
-    'document-created': 'Документ додано.',
-    'document-updated': 'Документ оновлено.',
-    'document-deleted': 'Документ видалено.',
-    'document-error': 'Перевірте дані документа.',
-    'document-not-found': 'Документ не знайдено.',
-    'invoice-created': 'Рахунок створено.',
-    'invoice-sent': 'Рахунок надіслано клієнту.',
-    'invoice-cancelled': 'Рахунок скасовано.',
-    'invoice-paid': 'Рахунок позначено як оплачений.',
-    'invoice-no-approved-items': 'Немає погоджених позицій для створення рахунку.',
-    'invoice-not-found': 'Рахунок не знайдено.',
-    'invoice-invalid-transition': 'Некоректна зміна статусу рахунку.',
-    'invoice-empty': 'Не можна надіслати порожній рахунок.',
-    'invoice-forbidden': 'Недостатньо прав для роботи з рахунком.',
-    'invoice-seller-details-required': 'Спочатку заповніть реквізити продавця.',
-    'invoice-error': 'Не вдалося обробити рахунок.'
-  };
-
-  return result ? messages[result] : null;
 }
 
 export default async function AdminRequestDetailPage({
@@ -183,7 +136,7 @@ export default async function AdminRequestDetailPage({
   const selectionEligibility = await getRequestSelectionResendEligibility({
     requestId: request.id
   });
-  const message = resultMessage(query.result);
+  const feedback = getAdminRequestFeedback(query.result);
   const publicStatusUrl = `/request/status/${request.publicStatusToken}`;
   const contactName = request.client?.contactName ?? request.guestName ?? 'Гість';
   const companyName = request.company?.name ?? request.client?.companyName ?? request.companyName ?? '—';
@@ -216,7 +169,16 @@ export default async function AdminRequestDetailPage({
         </div>
       </div>
 
-      {message ? <div className="min-w-0 break-words rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">{message}</div> : null}
+      {feedback ? (
+        <div
+          role={feedback.tone === 'error' ? 'alert' : 'status'}
+          aria-live={feedback.tone === 'error' ? 'assertive' : 'polite'}
+          className={`min-w-0 break-words rounded-md border p-4 text-sm ${feedback.className}`}
+        >
+          <span className="font-bold">{feedback.marker}:</span>{' '}
+          <span className="font-semibold">{feedback.message}</span>
+        </div>
+      ) : null}
 
       <div className="grid w-full min-w-0 max-w-full gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] xl:gap-6">
         <main className="grid min-w-0 gap-4 sm:gap-5 xl:gap-6">

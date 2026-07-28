@@ -14,6 +14,7 @@
     "test:request-selection-batch": "tsx scripts/check-request-selection-batch.ts",
     "test:request-status-stage4c": "tsx scripts/check-request-status-stage4c-send-trigger.ts",
     "test:request-status-stage4c1": "tsx scripts/check-request-status-stage4c1-resend-after-edit.ts",
+    "test:request-status-stage4c2": "tsx scripts/check-request-status-stage4c2-transaction-feedback.ts",
     "test:request-status-stage4d": "tsx scripts/check-request-status-stage4d-read-model.ts",
     "db:seed": "prisma db seed"
   },

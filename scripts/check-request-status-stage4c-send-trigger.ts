@@ -423,8 +423,8 @@ async function main() {
       [
         'REQUEST_SELECTION_BATCH_CREATED',
         'REQUEST_SELECTION_BATCH_SENT',
-        'REQUEST_ITEMS_SENT_FOR_APPROVAL',
-        'REQUEST_STATUS_CHANGED'
+        'REQUEST_STATUS_CHANGED',
+        'REQUEST_ITEMS_SENT_FOR_APPROVAL'
       ]
     );
     assert.equal(result.notification.status, 'sent');

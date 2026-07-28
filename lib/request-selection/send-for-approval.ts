@@ -19,7 +19,6 @@ import {
 } from '@/lib/request-selection/service';
 import {
   REQUEST_STATUS_EVENTS,
-  RequestStatusTransitionError,
   transitionRequestStatus,
   type RequestStatusTransitionResult,
   type TransitionRequestStatusInput
@@ -65,6 +64,8 @@ export type SendRequestSelectionForApprovalErrorCode =
   | 'VISIBILITY_UPDATE_FAILED'
   | 'AUDIT_WRITE_FAILED'
   | 'REQUEST_STATUS_TRANSITION_FAILED'
+  | 'TRANSACTION_CLIENT_EXPIRED'
+  | 'DATABASE_TRANSACTION_FAILED'
   | 'TELEGRAM_NOTIFICATION_FAILED';
 
 export class SendRequestSelectionForApprovalError extends Error {
@@ -106,8 +107,21 @@ export type SendRequestSelectionForApprovalResult = {
   notification: NotificationResult;
 };
 
+export type SendRequestSelectionCommitResult = Omit<
+  SendRequestSelectionForApprovalResult,
+  'notification'
+>;
+
+export const REQUEST_SELECTION_SEND_TRANSACTION_OPTIONS = {
+  maxWait: 5_000,
+  timeout: 15_000
+} as const;
+
 type TransactionRunner = {
-  $transaction<T>(callback: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T>;
+  $transaction<T>(
+    callback: (tx: Prisma.TransactionClient) => Promise<T>,
+    options?: { maxWait?: number; timeout?: number }
+  ): Promise<T>;
 };
 
 type SendDependencies = {
@@ -142,6 +156,28 @@ function fail(
     { requestId, ...context },
     cause === undefined ? undefined : { cause }
   );
+}
+
+export function isExpiredPrismaTransactionError(error: unknown) {
+  let current = error;
+  const visited = new Set<unknown>();
+
+  while (current && typeof current === 'object' && !visited.has(current)) {
+    visited.add(current);
+    const candidate = current as { code?: unknown; message?: unknown; cause?: unknown };
+    const message = typeof candidate.message === 'string' ? candidate.message : '';
+    if (
+      candidate.code === 'P2028'
+      || message.includes('Transaction not found')
+      || message.includes('old closed transaction')
+      || message.includes('transaction is no longer valid')
+    ) {
+      return true;
+    }
+    current = candidate.cause;
+  }
+
+  return false;
 }
 
 function assertInput(input: SendRequestSelectionForApprovalInput) {
@@ -217,7 +253,9 @@ export function createSendRequestSelectionForApprovalService(
   ): Promise<SendRequestSelectionForApprovalResult> {
     assertInput(input);
 
-    const committed = await database.$transaction(async (tx) => {
+    const executeTransaction = async (
+      tx: Prisma.TransactionClient
+    ): Promise<SendRequestSelectionCommitResult> => {
       const [request, actor] = await Promise.all([
         tx.request.findUnique({
           where: { id: input.requestId },
@@ -361,6 +399,27 @@ export function createSendRequestSelectionForApprovalService(
         fail('BATCH_SEND_FAILED', request.id, { batchId: batch.batchId }, error);
       }
 
+      let requestStatusTransition: RequestStatusTransitionResult;
+      try {
+        requestStatusTransition = await dependencies.transitionRequest({
+          requestId: request.id,
+          event: REQUEST_STATUS_EVENTS.SELECTION_SENT_FOR_APPROVAL,
+          actor: input.actor,
+          metadata: {
+            source: 'ADMIN_CRM',
+            eventKey: `selection-batch:${batch.batchId}:sent`,
+            triggerEntityType: 'REQUEST',
+            triggerEntityId: request.id
+          },
+          tx
+        });
+      } catch (error) {
+        fail('REQUEST_STATUS_TRANSITION_FAILED', request.id, { batchId: batch.batchId }, error);
+      }
+      if (requestStatusTransition.outcome === 'blocked') {
+        fail('REQUEST_STATUS_TRANSITION_FAILED', request.id, { batchId: batch.batchId });
+      }
+
       const previousSourceIds = activeBatch?.items
         .map((item) => item.sourceRequestItemId)
         .filter((id): id is string => Boolean(id)) ?? [];
@@ -435,30 +494,6 @@ export function createSendRequestSelectionForApprovalService(
         fail('AUDIT_WRITE_FAILED', request.id, { batchId: batch.batchId }, error);
       }
 
-      let requestStatusTransition: RequestStatusTransitionResult;
-      try {
-        requestStatusTransition = await dependencies.transitionRequest({
-          requestId: request.id,
-          event: REQUEST_STATUS_EVENTS.SELECTION_SENT_FOR_APPROVAL,
-          actor: input.actor,
-          metadata: {
-            source: 'ADMIN_CRM',
-            eventKey: `selection-batch:${batch.batchId}:sent`,
-            triggerEntityType: 'REQUEST',
-            triggerEntityId: request.id
-          },
-          tx
-        });
-      } catch (error) {
-        if (error instanceof RequestStatusTransitionError) {
-          fail('REQUEST_STATUS_TRANSITION_FAILED', request.id, { batchId: batch.batchId }, error);
-        }
-        fail('REQUEST_STATUS_TRANSITION_FAILED', request.id, { batchId: batch.batchId }, error);
-      }
-      if (requestStatusTransition.outcome === 'blocked') {
-        fail('REQUEST_STATUS_TRANSITION_FAILED', request.id, { batchId: batch.batchId });
-      }
-
       return {
         requestId: request.id,
         batchId: batch.batchId,
@@ -468,7 +503,21 @@ export function createSendRequestSelectionForApprovalService(
         hiddenPreviousItemCount: hiddenPrevious.count,
         requestStatusTransition: requestStatusTransition.outcome
       };
-    });
+    };
+
+    let committed: SendRequestSelectionCommitResult;
+    try {
+      committed = await database.$transaction(
+        executeTransaction,
+        REQUEST_SELECTION_SEND_TRANSACTION_OPTIONS
+      );
+    } catch (error) {
+      if (isExpiredPrismaTransactionError(error)) {
+        fail('TRANSACTION_CLIENT_EXPIRED', input.requestId, {}, error);
+      }
+      if (error instanceof SendRequestSelectionForApprovalError) throw error;
+      fail('DATABASE_TRANSACTION_FAILED', input.requestId, {}, error);
+    }
 
     let notification: NotificationResult;
     try {
