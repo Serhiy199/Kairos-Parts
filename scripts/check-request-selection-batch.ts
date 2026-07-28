@@ -746,7 +746,7 @@ async function main() {
   }), {
     outcome: 'blocked',
     currentStatus: 'SENT',
-    reason: 'no_rejected_items'
+    reason: 'items_not_fully_rejected'
   });
   itemsForBatch(partialState, partialDraft.batchId)[0]!.status = 'REJECTED';
   const rejected = await partialTransition({

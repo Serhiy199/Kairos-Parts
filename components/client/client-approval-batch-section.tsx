@@ -31,6 +31,12 @@ export function ClientApprovalBatchSection({
   model: BatchReadModel;
 }) {
   const { activeBatch } = model;
+  const approvedCount = activeBatch.items.filter(
+    (item) => item.status === 'APPROVED'
+  ).length;
+  const rejectedCount = activeBatch.items.filter(
+    (item) => item.status === 'REJECTED'
+  ).length;
 
   return (
     <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-6">
@@ -56,13 +62,35 @@ export function ClientApprovalBatchSection({
           <span className="rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">
             {activeBatch.itemCount} позицій
           </span>
+          <span className="rounded-full bg-[#E7F6EC] px-3 py-1 text-xs font-bold text-success">
+            Погоджено: {approvedCount}
+          </span>
+          <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700">
+            Відхилено: {rejectedCount}
+          </span>
         </div>
       </div>
 
       {activeBatch.status === 'SENT' ? (
         <div className="mt-5 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm leading-6 text-[#8A5B24]">
           Перевірте кожну позицію та погодьте її або вкажіть причину відхилення.
-          Після першого відхилення ця версія добірки буде закрита.
+          Версію буде завершено після рішення щодо кожної позиції.
+        </div>
+      ) : null}
+      {activeBatch.status === 'APPROVED' ? (
+        <div className="mt-5 rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">
+          Усі позиції погоджено. Заявка очікує формування рахунку.
+        </div>
+      ) : null}
+      {activeBatch.status === 'PARTIALLY_APPROVED' ? (
+        <div className="mt-5 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm leading-6 text-[#8A5B24]">
+          Погодження завершено частково: погоджено {approvedCount}, відхилено{' '}
+          {rejectedCount}. Рахунок формуватиметься лише за погодженими позиціями.
+        </div>
+      ) : null}
+      {activeBatch.status === 'REJECTED' ? (
+        <div className="mt-5 rounded-md border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700">
+          Усі позиції відхилено. Рахунок за цією версією сформувати не можна.
         </div>
       ) : null}
 

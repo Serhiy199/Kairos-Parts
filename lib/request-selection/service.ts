@@ -27,6 +27,7 @@ const terminalRequestStatuses = new Set<RequestStatus>(['COMPLETED', 'CANCELLED'
 const auditActionByEvent = {
   SEND: 'REQUEST_SELECTION_BATCH_SENT',
   APPROVE: 'REQUEST_SELECTION_BATCH_APPROVED',
+  PARTIALLY_APPROVE: 'REQUEST_SELECTION_BATCH_PARTIALLY_APPROVED',
   REJECT: 'REQUEST_SELECTION_BATCH_REJECTED',
   SUPERSEDE: 'REQUEST_SELECTION_BATCH_SUPERSEDED'
 } as const satisfies Record<RequestSelectionBatchEvent, Prisma.AuditLogCreateInput['action']>;
@@ -67,6 +68,11 @@ export type TransitionRequestSelectionBatchInput = {
   actor: RequestSelectionActor;
   source?: AuditSource;
   requestContext?: AuditRequestContext;
+  aggregate?: {
+    totalCount: number;
+    approvedCount: number;
+    rejectedCount: number;
+  };
   tx?: Prisma.TransactionClient;
 };
 
@@ -81,7 +87,11 @@ export type RequestSelectionBatchTransitionResult =
   | {
       outcome: 'blocked';
       currentStatus: RequestSelectionBatchStatus;
-      reason: 'empty_batch' | 'items_not_fully_approved' | 'no_rejected_items';
+      reason:
+        | 'empty_batch'
+        | 'items_not_fully_approved'
+        | 'items_not_partially_approved'
+        | 'items_not_fully_rejected';
     };
 
 export type RequestSelectionBatchErrorCode =
@@ -165,6 +175,7 @@ function isDatabaseErrorCode(error: unknown, code: string) {
 function roleAllowedForEvent(role: UserRole, event: RequestSelectionBatchEvent) {
   if (
     event === REQUEST_SELECTION_BATCH_EVENTS.APPROVE
+    || event === REQUEST_SELECTION_BATCH_EVENTS.PARTIALLY_APPROVE
     || event === REQUEST_SELECTION_BATCH_EVENTS.REJECT
   ) {
     return role === 'CLIENT';
@@ -396,6 +407,9 @@ function transitionTimestampData(
   if (event === REQUEST_SELECTION_BATCH_EVENTS.APPROVE) {
     return { status: 'APPROVED', approvedAt: now };
   }
+  if (event === REQUEST_SELECTION_BATCH_EVENTS.PARTIALLY_APPROVE) {
+    return { status: 'PARTIALLY_APPROVED', approvedAt: now };
+  }
   if (event === REQUEST_SELECTION_BATCH_EVENTS.REJECT) {
     return { status: 'REJECTED', rejectedAt: now };
   }
@@ -427,12 +441,35 @@ async function aggregateGuard(
     }
   }
 
+  if (event === REQUEST_SELECTION_BATCH_EVENTS.PARTIALLY_APPROVE) {
+    const [itemCount, pendingCount, approvedCount, rejectedCount] = await Promise.all([
+      tx.requestSelectionBatchItem.count({ where: { batchId } }),
+      tx.requestSelectionBatchItem.count({ where: { batchId, status: 'PENDING' } }),
+      tx.requestSelectionBatchItem.count({ where: { batchId, status: 'APPROVED' } }),
+      tx.requestSelectionBatchItem.count({ where: { batchId, status: 'REJECTED' } })
+    ]);
+    if (
+      itemCount === 0
+      || pendingCount > 0
+      || approvedCount === 0
+      || rejectedCount === 0
+      || approvedCount + rejectedCount !== itemCount
+    ) {
+      return {
+        outcome: 'blocked',
+        currentStatus,
+        reason: 'items_not_partially_approved'
+      };
+    }
+  }
+
   if (event === REQUEST_SELECTION_BATCH_EVENTS.REJECT) {
-    const rejectedCount = await tx.requestSelectionBatchItem.count({
-      where: { batchId, status: 'REJECTED' }
-    });
-    if (rejectedCount === 0) {
-      return { outcome: 'blocked', currentStatus, reason: 'no_rejected_items' };
+    const [itemCount, rejectedCount] = await Promise.all([
+      tx.requestSelectionBatchItem.count({ where: { batchId } }),
+      tx.requestSelectionBatchItem.count({ where: { batchId, status: 'REJECTED' } })
+    ]);
+    if (itemCount === 0 || rejectedCount !== itemCount) {
+      return { outcome: 'blocked', currentStatus, reason: 'items_not_fully_rejected' };
     }
   }
 
@@ -534,12 +571,23 @@ async function executeTransitionRequestSelectionBatch(
       source: input.source ?? 'SYSTEM',
       requestId: batch.requestId,
       revision: batch.revision,
-      event: input.event
+      event: input.event,
+      totalCount: input.aggregate?.totalCount,
+      approvedCount: input.aggregate?.approvedCount,
+      rejectedCount: input.aggregate?.rejectedCount
     },
     allowedFields: {
       oldValue: ['status'],
       newValue: ['status'],
-      metadata: ['source', 'requestId', 'revision', 'event']
+      metadata: [
+        'source',
+        'requestId',
+        'revision',
+        'event',
+        'totalCount',
+        'approvedCount',
+        'rejectedCount'
+      ]
     },
     requestContext: input.requestContext
   });

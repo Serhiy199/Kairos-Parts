@@ -69,6 +69,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   REQUEST_SELECTION_BATCH_CREATED: 'Ревізію погодження створено',
   REQUEST_SELECTION_BATCH_SENT: 'Ревізію надіслано на погодження',
   REQUEST_SELECTION_BATCH_APPROVED: 'Ревізію погоджено',
+  REQUEST_SELECTION_BATCH_PARTIALLY_APPROVED: 'Ревізію частково погоджено',
   REQUEST_SELECTION_BATCH_REJECTED: 'Ревізію відхилено',
   REQUEST_SELECTION_BATCH_SUPERSEDED: 'Ревізію замінено новішою',
   REQUEST_SELECTION_ITEM_APPROVED: 'Позицію ревізії погоджено',

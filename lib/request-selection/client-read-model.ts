@@ -62,7 +62,7 @@ export type ClientRequestApprovalReadModel =
       activeBatch: {
         id: string;
         revision: number;
-        status: 'SENT' | 'APPROVED' | 'REJECTED';
+        status: 'SENT' | 'APPROVED' | 'PARTIALLY_APPROVED' | 'REJECTED';
         sentAt: string | null;
         itemCount: number;
         items: ClientSelectionItemReadModel[];
@@ -290,7 +290,11 @@ function batchReadModel(
     activeBatch: {
       id: batch.id,
       revision: batch.revision,
-      status: batch.status as 'SENT' | 'APPROVED' | 'REJECTED',
+      status: batch.status as
+        | 'SENT'
+        | 'APPROVED'
+        | 'PARTIALLY_APPROVED'
+        | 'REJECTED',
       sentAt: batch.sentAt?.toISOString() ?? null,
       itemCount: batch.items.length,
       items: batch.items.map(mapClientSelectionItem)
@@ -355,7 +359,7 @@ export function createClientRequestApprovalReadService(database: ReadDatabase) {
         [activeBatch] = await database.requestSelectionBatch.findMany({
           where: {
             requestId: request.id,
-            status: { in: ['APPROVED', 'REJECTED'] }
+            status: { in: ['APPROVED', 'PARTIALLY_APPROVED', 'REJECTED'] }
           },
           orderBy: [{ revision: 'desc' }, { id: 'asc' }],
           take: 1,

@@ -43,6 +43,10 @@ export type RequestStatusTransitionMetadata = {
   triggerEntityId?: string;
   batchId?: string;
   revision?: number;
+  totalCount?: number;
+  approvedCount?: number;
+  rejectedCount?: number;
+  partial?: boolean;
 };
 
 export type TransitionRequestStatusInput = {
@@ -302,7 +306,11 @@ async function executeRequestStatusTransition(
         'triggerEntityType',
         'triggerEntityId',
         'batchId',
-        'revision'
+        'revision',
+        'totalCount',
+        'approvedCount',
+        'rejectedCount',
+        'partial'
       ]
     }
   });

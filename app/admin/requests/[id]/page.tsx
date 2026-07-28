@@ -1,6 +1,6 @@
 ﻿import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import type { Prisma } from '@prisma/client';
+import type { Prisma, RequestSelectionBatchStatus } from '@prisma/client';
 
 import {
   assignAdminRequestManager,
@@ -30,6 +30,10 @@ import { getAdminRequestFeedback } from '@/lib/admin/request-feedback';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { calculateInvoiceLineTotal, calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
+import {
+  getRequestInvoiceEligibility,
+  type RequestInvoiceEligibility
+} from '@/lib/invoices/selection';
 import { getVehicleDisplay } from '@/lib/vehicles/name';
 import { INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 import { PART_MANUFACTURERS } from '@/lib/parts/part-manufacturers';
@@ -39,6 +43,7 @@ import {
   type RequestSelectionResendEligibility,
   type RequestSelectionResendItemState
 } from '@/lib/request-selection/resend-eligibility';
+import { REQUEST_SELECTION_BATCH_STATUS_LABELS } from '@/lib/request-selection/presentation';
 import { REQUEST_DOCUMENT_TYPE_LABELS, REQUEST_DOCUMENT_TYPES } from '@/lib/request-documents/validation';
 import { REQUEST_SOURCE_LABELS } from '@/lib/requests/sources';
 import { normalizeRequestStatusForSelection, REQUEST_STATUS_LABELS, REQUEST_STATUSES } from '@/lib/requests/statuses';
@@ -152,6 +157,7 @@ export default async function AdminRequestDetailPage({
   const selectionEligibility = await getRequestSelectionResendEligibility({
     requestId: request.id
   });
+  const invoiceEligibility = await getRequestInvoiceEligibility(request.id);
   const feedback = getAdminRequestFeedback(query.result);
   const publicStatusUrl = `/request/status/${request.publicStatusToken}`;
   const contactName = request.client?.contactName ?? request.guestName ?? 'Гість';
@@ -159,7 +165,6 @@ export default async function AdminRequestDetailPage({
   const phone = request.client?.phone ?? request.guestPhone ?? '—';
   const email = request.client?.email ?? request.guestEmail ?? '—';
   const selectedRequestStatus = normalizeRequestStatusForSelection(request.status);
-  const approvedInvoiceItemCount = request.items.filter((item) => item.visibleToClient && item.approvedByClient && item.includeInInvoice).length;
   const ocrImageFiles = request.files.filter((file) => file.mimeType.startsWith('image/'));
 
   return (
@@ -254,7 +259,11 @@ export default async function AdminRequestDetailPage({
             latestSelectionBatch={request.selectionBatches[0] ?? null}
           />
 
-          <InvoicesSection requestId={request.id} invoices={request.invoices} approvedInvoiceItemCount={approvedInvoiceItemCount} />
+          <InvoicesSection
+            requestId={request.id}
+            invoices={request.invoices}
+            eligibility={invoiceEligibility}
+          />
 
           <RequestDocumentsSection requestId={request.id} documents={request.requestDocuments} />
 
@@ -652,7 +661,7 @@ function RequestItemsSection({
   latestSelectionBatch: {
     id: string;
     revision: number;
-    status: string;
+    status: RequestSelectionBatchStatus;
     items: Array<{
       id: string;
       position: number;
@@ -694,7 +703,7 @@ function RequestItemsSection({
               Рішення клієнта · версія №{latestSelectionBatch.revision}
             </p>
             <span className="rounded-full bg-card px-2.5 py-1 text-xs font-bold text-muted">
-              {latestSelectionBatch.status}
+              {REQUEST_SELECTION_BATCH_STATUS_LABELS[latestSelectionBatch.status]}
             </span>
           </div>
           <div className="mt-3 grid gap-2">
@@ -854,13 +863,31 @@ function RequestItemsSection({
 function InvoicesSection({
   requestId,
   invoices,
-  approvedInvoiceItemCount
+  eligibility
 }: {
   requestId: string;
   invoices: InvoiceView[];
-  approvedInvoiceItemCount: number;
+  eligibility: RequestInvoiceEligibility;
 }) {
-  const canCreateInvoice = approvedInvoiceItemCount > 0;
+  const canCreateInvoice = eligibility.eligible;
+  const blockedReason = !eligibility.eligible
+    ? {
+        REQUEST_NOT_FOUND: 'Заявку не знайдено.',
+        REQUEST_NOT_AWAITING_INVOICE:
+          'Рахунок стане доступним після завершення погодження з хоча б однією погодженою позицією.',
+        APPROVED_SELECTION_NOT_FOUND:
+          'Немає завершеної версії підбору, придатної для рахунку.',
+        INVOICE_SELECTION_STALE:
+          'Остання версія підбору ще очікує рішення або вже неактуальна.',
+        NO_APPROVED_ITEMS: 'У завершеній версії немає погоджених позицій.',
+        APPROVED_ITEM_PRICE_MISSING:
+          'Для погодженої позиції не вказано ціну. Підготуйте нову версію підбору.',
+        APPROVED_ITEMS_CURRENCY_MISMATCH:
+          'Погоджені позиції мають різні валюти. Підготуйте узгоджену версію підбору.',
+        INVOICE_ALREADY_EXISTS_FOR_SELECTION:
+          'Для цієї версії підбору рахунок уже створено.'
+      }[eligibility.reason]
+    : null;
 
   return (
     <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
@@ -869,7 +896,8 @@ function InvoicesSection({
           <p className="text-sm font-bold uppercase text-accent">Рахунки</p>
           <h3 className="mt-2 text-xl font-bold text-foreground">Рахунки на основі погоджених позицій</h3>
           <p className="mt-2 text-sm leading-6 text-muted">
-            Рахунок формується тільки з позицій, які клієнт погодив і відмітив для включення у рахунок.
+            Рахунок формується тільки з погоджених позицій останньої завершеної
+            незмінної версії підбору.
           </p>
         </div>
         <form action={createAdminInvoice} className="w-full lg:w-auto">
@@ -886,11 +914,15 @@ function InvoicesSection({
 
       {!canCreateInvoice ? (
         <p className="mt-4 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm font-semibold text-[#8A5B24]">
-          Рахунок можна створити після того, як клієнт погодить позиції та відмітить їх для включення у рахунок.
+          {blockedReason}
         </p>
       ) : (
         <p className="mt-4 rounded-md border border-info/20 bg-[#E8F1FF] p-4 text-sm font-semibold text-info">
-          До рахунку готово {approvedInvoiceItemCount} позицій.
+          Версія №{eligibility.revision}: до рахунку готово{' '}
+          {eligibility.approvedCount} позицій
+          {eligibility.rejectedCount > 0
+            ? `, відхилено ${eligibility.rejectedCount}.`
+            : '.'}
         </p>
       )}
 

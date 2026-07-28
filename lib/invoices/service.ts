@@ -7,13 +7,17 @@ import type { ClientAccessContext } from '@/lib/client/access';
 import { requestAccessWhere } from '@/lib/client/access';
 import { buyerBillingSnapshot, sellerBillingSnapshot, type ClientBillingInput, type CompanyBillingInput } from '@/lib/billing/validation';
 import { calculateInvoiceLineTotal } from '@/lib/invoices/totals';
+import {
+  InvoiceSelectionError,
+  resolveInvoiceSelection
+} from '@/lib/invoices/selection';
 import { prisma } from '@/lib/prisma';
 import { sendTelegramInvoiceSentNotification } from '@/lib/telegram/notifications';
 
 const crmRoles: UserRole[] = ['MANAGER', 'ADMIN'];
 const INVOICE_AUDIT_FIELDS = [
   'invoiceNumber', 'status', 'currency', 'subtotal', 'total', 'itemCount',
-  'requestId', 'sentAt', 'paidAt', 'cancelledAt'
+  'requestId', 'selectionBatchId', 'sentAt', 'paidAt', 'cancelledAt'
 ] as const;
 
 export type InvoiceAuditContext = {
@@ -25,6 +29,7 @@ export type InvoiceAuditContext = {
 const invoiceAuditSelect = {
   id: true,
   requestId: true,
+  selectionBatchId: true,
   companyId: true,
   invoiceNumber: true,
   status: true,
@@ -35,6 +40,7 @@ const invoiceAuditSelect = {
   paidAt: true,
   cancelledAt: true,
   request: { select: { requestNumber: true } },
+  selectionBatch: { select: { revision: true } },
   _count: { select: { items: true } }
 } satisfies Prisma.InvoiceSelect;
 
@@ -49,6 +55,7 @@ function invoiceSnapshot(invoice: InvoiceAuditRecord) {
     total: invoice.totalAmount.toString(),
     itemCount: invoice._count.items,
     requestId: invoice.requestId,
+    selectionBatchId: invoice.selectionBatchId,
     sentAt: invoice.sentAt,
     paidAt: invoice.paidAt,
     cancelledAt: invoice.cancelledAt
@@ -75,11 +82,16 @@ async function writeInvoiceAudit(
     category: 'FINANCIAL_CRITICAL',
     oldValue: input.oldValue,
     newValue: input.newValue,
-    metadata: { source: 'ADMIN_CRM', requestId: invoice.requestId },
+    metadata: {
+      source: 'ADMIN_CRM',
+      requestId: invoice.requestId,
+      selectionBatchId: invoice.selectionBatchId,
+      selectionRevision: invoice.selectionBatch?.revision ?? null
+    },
     allowedFields: {
       oldValue: INVOICE_AUDIT_FIELDS,
       newValue: INVOICE_AUDIT_FIELDS,
-      metadata: ['source', 'requestId']
+      metadata: ['source', 'requestId', 'selectionBatchId', 'selectionRevision']
     },
     requestContext: audit.requestContext
   });
@@ -188,114 +200,153 @@ export async function createInvoiceFromApprovedRequestItems({
     return { ok: false as const, status: 'invoice-forbidden' };
   }
 
-  const request = await prisma.request.findUnique({
-    where: { id: requestId },
-    select: {
-      id: true,
-      requestNumber: true,
-      companyId: true,
-      company: {
-        select: {
-          name: true,
-          edrpou: true,
-          phone: true,
-          email: true,
-          legalAddress: true,
-          billingDetails: true
-        }
-      },
-      client: {
-        select: {
-          userId: true,
-          companyName: true,
-          taxId: true,
-          contactName: true,
-          phone: true,
-          email: true,
-          billingDetails: true,
-          user: { select: { name: true, email: true, phone: true } }
-        }
-      },
-      items: {
-        where: {
-          approvedByClient: true,
-          includeInInvoice: true,
-          visibleToClient: true
-        },
-        orderBy: { createdAt: 'asc' }
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const invoice = await prisma.$transaction(async (tx) => {
+      const selection = await resolveInvoiceSelection(tx, requestId);
+      const [request, sellerDetails] = await Promise.all([
+        tx.request.findUnique({
+          where: { id: requestId },
+          select: {
+            id: true,
+            requestNumber: true,
+            companyId: true,
+            company: {
+              select: {
+                name: true,
+                edrpou: true,
+                phone: true,
+                email: true,
+                legalAddress: true,
+                billingDetails: true
+              }
+            },
+            client: {
+              select: {
+                userId: true,
+                companyName: true,
+                taxId: true,
+                contactName: true,
+                phone: true,
+                email: true,
+                billingDetails: true,
+                user: { select: { name: true, email: true, phone: true } }
+              }
+            }
+          }
+        }),
+        tx.sellerBillingDetails.findFirst({
+          where: { isDefault: true },
+          orderBy: { createdAt: 'asc' }
+        })
+      ]);
+      if (!request) {
+        throw new InvoiceSelectionError('REQUEST_NOT_FOUND', { requestId });
       }
+      if (!sellerDetails) {
+        throw new Error('INVOICE_SELLER_DETAILS_REQUIRED');
+      }
+
+      const buyerDetails: CompanyBillingInput =
+        companyBillingDetailsSnapshot(request)
+        ?? clientBillingDetailsSnapshot(request.client?.billingDetails)
+        ?? fallbackBuyerSnapshot(request);
+      const createItems = selection.items.map((item) => {
+        const total = calculateInvoiceLineTotal(
+          item.quantity,
+          item.approvedUnitPrice
+        );
+        return {
+          requestItemId: item.sourceRequestItemId,
+          selectionBatchItemId: item.id,
+          name: item.itemName,
+          brand: item.brand,
+          catalogNumber: item.catalogNumber,
+          analogNumber: item.analogNumber,
+          quantity: item.quantity,
+          unit: item.unit,
+          price: item.approvedUnitPrice,
+          total,
+          comment: item.managerComment
+        };
+      });
+      const subtotal = createItems.reduce(
+        (sum, item) => sum.add(item.total),
+        new Prisma.Decimal(0)
+      );
+      const created = await tx.invoice.create({
+        data: {
+          requestId: request.id,
+          selectionBatchId: selection.batchId,
+          companyId: request.companyId,
+          clientId: request.client?.userId ?? null,
+          currency: selection.currency,
+          subtotal,
+          totalAmount: subtotal,
+          sellerSnapshot: sellerBillingSnapshot(sellerDetails),
+          buyerSnapshot: buyerBillingSnapshot(buyerDetails),
+          createdById,
+          items: { create: createItems }
+        },
+        include: { items: { orderBy: { createdAt: 'asc' } } }
+      });
+      const auditInvoice = await tx.invoice.findUniqueOrThrow({
+        where: { id: created.id },
+        select: invoiceAuditSelect
+      });
+      await writeInvoiceAudit(
+        tx,
+        { actorId: createdById, actorRole: createdByRole, requestContext },
+        auditInvoice,
+        { action: 'INVOICE_CREATED', newValue: invoiceSnapshot(auditInvoice) }
+      );
+      return created;
+    }, {
+      maxWait: 5_000,
+      timeout: 10_000,
+      isolationLevel: 'Serializable'
+    });
+      return { ok: true as const, invoice };
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError
+        && error.code === 'P2034'
+        && attempt === 0
+      ) {
+        continue;
+      }
+      if (error instanceof InvoiceSelectionError) {
+        const statusByCode = {
+          REQUEST_NOT_FOUND: 'request-not-found',
+          REQUEST_NOT_AWAITING_INVOICE: 'invoice-request-not-awaiting',
+          APPROVED_SELECTION_NOT_FOUND: 'invoice-selection-not-found',
+          INVOICE_SELECTION_STALE: 'invoice-selection-stale',
+          NO_APPROVED_ITEMS: 'invoice-no-approved-items',
+          APPROVED_ITEM_PRICE_MISSING: 'invoice-approved-price-missing',
+          APPROVED_ITEMS_CURRENCY_MISMATCH: 'invoice-currency-mismatch',
+          INVOICE_ALREADY_EXISTS_FOR_SELECTION: 'invoice-selection-already-invoiced'
+        } as const;
+        return { ok: false as const, status: statusByCode[error.code] };
+      }
+      if (
+        error instanceof Error
+        && error.message === 'INVOICE_SELLER_DETAILS_REQUIRED'
+      ) {
+        return { ok: false as const, status: 'invoice-seller-details-required' };
+      }
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError
+        && error.code === 'P2002'
+      ) {
+        return {
+          ok: false as const,
+          status: 'invoice-selection-already-invoiced'
+        };
+      }
+      throw error;
     }
-  });
-
-  if (!request) {
-    return { ok: false as const, status: 'request-not-found' };
   }
-
-  if (request.items.length === 0) {
-    return { ok: false as const, status: 'invoice-no-approved-items' };
-  }
-
-  const sellerDetails = await prisma.sellerBillingDetails.findFirst({
-    where: { isDefault: true },
-    orderBy: { createdAt: 'asc' }
-  });
-
-  if (!sellerDetails) {
-    return { ok: false as const, status: 'invoice-seller-details-required' };
-  }
-
-  const buyerDetails: CompanyBillingInput = companyBillingDetailsSnapshot(request)
-    ?? clientBillingDetailsSnapshot(request.client?.billingDetails)
-    ?? fallbackBuyerSnapshot(request);
-
-  const createItems = request.items.map((item) => {
-    const price = item.salePrice ?? new Prisma.Decimal(0);
-    const total = calculateInvoiceLineTotal(item.quantity, price);
-
-    return {
-      requestItemId: item.id,
-      name: item.name,
-      brand: item.brand,
-      catalogNumber: item.catalogNumber,
-      quantity: item.quantity,
-      unit: item.unit,
-      price,
-      total,
-      comment: item.comment
-    };
-  });
-  const subtotal = createItems.reduce((sum, item) => sum.add(item.total), new Prisma.Decimal(0));
-
-  const invoice = await prisma.$transaction(async (tx) => {
-    const created = await tx.invoice.create({
-      data: {
-        requestId: request.id,
-        companyId: request.companyId,
-        clientId: request.client?.userId ?? null,
-        currency: 'UAH',
-        subtotal,
-        totalAmount: subtotal,
-        sellerSnapshot: sellerBillingSnapshot(sellerDetails),
-        buyerSnapshot: buyerBillingSnapshot(buyerDetails),
-        createdById,
-        items: { create: createItems }
-      },
-      include: { items: { orderBy: { createdAt: 'asc' } } }
-    });
-    const auditInvoice = await tx.invoice.findUniqueOrThrow({
-      where: { id: created.id },
-      select: invoiceAuditSelect
-    });
-    await writeInvoiceAudit(
-      tx,
-      { actorId: createdById, actorRole: createdByRole, requestContext },
-      auditInvoice,
-      { action: 'INVOICE_CREATED', newValue: invoiceSnapshot(auditInvoice) }
-    );
-    return created;
-  });
-
-  return { ok: true as const, invoice };
+  throw new Error('Invoice creation retry loop exhausted.');
 }
 
 export async function listInvoicesForRequestAdmin(requestId: string) {

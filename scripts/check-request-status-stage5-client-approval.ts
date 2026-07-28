@@ -118,13 +118,14 @@ for (const guard of [
   'batch.revision !== input.expectedRevision',
   "status: 'PENDING'",
   "isolationLevel: 'Serializable'",
-  "event: 'APPROVE'",
-  "event: 'REJECT'",
+  "const batchEvent =",
+  "? 'APPROVE'",
+  ": 'REJECT'",
   'REQUEST_STATUS_EVENTS.CLIENT_SELECTION_APPROVED',
   "entityType: 'REQUEST_SELECTION_BATCH_ITEM'",
   "'REQUEST_SELECTION_ITEM_APPROVED'",
   "'REQUEST_SELECTION_ITEM_REJECTED'",
-  "reason: 'Клієнт погодив усі позиції актуальної версії підбору'"
+  "'Клієнт погодив усі позиції актуальної версії підбору'"
 ]) {
   assert.ok(service.includes(guard), `Stage 5 service guard is missing: ${guard}`);
 }
@@ -155,7 +156,7 @@ assert.ok(actions.includes('decideClientSelectionItemAction'));
 assert.ok(actions.includes("revalidatePath('/client/requests')"));
 assert.ok(actions.includes("revalidatePath('/admin')"));
 assert.ok(actions.includes('selection-fully-approved'));
-assert.ok(actions.includes('selection-item-rejected'));
+assert.ok(actions.includes('selection-item-rejected-pending'));
 assert.ok(!clientUi.includes('approveClientRequestItemsAction'));
 assert.ok(clientUi.includes('ClientSelectionDecisionControls'));
 assert.ok(clientUi.includes('Ви погодили цю позицію.'));
@@ -163,7 +164,11 @@ assert.ok(clientUi.includes('Позицію відхилено.'));
 assert.ok(controls.includes('Підтвердити відхилення'));
 assert.ok(controls.includes('minLength={3}'));
 assert.ok(controls.includes('maxLength={500}'));
-assert.ok(readModel.includes("status: { in: ['APPROVED', 'REJECTED'] }"));
+assert.ok(
+  readModel.includes(
+    "status: { in: ['APPROVED', 'PARTIALLY_APPROVED', 'REJECTED'] }"
+  )
+);
 assert.ok(readModel.includes('clientComment: true'));
 assert.ok(adminUi.includes('Рішення клієнта · версія'));
 assert.ok(adminUi.includes('Очікує рішення'));
@@ -452,8 +457,8 @@ async function behavioralChecks() {
     clientComment: 'Потрібен інший виробник'
   });
   assert.equal(rejection.outcome, 'changed');
-  assert.equal(rejection.outcome === 'changed' && rejection.batchOutcome, 'rejected');
-  assert.equal(rejected.batches.get('batch-1')?.status, 'REJECTED');
+  assert.equal(rejection.outcome === 'changed' && rejection.batchOutcome, 'unchanged');
+  assert.equal(rejected.batches.get('batch-1')?.status, 'SENT');
   assert.equal(rejected.requests.get('request-1')?.status, 'WAITING_APPROVAL');
   assert.equal(rejected.histories.length, 0);
   assert.equal(
@@ -466,6 +471,46 @@ async function behavioralChecks() {
   assert.equal(
     JSON.stringify(itemAudit?.metadata).includes('Потрібен інший виробник'),
     false
+  );
+  const partialApproval = await decideRejected({
+    ...base,
+    batchItemId: 'item-2',
+    decision: 'APPROVE'
+  });
+  assert.equal(
+    partialApproval.outcome === 'changed' && partialApproval.batchOutcome,
+    'partially_approved'
+  );
+  assert.equal(
+    rejected.batches.get('batch-1')?.status,
+    'PARTIALLY_APPROVED'
+  );
+  assert.equal(rejected.requests.get('request-1')?.status, 'AWAITING_INVOICE');
+
+  const fullyRejected = initialState();
+  const decideFullyRejected = createClientSelectionDecisionService(
+    makeDatabase(fullyRejected)
+  );
+  await decideFullyRejected({
+    ...base,
+    batchItemId: 'item-1',
+    decision: 'REJECT',
+    clientComment: 'Не підходить перша позиція'
+  });
+  const finalRejection = await decideFullyRejected({
+    ...base,
+    batchItemId: 'item-2',
+    decision: 'REJECT',
+    clientComment: 'Не підходить друга позиція'
+  });
+  assert.equal(
+    finalRejection.outcome === 'changed' && finalRejection.batchOutcome,
+    'rejected'
+  );
+  assert.equal(fullyRejected.batches.get('batch-1')?.status, 'REJECTED');
+  assert.equal(
+    fullyRejected.requests.get('request-1')?.status,
+    'WAITING_APPROVAL'
   );
 
   const denied = initialState();

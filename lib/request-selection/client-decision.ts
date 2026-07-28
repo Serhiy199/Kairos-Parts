@@ -75,7 +75,7 @@ export type ClientSelectionDecisionResult =
       outcome: 'changed';
       decision: ClientSelectionDecision;
       itemStatus: RequestSelectionBatchItemStatus;
-      batchOutcome: 'unchanged' | 'approved' | 'rejected';
+      batchOutcome: 'unchanged' | 'approved' | 'partially_approved' | 'rejected';
       requestOutcome: 'unchanged' | 'awaiting_invoice';
       auditLogId: string;
     }
@@ -231,6 +231,10 @@ async function executeClientSelectionDecision(
     const compatibleFinalState =
       batch.status === 'SENT'
       || (batch.status === 'APPROVED' && item.status === 'APPROVED')
+      || (
+        batch.status === 'PARTIALLY_APPROVED'
+        && (item.status === 'APPROVED' || item.status === 'REJECTED')
+      )
       || (batch.status === 'REJECTED' && item.status === 'REJECTED');
     if (compatibleFinalState) {
       return {
@@ -339,31 +343,6 @@ async function executeClientSelectionDecision(
     requestContext: input.requestContext
   });
 
-  if (itemStatus === 'REJECTED') {
-    const batchTransition = await transitionRequestSelectionBatchStatus({
-      batchId: batch.id,
-      event: 'REJECT',
-      actor: input.actor,
-      source: input.source ?? 'CLIENT_CABINET',
-      requestContext: input.requestContext,
-      tx
-    });
-    if (
-      batchTransition.outcome !== 'changed'
-      && batchTransition.outcome !== 'noop'
-    ) {
-      throw decisionError('BATCH_TRANSITION_FAILED', input);
-    }
-    return {
-      outcome: 'changed',
-      decision: input.decision,
-      itemStatus,
-      batchOutcome: 'rejected',
-      requestOutcome: 'unchanged',
-      auditLogId: itemAudit.id
-    };
-  }
-
   const aggregate = await tx.requestSelectionBatchItem.groupBy({
     by: ['status'],
     where: { batchId: batch.id },
@@ -371,8 +350,10 @@ async function executeClientSelectionDecision(
   });
   const counts = new Map(aggregate.map((entry) => [entry.status, entry._count._all]));
   const total = [...counts.values()].reduce((sum, count) => sum + count, 0);
-  const allApproved = total > 0 && (counts.get('APPROVED') ?? 0) === total;
-  if (!allApproved) {
+  const pendingCount = counts.get('PENDING') ?? 0;
+  const approvedCount = counts.get('APPROVED') ?? 0;
+  const rejectedCount = counts.get('REJECTED') ?? 0;
+  if (pendingCount > 0) {
     return {
       outcome: 'changed',
       decision: input.decision,
@@ -383,51 +364,76 @@ async function executeClientSelectionDecision(
     };
   }
 
+  const batchEvent =
+    approvedCount === total
+      ? 'APPROVE'
+      : approvedCount > 0 && rejectedCount > 0
+        ? 'PARTIALLY_APPROVE'
+        : 'REJECT';
   const batchTransition = await transitionRequestSelectionBatchStatus({
     batchId: batch.id,
-    event: 'APPROVE',
+    event: batchEvent,
     actor: input.actor,
     source: input.source ?? 'CLIENT_CABINET',
     requestContext: input.requestContext,
+    aggregate: {
+      totalCount: total,
+      approvedCount,
+      rejectedCount
+    },
     tx
   });
   if (batchTransition.outcome !== 'changed' && batchTransition.outcome !== 'noop') {
     throw decisionError('BATCH_TRANSITION_FAILED', input);
   }
 
-  let requestTransition;
-  try {
-    requestTransition = await transitionRequestStatus({
-      requestId: request.id,
-      event: REQUEST_STATUS_EVENTS.CLIENT_SELECTION_APPROVED,
-      actor: input.actor,
-      tx,
-      reason: 'Клієнт погодив усі позиції актуальної версії підбору',
-      metadata: {
-        source: 'CLIENT_CABINET',
-        batchId: batch.id,
-        revision: batch.revision
+  if (batchEvent !== 'REJECT') {
+    let requestTransition;
+    try {
+      const partial = batchEvent === 'PARTIALLY_APPROVE';
+      requestTransition = await transitionRequestStatus({
+        requestId: request.id,
+        event: REQUEST_STATUS_EVENTS.CLIENT_SELECTION_APPROVED,
+        actor: input.actor,
+        tx,
+        reason: partial
+          ? 'Клієнт частково погодив актуальну версію підбору'
+          : 'Клієнт погодив усі позиції актуальної версії підбору',
+        metadata: {
+          source: 'CLIENT_CABINET',
+          batchId: batch.id,
+          revision: batch.revision,
+          totalCount: total,
+          approvedCount,
+          rejectedCount,
+          partial
+        }
+      });
+    } catch (error) {
+      if (error instanceof RequestStatusTransitionError) {
+        throw decisionError('REQUEST_STATUS_TRANSITION_FAILED', input, error);
       }
-    });
-  } catch (error) {
-    if (error instanceof RequestStatusTransitionError) {
-      throw decisionError('REQUEST_STATUS_TRANSITION_FAILED', input, error);
+      throw error;
     }
-    throw error;
-  }
-  if (
-    requestTransition.outcome !== 'changed'
-    && requestTransition.outcome !== 'noop'
-  ) {
-    throw decisionError('REQUEST_STATUS_TRANSITION_FAILED', input);
+    if (
+      requestTransition.outcome !== 'changed'
+      && requestTransition.outcome !== 'noop'
+    ) {
+      throw decisionError('REQUEST_STATUS_TRANSITION_FAILED', input);
+    }
   }
 
   return {
     outcome: 'changed',
     decision: input.decision,
     itemStatus,
-    batchOutcome: 'approved',
-    requestOutcome: 'awaiting_invoice',
+    batchOutcome:
+      batchEvent === 'APPROVE'
+        ? 'approved'
+        : batchEvent === 'PARTIALLY_APPROVE'
+          ? 'partially_approved'
+          : 'rejected',
+    requestOutcome: batchEvent === 'REJECT' ? 'unchanged' : 'awaiting_invoice',
     auditLogId: itemAudit.id
   };
 }

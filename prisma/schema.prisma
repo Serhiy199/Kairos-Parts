@@ -56,6 +56,7 @@ enum RequestSelectionBatchStatus {
   DRAFT
   SENT
   APPROVED
+  PARTIALLY_APPROVED
   REJECTED
   SUPERSEDED
 }
@@ -190,6 +191,7 @@ enum AuditAction {
   REQUEST_SELECTION_BATCH_CREATED
   REQUEST_SELECTION_BATCH_SENT
   REQUEST_SELECTION_BATCH_APPROVED
+  REQUEST_SELECTION_BATCH_PARTIALLY_APPROVED
   REQUEST_SELECTION_BATCH_REJECTED
   REQUEST_SELECTION_BATCH_SUPERSEDED
   REQUEST_SELECTION_ITEM_APPROVED
@@ -661,6 +663,7 @@ model RequestSelectionBatch {
   rejectedAt            DateTime?
   supersededAt          DateTime?
   items                 RequestSelectionBatchItem[]
+  invoice               Invoice?
   createdAt             DateTime                    @default(now())
   updatedAt             DateTime                    @updatedAt
 
@@ -680,6 +683,7 @@ model RequestSelectionBatchItem {
   status                RequestSelectionBatchItemStatus @default(PENDING)
   decisionByUserId      String?
   decisionBy            User?                           @relation("RequestSelectionBatchItemDecisionBy", fields: [decisionByUserId], references: [id], onDelete: SetNull)
+  invoiceItem           InvoiceItem?
   approvedAt            DateTime?
   rejectedAt            DateTime?
   clientComment         String?
@@ -790,32 +794,35 @@ model CommercialOfferItem {
 }
 
 model Invoice {
-  id             String        @id @default(cuid())
-  requestId      String
-  request        Request       @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  companyId      String?
-  company        Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  clientId       String?
-  client         User?         @relation("InvoiceClient", fields: [clientId], references: [id], onDelete: SetNull)
-  invoiceNumber  String        @unique @default(dbgenerated("nextval('invoice_number_seq'::regclass)::text"))
-  status         InvoiceStatus @default(DRAFT)
-  currency       String        @default("UAH")
-  subtotal       Decimal       @default(0) @db.Decimal(12, 2)
-  totalAmount    Decimal       @default(0) @db.Decimal(12, 2)
-  managerComment String?
-  clientComment  String?
-  sellerSnapshot Json?
-  buyerSnapshot  Json?
-  createdById    String?
-  createdBy      User?         @relation("InvoiceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  sentAt         DateTime?
-  paidAt         DateTime?
-  cancelledAt    DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  items          InvoiceItem[]
+  id               String                 @id @default(cuid())
+  requestId        String
+  request          Request                @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  selectionBatchId String?                @unique
+  selectionBatch   RequestSelectionBatch? @relation(fields: [selectionBatchId], references: [id], onDelete: SetNull)
+  companyId        String?
+  company          Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  clientId         String?
+  client           User?                  @relation("InvoiceClient", fields: [clientId], references: [id], onDelete: SetNull)
+  invoiceNumber    String                 @unique @default(dbgenerated("nextval('invoice_number_seq'::regclass)::text"))
+  status           InvoiceStatus          @default(DRAFT)
+  currency         String                 @default("UAH")
+  subtotal         Decimal                @default(0) @db.Decimal(12, 2)
+  totalAmount      Decimal                @default(0) @db.Decimal(12, 2)
+  managerComment   String?
+  clientComment    String?
+  sellerSnapshot   Json?
+  buyerSnapshot    Json?
+  createdById      String?
+  createdBy        User?                  @relation("InvoiceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  sentAt           DateTime?
+  paidAt           DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  items            InvoiceItem[]
 
   @@index([requestId])
+  @@index([selectionBatchId])
   @@index([companyId])
   @@index([clientId])
   @@index([status])
@@ -823,25 +830,28 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id            String       @id @default(cuid())
-  invoiceId     String
-  invoice       Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  requestItemId String?
-  requestItem   RequestItem? @relation(fields: [requestItemId], references: [id], onDelete: SetNull)
-  name          String
-  brand         String?
-  catalogNumber String?
-  analogNumber  String?
-  quantity      Int          @default(1)
-  unit          String?      @default("шт")
-  price         Decimal      @default(0) @db.Decimal(12, 2)
-  total         Decimal      @default(0) @db.Decimal(12, 2)
-  comment       String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                   String                     @id @default(cuid())
+  invoiceId            String
+  invoice              Invoice                    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  requestItemId        String?
+  requestItem          RequestItem?               @relation(fields: [requestItemId], references: [id], onDelete: SetNull)
+  selectionBatchItemId String?                    @unique
+  selectionBatchItem   RequestSelectionBatchItem? @relation(fields: [selectionBatchItemId], references: [id], onDelete: SetNull)
+  name                 String
+  brand                String?
+  catalogNumber        String?
+  analogNumber         String?
+  quantity             Int                        @default(1)
+  unit                 String?                    @default("шт")
+  price                Decimal                    @default(0) @db.Decimal(12, 2)
+  total                Decimal                    @default(0) @db.Decimal(12, 2)
+  comment              String?
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
 
   @@index([invoiceId])
   @@index([requestItemId])
+  @@index([selectionBatchItemId])
 }
 
 model TelegramDraftRequest {

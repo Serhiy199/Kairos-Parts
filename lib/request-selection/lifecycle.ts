@@ -3,6 +3,7 @@ import type { RequestSelectionBatchStatus } from '@prisma/client';
 export const REQUEST_SELECTION_BATCH_EVENTS = {
   SEND: 'SEND',
   APPROVE: 'APPROVE',
+  PARTIALLY_APPROVE: 'PARTIALLY_APPROVE',
   REJECT: 'REJECT',
   SUPERSEDE: 'SUPERSEDE'
 } as const;
@@ -29,12 +30,14 @@ export type RequestSelectionBatchTransitionDecision =
 const targetByEvent: Record<RequestSelectionBatchEvent, RequestSelectionBatchStatus> = {
   SEND: 'SENT',
   APPROVE: 'APPROVED',
+  PARTIALLY_APPROVE: 'PARTIALLY_APPROVED',
   REJECT: 'REJECTED',
   SUPERSEDE: 'SUPERSEDED'
 };
 
 const finalStatuses = new Set<RequestSelectionBatchStatus>([
   'APPROVED',
+  'PARTIALLY_APPROVED',
   'REJECTED',
   'SUPERSEDED'
 ]);
@@ -65,7 +68,12 @@ export function resolveRequestSelectionBatchTransition(
     (currentStatus === 'DRAFT' && (event === 'SEND' || event === 'SUPERSEDE'))
     || (
       currentStatus === 'SENT'
-      && (event === 'APPROVE' || event === 'REJECT' || event === 'SUPERSEDE')
+      && (
+        event === 'APPROVE'
+        || event === 'PARTIALLY_APPROVE'
+        || event === 'REJECT'
+        || event === 'SUPERSEDE'
+      )
     )
   ) {
     return { outcome: 'allowed', nextStatus: targetStatus };

@@ -35,7 +35,9 @@ function resultMessage(result?: string) {
     'items-approval-forbidden': 'Позиції не знайдено або вони недоступні для вашого кабінету.',
     'selection-item-approved': 'Позицію погоджено. Очікується рішення щодо інших позицій.',
     'selection-fully-approved': 'Усі позиції погоджено. Заявка очікує рахунок.',
-    'selection-item-rejected': 'Позицію відхилено. Менеджер підготує оновлену версію підбору.',
+    'selection-item-rejected-pending': 'Позицію відхилено. Очікується рішення щодо інших позицій.',
+    'selection-partially-approved': 'Погодження завершено частково. Рахунок можна сформувати лише за погодженими позиціями.',
+    'selection-fully-rejected': 'Усі позиції відхилено. Менеджер підготує оновлену версію підбору.',
     'selection-decision-noop': 'Це рішення вже збережено.',
     'selection-decision-stale': 'Ця версія підбору вже неактуальна. Оновіть сторінку.',
     'selection-decision-conflict': 'Рішення для цієї позиції вже зафіксовано й не може бути змінене.',
@@ -83,7 +85,8 @@ function resultMessageTone(result?: string) {
   ]);
 
   const warningResults = new Set([
-    'selection-item-rejected',
+    'selection-item-rejected-pending',
+    'selection-fully-rejected',
     'selection-decision-stale',
     'selection-decision-conflict'
   ]);

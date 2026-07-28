@@ -18,6 +18,7 @@
     "test:request-status-stage4c3": "tsx scripts/check-request-status-stage4c3-item-edit-persistence.ts",
     "test:request-status-stage4d": "tsx scripts/check-request-status-stage4d-read-model.ts",
     "test:request-status-stage5": "tsx scripts/check-request-status-stage5-client-approval.ts",
+    "test:request-status-stage5a": "tsx scripts/check-request-status-stage5a-partial-invoice.ts",
     "db:seed": "prisma db seed"
   },
   "dependencies": {

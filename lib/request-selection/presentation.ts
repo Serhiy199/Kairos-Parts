@@ -7,6 +7,7 @@ export const REQUEST_SELECTION_BATCH_STATUS_LABELS = {
   DRAFT: 'Чернетка',
   SENT: 'Надіслано на погодження',
   APPROVED: 'Погоджено',
+  PARTIALLY_APPROVED: 'Частково погоджено',
   REJECTED: 'Відхилено',
   SUPERSEDED: 'Замінено новішою версією'
 } as const satisfies Record<RequestSelectionBatchStatus, string>;

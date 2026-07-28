@@ -98,6 +98,30 @@ const feedbackByResult = {
     tone: 'warning',
     message: 'Немає погоджених позицій для створення рахунку.'
   },
+  'invoice-request-not-awaiting': {
+    tone: 'warning',
+    message: 'Статус заявки ще не дозволяє створити рахунок.'
+  },
+  'invoice-selection-not-found': {
+    tone: 'warning',
+    message: 'Не знайдено завершеної версії підбору для рахунку.'
+  },
+  'invoice-selection-stale': {
+    tone: 'warning',
+    message: 'Версія підбору неактуальна або ще очікує рішення клієнта.'
+  },
+  'invoice-approved-price-missing': {
+    tone: 'warning',
+    message: 'Для погодженої позиції не вказано ціну.'
+  },
+  'invoice-currency-mismatch': {
+    tone: 'warning',
+    message: 'Погоджені позиції мають різні валюти.'
+  },
+  'invoice-selection-already-invoiced': {
+    tone: 'warning',
+    message: 'Для цієї версії підбору рахунок уже створено.'
+  },
   'invoice-not-found': { tone: 'warning', message: 'Рахунок не знайдено.' },
   'invoice-invalid-transition': {
     tone: 'warning',

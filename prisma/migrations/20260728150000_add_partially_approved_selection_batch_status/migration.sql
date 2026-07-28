@@ -1,0 +1,2 @@
+ALTER TYPE "RequestSelectionBatchStatus"
+  ADD VALUE IF NOT EXISTS 'PARTIALLY_APPROVED';

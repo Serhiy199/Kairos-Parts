@@ -81,8 +81,12 @@ export async function decideClientSelectionItemAction(formData: FormData) {
       feedback = 'selection-decision-noop';
     } else if (result.batchOutcome === 'approved') {
       feedback = 'selection-fully-approved';
+    } else if (result.batchOutcome === 'partially_approved') {
+      feedback = 'selection-partially-approved';
     } else if (result.batchOutcome === 'rejected') {
-      feedback = 'selection-item-rejected';
+      feedback = 'selection-fully-rejected';
+    } else if (result.decision === CLIENT_SELECTION_DECISIONS.REJECT) {
+      feedback = 'selection-item-rejected-pending';
     } else {
       feedback = 'selection-item-approved';
     }
