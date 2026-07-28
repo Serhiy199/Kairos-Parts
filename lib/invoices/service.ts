@@ -319,9 +319,9 @@ export async function createInvoiceFromApprovedRequestItems({
         const statusByCode = {
           REQUEST_NOT_FOUND: 'request-not-found',
           REQUEST_NOT_AWAITING_INVOICE: 'invoice-request-not-awaiting',
-          APPROVED_SELECTION_NOT_FOUND: 'invoice-selection-not-found',
-          INVOICE_SELECTION_STALE: 'invoice-selection-stale',
+          NO_FINALIZED_APPROVED_BATCH: 'invoice-selection-not-found',
           NO_APPROVED_ITEMS: 'invoice-no-approved-items',
+          PENDING_ITEMS_REMAIN: 'invoice-selection-stale',
           APPROVED_ITEM_PRICE_MISSING: 'invoice-approved-price-missing',
           APPROVED_ITEMS_CURRENCY_MISMATCH: 'invoice-currency-mismatch',
           INVOICE_ALREADY_EXISTS_FOR_SELECTION: 'invoice-selection-already-invoiced'

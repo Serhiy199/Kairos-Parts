@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { Prisma } from '@prisma/client';
 
 import {
+  inspectRequestInvoiceEligibility,
   InvoiceSelectionError,
   resolveInvoiceSelection
 } from '../lib/invoices/selection';
@@ -183,7 +184,7 @@ async function main() {
 
   await expectCode(
     () => resolveInvoiceSelection(
-      database({ requestStatus: 'WAITING_APPROVAL', batchStatus: 'SENT' }),
+      database({ requestStatus: 'WAITING_APPROVAL' }),
       'request-1'
     ),
     'REQUEST_NOT_AWAITING_INVOICE'
@@ -193,7 +194,18 @@ async function main() {
       database({ batchStatus: 'SENT', items: [item('1', 'PENDING')] }),
       'request-1'
     ),
-    'INVOICE_SELECTION_STALE'
+    'PENDING_ITEMS_REMAIN'
+  );
+  await expectCode(
+    () => resolveInvoiceSelection(
+      database({
+        requestStatus: 'WAITING_APPROVAL',
+        batchStatus: 'REJECTED',
+        items: [item('1', 'REJECTED'), item('2', 'REJECTED')]
+      }),
+      'request-1'
+    ),
+    'NO_APPROVED_ITEMS'
   );
   await expectCode(
     () => resolveInvoiceSelection(
@@ -219,6 +231,28 @@ async function main() {
     () => resolveInvoiceSelection(database({ invoiceId: 'invoice-1' }), 'request-1'),
     'INVOICE_ALREADY_EXISTS_FOR_SELECTION'
   );
+
+  const diagnostics = await inspectRequestInvoiceEligibility(
+    database({
+      items: [item('1', 'APPROVED', null), item('2', 'REJECTED')]
+    }),
+    'request-1'
+  );
+  assert.equal(diagnostics.eligible, false);
+  assert.equal(diagnostics.reason, 'APPROVED_ITEM_PRICE_MISSING');
+  assert.deepEqual({
+    requestStatus: diagnostics.requestStatus,
+    batchStatus: diagnostics.batchStatus,
+    approvedCount: diagnostics.approvedCount,
+    rejectedCount: diagnostics.rejectedCount,
+    pendingCount: diagnostics.pendingCount
+  }, {
+    requestStatus: 'AWAITING_INVOICE',
+    batchStatus: 'PARTIALLY_APPROVED',
+    approvedCount: 1,
+    rejectedCount: 1,
+    pendingCount: 0
+  });
 
   console.log(
     'Stage Request Status Automation 5A partial approval and invoice eligibility checks passed.'

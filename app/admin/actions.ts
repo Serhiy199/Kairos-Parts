@@ -1,6 +1,6 @@
 'use server';
 
-import { RequestStatus, UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -46,7 +46,14 @@ import {
   SendRequestSelectionForApprovalError,
   type RequestSelectionSourceVersion
 } from '@/lib/request-selection/send-for-approval';
-import { REQUEST_STATUSES } from '@/lib/requests/statuses';
+import {
+  isManualRequestStatus,
+  type ManualRequestStatus
+} from '@/lib/requests/statuses';
+import {
+  REQUEST_STATUS_EVENTS,
+  transitionRequestStatus
+} from '@/lib/requests/status-transition';
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -152,9 +159,16 @@ function requestDocumentSnapshot(document: {
 export async function updateAdminRequestStatus(formData: FormData) {
   const session = await requireCrmSession();
   const requestId = readString(formData, 'requestId');
+  const intent = readString(formData, 'intent');
   const status = readString(formData, 'status');
 
-  if (!hasDatabaseUrl() || !requestId || !REQUEST_STATUSES.includes(status as (typeof REQUEST_STATUSES)[number])) {
+  if (
+    !hasDatabaseUrl()
+    || !requestId
+    || intent !== 'manual-status-change'
+    || !isManualRequestStatus(status)
+    || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')
+  ) {
     redirectBack(requestId, 'status-error');
   }
 
@@ -167,40 +181,29 @@ export async function updateAdminRequestStatus(formData: FormData) {
     redirect('/admin/requests?result=request-not-found');
   }
 
-  const nextStatus = status as RequestStatus;
-  const requestContext = await getServerAuditRequestContext();
-
-  await prisma.$transaction(async (tx) => {
-    await tx.request.update({
-      where: { id: request.id },
-      data: { status: nextStatus }
-    });
-    await tx.requestStatusHistory.create({
-      data: {
-        requestId: request.id,
-        oldStatus: request.status,
-        newStatus: nextStatus,
-        changedByUserId: session.user.id
-      }
-    });
-    await writeAuditLog(tx, {
-      actor: auditUserActor(session.user.id),
-      companyId: request.companyId,
-      entityType: 'REQUEST',
-      entityId: request.id,
-      entityLabel: requestLabel(request.requestNumber),
-      action: 'REQUEST_STATUS_CHANGED',
-      category: 'STANDARD',
-      oldValue: { status: request.status },
-      newValue: { status: nextStatus },
-      metadata: { source: 'ADMIN_CRM' },
-      allowedFields: { oldValue: ['status'], newValue: ['status'], metadata: ['source'] },
-      requestContext
-    });
+  const eventByStatus: Record<ManualRequestStatus, typeof REQUEST_STATUS_EVENTS[
+    'MANUAL_SET_AWAITING_SHIPMENT'
+    | 'MANUAL_SET_COMPLETED'
+    | 'MANUAL_SET_CANCELLED'
+  ]> = {
+    AWAITING_SHIPMENT: REQUEST_STATUS_EVENTS.MANUAL_SET_AWAITING_SHIPMENT,
+    COMPLETED: REQUEST_STATUS_EVENTS.MANUAL_SET_COMPLETED,
+    CANCELLED: REQUEST_STATUS_EVENTS.MANUAL_SET_CANCELLED
+  };
+  const result = await transitionRequestStatus({
+    requestId: request.id,
+    event: eventByStatus[status],
+    actor: { id: session.user.id },
+    reason: 'Ручна зміна статусу в CRM',
+    metadata: { source: 'ADMIN_CRM' },
+    requestContext: await getServerAuditRequestContext()
   });
+  if (result.outcome === 'blocked') {
+    redirectBack(request.id, 'status-error');
+  }
 
   try {
-    await notifyRequestStatusChange(request.id, nextStatus);
+    await notifyRequestStatusChange(request.id, status);
   } catch {
     // Status updates must not fail because a notification channel is unavailable.
   }

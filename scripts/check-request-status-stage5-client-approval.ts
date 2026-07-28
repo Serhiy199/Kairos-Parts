@@ -486,6 +486,41 @@ async function behavioralChecks() {
     'PARTIALLY_APPROVED'
   );
   assert.equal(rejected.requests.get('request-1')?.status, 'AWAITING_INVOICE');
+  assert.equal(rejected.histories.length, 1);
+  assert.equal(
+    rejected.audits.filter((audit) => audit.action === 'REQUEST_STATUS_CHANGED').length,
+    1
+  );
+
+  const invariantFailure = initialState();
+  const decideInvariantFailure = createClientSelectionDecisionService(
+    makeDatabase(invariantFailure),
+    {
+      transitionRequestStatus: async () => ({
+        outcome: 'blocked',
+        currentStatus: 'WAITING_APPROVAL',
+        reason: 'invalid_transition'
+      })
+    }
+  );
+  await decideInvariantFailure({
+    ...base,
+    batchItemId: 'item-1',
+    decision: 'REJECT',
+    clientComment: 'Не підходить перша позиція'
+  });
+  await expectAsyncCode(
+    () => decideInvariantFailure({
+      ...base,
+      batchItemId: 'item-2',
+      decision: 'APPROVE'
+    }),
+    'REQUEST_APPROVAL_FINALIZATION_INVARIANT_FAILED'
+  );
+  assert.equal(invariantFailure.batches.get('batch-1')?.status, 'SENT');
+  assert.equal(invariantFailure.items.get('item-2')?.status, 'PENDING');
+  assert.equal(invariantFailure.requests.get('request-1')?.status, 'WAITING_APPROVAL');
+  assert.equal(invariantFailure.histories.length, 0);
 
   const fullyRejected = initialState();
   const decideFullyRejected = createClientSelectionDecisionService(

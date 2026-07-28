@@ -49,7 +49,8 @@ async function assertStaticCoverage() {
     companies,
     adminPrint,
     clientPrint,
-    adminDownload
+    adminDownload,
+    requestStatusTransition
   ] = await Promise.all([
     source('app/admin/actions.ts'),
     source('lib/request-selection/send-for-approval.ts'),
@@ -58,10 +59,15 @@ async function assertStaticCoverage() {
     source('app/admin/company-actions.ts'),
     source('app/admin/invoices/[invoiceId]/print/page.tsx'),
     source('app/client/invoices/[invoiceId]/print/page.tsx'),
-    source('app/api/admin/request-documents/[documentId]/file/route.ts')
+    source('app/api/admin/request-documents/[documentId]/file/route.ts'),
+    source('lib/requests/status-transition.ts')
   ]);
 
-  assert.match(requestActions, /REQUEST_STATUS_CHANGED[\s\S]*category: 'STANDARD'/);
+  assert.match(
+    requestStatusTransition,
+    /REQUEST_STATUS_CHANGED[\s\S]*category: 'STANDARD'/
+  );
+  assert.match(requestActions, /transitionRequestStatus/);
   assert.match(requestActions, /prisma\.\$transaction\(async \(tx\)/);
   assert.match(selectionSend, /REQUEST_ITEMS_SENT_FOR_APPROVAL/);
   assert.match(selectionSend, /writeAuditLog\(tx/);

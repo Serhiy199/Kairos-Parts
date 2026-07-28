@@ -1,5 +1,6 @@
 import type { Prisma, RequestStatus, UserRole } from '@prisma/client';
 
+import type { AuditRequestContext } from '@/lib/audit-log/contracts';
 import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { prisma } from '@/lib/prisma';
 
@@ -55,6 +56,7 @@ export type TransitionRequestStatusInput = {
   actor: RequestStatusActor;
   reason?: string;
   metadata?: RequestStatusTransitionMetadata;
+  requestContext?: AuditRequestContext;
   tx?: Prisma.TransactionClient;
 };
 
@@ -312,7 +314,8 @@ async function executeRequestStatusTransition(
         'rejectedCount',
         'partial'
       ]
-    }
+    },
+    requestContext: input.requestContext
   });
 
   return {

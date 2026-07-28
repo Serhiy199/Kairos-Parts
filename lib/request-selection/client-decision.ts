@@ -11,6 +11,7 @@ import {
 import {
   REQUEST_STATUS_EVENTS,
   RequestStatusTransitionError,
+  type RequestStatusTransitionResult,
   transitionRequestStatus
 } from '@/lib/requests/status-transition';
 
@@ -51,6 +52,7 @@ export type ClientSelectionDecisionErrorCode =
   | 'REJECTION_COMMENT_INVALID'
   | 'BATCH_TRANSITION_FAILED'
   | 'REQUEST_STATUS_TRANSITION_FAILED'
+  | 'REQUEST_APPROVAL_FINALIZATION_INVARIANT_FAILED'
   | 'CONCURRENT_SELECTION_DECISION'
   | 'DATABASE_TRANSACTION_FAILED';
 
@@ -97,6 +99,14 @@ type TransactionRunner = {
   ): Promise<T>;
 };
 
+type ClientSelectionDecisionDependencies = {
+  transitionRequestStatus: typeof transitionRequestStatus;
+};
+
+const defaultDependencies: ClientSelectionDecisionDependencies = {
+  transitionRequestStatus
+};
+
 function decisionError(
   code: ClientSelectionDecisionErrorCode,
   input: Pick<
@@ -121,6 +131,23 @@ function databaseErrorCode(error: unknown) {
   return error && typeof error === 'object' && 'code' in error
     ? String((error as { code?: unknown }).code ?? '')
     : '';
+}
+
+export function requestApprovalTransitionReachedTarget(
+  transition: RequestStatusTransitionResult,
+  persistedStatus: string
+) {
+  const transitionReachedTarget =
+    (
+      transition.outcome === 'changed'
+      && transition.nextStatus === 'AWAITING_INVOICE'
+    )
+    || (
+      transition.outcome === 'noop'
+      && transition.currentStatus === 'AWAITING_INVOICE'
+    );
+
+  return transitionReachedTarget && persistedStatus === 'AWAITING_INVOICE';
 }
 
 export function parseClientSelectionComment(
@@ -176,7 +203,8 @@ function actorCanAccessRequest(
 async function executeClientSelectionDecision(
   tx: Prisma.TransactionClient,
   input: Omit<DecideClientSelectionItemInput, 'tx'>,
-  comment: string | null
+  comment: string | null,
+  dependencies: ClientSelectionDecisionDependencies
 ): Promise<ClientSelectionDecisionResult> {
   const [actor, request, batch, item] = await Promise.all([
     tx.user.findUnique({
@@ -391,11 +419,12 @@ async function executeClientSelectionDecision(
     let requestTransition;
     try {
       const partial = batchEvent === 'PARTIALLY_APPROVE';
-      requestTransition = await transitionRequestStatus({
+      requestTransition = await dependencies.transitionRequestStatus({
         requestId: request.id,
         event: REQUEST_STATUS_EVENTS.CLIENT_SELECTION_APPROVED,
         actor: input.actor,
         tx,
+        requestContext: input.requestContext,
         reason: partial
           ? 'Клієнт частково погодив актуальну версію підбору'
           : 'Клієнт погодив усі позиції актуальної версії підбору',
@@ -415,11 +444,21 @@ async function executeClientSelectionDecision(
       }
       throw error;
     }
+    const persistedRequest = await tx.request.findUnique({
+      where: { id: request.id },
+      select: { status: true }
+    });
     if (
-      requestTransition.outcome !== 'changed'
-      && requestTransition.outcome !== 'noop'
+      !persistedRequest
+      || !requestApprovalTransitionReachedTarget(
+        requestTransition,
+        persistedRequest.status
+      )
     ) {
-      throw decisionError('REQUEST_STATUS_TRANSITION_FAILED', input);
+      throw decisionError(
+        'REQUEST_APPROVAL_FINALIZATION_INVARIANT_FAILED',
+        input
+      );
     }
   }
 
@@ -438,7 +477,10 @@ async function executeClientSelectionDecision(
   };
 }
 
-export function createClientSelectionDecisionService(database: TransactionRunner) {
+export function createClientSelectionDecisionService(
+  database: TransactionRunner,
+  dependencies: ClientSelectionDecisionDependencies = defaultDependencies
+) {
   return async function decideClientSelectionItem(
     input: DecideClientSelectionItemInput
   ): Promise<ClientSelectionDecisionResult> {
@@ -453,13 +495,25 @@ export function createClientSelectionDecisionService(database: TransactionRunner
     }
 
     const { tx, ...decisionInput } = input;
-    if (tx) return executeClientSelectionDecision(tx, decisionInput, comment);
+    if (tx) {
+      return executeClientSelectionDecision(
+        tx,
+        decisionInput,
+        comment,
+        dependencies
+      );
+    }
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         return await database.$transaction(
           (transaction) =>
-            executeClientSelectionDecision(transaction, decisionInput, comment),
+            executeClientSelectionDecision(
+              transaction,
+              decisionInput,
+              comment,
+              dependencies
+            ),
           {
             maxWait: 5_000,
             timeout: 10_000,

@@ -12,6 +12,18 @@ export const REQUEST_STATUSES = [
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 export type AnyRequestStatus = RequestStatus | PrismaRequestStatus;
 
+export const MANUAL_REQUEST_STATUSES = [
+  'AWAITING_SHIPMENT',
+  'COMPLETED',
+  'CANCELLED'
+] as const satisfies readonly PrismaRequestStatus[];
+
+export type ManualRequestStatus = (typeof MANUAL_REQUEST_STATUSES)[number];
+
+export function isManualRequestStatus(value: string): value is ManualRequestStatus {
+  return MANUAL_REQUEST_STATUSES.includes(value as ManualRequestStatus);
+}
+
 export const REQUEST_STATUS_ORDER: Record<AnyRequestStatus, number> = {
   NEW: 1,
   IN_PROGRESS: 2,
@@ -82,7 +94,7 @@ export function formatRequestStatus(status: AnyRequestStatus) {
   return REQUEST_STATUS_LABELS[status];
 }
 
-export function normalizeRequestStatusForSelection(status: AnyRequestStatus): RequestStatus {
+export function normalizeRequestStatusForSelection(status: AnyRequestStatus): AnyRequestStatus {
   if (status === 'OFFER_PREPARING') {
     return 'IN_PROGRESS';
   }
@@ -91,5 +103,5 @@ export function normalizeRequestStatusForSelection(status: AnyRequestStatus): Re
     return 'AWAITING_SHIPMENT';
   }
 
-  return REQUEST_STATUSES.includes(status as RequestStatus) ? (status as RequestStatus) : 'NEW';
+  return status;
 }

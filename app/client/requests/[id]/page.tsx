@@ -45,6 +45,8 @@ function resultMessage(result?: string) {
     'selection-rejection-comment-required': 'Вкажіть причину відхилення.',
     'selection-rejection-comment-invalid': 'Причина має містити від 3 до 500 символів без HTML.',
     'selection-decision-error': 'Не вдалося зберегти рішення. Спробуйте ще раз.',
+    'selection-finalization-invariant-failed':
+      'Рішення не збережено, тому що заявка не перейшла до очікування рахунку. Оновіть сторінку та повторіть дію.',
     'item-change-created': 'Уточнення по позиції передано менеджеру.',
     'item-change-required': 'Вкажіть нове значення або причину уточнення.',
     'item-change-field-forbidden': 'Це поле не можна змінювати з кабінету клієнта.',
@@ -72,6 +74,7 @@ function resultMessageTone(result?: string) {
     'selection-rejection-comment-required',
     'selection-rejection-comment-invalid',
     'selection-decision-error',
+    'selection-finalization-invariant-failed',
     'item-change-required',
     'item-change-field-forbidden',
     'item-change-forbidden',

@@ -46,7 +46,10 @@ import {
 import { REQUEST_SELECTION_BATCH_STATUS_LABELS } from '@/lib/request-selection/presentation';
 import { REQUEST_DOCUMENT_TYPE_LABELS, REQUEST_DOCUMENT_TYPES } from '@/lib/request-documents/validation';
 import { REQUEST_SOURCE_LABELS } from '@/lib/requests/sources';
-import { normalizeRequestStatusForSelection, REQUEST_STATUS_LABELS, REQUEST_STATUSES } from '@/lib/requests/statuses';
+import {
+  MANUAL_REQUEST_STATUSES,
+  REQUEST_STATUS_LABELS
+} from '@/lib/requests/statuses';
 
 export const dynamic = 'force-dynamic';
 
@@ -164,7 +167,6 @@ export default async function AdminRequestDetailPage({
   const companyName = request.company?.name ?? request.client?.companyName ?? request.companyName ?? '—';
   const phone = request.client?.phone ?? request.guestPhone ?? '—';
   const email = request.client?.email ?? request.guestEmail ?? '—';
-  const selectedRequestStatus = normalizeRequestStatusForSelection(request.status);
   const ocrImageFiles = request.files.filter((file) => file.mimeType.startsWith('image/'));
 
   return (
@@ -421,10 +423,18 @@ export default async function AdminRequestDetailPage({
             <p className="text-sm font-bold uppercase text-accent">Дії</p>
             <form action={updateAdminRequestStatus} className="mt-4 grid gap-3">
               <input type="hidden" name="requestId" value={request.id} />
+              <input type="hidden" name="intent" value="manual-status-change" />
+              <p className="text-sm leading-6 text-muted">
+                Поточний статус:{' '}
+                <span className="font-semibold text-foreground">
+                  {REQUEST_STATUS_LABELS[request.status]}
+                </span>
+              </p>
               <label className="grid min-w-0 gap-2 text-sm font-semibold text-foreground">
-                Статус
-                <select name="status" defaultValue={selectedRequestStatus} className="h-11 w-full min-w-0 rounded-md border border-border px-3 text-sm outline-none focus:border-accent">
-                  {REQUEST_STATUSES.map((status) => <option key={status} value={status}>{REQUEST_STATUS_LABELS[status]}</option>)}
+                Ручна дія
+                <select name="status" defaultValue="" required className="h-11 w-full min-w-0 rounded-md border border-border px-3 text-sm outline-none focus:border-accent">
+                  <option value="" disabled>Оберіть статус</option>
+                  {MANUAL_REQUEST_STATUSES.map((status) => <option key={status} value={status}>{REQUEST_STATUS_LABELS[status]}</option>)}
                 </select>
               </label>
               <button className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
@@ -875,11 +885,11 @@ function InvoicesSection({
         REQUEST_NOT_FOUND: 'Заявку не знайдено.',
         REQUEST_NOT_AWAITING_INVOICE:
           'Рахунок стане доступним після завершення погодження з хоча б однією погодженою позицією.',
-        APPROVED_SELECTION_NOT_FOUND:
+        NO_FINALIZED_APPROVED_BATCH:
           'Немає завершеної версії підбору, придатної для рахунку.',
-        INVOICE_SELECTION_STALE:
-          'Остання версія підбору ще очікує рішення або вже неактуальна.',
         NO_APPROVED_ITEMS: 'У завершеній версії немає погоджених позицій.',
+        PENDING_ITEMS_REMAIN:
+          'В останній версії підбору ще залишилися позиції без рішення клієнта.',
         APPROVED_ITEM_PRICE_MISSING:
           'Для погодженої позиції не вказано ціну. Підготуйте нову версію підбору.',
         APPROVED_ITEMS_CURRENCY_MISMATCH:
@@ -913,9 +923,16 @@ function InvoicesSection({
       </div>
 
       {!canCreateInvoice ? (
-        <p className="mt-4 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm font-semibold text-[#8A5B24]">
-          {blockedReason}
-        </p>
+        <div className="mt-4 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm text-[#8A5B24]">
+          <p className="font-semibold">{blockedReason}</p>
+          <p className="mt-2 text-xs leading-5">
+            Request: {eligibility.requestStatus ?? 'не знайдено'} ·
+            Batch: {eligibility.batchStatus ?? 'не знайдено'} ·
+            погоджено {eligibility.approvedCount} · відхилено{' '}
+            {eligibility.rejectedCount} · очікує рішення{' '}
+            {eligibility.pendingCount}
+          </p>
+        </div>
       ) : (
         <p className="mt-4 rounded-md border border-info/20 bg-[#E8F1FF] p-4 text-sm font-semibold text-info">
           Версія №{eligibility.revision}: до рахунку готово{' '}

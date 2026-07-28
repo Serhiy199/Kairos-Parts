@@ -40,7 +40,9 @@ const selectionDecisionFeedback: Partial<
   BATCH_ITEM_DECISION_CONFLICT: 'selection-decision-conflict',
   REJECTION_COMMENT_REQUIRED: 'selection-rejection-comment-required',
   REJECTION_COMMENT_INVALID: 'selection-rejection-comment-invalid',
-  CONCURRENT_SELECTION_DECISION: 'selection-decision-stale'
+  CONCURRENT_SELECTION_DECISION: 'selection-decision-stale',
+  REQUEST_APPROVAL_FINALIZATION_INVARIANT_FAILED:
+    'selection-finalization-invariant-failed'
 };
 
 export async function decideClientSelectionItemAction(formData: FormData) {
