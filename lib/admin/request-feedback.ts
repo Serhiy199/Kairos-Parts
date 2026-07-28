@@ -50,6 +50,14 @@ const feedbackByResult = {
     tone: 'error',
     message: 'Не вдалося оновити позицію. Спробуйте ще раз.'
   },
+  'item-approved-locked': {
+    tone: 'warning',
+    message: 'Позицію вже погоджено клієнтом. Її погоджені дані не можна змінити.'
+  },
+  'item-approved-delete-blocked': {
+    tone: 'warning',
+    message: 'Погоджену позицію не можна видалити.'
+  },
   'item-deleted': { tone: 'success', message: 'Позицію видалено.' },
   'items-sent-for-approval': {
     tone: 'success',
@@ -74,6 +82,26 @@ const feedbackByResult = {
   'items-send-status-locked': {
     tone: 'warning',
     message: 'Поточний статус заявки не дозволяє відправити добірку на погодження.'
+  },
+  'follow-up-invoice-draft': {
+    tone: 'warning',
+    message: 'Перед повторним погодженням видаліть або скасуйте чернетку рахунку.'
+  },
+  'follow-up-invoice-sent': {
+    tone: 'warning',
+    message: 'Рахунок уже надіслано. Для додаткових позицій потрібен окремий цикл.'
+  },
+  'follow-up-active-batch': {
+    tone: 'warning',
+    message: 'Нова версія вже очікує рішення клієнта.'
+  },
+  'follow-up-no-changes': {
+    tone: 'warning',
+    message: 'Змініть відхилену позицію або додайте заміну.'
+  },
+  'follow-up-source-missing': {
+    tone: 'error',
+    message: 'Не знайдено завершену версію погодження, від якої можна створити повторний цикл.'
   },
   'items-send-error': {
     tone: 'error',

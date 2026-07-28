@@ -43,7 +43,8 @@ const selectionItemSelect = {
   unit: true,
   approvedUnitPrice: true,
   currency: true,
-  managerComment: true
+  managerComment: true,
+  invoiceItem: { select: { id: true } }
 } satisfies Prisma.RequestSelectionBatchItemSelect;
 
 const selectionBatchSelect = {
@@ -107,43 +108,65 @@ export async function resolveInvoiceSelection(
 ): Promise<ResolvedInvoiceSelection> {
   const request = await database.request.findUnique({
     where: { id: requestId },
-    select: { id: true, status: true }
+    select: {
+      id: true,
+      status: true,
+      invoices: { take: 1, select: { id: true } }
+    }
   });
   if (!request) throw selectionError('REQUEST_NOT_FOUND', requestId);
-  const latestBatch = await database.requestSelectionBatch.findFirst({
-    where: { requestId },
-    orderBy: [{ revision: 'desc' }, { id: 'asc' }],
+  const finalizedBatches = await database.requestSelectionBatch.findMany({
+    where: {
+      requestId,
+      status: { in: ['APPROVED', 'PARTIALLY_APPROVED', 'REJECTED'] }
+    },
+    orderBy: [{ revision: 'asc' }, { id: 'asc' }],
     select: selectionBatchSelect
   });
+  const latestBatch = finalizedBatches.at(-1);
   if (!latestBatch) {
     throw selectionError('NO_FINALIZED_APPROVED_BATCH', requestId);
   }
-  const pendingCount = latestBatch.items.filter(
-    (item) => item.status === 'PENDING'
-  ).length;
-  const approvedItems = latestBatch.items.filter(
-    (item) => item.status === 'APPROVED'
-  );
-  const rejectedCount = latestBatch.items.filter(
-    (item) => item.status === 'REJECTED'
-  ).length;
-
-  if (pendingCount > 0) {
-    throw selectionError('PENDING_ITEMS_REMAIN', requestId, latestBatch);
+  const approvedByIdentity = new Map<string, SelectionBatch['items'][number]>();
+  for (const batch of finalizedBatches) {
+    for (const item of batch.items) {
+      if (item.status !== 'APPROVED') continue;
+      approvedByIdentity.set(
+        item.sourceRequestItemId ?? `snapshot:${item.id}`,
+        item
+      );
+    }
   }
+  const approvedItems = [...approvedByIdentity.values()]
+    .filter((item) => item.invoiceItem === null)
+    .sort((left, right) =>
+      left.position - right.position || left.id.localeCompare(right.id)
+    );
+  const latestApprovedBatch = [...finalizedBatches]
+    .reverse()
+    .find((batch) => batch.items.some((item) => item.status === 'APPROVED'))
+    ?? latestBatch;
   if (approvedItems.length === 0) {
     throw selectionError('NO_APPROVED_ITEMS', requestId, latestBatch);
   }
   if (
-    latestBatch.status !== 'APPROVED'
-    && latestBatch.status !== 'PARTIALLY_APPROVED'
+    latestApprovedBatch.status !== 'APPROVED'
+    && latestApprovedBatch.status !== 'PARTIALLY_APPROVED'
   ) {
-    throw selectionError('NO_FINALIZED_APPROVED_BATCH', requestId, latestBatch);
+    throw selectionError(
+      'NO_FINALIZED_APPROVED_BATCH',
+      requestId,
+      latestApprovedBatch
+    );
   }
+  const rejectedCount = latestBatch.items.filter(
+    (item) => item.status === 'REJECTED'
+  ).length;
+
   if (request.status !== 'AWAITING_INVOICE') {
     throw selectionError('REQUEST_NOT_AWAITING_INVOICE', requestId, latestBatch);
   }
-  if (latestBatch.invoice) {
+  if (request.invoices.length > 0) {
     throw selectionError(
       'INVOICE_ALREADY_EXISTS_FOR_SELECTION',
       requestId,
@@ -151,23 +174,6 @@ export async function resolveInvoiceSelection(
     );
   }
 
-  const aggregateMatchesStatus =
-    pendingCount === 0
-    && (
-      (
-        latestBatch.status === 'APPROVED'
-        && approvedItems.length === latestBatch.items.length
-      )
-      || (
-        latestBatch.status === 'PARTIALLY_APPROVED'
-        && approvedItems.length > 0
-        && rejectedCount > 0
-        && approvedItems.length + rejectedCount === latestBatch.items.length
-      )
-    );
-  if (!aggregateMatchesStatus) {
-    throw selectionError('NO_FINALIZED_APPROVED_BATCH', requestId, latestBatch);
-  }
   if (approvedItems.some((item) => item.approvedUnitPrice === null)) {
     throw selectionError(
       'APPROVED_ITEM_PRICE_MISSING',
@@ -186,9 +192,9 @@ export async function resolveInvoiceSelection(
   }
 
   return {
-    batchId: latestBatch.id,
-    revision: latestBatch.revision,
-    status: latestBatch.status,
+    batchId: latestApprovedBatch.id,
+    revision: latestApprovedBatch.revision,
+    status: latestApprovedBatch.status,
     currency: approvedItems[0].currency,
     approvedCount: approvedItems.length,
     rejectedCount,
@@ -215,22 +221,36 @@ export async function inspectRequestInvoiceEligibility(
   database: SelectionDatabase,
   requestId: string
 ): Promise<RequestInvoiceEligibility> {
-  const [request, latestBatch] = await Promise.all([
+  const [request, finalizedBatches] = await Promise.all([
     database.request.findUnique({
       where: { id: requestId },
       select: { id: true, status: true }
     }),
-    database.requestSelectionBatch.findFirst({
-      where: { requestId },
-      orderBy: [{ revision: 'desc' }, { id: 'asc' }],
+    database.requestSelectionBatch.findMany({
+      where: {
+        requestId,
+        status: { in: ['APPROVED', 'PARTIALLY_APPROVED', 'REJECTED'] }
+      },
+      orderBy: [{ revision: 'asc' }, { id: 'asc' }],
       select: selectionBatchSelect
     })
   ]);
+  const latestBatch = finalizedBatches.at(-1);
+  const cumulativeApproved = new Map<string, SelectionBatch['items'][number]>();
+  for (const batch of finalizedBatches) {
+    for (const item of batch.items) {
+      if (item.status === 'APPROVED') {
+        cumulativeApproved.set(
+          item.sourceRequestItemId ?? `snapshot:${item.id}`,
+          item
+        );
+      }
+    }
+  }
   const diagnostics: InvoiceEligibilityDiagnostics = {
     requestStatus: request?.status ?? null,
     batchStatus: latestBatch?.status ?? null,
-    approvedCount:
-      latestBatch?.items.filter((item) => item.status === 'APPROVED').length ?? 0,
+    approvedCount: cumulativeApproved.size,
     rejectedCount:
       latestBatch?.items.filter((item) => item.status === 'REJECTED').length ?? 0,
     pendingCount:

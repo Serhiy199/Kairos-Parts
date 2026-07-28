@@ -46,7 +46,9 @@ export function ClientApprovalBatchSection({
             Версія підбору №{activeBatch.revision}
           </p>
           <h3 className="mt-2 break-words text-lg font-bold text-foreground">
-            Зафіксована добірка позицій
+            {activeBatch.status === 'SENT' && activeBatch.previouslyApprovedCount > 0
+              ? 'Нові й оновлені позиції для погодження'
+              : 'Зафіксована добірка позицій'}
           </h3>
           <p className="mt-2 text-sm leading-6 text-muted">
             Ви переглядаєте незмінну версію підбору, яку менеджер надіслав на погодження.
@@ -73,6 +75,12 @@ export function ClientApprovalBatchSection({
 
       {activeBatch.status === 'SENT' ? (
         <div className="mt-5 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm leading-6 text-[#8A5B24]">
+          {activeBatch.previouslyApprovedCount > 0 ? (
+            <p className="mb-2 font-semibold text-success">
+              Раніше погоджено: {activeBatch.previouslyApprovedCount} позицій.
+              Вони збережені для майбутнього рахунку.
+            </p>
+          ) : null}
           Перевірте кожну позицію та погодьте її або вкажіть причину відхилення.
           Версію буде завершено після рішення щодо кожної позиції.
         </div>

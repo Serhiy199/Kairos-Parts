@@ -25,6 +25,7 @@ export type RequestItemUpdateErrorCode =
   | 'ACTOR_NOT_ALLOWED'
   | 'REQUEST_ITEM_VALIDATION_FAILED'
   | 'REQUEST_ITEM_VERSION_CONFLICT'
+  | 'APPROVED_REQUEST_ITEM_LOCKED'
   | 'REQUEST_ITEM_UPDATE_FAILED'
   | 'REQUEST_ITEM_UPDATE_NOT_PERSISTED';
 
@@ -213,6 +214,24 @@ export function createUpdateRequestItemService(
             item: itemResult(existing),
             changedFields: []
           };
+        }
+
+        const approvedSnapshot = await tx.requestSelectionBatchItem.findFirst({
+          where: {
+            sourceRequestItemId: existing.id,
+            status: 'APPROVED',
+            batch: {
+              requestId: input.requestId,
+              status: { in: ['APPROVED', 'PARTIALLY_APPROVED'] }
+            }
+          },
+          select: { id: true }
+        });
+        if (approvedSnapshot) {
+          throw new RequestItemUpdateError('APPROVED_REQUEST_ITEM_LOCKED', {
+            requestItemId: input.requestItemId,
+            requestId: input.requestId
+          });
         }
 
         const diff = buildAuditDiff(before, desired, REQUEST_ITEM_UPDATE_FIELDS);

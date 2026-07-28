@@ -1,4 +1,8 @@
-import type { Prisma, RequestStatus } from '@prisma/client';
+import type {
+  InvoiceStatus,
+  Prisma,
+  RequestStatus
+} from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import {
@@ -47,6 +51,7 @@ const currentItemSelect = {
 const activeBatchItemSelect = {
   id: true,
   sourceRequestItemId: true,
+  status: true,
   sourceUpdatedAt: true,
   snapshotSchemaVersion: true,
   snapshotHash: true,
@@ -74,12 +79,19 @@ type CurrentItem = Prisma.RequestItemGetPayload<{ select: typeof currentItemSele
 type ActiveBatchItem = Prisma.RequestSelectionBatchItemGetPayload<{
   select: typeof activeBatchItemSelect;
 }>;
+type ComparableBatchItem = Omit<ActiveBatchItem, 'status'> & {
+  status?: ActiveBatchItem['status'];
+};
 
 export const REQUEST_SELECTION_RESEND_ITEM_STATES = {
   NOT_SENT: 'NOT_SENT',
   UNCHANGED: 'UNCHANGED',
   CHANGED_AFTER_SEND: 'CHANGED_AFTER_SEND',
-  NEW_AFTER_SEND: 'NEW_AFTER_SEND'
+  NEW_AFTER_SEND: 'NEW_AFTER_SEND',
+  LOCKED_APPROVED: 'LOCKED_APPROVED',
+  UNCHANGED_REJECTED: 'UNCHANGED_REJECTED',
+  CHANGED_REJECTED: 'CHANGED_REJECTED',
+  NEW_FOLLOW_UP: 'NEW_FOLLOW_UP'
 } as const;
 
 export type RequestSelectionResendItemState =
@@ -92,7 +104,15 @@ export type RequestSelectionResendEligibilityReason =
   | 'HAS_REMOVED_ITEMS'
   | 'HAS_MULTIPLE_CHANGES'
   | 'NOTHING_TO_SEND'
-  | 'REQUEST_STATUS_BLOCKED';
+  | 'REQUEST_STATUS_BLOCKED'
+  | 'HAS_REJECTED_CHANGES'
+  | 'HAS_NEW_REPLACEMENT_ITEMS'
+  | 'HAS_REJECTED_AND_NEW_ITEMS'
+  | 'NO_FOLLOW_UP_CHANGES'
+  | 'ACTIVE_SENT_BATCH_EXISTS'
+  | 'INVOICE_DRAFT_EXISTS'
+  | 'INVOICE_ALREADY_SENT'
+  | 'NO_FINALIZED_SELECTION';
 
 export type RequestSelectionResendEligibility = {
   requestId: string;
@@ -114,6 +134,17 @@ export type RequestSelectionResendEligibility = {
   newItemIds: string[];
   unchangedItemIds: string[];
   removedBatchItemIds: string[];
+  mode?: 'INITIAL' | 'RESEND_ACTIVE' | 'FOLLOW_UP_REJECTED';
+  sourceBatch?: {
+    id: string;
+    revision: number;
+    status: 'APPROVED' | 'PARTIALLY_APPROVED' | 'REJECTED';
+  } | null;
+  currentInvoice?: { id: string; status: InvoiceStatus } | null;
+  approvedLockedItemIds?: string[];
+  rejectedEditableItemIds?: string[];
+  changedRejectedItemIds?: string[];
+  removedRejectedSourceIds?: string[];
   canSend: boolean;
   reason: RequestSelectionResendEligibilityReason;
 };
@@ -135,6 +166,11 @@ export class RequestSelectionResendEligibilityError extends Error {
 type ActiveBatch = {
   id: string;
   revision: number;
+  items: ComparableBatchItem[];
+};
+
+type FinalizedBatch = Omit<ActiveBatch, 'items'> & {
+  status: 'APPROVED' | 'PARTIALLY_APPROVED' | 'REJECTED';
   items: ActiveBatchItem[];
 };
 
@@ -144,7 +180,7 @@ type EligibilitySource = {
   items: CurrentItem[];
 };
 
-function activeApprovalContent(item: ActiveBatchItem): RequestSelectionApprovalContent {
+function activeApprovalContent(item: ComparableBatchItem): RequestSelectionApprovalContent {
   return {
     snapshotSchemaVersion: item.snapshotSchemaVersion,
     equipmentType: item.equipmentType,
@@ -174,7 +210,7 @@ export function deriveRequestSelectionResendEligibility(input: {
 }): RequestSelectionResendEligibility {
   const activeBySourceId = new Map(
     (input.activeBatch?.items ?? [])
-      .filter((item): item is ActiveBatchItem & { sourceRequestItemId: string } =>
+      .filter((item): item is ComparableBatchItem & { sourceRequestItemId: string } =>
         Boolean(item.sourceRequestItemId)
       )
       .map((item) => [item.sourceRequestItemId, item])
@@ -270,6 +306,145 @@ export function deriveRequestSelectionResendEligibility(input: {
   };
 }
 
+export function deriveRequestSelectionFollowUpEligibility(input: {
+  request: EligibilitySource;
+  activeBatch: ActiveBatch | null;
+  sourceBatch: FinalizedBatch | null;
+  finalizedBatches?: FinalizedBatch[];
+  currentInvoice: { id: string; status: InvoiceStatus } | null;
+}): RequestSelectionResendEligibility {
+  const finalizedBatches = input.finalizedBatches
+    ?? (input.sourceBatch ? [input.sourceBatch] : []);
+  const sourceItems = finalizedBatches.flatMap((batch) => batch.items);
+  const approvedSourceIds = new Set(
+    sourceItems
+      .filter(
+        (item): item is ActiveBatchItem & { sourceRequestItemId: string } =>
+          item.status === 'APPROVED' && Boolean(item.sourceRequestItemId)
+      )
+      .map((item) => item.sourceRequestItemId)
+  );
+  const sourceByRequestItemId = new Map<string, ActiveBatchItem>();
+  for (const item of sourceItems) {
+    if (
+      item.sourceRequestItemId
+      && !sourceByRequestItemId.has(item.sourceRequestItemId)
+    ) {
+      sourceByRequestItemId.set(item.sourceRequestItemId, item);
+    }
+  }
+  const currentIds = new Set(input.request.items.map((item) => item.id));
+  const approvedLockedItemIds: string[] = [];
+  const rejectedEditableItemIds: string[] = [];
+  const changedRejectedItemIds: string[] = [];
+  const newItemIds: string[] = [];
+  const unchangedItemIds: string[] = [];
+
+  const items = input.request.items.map((item) => {
+    const currentSnapshot = buildRequestSelectionSnapshot(
+      item as RequestSelectionSnapshotSource
+    );
+    const currentApprovalHash = hashRequestSelectionApprovalContent(currentSnapshot);
+    const sourceItem = sourceByRequestItemId.get(item.id) ?? null;
+    const sourceApprovalHash = sourceItem
+      ? hashRequestSelectionApprovalContent(activeApprovalContent(sourceItem))
+      : null;
+    let state: RequestSelectionResendItemState;
+
+    if (approvedSourceIds.has(item.id)) {
+      state = 'LOCKED_APPROVED';
+      approvedLockedItemIds.push(item.id);
+    } else if (sourceItem?.status === 'REJECTED') {
+      rejectedEditableItemIds.push(item.id);
+      if (sourceApprovalHash === currentApprovalHash) {
+        state = 'UNCHANGED_REJECTED';
+        unchangedItemIds.push(item.id);
+      } else {
+        state = 'CHANGED_REJECTED';
+        changedRejectedItemIds.push(item.id);
+      }
+    } else {
+      state = 'NEW_FOLLOW_UP';
+      newItemIds.push(item.id);
+    }
+
+    return {
+      requestItemId: item.id,
+      activeBatchItemId: sourceItem?.id ?? null,
+      state,
+      currentUpdatedAt: item.updatedAt.toISOString(),
+      activeBatchSourceUpdatedAt: sourceItem?.sourceUpdatedAt.toISOString() ?? null,
+      currentApprovalHash,
+      activeApprovalHash: sourceApprovalHash
+    };
+  });
+  const removedRejectedSourceIds = sourceItems
+    .filter(
+      (item) =>
+        item.status === 'REJECTED'
+        && (
+          item.sourceRequestItemId === null
+          || !currentIds.has(item.sourceRequestItemId)
+        )
+    )
+    .map((item) => item.sourceRequestItemId ?? item.id);
+  const followUpCandidateItemIds = [
+    ...changedRejectedItemIds,
+    ...newItemIds
+  ];
+
+  let reason: RequestSelectionResendEligibilityReason;
+  if (input.activeBatch) reason = 'ACTIVE_SENT_BATCH_EXISTS';
+  else if (!input.sourceBatch) reason = 'NO_FINALIZED_SELECTION';
+  else if (input.currentInvoice?.status === 'DRAFT') reason = 'INVOICE_DRAFT_EXISTS';
+  else if (input.currentInvoice) reason = 'INVOICE_ALREADY_SENT';
+  else if (
+    input.request.status !== 'AWAITING_INVOICE'
+    && input.request.status !== 'WAITING_APPROVAL'
+  ) reason = 'REQUEST_STATUS_BLOCKED';
+  else if (changedRejectedItemIds.length > 0 && newItemIds.length > 0) {
+    reason = 'HAS_REJECTED_AND_NEW_ITEMS';
+  } else if (changedRejectedItemIds.length > 0) {
+    reason = 'HAS_REJECTED_CHANGES';
+  } else if (newItemIds.length > 0) {
+    reason = 'HAS_NEW_REPLACEMENT_ITEMS';
+  } else {
+    reason = 'NO_FOLLOW_UP_CHANGES';
+  }
+  const canSend = reason === 'HAS_REJECTED_CHANGES'
+    || reason === 'HAS_NEW_REPLACEMENT_ITEMS'
+    || reason === 'HAS_REJECTED_AND_NEW_ITEMS';
+
+  return {
+    requestId: input.request.id,
+    requestStatus: input.request.status,
+    activeBatchId: input.activeBatch?.id ?? null,
+    activeRevision: input.activeBatch?.revision ?? null,
+    items,
+    eligibleItemIds: canSend ? followUpCandidateItemIds : [],
+    notSentItemIds: [],
+    changedItemIds: changedRejectedItemIds,
+    newItemIds,
+    unchangedItemIds,
+    removedBatchItemIds: removedRejectedSourceIds,
+    mode: 'FOLLOW_UP_REJECTED',
+    sourceBatch: input.sourceBatch
+      ? {
+          id: input.sourceBatch.id,
+          revision: input.sourceBatch.revision,
+          status: input.sourceBatch.status
+        }
+      : null,
+    currentInvoice: input.currentInvoice,
+    approvedLockedItemIds,
+    rejectedEditableItemIds,
+    changedRejectedItemIds,
+    removedRejectedSourceIds,
+    canSend,
+    reason
+  };
+}
+
 type EligibilityDatabase = Pick<
   Prisma.TransactionClient,
   'request' | 'requestSelectionBatch'
@@ -283,7 +458,7 @@ export function createRequestSelectionResendEligibilityService(
     tx?: Prisma.TransactionClient;
   }): Promise<RequestSelectionResendEligibility> {
     const db = input.tx ?? database;
-    const [request, activeBatches] = await Promise.all([
+    const [request, activeBatches, finalizedBatches, currentInvoice] = await Promise.all([
       db.request.findUnique({
         where: { id: input.requestId },
         select: {
@@ -307,6 +482,32 @@ export function createRequestSelectionResendEligibilityService(
             select: activeBatchItemSelect
           }
         }
+      }),
+      db.requestSelectionBatch.findMany({
+        where: {
+          requestId: input.requestId,
+          status: { in: ['APPROVED', 'PARTIALLY_APPROVED', 'REJECTED'] }
+        },
+        orderBy: [{ revision: 'desc' }, { id: 'asc' }],
+        select: {
+          id: true,
+          revision: true,
+          status: true,
+          items: {
+            orderBy: { position: 'asc' },
+            select: activeBatchItemSelect
+          }
+        }
+      }),
+      db.request.findUnique({
+        where: { id: input.requestId },
+        select: {
+          invoices: {
+            orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+            take: 1,
+            select: { id: true, status: true }
+          }
+        }
       })
     ]);
 
@@ -321,6 +522,17 @@ export function createRequestSelectionResendEligibilityService(
         'ACTIVE_BATCH_INTEGRITY_ERROR',
         input.requestId
       );
+    }
+
+    const finalizedBatch = finalizedBatches[0] ?? null;
+    if (finalizedBatch) {
+      return deriveRequestSelectionFollowUpEligibility({
+        request,
+        activeBatch: activeBatches[0] ?? null,
+        sourceBatch: finalizedBatch as FinalizedBatch,
+        finalizedBatches: finalizedBatches as FinalizedBatch[],
+        currentInvoice: currentInvoice?.invoices[0] ?? null
+      });
     }
 
     return deriveRequestSelectionResendEligibility({

@@ -154,6 +154,9 @@ function makeDatabase(state: State) {
           .slice(0, 2);
       }
     },
+    requestSelectionBatchItem: {
+      count: async () => 0
+    },
     requestItem: {
       findMany: async () => {
         state.calls.legacy += 1;

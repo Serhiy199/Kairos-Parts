@@ -38,6 +38,10 @@ import {
   updateRequestItem
 } from '@/lib/request-items/update';
 import {
+  assertRequestItemDeleteAllowed,
+  RequestItemDeleteError
+} from '@/lib/request-items/delete';
+import {
   parseRequestItemInput,
   parseRequestItemUpdateInput
 } from '@/lib/request-items/validation';
@@ -438,6 +442,9 @@ export async function updateAdminRequestItem(formData: FormData) {
     if (code === 'REQUEST_ITEM_VALIDATION_FAILED') {
       redirectBack(requestId, 'item-validation-error');
     }
+    if (code === 'APPROVED_REQUEST_ITEM_LOCKED') {
+      redirectBack(requestId, 'item-approved-locked');
+    }
     redirectBack(requestId, 'item-update-error');
   }
 
@@ -498,6 +505,10 @@ export async function sendAdminRequestItemsForApproval(formData: FormData) {
       requestItemIds,
       expectedRequestItemVersions,
       actor: { id: session.user.id },
+      mode: readString(formData, 'mode') as
+        | 'INITIAL'
+        | 'RESEND_ACTIVE'
+        | 'FOLLOW_UP_REJECTED',
       requestContext
     });
     notificationFailed = result.notification.status === 'failed';
@@ -510,10 +521,34 @@ export async function sendAdminRequestItemsForApproval(formData: FormData) {
       if (error.code === 'SOURCE_ITEM_VERSION_CONFLICT') {
         redirectBack(requestId, 'items-send-stale');
       }
+      if (error.code === 'FOLLOW_UP_CANDIDATE_VERSION_CONFLICT') {
+        redirectBack(requestId, 'items-send-stale');
+      }
       if (error.code === 'DUPLICATE_SEND_OPERATION') {
         redirectBack(requestId, 'items-send-duplicate');
       }
       if (error.code === 'REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND') {
+        redirectBack(requestId, 'items-send-status-locked');
+      }
+      if (error.code === 'FOLLOW_UP_INVOICE_DRAFT_EXISTS') {
+        redirectBack(requestId, 'follow-up-invoice-draft');
+      }
+      if (error.code === 'FOLLOW_UP_INVOICE_ALREADY_SENT') {
+        redirectBack(requestId, 'follow-up-invoice-sent');
+      }
+      if (error.code === 'FOLLOW_UP_ACTIVE_BATCH_EXISTS') {
+        redirectBack(requestId, 'follow-up-active-batch');
+      }
+      if (
+        error.code === 'NO_FOLLOW_UP_SELECTION_CHANGES'
+        || error.code === 'FOLLOW_UP_SELECTION_INVALID'
+      ) {
+        redirectBack(requestId, 'follow-up-no-changes');
+      }
+      if (error.code === 'FOLLOW_UP_SOURCE_BATCH_NOT_FOUND') {
+        redirectBack(requestId, 'follow-up-source-missing');
+      }
+      if (error.code === 'FOLLOW_UP_REQUEST_STATUS_BLOCKED') {
         redirectBack(requestId, 'items-send-status-locked');
       }
       if (error.code === 'REQUEST_NOT_FOUND') {
@@ -564,9 +599,14 @@ export async function deleteAdminRequestItem(formData: FormData) {
 
   const snapshot = requestItemSnapshot(item);
   const requestContext = await getServerAuditRequestContext();
-  await prisma.$transaction(async (tx) => {
-    await tx.requestItem.delete({ where: { id: item.id } });
-    await writeAuditLog(tx, {
+  try {
+    await prisma.$transaction(async (tx) => {
+      await assertRequestItemDeleteAllowed(tx, {
+        requestItemId: item.id,
+        requestId
+      });
+      await tx.requestItem.delete({ where: { id: item.id } });
+      await writeAuditLog(tx, {
       actor: auditUserActor(session.user.id),
       companyId: item.request.companyId,
       entityType: 'REQUEST_ITEM',
@@ -578,8 +618,17 @@ export async function deleteAdminRequestItem(formData: FormData) {
       metadata: { source: 'ADMIN_CRM' },
       allowedFields: { oldValue: REQUEST_ITEM_AUDIT_FIELDS, metadata: ['source'] },
       requestContext
+      });
     });
-  });
+  } catch (error) {
+    if (
+      error instanceof RequestItemDeleteError
+      && error.code === 'APPROVED_REQUEST_ITEM_DELETE_BLOCKED'
+    ) {
+      redirectBack(requestId, 'item-approved-delete-blocked');
+    }
+    throw error;
+  }
 
   revalidatePath('/admin');
   revalidatePath('/admin/requests');

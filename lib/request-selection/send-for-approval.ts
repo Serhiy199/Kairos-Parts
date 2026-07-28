@@ -42,6 +42,7 @@ export type SendRequestSelectionForApprovalInput = {
   requestItemIds: string[];
   expectedRequestItemVersions: RequestSelectionSourceVersion[];
   actor: { id: string };
+  mode?: 'INITIAL' | 'RESEND_ACTIVE' | 'FOLLOW_UP_REJECTED';
   requestContext?: AuditRequestContext;
 };
 
@@ -64,6 +65,14 @@ export type SendRequestSelectionForApprovalErrorCode =
   | 'VISIBILITY_UPDATE_FAILED'
   | 'AUDIT_WRITE_FAILED'
   | 'REQUEST_STATUS_TRANSITION_FAILED'
+  | 'NO_FOLLOW_UP_SELECTION_CHANGES'
+  | 'FOLLOW_UP_ACTIVE_BATCH_EXISTS'
+  | 'FOLLOW_UP_INVOICE_DRAFT_EXISTS'
+  | 'FOLLOW_UP_INVOICE_ALREADY_SENT'
+  | 'FOLLOW_UP_REQUEST_STATUS_BLOCKED'
+  | 'FOLLOW_UP_SOURCE_BATCH_NOT_FOUND'
+  | 'FOLLOW_UP_SELECTION_INVALID'
+  | 'FOLLOW_UP_CANDIDATE_VERSION_CONFLICT'
   | 'TRANSACTION_CLIENT_EXPIRED'
   | 'DATABASE_TRANSACTION_FAILED'
   | 'TELEGRAM_NOTIFICATION_FAILED';
@@ -105,6 +114,7 @@ export type SendRequestSelectionForApprovalResult = {
   hiddenPreviousItemCount: number;
   requestStatusTransition: RequestStatusTransitionResult['outcome'];
   notification: NotificationResult;
+  mode: 'INITIAL' | 'RESEND_ACTIVE' | 'FOLLOW_UP_REJECTED';
 };
 
 export type SendRequestSelectionCommitResult = Omit<
@@ -208,7 +218,8 @@ function assertInput(input: SendRequestSelectionForApprovalInput) {
 function mapBatchError(
   error: RequestSelectionBatchError,
   phase: 'create' | 'supersede' | 'send',
-  requestId: string
+  requestId: string,
+  followUp = false
 ): never {
   const context = {
     requestItemId: error.context.requestItemId,
@@ -228,7 +239,14 @@ function mapBatchError(
     fail('REQUEST_ITEM_NOT_IN_REQUEST', requestId, context, error);
   }
   if (error.code === 'SOURCE_ITEM_CHANGED') {
-    fail('SOURCE_ITEM_VERSION_CONFLICT', requestId, context, error);
+    fail(
+      followUp
+        ? 'FOLLOW_UP_CANDIDATE_VERSION_CONFLICT'
+        : 'SOURCE_ITEM_VERSION_CONFLICT',
+      requestId,
+      context,
+      error
+    );
   }
   if (error.code === 'SOURCE_ITEM_INVALID' || error.code === 'SNAPSHOT_BUILD_FAILED') {
     fail('SOURCE_ITEM_INVALID', requestId, context, error);
@@ -271,7 +289,12 @@ export function createSendRequestSelectionForApprovalService(
       if (actor.status !== 'ACTIVE' || !allowedActorRoles.has(actor.role)) {
         fail('ACTOR_NOT_ALLOWED', request.id);
       }
-      if (!allowedRequestStatuses.has(request.status)) {
+      const requestedMode = input.mode;
+      const followUpRequested = requestedMode === 'FOLLOW_UP_REJECTED';
+      if (
+        !allowedRequestStatuses.has(request.status)
+        && !(followUpRequested && request.status === 'AWAITING_INVOICE')
+      ) {
         fail('REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND', request.id);
       }
 
@@ -291,14 +314,39 @@ export function createSendRequestSelectionForApprovalService(
         fail('SOURCE_ITEM_INVALID', request.id, {}, error);
       }
       if (!resendEligibility.canSend) {
+        if (resendEligibility.reason === 'ACTIVE_SENT_BATCH_EXISTS') {
+          fail('FOLLOW_UP_ACTIVE_BATCH_EXISTS', request.id);
+        }
+        if (resendEligibility.reason === 'INVOICE_DRAFT_EXISTS') {
+          fail('FOLLOW_UP_INVOICE_DRAFT_EXISTS', request.id);
+        }
+        if (resendEligibility.reason === 'INVOICE_ALREADY_SENT') {
+          fail('FOLLOW_UP_INVOICE_ALREADY_SENT', request.id);
+        }
+        if (resendEligibility.reason === 'NO_FINALIZED_SELECTION') {
+          fail('FOLLOW_UP_SOURCE_BATCH_NOT_FOUND', request.id);
+        }
+        if (resendEligibility.reason === 'NO_FOLLOW_UP_CHANGES') {
+          fail('NO_FOLLOW_UP_SELECTION_CHANGES', request.id);
+        }
         if (resendEligibility.reason === 'REQUEST_STATUS_BLOCKED') {
-          fail('REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND', request.id);
+          fail(
+            followUpRequested
+              ? 'FOLLOW_UP_REQUEST_STATUS_BLOCKED'
+              : 'REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND',
+            request.id
+          );
         }
         fail('DUPLICATE_SEND_OPERATION', request.id, {
           batchId: resendEligibility.activeBatchId ?? undefined
         });
       }
       const canonicalItemIds = resendEligibility.eligibleItemIds;
+      const mode = resendEligibility.mode
+        ?? (resendEligibility.activeBatchId ? 'RESEND_ACTIVE' : 'INITIAL');
+      if (requestedMode && requestedMode !== mode) {
+        fail('FOLLOW_UP_SELECTION_INVALID', request.id);
+      }
 
       const activeBatch = await tx.requestSelectionBatch.findFirst({
         where: { requestId: request.id, status: 'SENT' },
@@ -310,6 +358,11 @@ export function createSendRequestSelectionForApprovalService(
           }
         }
       });
+      if (activeBatch && mode === 'FOLLOW_UP_REJECTED') {
+        fail('FOLLOW_UP_ACTIVE_BATCH_EXISTS', request.id, {
+          batchId: activeBatch.id
+        });
+      }
 
       const sourceItems = await tx.requestItem.findMany({
         where: { id: { in: input.requestItemIds } },
@@ -328,7 +381,13 @@ export function createSendRequestSelectionForApprovalService(
         if (
           sourceItem.updatedAt.getTime() !== expectedById.get(requestItemId)?.getTime()
         ) {
-          fail('SOURCE_ITEM_VERSION_CONFLICT', request.id, { requestItemId });
+          fail(
+            mode === 'FOLLOW_UP_REJECTED'
+              ? 'FOLLOW_UP_CANDIDATE_VERSION_CONFLICT'
+              : 'SOURCE_ITEM_VERSION_CONFLICT',
+            request.id,
+            { requestItemId }
+          );
         }
       }
       const submittedIds = new Set(input.requestItemIds);
@@ -339,7 +398,7 @@ export function createSendRequestSelectionForApprovalService(
         fail('SOURCE_ITEM_INVALID', request.id);
       }
 
-      if (activeBatch) {
+      if (activeBatch && mode !== 'FOLLOW_UP_REJECTED') {
         try {
           const superseded = await dependencies.transitionBatch({
             batchId: activeBatch.id,
@@ -374,7 +433,12 @@ export function createSendRequestSelectionForApprovalService(
         });
       } catch (error) {
         if (error instanceof RequestSelectionBatchError) {
-          mapBatchError(error, 'create', request.id);
+          mapBatchError(
+            error,
+            'create',
+            request.id,
+            mode === 'FOLLOW_UP_REJECTED'
+          );
         }
         fail('BATCH_CREATE_FAILED', request.id, {}, error);
       }
@@ -403,13 +467,19 @@ export function createSendRequestSelectionForApprovalService(
       try {
         requestStatusTransition = await dependencies.transitionRequest({
           requestId: request.id,
-          event: REQUEST_STATUS_EVENTS.SELECTION_SENT_FOR_APPROVAL,
+          event: mode === 'FOLLOW_UP_REJECTED'
+            ? REQUEST_STATUS_EVENTS.FOLLOW_UP_SELECTION_SENT_FOR_APPROVAL
+            : REQUEST_STATUS_EVENTS.SELECTION_SENT_FOR_APPROVAL,
           actor: input.actor,
           metadata: {
             source: 'ADMIN_CRM',
             eventKey: `selection-batch:${batch.batchId}:sent`,
             triggerEntityType: 'REQUEST',
-            triggerEntityId: request.id
+            triggerEntityId: request.id,
+            followUp: mode === 'FOLLOW_UP_REJECTED',
+            followUpFromBatchId: resendEligibility.sourceBatch?.id,
+            followUpFromRevision: resendEligibility.sourceBatch?.revision,
+            candidateCount: canonicalItemIds.length
           },
           tx
         });
@@ -471,7 +541,13 @@ export function createSendRequestSelectionForApprovalService(
             changedItemCount: resendEligibility.changedItemIds.length,
             newItemCount: resendEligibility.newItemIds.length,
             removedItemCount: resendEligibility.removedBatchItemIds.length,
-            previousRevision: resendEligibility.activeRevision
+            previousRevision: resendEligibility.activeRevision,
+            followUp: mode === 'FOLLOW_UP_REJECTED',
+            followUpFromBatchId: resendEligibility.sourceBatch?.id,
+            followUpFromRevision: resendEligibility.sourceBatch?.revision,
+            candidateCount: canonicalItemIds.length,
+            changedRejectedCount: resendEligibility.changedRejectedItemIds?.length ?? 0,
+            newReplacementCount: resendEligibility.newItemIds.length
           },
           allowedFields: {
             metadata: [
@@ -485,7 +561,13 @@ export function createSendRequestSelectionForApprovalService(
               'changedItemCount',
               'newItemCount',
               'removedItemCount',
-              'previousRevision'
+              'previousRevision',
+              'followUp',
+              'followUpFromBatchId',
+              'followUpFromRevision',
+              'candidateCount',
+              'changedRejectedCount',
+              'newReplacementCount'
             ]
           },
           requestContext: input.requestContext
@@ -501,7 +583,8 @@ export function createSendRequestSelectionForApprovalService(
         itemCount: batch.itemCount,
         supersededBatchId: activeBatch?.id ?? null,
         hiddenPreviousItemCount: hiddenPrevious.count,
-        requestStatusTransition: requestStatusTransition.outcome
+        requestStatusTransition: requestStatusTransition.outcome,
+        mode
       };
     };
 

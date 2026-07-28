@@ -634,6 +634,22 @@ const resendStatePresentation: Record<
   NEW_AFTER_SEND: {
     label: 'Нова позиція',
     className: 'bg-accent/20 text-foreground'
+  },
+  LOCKED_APPROVED: {
+    label: 'Погоджено — заблоковано',
+    className: 'bg-[#E7F6EC] text-success'
+  },
+  UNCHANGED_REJECTED: {
+    label: 'Відхилено — можна доопрацювати',
+    className: 'bg-red-50 text-red-700'
+  },
+  CHANGED_REJECTED: {
+    label: 'Змінено після відхилення',
+    className: 'bg-[#FFF7E0] text-[#8A5B24]'
+  },
+  NEW_FOLLOW_UP: {
+    label: 'Нова позиція для повторного погодження',
+    className: 'bg-accent/20 text-foreground'
   }
 };
 
@@ -643,6 +659,29 @@ function requestSelectionMessage(
 ) {
   if (eligibility.reason === 'REQUEST_STATUS_BLOCKED') {
     return 'Поточний статус заявки не дозволяє надсилати нову версію добірки.';
+  }
+  if (eligibility.reason === 'INVOICE_DRAFT_EXISTS') {
+    return 'Повторне погодження недоступне: для заявки вже створено чернетку рахунку.';
+  }
+  if (eligibility.reason === 'INVOICE_ALREADY_SENT') {
+    return 'Рахунок уже надіслано. Для додаткових позицій потрібен окремий workflow.';
+  }
+  if (eligibility.reason === 'ACTIVE_SENT_BATCH_EXISTS') {
+    return 'Поточна версія вже очікує рішення клієнта.';
+  }
+  if (eligibility.reason === 'HAS_REJECTED_CHANGES') {
+    return 'Відхилену позицію доопрацьовано. Надішліть нову версію клієнту.';
+  }
+  if (
+    eligibility.reason === 'HAS_NEW_REPLACEMENT_ITEMS'
+    || eligibility.reason === 'HAS_REJECTED_AND_NEW_ITEMS'
+  ) {
+    return 'Додано нову позицію для повторного погодження.';
+  }
+  if (eligibility.reason === 'NO_FOLLOW_UP_CHANGES') {
+    return eligibility.removedRejectedSourceIds?.length
+      ? 'Відхилену позицію видалено. Додайте заміну, щоб створити нову версію.'
+      : 'Щоб створити нову версію, змініть відхилену позицію або додайте заміну.';
   }
   if (items.length === 0) {
     return 'Позицій ще немає.';
@@ -689,6 +728,15 @@ function RequestItemsSection({
   );
   const eligibleIds = new Set(eligibility.eligibleItemIds);
   const selectedItems = items.filter((item) => eligibleIds.has(item.id));
+  const latestApprovedCount = latestSelectionBatch?.items.filter(
+    (item) => item.status === 'APPROVED'
+  ).length ?? 0;
+  const latestRejectedItems = latestSelectionBatch?.items.filter(
+    (item) => item.status === 'REJECTED'
+  ) ?? [];
+  const latestPendingCount = latestSelectionBatch?.items.filter(
+    (item) => item.status === 'PENDING'
+  ).length ?? 0;
 
   return (
     <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
@@ -716,40 +764,36 @@ function RequestItemsSection({
               {REQUEST_SELECTION_BATCH_STATUS_LABELS[latestSelectionBatch.status]}
             </span>
           </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success">
+              Погоджено: {latestApprovedCount}
+            </span>
+            <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
+              Відхилено: {latestRejectedItems.length}
+            </span>
+            {latestPendingCount > 0 ? (
+              <span className="rounded-full bg-[#FFF7E0] px-2.5 py-1 text-xs font-bold text-[#8A5B24]">
+                Очікує рішення: {latestPendingCount}
+              </span>
+            ) : null}
+          </div>
+          {latestRejectedItems.some((item) => item.clientComment) ? (
           <div className="mt-3 grid gap-2">
-            {latestSelectionBatch.items.map((batchItem) => (
+            {latestRejectedItems.filter((item) => item.clientComment).map((batchItem) => (
               <div
                 key={batchItem.id}
-                className="flex min-w-0 flex-col gap-2 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-start sm:justify-between"
+                className="min-w-0 rounded-md border border-red-100 bg-card p-3"
               >
-                <div className="min-w-0">
-                  <p className="break-words text-sm font-semibold text-foreground">
-                    {batchItem.position}. {batchItem.itemName}
-                  </p>
-                  {batchItem.clientComment ? (
-                    <p className="mt-1 whitespace-pre-wrap break-words text-xs text-red-700">
-                      {batchItem.clientComment}
-                    </p>
-                  ) : null}
-                </div>
-                <span
-                  className={
-                    batchItem.status === 'APPROVED'
-                      ? 'w-fit shrink-0 rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success'
-                      : batchItem.status === 'REJECTED'
-                        ? 'w-fit shrink-0 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700'
-                        : 'w-fit shrink-0 rounded-full bg-[#FFF7E0] px-2.5 py-1 text-xs font-bold text-[#8A5B24]'
-                  }
-                >
-                  {batchItem.status === 'APPROVED'
-                    ? 'Погоджено'
-                    : batchItem.status === 'REJECTED'
-                      ? 'Відхилено'
-                      : 'Очікує рішення'}
-                </span>
+                <p className="break-words text-xs font-semibold text-foreground">
+                  {batchItem.position}. {batchItem.itemName}
+                </p>
+                <p className="mt-1 whitespace-pre-wrap break-words text-xs text-red-700">
+                  {batchItem.clientComment}
+                </p>
               </div>
             ))}
           </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -758,6 +802,7 @@ function RequestItemsSection({
           const itemTotal = item.salePrice ? calculateInvoiceLineTotal(item.quantity, item.salePrice) : null;
           const resendState = stateByItemId.get(item.id) ?? 'NOT_SENT';
           const resendPresentation = resendStatePresentation[resendState];
+          const approvedLocked = resendState === 'LOCKED_APPROVED';
 
           return (
           <article key={item.id} className="min-w-0 rounded-md border border-border bg-card p-3 sm:p-4">
@@ -818,17 +863,25 @@ function RequestItemsSection({
             </div>
 
             <div className="mt-4 grid min-w-0 gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+              {approvedLocked ? (
+                <p className="text-sm font-semibold text-success">
+                  Позицію вже погоджено клієнтом. Її погоджені дані не можна змінити.
+                </p>
+              ) : (
               <details className="group">
                 <summary className="cursor-pointer break-words text-sm font-bold text-foreground transition hover:text-accent">Редагувати позицію</summary>
                 <div className="mt-4 min-w-0 rounded-md border border-border bg-surface-muted p-3 sm:p-4">
                   <RequestItemForm action={updateAdminRequestItem} requestId={requestId} item={item} submitLabel="Зберегти позицію" />
                 </div>
               </details>
+              )}
+              {!approvedLocked ? (
               <form action={deleteAdminRequestItem} className="sm:justify-self-end">
                 <input type="hidden" name="requestId" value={requestId} />
                 <input type="hidden" name="itemId" value={item.id} />
                 <button className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-danger/30 px-4 py-2 text-sm font-bold text-danger transition hover:bg-danger/10 sm:w-auto">Видалити</button>
               </form>
+              ) : null}
             </div>
           </article>
           );
@@ -850,6 +903,11 @@ function RequestItemsSection({
       <div className="mt-5 flex min-w-0 border-t border-border pt-5 sm:justify-end">
         <form action={sendAdminRequestItemsForApproval} className="w-full sm:w-auto">
           <input type="hidden" name="requestId" value={requestId} />
+          <input
+            type="hidden"
+            name="mode"
+            value={eligibility.mode ?? (eligibility.activeBatchId ? 'RESEND_ACTIVE' : 'INITIAL')}
+          />
           {selectedItems.map((item) => (
             <input key={item.id} type="hidden" name="requestItemId" value={item.id} />
           ))}

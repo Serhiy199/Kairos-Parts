@@ -108,6 +108,7 @@ type FakeState = {
   readAfterWriteCount: number;
   failAudit: boolean;
   returnMismatchedPersistedQuantity: boolean;
+  approvedSnapshot: boolean;
 };
 
 function initialItem(): FakeItem {
@@ -155,6 +156,7 @@ function createFakeHarness(options?: Partial<FakeState>) {
     readAfterWriteCount: 0,
     failAudit: false,
     returnMismatchedPersistedQuantity: false,
+    approvedSnapshot: false,
     ...options
   };
 
@@ -195,6 +197,9 @@ function createFakeHarness(options?: Partial<FakeState>) {
         };
         return { count: 1 };
       }
+    },
+    requestSelectionBatchItem: {
+      findFirst: async () => state.approvedSnapshot ? { id: 'approved-snapshot' } : null
     }
   };
 
@@ -262,6 +267,16 @@ check(noOpResult.outcome === 'no_changes', 'Same values must return no_changes.'
 check(noOpResult.code === 'REQUEST_ITEM_NO_CHANGES', 'No-op must have a typed code.');
 check(noOpHarness.state.updateCount === 0, 'No-op must not touch updatedAt.');
 check(noOpHarness.state.audits.length === 0, 'No-op must not create misleading audit.');
+
+const approvedHarness = createFakeHarness({ approvedSnapshot: true });
+await assert.rejects(
+  approvedHarness.service(serviceInput()),
+  (error) => error instanceof RequestItemUpdateError
+    && error.code === 'APPROVED_REQUEST_ITEM_LOCKED'
+);
+checks += 1;
+check(approvedHarness.state.updateCount === 0, 'Approved item edit must be blocked before persistence.');
+check(approvedHarness.state.audits.length === 0, 'Blocked approved edit must not create success audit.');
 
 const staleHarness = createFakeHarness();
 await assert.rejects(

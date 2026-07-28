@@ -82,8 +82,8 @@ for (const token of [
 assert.ok(!invoiceService.includes('salePrice ?? new Prisma.Decimal(0)'));
 assert.ok(!invoiceService.includes('approvedByClient: true'));
 assert.ok(invoiceSelection.includes("request.status !== 'AWAITING_INVOICE'"));
-assert.ok(invoiceSelection.includes("latestBatch.status !== 'APPROVED'"));
-assert.ok(invoiceSelection.includes("latestBatch.status !== 'PARTIALLY_APPROVED'"));
+assert.ok(invoiceSelection.includes('approvedByIdentity'));
+assert.ok(invoiceSelection.includes("status: { in: ['APPROVED', 'PARTIALLY_APPROVED', 'REJECTED'] }"));
 assert.ok(adminUi.includes('getRequestInvoiceEligibility'));
 assert.ok(adminUi.includes('eligibility.eligible'));
 assert.ok(clientUi.includes("activeBatch.status === 'PARTIALLY_APPROVED'"));
@@ -102,6 +102,7 @@ type Item = {
   approvedUnitPrice: Prisma.Decimal | null;
   currency: string;
   managerComment: string | null;
+  invoiceItem?: { id: string } | null;
 };
 
 function item(
@@ -123,7 +124,8 @@ function item(
     unit: 'шт',
     approvedUnitPrice: price,
     currency,
-    managerComment: null
+    managerComment: null,
+    invoiceItem: null
   };
 }
 
@@ -137,10 +139,25 @@ function database(input: {
     request: {
       findUnique: async () => ({
         id: 'request-1',
-        status: input.requestStatus ?? 'AWAITING_INVOICE'
+        status: input.requestStatus ?? 'AWAITING_INVOICE',
+        invoices: input.invoiceId ? [{ id: input.invoiceId }] : []
       })
     },
     requestSelectionBatch: {
+      findMany: async ({ where }: {
+        where?: { status?: { in?: string[] } };
+      }) => [{
+        id: 'batch-1',
+        revision: 7,
+        status: input.batchStatus ?? 'PARTIALLY_APPROVED',
+        invoice: input.invoiceId ? { id: input.invoiceId } : null,
+        items: input.items ?? [
+          item('1', 'APPROVED'),
+          item('2', 'REJECTED')
+        ]
+      }].filter((batch) =>
+        !where?.status?.in || where.status.in.includes(batch.status)
+      ),
       findFirst: async () => ({
         id: 'batch-1',
         revision: 7,
@@ -194,7 +211,7 @@ async function main() {
       database({ batchStatus: 'SENT', items: [item('1', 'PENDING')] }),
       'request-1'
     ),
-    'PENDING_ITEMS_REMAIN'
+    'NO_FINALIZED_APPROVED_BATCH'
   );
   await expectCode(
     () => resolveInvoiceSelection(

@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 export const REQUEST_STATUS_EVENTS = {
   SELECTION_DRAFT_CREATED: 'SELECTION_DRAFT_CREATED',
   SELECTION_SENT_FOR_APPROVAL: 'SELECTION_SENT_FOR_APPROVAL',
+  FOLLOW_UP_SELECTION_SENT_FOR_APPROVAL: 'FOLLOW_UP_SELECTION_SENT_FOR_APPROVAL',
   CLIENT_SELECTION_APPROVED: 'CLIENT_SELECTION_APPROVED',
   INVOICE_SENT: 'INVOICE_SENT',
   MANUAL_SET_AWAITING_SHIPMENT: 'MANUAL_SET_AWAITING_SHIPMENT',
@@ -19,6 +20,7 @@ export type RequestStatusEvent = (typeof REQUEST_STATUS_EVENTS)[keyof typeof REQ
 export const AUTOMATIC_REQUEST_STATUS_EVENTS = [
   REQUEST_STATUS_EVENTS.SELECTION_DRAFT_CREATED,
   REQUEST_STATUS_EVENTS.SELECTION_SENT_FOR_APPROVAL,
+  REQUEST_STATUS_EVENTS.FOLLOW_UP_SELECTION_SENT_FOR_APPROVAL,
   REQUEST_STATUS_EVENTS.CLIENT_SELECTION_APPROVED,
   REQUEST_STATUS_EVENTS.INVOICE_SENT
 ] as const satisfies readonly RequestStatusEvent[];
@@ -48,6 +50,10 @@ export type RequestStatusTransitionMetadata = {
   approvedCount?: number;
   rejectedCount?: number;
   partial?: boolean;
+  followUp?: boolean;
+  followUpFromBatchId?: string;
+  followUpFromRevision?: number;
+  candidateCount?: number;
 };
 
 export type TransitionRequestStatusInput = {
@@ -184,6 +190,12 @@ export function resolveRequestStatusTransition(
     if (currentStatus === 'WAITING_APPROVAL') return noop(currentStatus);
   }
 
+  if (event === REQUEST_STATUS_EVENTS.FOLLOW_UP_SELECTION_SENT_FOR_APPROVAL) {
+    if (currentStatus === 'WAITING_APPROVAL' || currentStatus === 'AWAITING_INVOICE') {
+      return noop(currentStatus);
+    }
+  }
+
   if (event === REQUEST_STATUS_EVENTS.CLIENT_SELECTION_APPROVED) {
     if (currentStatus === 'WAITING_APPROVAL') return allowed('AWAITING_INVOICE');
     if (currentStatus === 'AWAITING_INVOICE') return noop(currentStatus);
@@ -312,7 +324,11 @@ async function executeRequestStatusTransition(
         'totalCount',
         'approvedCount',
         'rejectedCount',
-        'partial'
+        'partial',
+        'followUp',
+        'followUpFromBatchId',
+        'followUpFromRevision',
+        'candidateCount'
       ]
     },
     requestContext: input.requestContext

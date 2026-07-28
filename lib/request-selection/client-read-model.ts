@@ -65,6 +65,7 @@ export type ClientRequestApprovalReadModel =
         status: 'SENT' | 'APPROVED' | 'PARTIALLY_APPROVED' | 'REJECTED';
         sentAt: string | null;
         itemCount: number;
+        previouslyApprovedCount: number;
         items: ClientSelectionItemReadModel[];
       };
       legacyItems: [];
@@ -186,7 +187,11 @@ type LegacyItemRecord = Prisma.RequestItemGetPayload<{ select: typeof legacyItem
 
 type ReadDatabase = Pick<
   typeof prisma,
-  'user' | 'request' | 'requestSelectionBatch' | 'requestItem'
+  | 'user'
+  | 'request'
+  | 'requestSelectionBatch'
+  | 'requestSelectionBatchItem'
+  | 'requestItem'
 >;
 
 function readError(
@@ -282,7 +287,8 @@ function requestReadModel(request: RequestRecord): ClientApprovalRequestReadMode
 
 function batchReadModel(
   request: RequestRecord,
-  batch: ActiveBatchRecord
+  batch: ActiveBatchRecord,
+  previouslyApprovedCount = 0
 ): ClientRequestApprovalReadModel {
   return {
     request: requestReadModel(request),
@@ -297,6 +303,7 @@ function batchReadModel(
         | 'REJECTED',
       sentAt: batch.sentAt?.toISOString() ?? null,
       itemCount: batch.items.length,
+      previouslyApprovedCount,
       items: batch.items.map(mapClientSelectionItem)
     },
     legacyItems: []
@@ -370,14 +377,36 @@ export function createClientRequestApprovalReadService(database: ReadDatabase) {
       }
     }
     if (activeBatch) {
-      if (activeBatch.status === 'SENT' && request.status !== 'WAITING_APPROVAL') {
+      if (
+        activeBatch.status === 'SENT'
+        && request.status !== 'WAITING_APPROVAL'
+        && request.status !== 'AWAITING_INVOICE'
+      ) {
         console.warn('Active request selection batch has an unexpected Request status.', {
           requestId: request.id,
           revision: activeBatch.revision,
           requestStatus: request.status
         });
       }
-      return batchReadModel(request, activeBatch);
+      let previouslyApprovedCount = 0;
+      if (activeBatch.status === 'SENT') {
+        try {
+          previouslyApprovedCount =
+            await database.requestSelectionBatchItem.count({
+              where: {
+                status: 'APPROVED',
+                batch: {
+                  requestId: request.id,
+                  id: { not: activeBatch.id },
+                  status: { in: ['APPROVED', 'PARTIALLY_APPROVED'] }
+                }
+              }
+            });
+        } catch (error) {
+          throw readError('BATCH_READ_FAILED', request.id, error);
+        }
+      }
+      return batchReadModel(request, activeBatch, previouslyApprovedCount);
     }
 
     let legacyItems: LegacyItemRecord[];

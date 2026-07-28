@@ -8,6 +8,10 @@ import {
   RequestItemUpdateError,
   updateRequestItem
 } from '@/lib/request-items/update';
+import {
+  assertRequestItemDeleteAllowed,
+  RequestItemDeleteError
+} from '@/lib/request-items/delete';
 import { parseRequestItemUpdateInput } from '@/lib/request-items/validation';
 
 export const runtime = 'nodejs';
@@ -95,6 +99,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ it
     if (code === 'REQUEST_ITEM_VERSION_CONFLICT') {
       return Response.json({ status: 'version_conflict' }, { status: 409 });
     }
+    if (code === 'APPROVED_REQUEST_ITEM_LOCKED') {
+      return Response.json({ status: 'approved_item_locked' }, { status: 409 });
+    }
     if (code === 'REQUEST_ITEM_VALIDATION_FAILED') {
       return Response.json({ status: 'validation_error' }, { status: 400 });
     }
@@ -141,9 +148,14 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
   const snapshot = itemSnapshot(existing);
   const requestContext = auditRequestContextFromHeaders(request.headers);
-  await prisma.$transaction(async (tx) => {
-    await tx.requestItem.delete({ where: { id: itemId } });
-    await writeAuditLog(tx, {
+  try {
+    await prisma.$transaction(async (tx) => {
+      await assertRequestItemDeleteAllowed(tx, {
+        requestItemId: itemId,
+        requestId: existing.requestId
+      });
+      await tx.requestItem.delete({ where: { id: itemId } });
+      await writeAuditLog(tx, {
       actor: auditUserActor(access.session.user.id),
       companyId: existing.request.companyId,
       entityType: 'REQUEST_ITEM',
@@ -155,8 +167,20 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       metadata: { source: 'ADMIN_CRM', requestNumber: existing.request.requestNumber },
       allowedFields: { oldValue: ITEM_FIELDS, metadata: ['source', 'requestNumber'] },
       requestContext
+      });
     });
-  });
+  } catch (error) {
+    if (
+      error instanceof RequestItemDeleteError
+      && error.code === 'APPROVED_REQUEST_ITEM_DELETE_BLOCKED'
+    ) {
+      return Response.json(
+        { status: 'approved_item_delete_blocked' },
+        { status: 409 }
+      );
+    }
+    throw error;
+  }
 
   revalidatePath('/admin');
   revalidatePath('/admin/requests');

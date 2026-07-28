@@ -27,6 +27,7 @@ type ApplyResult =
         | 'change-request-invalid-value'
         | 'change-request-stale-conflict'
         | 'change-request-vehicle-vin-duplicate'
+        | 'change-request-approved-item-locked'
         | 'change-request-target-not-found-or-forbidden';
     };
 
@@ -241,11 +242,35 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
       where: changeRequest.companyId
         ? { id: changeRequest.entityId, visibleToClient: true, request: { companyId: changeRequest.companyId } }
         : { id: changeRequest.entityId, visibleToClient: true, request: { client: { userId: changeRequest.requestedById } } },
-      select: { id: true, name: true, brand: true, catalogNumber: true, analogNumber: true, quantity: true, unit: true, comment: true }
+      select: {
+        id: true,
+        requestId: true,
+        name: true,
+        brand: true,
+        catalogNumber: true,
+        analogNumber: true,
+        quantity: true,
+        unit: true,
+        comment: true
+      }
     });
 
     if (!requestItem) {
       return { ok: false, status: 'change-request-target-not-found-or-forbidden' };
+    }
+    const approvedSnapshot = await tx.requestSelectionBatchItem.findFirst({
+      where: {
+        sourceRequestItemId: requestItem.id,
+        status: 'APPROVED',
+        batch: {
+          requestId: requestItem.requestId,
+          status: { in: ['APPROVED', 'PARTIALLY_APPROVED'] }
+        }
+      },
+      select: { id: true }
+    });
+    if (approvedSnapshot) {
+      return { ok: false, status: 'change-request-approved-item-locked' };
     }
 
     await tx.requestItem.update({ where: { id: requestItem.id }, data });

@@ -285,8 +285,26 @@ async function executeClientSelectionDecision(
       input
     );
   }
-  if (request.status !== 'WAITING_APPROVAL') {
+  if (
+    request.status !== 'WAITING_APPROVAL'
+    && request.status !== 'AWAITING_INVOICE'
+  ) {
     throw decisionError('REQUEST_STATUS_DOES_NOT_ALLOW_CLIENT_DECISION', input);
+  }
+  if (request.status === 'AWAITING_INVOICE') {
+    const previousApprovedCount = await tx.requestSelectionBatchItem.count({
+      where: {
+        status: 'APPROVED',
+        batch: {
+          requestId: request.id,
+          id: { not: batch.id },
+          status: { in: ['APPROVED', 'PARTIALLY_APPROVED'] }
+        }
+      }
+    });
+    if (previousApprovedCount === 0) {
+      throw decisionError('REQUEST_STATUS_DOES_NOT_ALLOW_CLIENT_DECISION', input);
+    }
   }
   const activeBatches = await tx.requestSelectionBatch.findMany({
     where: { requestId: request.id, status: 'SENT' },

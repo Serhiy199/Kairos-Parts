@@ -32,6 +32,7 @@ function resultMessage(result?: string) {
     'change-request-invalid-value': 'Нове значення має некоректний формат.',
     'change-request-stale-conflict': 'Дані техніки змінилися після створення запиту. Перевірте зміни повторно.',
     'change-request-vehicle-vin-duplicate': 'Зміну не застосовано: у цього власника вже є техніка з таким VIN або серійним номером.',
+    'change-request-approved-item-locked': 'Позицію вже погоджено клієнтом. Її погоджені дані не можна змінити.',
     'change-request-target-not-found-or-forbidden': 'Пов’язаний об’єкт не знайдено або scope запиту не збігається.'
   };
 
