@@ -9,9 +9,10 @@ import { PublicDesktopNavigation } from './public-desktop-navigation';
 import { PublicMobileMenu } from './public-mobile-menu';
 
 const navItems = [
-  { href: '/about', label: 'Про нас' },
   { href: '/how-it-works', label: 'Як це працює' },
+  { href: '/logistics', label: 'Логістика' },
   { href: '/used-equipment', label: 'БВ техніка' },
+  { href: '/about', label: 'Про нас' },
   { href: '/contacts', label: 'Контакти' }
 ];
 
