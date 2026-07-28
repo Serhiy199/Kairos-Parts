@@ -33,7 +33,14 @@ import {
   createRequestItemDraft,
   RequestItemDraftCreateError
 } from '@/lib/request-items/create-draft';
-import { parseRequestItemInput } from '@/lib/request-items/validation';
+import {
+  RequestItemUpdateError,
+  updateRequestItem
+} from '@/lib/request-items/update';
+import {
+  parseRequestItemInput,
+  parseRequestItemUpdateInput
+} from '@/lib/request-items/validation';
 import {
   sendRequestSelectionForApproval,
   SendRequestSelectionForApprovalError,
@@ -391,73 +398,59 @@ export async function updateAdminRequestItem(formData: FormData) {
   const session = await requireCrmSession();
   const requestId = readString(formData, 'requestId');
   const itemId = readString(formData, 'itemId');
-  const parsed = parseRequestItemInput(formData);
+  const expectedUpdatedAt = readString(formData, 'expectedUpdatedAt');
+  const parsed = parseRequestItemUpdateInput(formData);
 
-  if (!hasDatabaseUrl() || !requestId || !itemId || !parsed.ok) {
-    redirectBack(requestId, 'item-error');
+  if (!hasDatabaseUrl() || !requestId || !itemId || !expectedUpdatedAt || !parsed.ok) {
+    redirectBack(requestId, 'item-validation-error');
   }
-
-  const item = await prisma.requestItem.findFirst({
-    where: { id: itemId, requestId },
-    select: {
-      id: true, requestId: true, vehicleId: true, name: true, brand: true,
-      catalogNumber: true, analogNumber: true, quantity: true, availability: true,
-      salePrice: true, visibleToClient: true, includeInInvoice: true,
-      request: { select: { requestNumber: true, companyId: true } }
-    }
-  });
-
-  if (!item) {
-    redirectBack(requestId, 'item-not-found');
-  }
-
-  const {
-    purchasePrice: _purchasePrice,
-    supplierName: _supplierName,
-    visibleToClient: _visibleToClient,
-    ...itemData
-  } = parsed.data;
-  void _purchasePrice;
-  void _supplierName;
-  void _visibleToClient;
 
   const requestContext = await getServerAuditRequestContext();
-  await prisma.$transaction(async (tx) => {
-    const updated = await tx.requestItem.update({
-      where: { id: item.id },
-      data: itemData
-    });
-    const before = requestItemSnapshot(item);
-    const after = requestItemSnapshot(updated);
-    const diff = buildAuditDiff(before, after, REQUEST_ITEM_AUDIT_FIELDS);
-    const category = before.salePrice !== after.salePrice || before.quantity !== after.quantity
-      ? 'FINANCIAL_CRITICAL' as const
-      : 'STANDARD' as const;
-    await writeAuditLog(tx, {
-      actor: auditUserActor(session.user.id),
-      companyId: item.request.companyId,
-      entityType: 'REQUEST_ITEM',
-      entityId: item.id,
-      entityLabel: requestItemLabel(updated.name, updated.catalogNumber),
-      action: 'REQUEST_ITEM_UPDATED',
-      category,
-      oldValue: diff.before,
-      newValue: diff.after,
-      metadata: { source: 'ADMIN_CRM' },
-      allowedFields: { oldValue: REQUEST_ITEM_AUDIT_FIELDS, newValue: REQUEST_ITEM_AUDIT_FIELDS, metadata: ['source'] },
+  let result: Awaited<ReturnType<typeof updateRequestItem>>;
+  try {
+    result = await updateRequestItem({
+      requestItemId: itemId,
+      requestId,
+      expectedUpdatedAt,
+      actor: { id: session.user.id },
+      values: parsed.data,
       requestContext
     });
-  });
+  } catch (error) {
+    const code = error instanceof RequestItemUpdateError
+      ? error.code
+      : 'REQUEST_ITEM_UPDATE_FAILED';
+    console.error('Request item update failed.', {
+      requestId,
+      requestItemId: itemId,
+      expectedUpdatedAt,
+      errorCode: code
+    });
+    if (code === 'REQUEST_ITEM_NOT_FOUND' || code === 'REQUEST_ITEM_NOT_IN_REQUEST') {
+      redirectBack(requestId, 'item-not-found');
+    }
+    if (code === 'REQUEST_ITEM_VERSION_CONFLICT') {
+      redirectBack(requestId, 'item-stale');
+    }
+    if (code === 'REQUEST_ITEM_VALIDATION_FAILED') {
+      redirectBack(requestId, 'item-validation-error');
+    }
+    redirectBack(requestId, 'item-update-error');
+  }
+
+  if (result.outcome === 'no_changes') {
+    redirectBack(result.item.requestId, 'item-no-changes');
+  }
 
   revalidatePath('/admin');
   revalidatePath('/admin/requests');
-  revalidatePath(`/admin/requests/${item.requestId}`);
+  revalidatePath(`/admin/requests/${result.item.requestId}`);
 
-  if (item.vehicleId) {
-    revalidatePath(`/client/vehicles/${item.vehicleId}`);
+  if (result.item.vehicleId) {
+    revalidatePath(`/client/vehicles/${result.item.vehicleId}`);
   }
 
-  redirectBack(item.requestId, 'item-updated');
+  redirectBack(result.item.requestId, 'item-updated');
 }
 
 export async function sendAdminRequestItemsForApproval(formData: FormData) {

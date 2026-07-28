@@ -40,6 +40,16 @@ const feedbackByResult = {
   'manager-not-found': { tone: 'warning', message: 'Менеджера не знайдено.' },
   'item-created': { tone: 'success', message: 'Позицію додано.' },
   'item-updated': { tone: 'success', message: 'Позицію оновлено.' },
+  'item-no-changes': { tone: 'warning', message: 'Змін у позиції не виявлено.' },
+  'item-validation-error': { tone: 'error', message: 'Перевірте введені дані позиції.' },
+  'item-stale': {
+    tone: 'warning',
+    message: 'Позицію вже було змінено. Оновіть сторінку та повторіть редагування.'
+  },
+  'item-update-error': {
+    tone: 'error',
+    message: 'Не вдалося оновити позицію. Спробуйте ще раз.'
+  },
   'item-deleted': { tone: 'success', message: 'Позицію видалено.' },
   'items-sent-for-approval': {
     tone: 'success',

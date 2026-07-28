@@ -993,6 +993,13 @@ function RequestItemForm({
     <form action={action} className="grid min-w-0 gap-4">
       <input type="hidden" name="requestId" value={requestId} />
       {item ? <input type="hidden" name="itemId" value={item.id} /> : null}
+      {item ? (
+        <input
+          type="hidden"
+          name="expectedUpdatedAt"
+          value={item.updatedAt.toISOString()}
+        />
+      ) : null}
       <div className="grid min-w-0 gap-3 md:grid-cols-2 min-[1800px]:grid-cols-3">
         {EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED ? null : (
           <ManualEquipmentFields

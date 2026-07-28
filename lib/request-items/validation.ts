@@ -25,6 +25,24 @@ export type RequestItemValidationResult =
 
 type InputSource = FormData | Record<string, unknown>;
 
+export type RequestItemUpdateValues = Pick<
+  RequestItemInput,
+  | 'equipmentType'
+  | 'name'
+  | 'brand'
+  | 'catalogNumber'
+  | 'quantity'
+  | 'unit'
+  | 'availability'
+  | 'salePrice'
+  | 'currency'
+  | 'comment'
+>;
+
+export type RequestItemUpdateValidationResult =
+  | { ok: true; data: RequestItemUpdateValues }
+  | { ok: false; error: string };
+
 function readValue(source: InputSource, key: string) {
   if (source instanceof FormData) {
     const value = source.get(key);
@@ -64,6 +82,10 @@ function readBoolean(source: InputSource, key: string) {
   }
 
   return source[key] === true || source[key] === 'true' || source[key] === 'on';
+}
+
+function hasDuplicateFormField(source: InputSource, key: string) {
+  return source instanceof FormData && source.getAll(key).length > 1;
 }
 
 export function parseRequestItemInput(source: InputSource): RequestItemValidationResult {
@@ -127,6 +149,80 @@ export function parseRequestItemInput(source: InputSource): RequestItemValidatio
       currency: optionalText(source, 'currency') ?? 'UAH',
       comment: optionalText(source, 'comment'),
       visibleToClient: readBoolean(source, 'visibleToClient')
+    }
+  };
+}
+
+export function parseRequestItemUpdateInput(
+  source: InputSource
+): RequestItemUpdateValidationResult {
+  const editableFields = [
+    'equipmentType',
+    'name',
+    'brand',
+    'catalogNumber',
+    'quantity',
+    'unit',
+    'availability',
+    'salePrice',
+    'currency',
+    'comment'
+  ] as const;
+
+  if (editableFields.some((field) => hasDuplicateFormField(source, field))) {
+    return { ok: false, error: 'Форма містить дубльовані поля позиції.' };
+  }
+
+  const equipmentType = optionalText(source, 'equipmentType');
+  const brand = optionalText(source, 'brand');
+  const name = requiredText(source, 'name');
+
+  if (!EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED) {
+    if (!equipmentType) {
+      return { ok: false, error: 'Тип техніки є обов’язковим.' };
+    }
+    if (!brand) {
+      return { ok: false, error: 'Виробник або марка є обов’язковими.' };
+    }
+  }
+
+  if ((equipmentType?.length ?? 0) > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
+    return { ok: false, error: `Тип техніки має бути не довшим за ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.` };
+  }
+  if ((brand?.length ?? 0) > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
+    return { ok: false, error: `Виробник або марка має бути не довшим за ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.` };
+  }
+  if (!name) {
+    return { ok: false, error: 'Назва запчастини є обовʼязковою.' };
+  }
+
+  const quantityRaw = readValue(source, 'quantity').trim();
+  if (!/^[1-9]\d*$/.test(quantityRaw)) {
+    return { ok: false, error: 'Кількість має бути цілим числом від 1.' };
+  }
+  const quantity = Number(quantityRaw);
+  if (!Number.isSafeInteger(quantity)) {
+    return { ok: false, error: 'Кількість має бути цілим числом від 1.' };
+  }
+
+  const salePrice = normalizeDecimal(source, 'salePrice');
+  if (!salePrice.ok) {
+    return { ok: false, error: salePrice.error };
+  }
+
+  return {
+    ok: true,
+    data: {
+      equipmentType,
+      name,
+      brand,
+      catalogNumber: optionalText(source, 'catalogNumber'),
+      quantity,
+      unit: optionalText(source, 'unit') ?? 'шт',
+      availability: optionalText(source, 'availability'),
+      salePrice: salePrice.value,
+      currency: optionalText(source, 'currency') ?? 'UAH',
+      comment: optionalText(source, 'comment')
     }
   };
 }
