@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { TbTruckDelivery } from 'react-icons/tb';
 
-import { LogisticsBenefitsBar } from '@/components/public/logistics/logistics-benefits-bar';
 import { LogisticsFinalCta } from '@/components/public/logistics/logistics-final-cta';
 import { LogisticsRatesSection } from '@/components/public/logistics/logistics-rates-section';
 import {
@@ -48,18 +47,18 @@ export default function LogisticsPage() {
         aria-labelledby="logistics-page-title"
         className="relative isolate min-h-[620px] overflow-hidden bg-primary text-white sm:min-h-[660px] lg:min-h-[700px]"
       >
-        <div className="relative isolate mx-auto w-full max-w-[1440px] overflow-hidden px-4 sm:px-6 lg:px-8">
-          <div className="absolute inset-y-0 left-[28%] right-0 -z-30 hidden md:block">
-            <Image
-              src="/images/logistics/hero-logistic.png"
-              alt=""
-              fill
-              priority
-              sizes="(min-width: 1440px) 1037px, 72vw"
-              className="object-contain object-right"
-            />
-          </div>
+        <div className="absolute inset-y-0 right-0 -z-30 hidden md:left-6 md:block lg:left-8 min-[1504px]:left-[calc((100vw-1440px)/2+2rem)]">
+          <Image
+            src="/images/logistics/hero-logistic.png"
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="object-contain object-left"
+          />
+        </div>
 
+        <div className="relative mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
           <div className="relative min-h-[500px] py-14 sm:min-h-[540px] sm:py-16 md:flex md:items-center lg:min-h-[580px] lg:py-20">
             <div className="max-w-[600px] xl:max-w-[640px]">
               <p className="font-brand text-sm font-bold uppercase tracking-[0.2em] text-white sm:text-base">
@@ -69,12 +68,12 @@ export default function LogisticsPage() {
                 id="logistics-page-title"
                 className="mt-5 max-w-[720px] font-display text-4xl font-bold leading-[1.08] sm:text-5xl lg:text-[56px]"
               >
-                Професійне перевезення товарів для агропідприємств
+                Оперативне забезпечення підприємств критично важливими ТМЦ
               </h1>
               <p className="mt-6 max-w-[700px] text-base leading-7 text-white/80 sm:text-lg sm:leading-8">
-                Організовуємо відвантаження від постачальників Київської області та перевезення
-                товару до логістичного хабу Kairos Parts у Кагарлику. Ви отримаєте необхідні
-                запчастини та матеріали швидко, без простоїв та зайвих турбот.
+                Спеціалізований сервіс для агропідприємств Кагарлицького району. Забираємо товар у
+                будь-якого постачальника в межах Київської області та оперативно доставляємо до
+                Kairos Parts або безпосередньо на ваше підприємство.
               </p>
 
               <div className="mt-8 max-w-md">
@@ -92,8 +91,6 @@ export default function LogisticsPage() {
               />
             </div>
           </div>
-
-          <LogisticsBenefitsBar />
         </div>
       </section>
 
