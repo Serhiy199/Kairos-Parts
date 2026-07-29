@@ -69,7 +69,7 @@ export default async function AdminLogisticsDetailPage({
           </div>
           <LogisticsStatusBadge status={request.status} />
         </div>
-        <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <DetailField label="Створено" value={dateTime(request.createdAt)} />
           <DetailField label="Оновлено" value={dateTime(request.updatedAt)} />
           <DetailField
@@ -79,6 +79,7 @@ export default async function AdminLogisticsDetailPage({
           <DetailField
             label="Кінцева сума"
             value={formatLogisticsUah(request.totalPrice)}
+            emphasis
           />
         </dl>
       </section>
@@ -110,7 +111,7 @@ export default async function AdminLogisticsDetailPage({
             <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
               <DetailField
                 label="Тарифне місто"
-                value={`${request.tariffCityName} · ${request.tariffCityCode}`}
+                value={request.tariffCityName}
               />
               <DetailField
                 label="Базовий тариф"
@@ -131,11 +132,12 @@ export default async function AdminLogisticsDetailPage({
               <DetailField
                 label="Загальна кінцева сума"
                 value={formatLogisticsUah(request.totalPrice)}
+                emphasis
               />
             </dl>
-            <p className="mt-4 text-sm font-semibold text-muted">
-              Усі ціни включають ПДВ. Відображаються snapshots на момент
-              створення заявки.
+            <p className="mt-4 rounded-md bg-surface-muted px-3 py-2 text-sm font-semibold text-muted">
+              Усі ціни включають ПДВ. Розрахунок зафіксовано на момент створення
+              заявки.
             </p>
           </section>
 
@@ -147,24 +149,24 @@ export default async function AdminLogisticsDetailPage({
               {request.pickupPoints.map((point, index) => (
                 <article
                   key={point.id}
-                  className="rounded-md border border-border p-4"
+                  className="rounded-md border border-border bg-surface-muted/50 p-3.5"
                 >
                   <h4 className="font-bold text-foreground">
                     Точка {index + 1}
                   </h4>
-                  <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted">
+                  <p className="mt-3 text-sm font-semibold text-muted">
                     Назва компанії / постачальника
                   </p>
                   <p className="mt-1 break-words text-sm text-foreground">
                     {point.supplierName || 'Компанію не вказано'}
                   </p>
-                  <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted">
+                  <p className="mt-3 text-sm font-semibold text-muted">
                     Адреса завантаження
                   </p>
                   <p className="mt-1 break-words text-sm text-foreground">
                     {point.formattedAddress}
                   </p>
-                  <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted">
+                  <p className="mt-3 text-sm font-semibold text-muted">
                     Опис вантажу
                   </p>
                   <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground">
@@ -179,9 +181,14 @@ export default async function AdminLogisticsDetailPage({
             <h3 className="text-lg font-bold text-foreground">
               Місце доставки
             </h3>
-            <p className="mt-3 break-words text-sm text-foreground">
-              {request.destinationAddress ?? 'Адреса недоступна'}
-            </p>
+            <div className="mt-3 rounded-md border border-border bg-surface-muted/50 p-3.5">
+              <p className="text-sm font-semibold text-muted">
+                {LOGISTICS_DESTINATION_LABELS[request.destinationType]}
+              </p>
+              <p className="mt-1 break-words text-sm text-foreground">
+                {request.destinationAddress ?? 'Адреса недоступна'}
+              </p>
+            </div>
           </section>
 
           {request.clientComment ? (
@@ -251,7 +258,7 @@ export default async function AdminLogisticsDetailPage({
                 request.internalComments.map((comment) => (
                   <article
                     key={comment.id}
-                    className="rounded-md border border-border p-3"
+                    className="rounded-md border border-border bg-surface-muted/50 p-3"
                   >
                     <div className="flex flex-wrap justify-between gap-2 text-xs text-muted">
                       <span className="font-semibold">{comment.authorName}</span>
@@ -289,11 +296,11 @@ export default async function AdminLogisticsDetailPage({
                 required
                 maxLength={2000}
                 rows={5}
-                className="mt-2 w-full resize-y rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+                className="mt-2 min-h-32 w-full resize-y rounded-md border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/20"
               />
               <ReactiveSubmitButton
                 pendingLabel="Додаємо…"
-                className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-accent px-4 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-accent px-4 text-sm font-bold text-foreground transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Додати коментар
               </ReactiveSubmitButton>
@@ -305,11 +312,29 @@ export default async function AdminLogisticsDetailPage({
   );
 }
 
-function DetailField({ label, value }: { label: string; value: string }) {
+function DetailField({
+  label,
+  value,
+  emphasis = false
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+}) {
   return (
-    <div className="min-w-0">
+    <div
+      className={`min-w-0 rounded-md px-3 py-2.5 ${
+        emphasis ? 'bg-accent/10' : 'bg-surface-muted/60'
+      }`}
+    >
       <dt className="font-semibold text-muted">{label}</dt>
-      <dd className="mt-1 break-words text-foreground">{value}</dd>
+      <dd
+        className={`mt-1 break-words font-semibold tabular-nums ${
+          emphasis ? 'text-accent' : 'text-foreground'
+        }`}
+      >
+        {value}
+      </dd>
     </div>
   );
 }

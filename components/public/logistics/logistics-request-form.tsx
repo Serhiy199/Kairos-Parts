@@ -2,7 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { TbMapPin, TbPlus, TbTrash, TbTruckDelivery } from 'react-icons/tb';
+import {
+  TbCheck,
+  TbCircleCheck,
+  TbInfoCircle,
+  TbLoader2,
+  TbMapPin,
+  TbPlus,
+  TbTrash,
+  TbTruckDelivery
+} from 'react-icons/tb';
 
 import { KAIROS_LOGISTICS_BASE_ADDRESS } from '@/lib/logistics/constants';
 import {
@@ -132,6 +141,43 @@ function formatServerMoney(value: string) {
   return `${grouped},${fraction.padEnd(2, '0').slice(0, 2)}\u00a0грн`;
 }
 
+const logisticsFieldClassName =
+  'public-field min-h-[50px] w-full rounded-lg px-4 py-3 text-sm leading-6 transition hover:border-public-border-accent-hover aria-invalid:border-public-danger aria-invalid:focus:ring-public-danger/25 disabled:cursor-not-allowed disabled:bg-public-elevated disabled:text-public-muted autofill:shadow-[inset_0_0_0_1000px_var(--public-surface-elevated)] autofill:[-webkit-text-fill-color:var(--public-text-primary)]';
+const logisticsTextareaClassName = `${logisticsFieldClassName} min-h-[128px] resize-y`;
+const logisticsLabelClassName =
+  'grid gap-2 text-sm font-semibold text-public-secondary';
+
+function RequiredLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-baseline gap-1">
+      <span>{children}</span>
+      <span aria-hidden="true" className="text-accent">
+        *
+      </span>
+    </span>
+  );
+}
+
+function SectionHeading({
+  id,
+  number,
+  children
+}: {
+  id: string;
+  number: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <h2
+      id={id}
+      className="flex items-baseline gap-3 text-xl font-bold text-public-primary"
+    >
+      <span className="text-accent">{number}.</span>
+      <span>{children}</span>
+    </h2>
+  );
+}
+
 export function LogisticsRequestForm({
   initialContact,
   submitEnabled
@@ -246,7 +292,7 @@ export function LogisticsRequestForm({
 
         setServerQuote({ key: quoteKey, value: quote });
         setQuoteStatus('verified');
-        setQuoteMessage('Тариф перевірено сервером.');
+        setQuoteMessage('Тариф актуальний');
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
         setServerQuote(null);
@@ -407,46 +453,50 @@ export function LogisticsRequestForm({
     return (
       <section
         aria-labelledby="logistics-success-title"
-        className="public-card mx-auto max-w-3xl p-6 text-center sm:p-10"
+        className="public-card mx-auto max-w-4xl p-6 text-center sm:p-9"
       >
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-public-success">
+        <TbCircleCheck
+          aria-hidden="true"
+          className="mx-auto size-12 text-public-success"
+        />
+        <p className="mt-3 text-xs font-bold uppercase tracking-[0.18em] text-public-success">
           Kairos Logistics
         </p>
         <h2
           ref={successHeadingRef}
           id="logistics-success-title"
           tabIndex={-1}
-          className="mt-3 font-display text-3xl font-bold text-public-primary focus:outline-none sm:text-4xl"
+          className="mt-4 font-display text-3xl font-bold text-public-primary focus:outline-none sm:text-4xl"
         >
           Заявку створено
         </h2>
-        <dl className="mx-auto mt-7 grid max-w-xl gap-3 rounded-xl border border-public-border bg-public-elevated p-5 text-left sm:grid-cols-2">
+        <p className="mx-auto mt-3 max-w-xl leading-7 text-public-secondary">
+          Представник Kairos зв’яжеться з вами за вказаним номером телефону.
+        </p>
+        <dl className="mx-auto mt-7 grid max-w-2xl gap-4 rounded-xl border border-public-border bg-public-elevated p-5 text-left md:grid-cols-3">
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-public-muted">
+            <dt className="text-sm font-semibold text-public-muted">
               Номер заявки
             </dt>
-            <dd className="mt-1 break-words text-xl font-bold text-public-primary">
+            <dd className="mt-2 break-words text-lg font-bold text-public-primary">
               {createdRequest.requestNumber}
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-public-muted">
+            <dt className="text-sm font-semibold text-public-muted">
               Остаточна сума
             </dt>
-            <dd className="mt-1 break-words text-xl font-bold text-accent">
+            <dd className="mt-2 break-words text-lg font-bold tabular-nums text-accent">
               {formatServerMoney(createdRequest.totalPrice)}
             </dd>
           </div>
-          <div className="sm:col-span-2">
-            <dt className="text-xs font-semibold uppercase tracking-wide text-public-muted">
+          <div>
+            <dt className="text-sm font-semibold text-public-muted">
               Статус
             </dt>
-            <dd className="mt-1 font-bold text-public-success">Нова заявка</dd>
+            <dd className="mt-2 font-bold text-public-success">Нова заявка</dd>
           </div>
         </dl>
-        <p className="mx-auto mt-6 max-w-xl leading-7 text-public-secondary">
-          Представник Kairos зв’яжеться з вами за вказаним номером телефону.
-        </p>
         <Link
           href="/logistics"
           className="mt-7 inline-flex min-h-11 items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -461,7 +511,7 @@ export function LogisticsRequestForm({
     <form
       aria-label="Форма заявки Kairos Logistics"
       onSubmit={handleSubmit}
-      className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(310px,0.42fr)] lg:items-start"
+      className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(340px,0.48fr)] lg:items-start xl:gap-10"
     >
       <label className="absolute -left-[10000px] h-px w-px overflow-hidden">
         Вебсайт
@@ -474,21 +524,25 @@ export function LogisticsRequestForm({
         />
       </label>
       <div className="grid min-w-0 gap-6">
-        <fieldset className="public-card min-w-0 p-5 sm:p-7">
-          <legend className="px-1 text-xl font-bold text-public-primary">
-            1. Місто відвантаження
-          </legend>
+        <section
+          aria-labelledby="logistics-city-section"
+          className="grid min-w-0 gap-3"
+        >
+          <SectionHeading id="logistics-city-section" number={1}>
+            Місто відвантаження
+          </SectionHeading>
+          <div className="public-card min-w-0 p-4 sm:p-6">
           <label
             htmlFor="logistics-tariff-city"
-            className="mt-4 grid gap-2 text-sm font-semibold text-public-secondary"
+            className={logisticsLabelClassName}
           >
-            Місто відвантаження <span aria-hidden="true">*</span>
+            <RequiredLabel>Місто відвантаження</RequiredLabel>
             <select
               id="logistics-tariff-city"
               value={tariffCityCode ?? ''}
               required
               onChange={(event) => handleCityChange(event.target.value)}
-              className="public-field min-h-11 w-full"
+              className={logisticsFieldClassName}
             >
               <option value="">Оберіть місто</option>
               {LOGISTICS_TARIFF_CITIES.map((city) => (
@@ -498,17 +552,28 @@ export function LogisticsRequestForm({
               ))}
             </select>
           </label>
-          <p className="mt-2 text-xs leading-5 text-public-muted">
+          <p className="mt-2 flex items-start gap-2 text-xs leading-5 text-public-muted">
+            <TbInfoCircle
+              aria-hidden="true"
+              className="mt-0.5 size-4 shrink-0 text-accent"
+            />
+            <span>
             Усі точки відвантаження мають знаходитися в межах вибраного тарифного
             міста.
+            </span>
           </p>
-        </fieldset>
+          </div>
+        </section>
 
-        <fieldset className="public-card min-w-0 p-5 sm:p-7">
-          <legend className="px-1 text-xl font-bold text-public-primary">
-            2. Точки відвантаження
-          </legend>
-          <div className="mt-4 grid gap-5">
+        <section
+          aria-labelledby="logistics-pickups-section"
+          className="grid min-w-0 gap-3"
+        >
+          <SectionHeading id="logistics-pickups-section" number={2}>
+            Точки відвантаження
+          </SectionHeading>
+          <div className="public-card min-w-0 p-4 sm:p-6">
+          <div className="grid gap-4">
             {pickupPoints.map((point, index) => {
               const supplierField = `supplier-${point.id}`;
               const supplierLength = point.supplierName.trim().length;
@@ -541,18 +606,18 @@ export function LogisticsRequestForm({
               return (
                 <article
                   key={point.id}
-                  className="min-w-0 rounded-xl border border-public-border bg-public-elevated p-4 sm:p-5"
+                  className="min-w-0 rounded-xl border border-public-border/70 bg-public-elevated/60 p-4"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h2 className="text-base font-bold text-public-primary">
+                    <h3 className="text-base font-bold text-public-primary">
                       Точка відвантаження {index + 1}
-                    </h2>
+                    </h3>
                     {index > 0 ? (
                       <button
                         type="button"
                         aria-label={`Видалити точку відвантаження ${index + 1}`}
                         onClick={() => removePickupPoint(point.id)}
-                        className="inline-flex min-h-10 items-center gap-2 rounded-md border border-public-border px-3 py-2 text-sm font-semibold text-public-secondary transition hover:border-public-border-accent-hover hover:text-public-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                        className="inline-flex min-h-9 items-center gap-2 rounded-md border border-public-danger/40 px-3 py-1.5 text-sm font-semibold text-public-danger transition hover:border-public-danger hover:bg-public-danger/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-public-danger"
                       >
                         <TbTrash aria-hidden="true" className="size-4" />
                         Видалити
@@ -560,12 +625,13 @@ export function LogisticsRequestForm({
                     ) : null}
                   </div>
 
-                  <label
-                    htmlFor={`supplier-name-${point.id}`}
-                    className="mt-5 grid gap-2 text-sm font-semibold text-public-secondary"
-                  >
-                    Назва компанії / постачальника{' '}
-                    <span aria-hidden="true">*</span>
+                  <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,0.42fr)_minmax(0,0.58fr)]">
+                    <div>
+                    <label
+                      htmlFor={`supplier-name-${point.id}`}
+                      className={logisticsLabelClassName}
+                    >
+                    <RequiredLabel>Назва компанії / постачальника</RequiredLabel>
                     <input
                       id={`supplier-name-${point.id}`}
                       type="text"
@@ -584,7 +650,7 @@ export function LogisticsRequestForm({
                         })
                       }
                       onBlur={() => touch(supplierField)}
-                      className="public-field min-h-11 w-full"
+                      className={logisticsFieldClassName}
                     />
                   </label>
                   {supplierError ? (
@@ -595,12 +661,14 @@ export function LogisticsRequestForm({
                       {supplierError}
                     </p>
                   ) : null}
+                    </div>
 
-                  <label
-                    htmlFor={`pickup-address-${point.id}`}
-                    className="mt-5 grid gap-2 text-sm font-semibold text-public-secondary"
-                  >
-                    Повна адреса завантаження <span aria-hidden="true">*</span>
+                    <div>
+                    <label
+                      htmlFor={`pickup-address-${point.id}`}
+                      className={logisticsLabelClassName}
+                    >
+                    <RequiredLabel>Повна адреса завантаження</RequiredLabel>
                     <input
                       id={`pickup-address-${point.id}`}
                       type="text"
@@ -619,7 +687,7 @@ export function LogisticsRequestForm({
                         })
                       }
                       onBlur={() => touch(addressField)}
-                      className="public-field min-h-11 w-full"
+                      className={logisticsFieldClassName}
                     />
                   </label>
                   {addressError ? (
@@ -630,12 +698,14 @@ export function LogisticsRequestForm({
                       {addressError}
                     </p>
                   ) : null}
+                    </div>
+                  </div>
 
                   <label
                     htmlFor={`cargo-description-${point.id}`}
-                    className="mt-5 grid gap-2 text-sm font-semibold text-public-secondary"
+                    className={`mt-4 ${logisticsLabelClassName}`}
                   >
-                    Опис вантажу <span aria-hidden="true">*</span>
+                    <RequiredLabel>Опис вантажу</RequiredLabel>
                     <textarea
                       id={`cargo-description-${point.id}`}
                       value={point.cargoDescription}
@@ -653,7 +723,7 @@ export function LogisticsRequestForm({
                         })
                       }
                       onBlur={() => touch(cargoField)}
-                      className="public-field min-h-28 w-full resize-y"
+                      className={logisticsTextareaClassName}
                     />
                   </label>
                   <p
@@ -679,18 +749,25 @@ export function LogisticsRequestForm({
             ref={addPointButtonRef}
             type="button"
             onClick={addPickupPoint}
-            className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-accent/50 px-4 py-3 text-sm font-bold text-public-primary transition hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
+            className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-accent/50 bg-accent/5 px-4 py-3 text-sm font-bold text-public-primary transition hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
           >
             <TbPlus aria-hidden="true" className="size-5" />
             Додати ще одну точку
           </button>
-        </fieldset>
+          </div>
+        </section>
 
-        <fieldset className="public-card min-w-0 p-5 sm:p-7">
-          <legend className="px-1 text-xl font-bold text-public-primary">
-            3. Куди доставити товар?
-          </legend>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <section
+          aria-labelledby="logistics-destination-section"
+          className="grid min-w-0 gap-3"
+        >
+          <SectionHeading id="logistics-destination-section" number={3}>
+            Куди доставити товар?
+          </SectionHeading>
+          <div className="public-card min-w-0 p-4 sm:p-6">
+          <fieldset>
+            <legend className="sr-only">Оберіть місце доставки</legend>
+          <div className="grid gap-3 sm:grid-cols-2">
             <DestinationRadio
               value="KAIROS_BASE"
               checked={destinationType === 'KAIROS_BASE'}
@@ -708,22 +785,22 @@ export function LogisticsRequestForm({
           </div>
 
           {destinationType === 'KAIROS_BASE' ? (
-            <div className="mt-5 rounded-lg border border-public-border bg-public-elevated p-4">
+            <div className="mt-4 rounded-lg border border-public-border/70 bg-public-elevated/60 p-4">
               <p className="flex items-start gap-2 font-semibold text-public-primary">
                 <TbMapPin aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-accent" />
                 {KAIROS_LOGISTICS_BASE_ADDRESS}
               </p>
               <p className="mt-2 text-sm leading-6 text-public-muted">
-                Доставка до бази входить у розрахунок без додаткової доплати.
+                Доставка до бази входить у розрахунок без додаткової оплати.
               </p>
             </div>
           ) : (
             <div className="mt-5">
               <label
                 htmlFor="logistics-farm-address"
-                className="grid gap-2 text-sm font-semibold text-public-secondary"
+                className={logisticsLabelClassName}
               >
-                Повна адреса господарства <span aria-hidden="true">*</span>
+                <RequiredLabel>Повна адреса господарства</RequiredLabel>
                 <input
                   id="logistics-farm-address"
                   type="text"
@@ -739,7 +816,7 @@ export function LogisticsRequestForm({
                       : 'logistics-farm-address-helper'
                   }
                   onChange={(event) => setFarmAddress(event.target.value)}
-                  className="public-field min-h-11 w-full"
+                  className={logisticsFieldClassName}
                 />
               </label>
               <p
@@ -758,15 +835,21 @@ export function LogisticsRequestForm({
               ) : null}
             </div>
           )}
-        </fieldset>
+          </fieldset>
+          </div>
+        </section>
 
-        <fieldset className="public-card min-w-0 p-5 sm:p-7">
-          <legend className="px-1 text-xl font-bold text-public-primary">
-            4. Контактні дані
-          </legend>
-          <div className="mt-4 grid gap-5 sm:grid-cols-2">
-            <label className="grid gap-2 text-sm font-semibold text-public-secondary">
-              Ім’я <span aria-hidden="true">*</span>
+        <section
+          aria-labelledby="logistics-contact-section"
+          className="grid min-w-0 gap-3"
+        >
+          <SectionHeading id="logistics-contact-section" number={4}>
+            Контактні дані
+          </SectionHeading>
+          <div className="public-card min-w-0 p-4 sm:p-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className={logisticsLabelClassName}>
+              <RequiredLabel>Ім’я</RequiredLabel>
               <input
                 id="logistics-contact-name"
                 type="text"
@@ -784,7 +867,7 @@ export function LogisticsRequestForm({
                     ? 'logistics-contact-name-error'
                     : undefined
                 }
-                className="public-field min-h-11 w-full"
+                className={logisticsFieldClassName}
               />
               {touchedFields.contactName && !contactName.trim() ? (
                 <span
@@ -796,8 +879,8 @@ export function LogisticsRequestForm({
               ) : null}
             </label>
 
-            <label className="grid gap-2 text-sm font-semibold text-public-secondary">
-              Номер телефону <span aria-hidden="true">*</span>
+            <label className={logisticsLabelClassName}>
+              <RequiredLabel>Номер телефону</RequiredLabel>
               <input
                 id="logistics-contact-phone"
                 type="tel"
@@ -818,7 +901,7 @@ export function LogisticsRequestForm({
                     ? 'logistics-contact-phone-error'
                     : undefined
                 }
-                className="public-field min-h-11 w-full"
+                className={logisticsFieldClassName}
               />
               {touchedFields.contactPhone && !parsedPhone.canonical ? (
                 <span
@@ -830,26 +913,37 @@ export function LogisticsRequestForm({
               ) : null}
             </label>
           </div>
-        </fieldset>
+          </div>
+        </section>
 
-        <fieldset className="public-card min-w-0 p-5 sm:p-7">
-          <legend className="px-1 text-xl font-bold text-public-primary">
-            5. Коментар
-          </legend>
-          <label className="mt-4 grid gap-2 text-sm font-semibold text-public-secondary">
-            Коментар до заявки
+        <section
+          aria-labelledby="logistics-comment-section"
+          className="grid min-w-0 gap-3"
+        >
+          <SectionHeading id="logistics-comment-section" number={5}>
+            Коментар
+          </SectionHeading>
+          <div className="public-card min-w-0 p-4 sm:p-6">
+          <label className={logisticsLabelClassName}>
+            <span className="inline-flex flex-wrap items-center gap-2">
+              Коментар до заявки
+              <span className="rounded-full border border-public-border px-2 py-0.5 text-xs font-medium text-public-muted">
+                Необов’язково
+              </span>
+            </span>
             <textarea
               value={clientComment}
               maxLength={LOGISTICS_CLIENT_COMMENT_MAX_LENGTH}
               rows={5}
               onChange={(event) => setClientComment(event.target.value)}
-              className="public-field min-h-32 w-full resize-y"
+              className={logisticsTextareaClassName}
             />
           </label>
           <p className="mt-2 text-xs leading-5 text-public-muted">
             Додайте важливі деталі щодо завантаження або перевезення.
           </p>
-        </fieldset>
+          </div>
+        </section>
       </div>
 
       <aside
@@ -866,8 +960,7 @@ export function LogisticsRequestForm({
           Розрахунок вартості
         </h2>
         <p className="mt-3 text-sm leading-6 text-public-muted">
-          Сума розрахована за чинними початковими тарифами. Під час надсилання
-          заявки сервер повторно перевірятиме актуальний тариф.
+          Сума розраховується за актуальним тарифом і кількістю точок.
         </p>
 
         {verifiedQuote ? (
@@ -884,9 +977,9 @@ export function LogisticsRequestForm({
               label="Доставка в господарство"
               value={formatServerMoney(verifiedQuote.farmDeliveryCharge)}
             />
-            <div className="mt-2 flex items-start justify-between gap-4 border-t border-public-border pt-4">
+            <div className="mt-2 flex items-baseline justify-between gap-4 border-t border-public-border pt-4">
               <dt className="font-bold text-public-primary">Загальна вартість</dt>
-              <dd className="shrink-0 text-xl font-bold text-accent">
+              <dd className="shrink-0 text-xl font-bold tabular-nums text-accent">
                 {formatServerMoney(verifiedQuote.totalPrice)}
               </dd>
             </div>
@@ -905,9 +998,9 @@ export function LogisticsRequestForm({
               label="Доставка в господарство"
               value={formatLogisticsPrice(preview.farmDeliveryMinorUnits)}
             />
-            <div className="mt-2 flex items-start justify-between gap-4 border-t border-public-border pt-4">
+            <div className="mt-2 flex items-baseline justify-between gap-4 border-t border-public-border pt-4">
               <dt className="font-bold text-public-primary">Загальна вартість</dt>
-              <dd className="shrink-0 text-xl font-bold text-accent">
+              <dd className="shrink-0 text-xl font-bold tabular-nums text-accent">
                 {formatLogisticsPrice(preview.totalMinorUnits)}
               </dd>
             </div>
@@ -918,32 +1011,38 @@ export function LogisticsRequestForm({
           </div>
         )}
 
-        <p className="mt-5 text-sm font-semibold text-public-primary">
-          Усі ціни включають ПДВ.
-        </p>
-        <p
-          aria-live="polite"
-          className={`mt-3 min-h-5 text-sm font-semibold ${
-            quoteStatus === 'verified'
-              ? 'text-public-success'
-              : quoteStatus === 'error'
-                ? 'text-public-danger'
-                : 'text-public-muted'
-          }`}
-        >
-          {quoteMessage}
+        <p className="mt-5 flex items-center gap-2 text-sm font-semibold text-public-primary">
+          <TbCheck aria-hidden="true" className="size-5 text-public-success" />
+          Усі ціни включають ПДВ
         </p>
         <div
           aria-live="polite"
-          className={`mt-6 rounded-lg border p-4 text-sm font-semibold ${
-            isReady && verifiedQuote
+          className={`mt-4 flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${
+            quoteStatus === 'verified'
               ? 'border-public-success/30 bg-public-success/10 text-public-success'
-              : 'border-public-border bg-public-elevated text-public-muted'
+              : quoteStatus === 'error'
+                ? 'border-public-danger/30 bg-public-danger/10 text-public-danger'
+                : 'border-public-border bg-public-elevated text-public-muted'
           }`}
         >
-          {isReady && verifiedQuote
-            ? 'Дані форми заповнено, тариф актуальний.'
-            : 'Заповніть усі обов’язкові поля.'}
+          {quoteStatus === 'loading' ? (
+            <TbLoader2 aria-hidden="true" className="size-5 shrink-0 animate-spin" />
+          ) : quoteStatus === 'verified' ? (
+            <TbCheck aria-hidden="true" className="size-5 shrink-0" />
+          ) : (
+            <TbInfoCircle aria-hidden="true" className="size-5 shrink-0" />
+          )}
+          <span>
+            {quoteStatus === 'verified'
+              ? `${quoteMessage} · ${
+                  isReady
+                    ? 'Дані форми заповнено'
+                    : 'Заповніть обов’язкові поля'
+                }`
+              : quoteStatus === 'idle'
+                ? 'Оберіть місто для перевірки тарифу'
+                : quoteMessage}
+          </span>
         </div>
 
         {globalError ? (
@@ -961,7 +1060,7 @@ export function LogisticsRequestForm({
           type="submit"
           disabled={!canSubmit}
           aria-describedby="logistics-submit-helper"
-          className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-primary transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-5 inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-lg bg-accent px-5 py-3 text-sm font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
         >
           <TbTruckDelivery aria-hidden="true" className="size-5" />
           {isSubmitting
@@ -976,7 +1075,7 @@ export function LogisticsRequestForm({
           className="mt-3 text-center text-xs leading-5 text-public-muted"
         >
           {submitEnabled
-            ? 'Сервер нормалізує адреси та повторно перевірить тариф і остаточну суму.'
+            ? 'Перед створенням заявки сервер повторно перевірить актуальний тариф і кінцеву суму.'
             : 'Надсилання заявок вимкнено конфігурацією середовища.'}
         </p>
       </aside>
@@ -999,7 +1098,7 @@ function DestinationRadio({
 }) {
   return (
     <label
-      className={`cursor-pointer rounded-lg border p-4 transition ${
+      className={`min-h-full cursor-pointer rounded-lg border p-4 transition focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent ${
         checked
           ? 'border-accent bg-accent/10'
           : 'border-public-border bg-public-elevated hover:border-public-border-accent-hover'
@@ -1027,9 +1126,11 @@ function DestinationRadio({
 
 function PriceRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex items-baseline justify-between gap-4">
       <dt className="text-public-muted">{label}</dt>
-      <dd className="shrink-0 font-semibold text-public-primary">{value}</dd>
+      <dd className="shrink-0 font-semibold tabular-nums text-public-primary">
+        {value}
+      </dd>
     </div>
   );
 }
