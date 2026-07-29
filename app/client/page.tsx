@@ -37,15 +37,26 @@ export default async function ClientDashboardPage() {
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-col justify-between gap-4 rounded-lg border border-border bg-card p-6 shadow-card md:flex-row md:items-center">
+      <div className="flex flex-col justify-between gap-5 rounded-lg border border-border bg-card p-6 shadow-card lg:flex-row lg:items-center">
         <div>
           <p className="text-sm font-bold uppercase text-accent">Вітаємо</p>
           <h2 className="mt-2 text-2xl font-bold text-foreground">{access.companyName ?? session.user.name ?? 'Клієнт Kairos Parts'}</h2>
           <p className="mt-2 text-sm text-muted">{access.mode === 'COMPANY' ? 'Спільний кабінет компанії' : 'Персональний кабінет клієнта'}</p>
         </div>
-        <Link href="/request?source=client" className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover">
-          Створити нову заявку
-        </Link>
+        <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-auto">
+          <Link
+            href="/request?source=client"
+            className="inline-flex min-h-12 items-center justify-center rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+          >
+            Створити нову заявку
+          </Link>
+          <Link
+            href="/logistics/request"
+            className="inline-flex min-h-12 items-center justify-center rounded-md border border-accent px-5 py-3 text-center text-sm font-bold leading-5 text-foreground transition hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+          >
+            Створити заявку на перевезення
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

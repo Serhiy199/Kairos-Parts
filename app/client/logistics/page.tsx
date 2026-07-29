@@ -210,12 +210,20 @@ export default async function ClientLogisticsPage({
             <p className="text-sm text-muted">
               У вас поки немає заявок на доставку.
             </p>
-            <Link
-              href="/logistics"
-              className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md border border-border px-4 text-sm font-bold text-foreground transition hover:border-accent"
-            >
-              Перейти до Kairos Logistics
-            </Link>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/logistics/request"
+                className="inline-flex min-h-10 items-center justify-center rounded-md bg-accent px-4 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+              >
+                Створити заявку на перевезення
+              </Link>
+              <Link
+                href="/logistics"
+                className="inline-flex min-h-10 items-center justify-center rounded-md border border-border px-4 text-center text-sm font-bold text-foreground transition hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+              >
+                Перейти до сторінки логістики
+              </Link>
+            </div>
           </div>
         )}
 

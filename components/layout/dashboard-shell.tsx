@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
 import {
+  TbArrowLeft,
   TbArrowsExchange,
   TbBuilding,
   TbBuildingStore,
@@ -303,14 +304,24 @@ function SidebarContent({ navItems, pathname, homeHref, logoutAction, onNavigate
             );
           })}
         </nav>
-        <form action={logoutAction} className="mt-3 border-t border-white/10 pt-3">
-          <button
-            type="submit"
-            className="w-full rounded-md border border-white/15 px-3 py-2.5 text-left text-sm font-semibold text-sidebar-text transition hover:border-white/25 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        <div className="mt-3 grid gap-2 border-t border-white/10 pt-3">
+          <Link
+            href="/"
+            onClick={onNavigate}
+            className="flex w-full items-center gap-2.5 rounded-md border border-white/15 px-3 py-2.5 text-sm font-semibold text-sidebar-text transition hover:border-white/25 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            Вийти
-          </button>
-        </form>
+            <TbArrowLeft aria-hidden="true" className="size-[18px] shrink-0" />
+            <span>Повернутися на сайт</span>
+          </Link>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="w-full rounded-md border border-white/15 px-3 py-2.5 text-left text-sm font-semibold text-sidebar-text transition hover:border-white/25 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              Вийти
+            </button>
+          </form>
+        </div>
       </div>
     </>
   );
