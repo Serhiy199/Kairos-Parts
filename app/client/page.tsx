@@ -48,7 +48,7 @@ export default async function ClientDashboardPage() {
             href="/request?source=client"
             className="inline-flex min-h-12 items-center justify-center rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
           >
-            Створити нову заявку
+            Створити нову заявку на підбір
           </Link>
           <Link
             href="/logistics/request"
