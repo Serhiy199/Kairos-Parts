@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import type { LogisticsResolvedAddress } from '../lib/logistics/address-provider/contracts';
 import {
   ADDITIONAL_PICKUP_CHARGE_MINOR_UNITS,
   calculateLogisticsPricePreview,
@@ -11,7 +10,6 @@ import {
 import {
   addLogisticsPickupPoint,
   createLogisticsPickupPoint,
-  invalidateLogisticsPickupAddresses,
   isLogisticsRequestDraftReady,
   parseLogisticsTariffCitySelection,
   removeLogisticsPickupPoint,
@@ -157,22 +155,17 @@ assert.equal(
 );
 assert.throws(() => calculateLogisticsPricePreview('MYRONIVKA', 0, 'KAIROS_BASE'));
 
-const resolvedAddress: LogisticsResolvedAddress = {
-  externalAddressId: 'mock:test:001',
-  formattedAddress: 'вул. Тестова, 1',
-  normalizedLocality: 'Миронівка',
-  normalizedAdministrativeArea: 'Київська область',
-  addressProvider: 'MOCK'
-};
+const manualAddress = 'Київська область, Миронівка, вул. Тестова, 1';
 const firstPoint = {
   ...createLogisticsPickupPoint('pickup-1'),
-  address: resolvedAddress,
+  supplierName: 'ТОВ «Тест»',
+  address: manualAddress,
   cargoDescription: 'Запчастини'
 };
 const secondPoint = createLogisticsPickupPoint('pickup-2');
 const addedPoints = addLogisticsPickupPoint([firstPoint], secondPoint);
 assert.equal(addedPoints.length, 2);
-assert.equal(addedPoints[1]?.address, null);
+assert.equal(addedPoints[1]?.address, '');
 assert.equal(removeLogisticsPickupPoint([firstPoint], firstPoint.id).length, 1);
 assert.deepEqual(
   removeLogisticsPickupPoint(addedPoints, firstPoint.id).map((point) => point.id),
@@ -182,25 +175,20 @@ assert.deepEqual(
   removeLogisticsPickupPoint(addedPoints, secondPoint.id).map((point) => point.id),
   ['pickup-1']
 );
-assert.ok(
-  invalidateLogisticsPickupAddresses(addedPoints).every(
-    (point) => point.address === null
-  )
+assert.equal(
+  transitionLogisticsDestination('KAIROS_BASE', manualAddress).farmAddress,
+  ''
 );
 assert.equal(
-  transitionLogisticsDestination('KAIROS_BASE', resolvedAddress).farmAddress,
-  null
-);
-assert.equal(
-  transitionLogisticsDestination('FARM', resolvedAddress).farmAddress,
-  resolvedAddress
+  transitionLogisticsDestination('FARM', manualAddress).farmAddress,
+  manualAddress
 );
 assert.equal(
   isLogisticsRequestDraftReady({
     tariffCityCode: 'MYRONIVKA',
     pickupPoints: [firstPoint],
     destinationType: 'KAIROS_BASE',
-    farmAddress: null,
+    farmAddress: '',
     contactName: 'Іван',
     contactPhone: '+380671234567',
     clientComment: ''
@@ -212,7 +200,7 @@ assert.equal(
     tariffCityCode: 'MYRONIVKA',
     pickupPoints: [firstPoint],
     destinationType: 'FARM',
-    farmAddress: null,
+    farmAddress: '',
     contactName: 'Іван',
     contactPhone: '+380671234567',
     clientComment: ''

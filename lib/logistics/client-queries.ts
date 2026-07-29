@@ -39,6 +39,7 @@ export type ClientLogisticsDetail = {
   destinationAddress: string | null;
   clientComment: string | null;
   pickupPoints: Array<{
+    supplierName: string | null;
     formattedAddress: string;
     cargoDescription: string;
   }>;
@@ -123,6 +124,7 @@ export async function getClientLogisticsDetail(
       pickupPoints: {
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
         select: {
+          supplierName: true,
           formattedAddress: true,
           cargoDescription: true
         }

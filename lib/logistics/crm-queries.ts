@@ -235,6 +235,7 @@ export async function getLogisticsRequestDetail(id: string) {
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
         select: {
           id: true,
+          supplierName: true,
           formattedAddress: true,
           cargoDescription: true
         }

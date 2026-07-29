@@ -325,6 +325,7 @@ const samplePrepared = {
   },
   pickupPoints: [
     {
+      supplierName: 'Synthetic supplier',
       formattedAddress: 'Synthetic pickup',
       externalAddressId: 'mock:tariff-city:bila-tserkva:001',
       addressProvider: 'MOCK',
@@ -353,10 +354,11 @@ assert.equal(
       contactPhone: samplePrepared.contactPhone,
       tariffCityCodeSnapshot: samplePrepared.tariff.code,
       destinationType: samplePrepared.destinationType,
-      farmExternalAddressId: samplePrepared.farmAddress.externalAddressId,
+      farmFormattedAddress: samplePrepared.farmAddress.formattedAddress,
       clientComment: null,
       pickupPoints: samplePrepared.pickupPoints.map((point) => ({
-        externalAddressId: point.externalAddressId,
+        supplierName: point.supplierName,
+        formattedAddress: point.formattedAddress,
         cargoDescription: point.cargoDescription
       }))
     },

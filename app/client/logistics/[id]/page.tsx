@@ -120,10 +120,22 @@ export default async function ClientLogisticsDetailPage({
               className="min-w-0 rounded-md border border-border p-4"
             >
               <h4 className="font-bold text-foreground">Точка {index + 1}</h4>
-              <p className="mt-2 break-words text-sm leading-6 text-muted">
+              <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted">
+                Назва компанії / постачальника
+              </p>
+              <p className="mt-1 break-words text-sm leading-6 text-foreground">
+                {point.supplierName || 'Компанію не вказано'}
+              </p>
+              <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted">
+                Адреса завантаження
+              </p>
+              <p className="mt-1 break-words text-sm leading-6 text-foreground">
                 {point.formattedAddress}
               </p>
-              <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
+              <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted">
+                Опис вантажу
+              </p>
+              <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
                 {point.cargoDescription}
               </p>
             </article>

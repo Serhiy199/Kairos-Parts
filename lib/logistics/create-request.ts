@@ -27,16 +27,17 @@ export type PreparedLogisticsRequest = {
   baseAddressSnapshot: string | null;
   farmAddress: {
     formattedAddress: string;
-    externalAddressId: string;
+    externalAddressId: string | null;
     addressProvider: LogisticsAddressProvider;
-    normalizedLocality: string;
+    normalizedLocality: string | null;
     normalizedAdministrativeArea: string | null;
   } | null;
   pickupPoints: Array<{
+    supplierName: string;
     formattedAddress: string;
-    externalAddressId: string;
+    externalAddressId: string | null;
     addressProvider: LogisticsAddressProvider;
-    normalizedLocality: string;
+    normalizedLocality: string | null;
     normalizedAdministrativeArea: string | null;
     cargoDescription: string;
   }>;
@@ -58,11 +59,12 @@ const existingRequestSelect = {
   contactPhone: true,
   tariffCityCodeSnapshot: true,
   destinationType: true,
-  farmExternalAddressId: true,
+  farmFormattedAddress: true,
   clientComment: true,
   pickupPoints: {
     select: {
-      externalAddressId: true,
+      supplierName: true,
+      formattedAddress: true,
       cargoDescription: true
     }
   }
@@ -77,9 +79,18 @@ async function findExistingRequest(
     select: existingRequestSelect
   });
 }
-function pickupIntent(points: Array<{ externalAddressId: string | null; cargoDescription: string }>) {
+function pickupIntent(
+  points: Array<{
+    supplierName: string | null;
+    formattedAddress: string;
+    cargoDescription: string;
+  }>
+) {
   return points
-    .map((point) => `${point.externalAddressId ?? ''}\u0000${point.cargoDescription}`)
+    .map(
+      (point) =>
+        `${point.supplierName ?? ''}\u0000${point.formattedAddress}\u0000${point.cargoDescription}`
+    )
     .sort();
 }
 
@@ -102,8 +113,8 @@ export function logisticsIdempotencyIntentMatches(
     existing.contactName === input.contactName &&
     existing.tariffCityCodeSnapshot === input.tariff.code &&
     existing.destinationType === input.destinationType &&
-    existing.farmExternalAddressId ===
-      (input.farmAddress?.externalAddressId ?? null) &&
+    existing.farmFormattedAddress ===
+      (input.farmAddress?.formattedAddress ?? null) &&
     existing.clientComment === input.clientComment &&
     existingPoints.length === incomingPoints.length &&
     existingPoints.every((point, index) => point === incomingPoints[index])
@@ -165,6 +176,7 @@ export async function createLogisticsRequestInTransaction(
       idempotencyKey: input.idempotencyKey,
       pickupPoints: {
         create: input.pickupPoints.map((point) => ({
+          supplierName: point.supplierName,
           formattedAddress: point.formattedAddress,
           externalAddressId: point.externalAddressId,
           addressProvider: point.addressProvider,

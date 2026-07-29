@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { TbMapPin, TbPlus, TbTrash, TbTruckDelivery } from 'react-icons/tb';
 
-import type { LogisticsResolvedAddress } from '@/lib/logistics/address-provider/contracts';
 import { KAIROS_LOGISTICS_BASE_ADDRESS } from '@/lib/logistics/constants';
 import {
   calculateLogisticsPricePreview,
@@ -14,11 +13,15 @@ import {
 import {
   addLogisticsPickupPoint,
   createLogisticsPickupPoint,
-  invalidateLogisticsPickupAddresses,
   isLogisticsRequestDraftReady,
+  LOGISTICS_CARGO_DESCRIPTION_MIN_LENGTH,
   LOGISTICS_CARGO_DESCRIPTION_MAX_LENGTH,
   LOGISTICS_CLIENT_COMMENT_MAX_LENGTH,
   LOGISTICS_CONTACT_NAME_MAX_LENGTH,
+  LOGISTICS_MANUAL_ADDRESS_MAX_LENGTH,
+  LOGISTICS_MANUAL_ADDRESS_MIN_LENGTH,
+  LOGISTICS_SUPPLIER_NAME_MAX_LENGTH,
+  LOGISTICS_SUPPLIER_NAME_MIN_LENGTH,
   removeLogisticsPickupPoint,
   parseLogisticsTariffCitySelection,
   transitionLogisticsDestination,
@@ -29,8 +32,6 @@ import {
   type LogisticsTariffCityCode
 } from '@/lib/logistics/tariff-cities';
 import { formatPhoneIdentifierInput } from '@/lib/phone/client-format';
-
-import { LogisticsAddressCombobox } from './logistics-address-combobox';
 
 type LogisticsRequestFormProps = {
   initialContact: {
@@ -147,17 +148,12 @@ export function LogisticsRequestForm({
   ]);
   const [destinationType, setDestinationType] =
     useState<LogisticsDestinationType>('KAIROS_BASE');
-  const [farmAddress, setFarmAddress] = useState<LogisticsResolvedAddress | null>(
-    null
-  );
+  const [farmAddress, setFarmAddress] = useState('');
   const [contactName, setContactName] = useState(initialContact.name);
   const [contactPhone, setContactPhone] = useState(
     formatPhoneIdentifierInput(initialContact.phone).display
   );
   const [clientComment, setClientComment] = useState('');
-  const [pickupClearSignal, setPickupClearSignal] = useState(0);
-  const [farmClearSignal, setFarmClearSignal] = useState(0);
-  const [cityChangeNotice, setCityChangeNotice] = useState('');
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
   const [serverQuote, setServerQuote] = useState<{
     key: string;
@@ -276,22 +272,17 @@ export function LogisticsRequestForm({
   }
 
   function handleCityChange(nextCode: string) {
-    const validCode = parseLogisticsTariffCitySelection(nextCode);
-    const hadResolvedPickup = pickupPoints.some((point) => point.address);
-
-    setTariffCityCode(validCode);
-    setPickupPoints((current) => invalidateLogisticsPickupAddresses(current));
-    setPickupClearSignal((current) => current + 1);
-    setCityChangeNotice(
-      hadResolvedPickup
-        ? 'Адреси точок відвантаження очищено, оскільки змінено тарифне місто.'
-        : ''
-    );
+    setTariffCityCode(parseLogisticsTariffCitySelection(nextCode));
   }
 
   function updatePickupPoint(
     pointId: string,
-    update: Partial<Pick<LogisticsPickupPointDraft, 'address' | 'cargoDescription'>>
+    update: Partial<
+      Pick<
+        LogisticsPickupPointDraft,
+        'supplierName' | 'address' | 'cargoDescription'
+      >
+    >
   ) {
     setPickupPoints((current) =>
       current.map((point) => (point.id === pointId ? { ...point, ...update } : point))
@@ -303,9 +294,7 @@ export function LogisticsRequestForm({
     const point = createLogisticsPickupPoint(`pickup-${pointCounterRef.current}`);
     setPickupPoints((current) => addLogisticsPickupPoint(current, point));
     window.setTimeout(() => {
-      document
-        .querySelector<HTMLInputElement>(`[data-pickup-address="${point.id}"] input`)
-        ?.focus();
+      document.getElementById(`supplier-name-${point.id}`)?.focus();
     }, 0);
   }
 
@@ -321,9 +310,6 @@ export function LogisticsRequestForm({
     );
     setDestinationType(transition.destinationType);
     setFarmAddress(transition.farmAddress);
-    if (!transition.farmAddress) {
-      setFarmClearSignal((current) => current + 1);
-    }
   }
 
   function handlePhoneChange(value: string) {
@@ -334,19 +320,23 @@ export function LogisticsRequestForm({
   function focusServerError(field: string | undefined) {
     window.setTimeout(() => {
       if (field?.startsWith('pickupPoints.')) {
-        const index = Number(field.split('.')[1]);
+        const [, rawIndex, property] = field.split('.');
+        const index = Number(rawIndex);
         const point = pickupPoints[index];
         if (point) {
-          document
-            .querySelector<HTMLInputElement>(
-              `[data-pickup-address="${point.id}"] input`
-            )
-            ?.focus();
+          const fieldId =
+            property === 'supplierName'
+              ? `supplier-name-${point.id}`
+              : property === 'cargoDescription'
+                ? `cargo-description-${point.id}`
+                : `pickup-address-${point.id}`;
+          document.getElementById(fieldId)?.focus();
           return;
         }
       }
       const fieldIds: Record<string, string> = {
         tariffCityCode: 'logistics-tariff-city',
+        farmAddress: 'logistics-farm-address',
         contactName: 'logistics-contact-name',
         contactPhone: 'logistics-contact-phone'
       };
@@ -376,14 +366,12 @@ export function LogisticsRequestForm({
           honeypot,
           tariffCityCode,
           pickupPoints: pickupPoints.map((point) => ({
-            externalAddressId: point.address?.externalAddressId,
+            supplierName: point.supplierName,
+            address: point.address,
             cargoDescription: point.cargoDescription
           })),
           destinationType,
-          farmExternalAddressId:
-            destinationType === 'FARM'
-              ? farmAddress?.externalAddressId
-              : undefined,
+          farmAddress: destinationType === 'FARM' ? farmAddress : undefined,
           contactName,
           contactPhone: parsedPhone.canonical,
           clientComment
@@ -399,23 +387,6 @@ export function LogisticsRequestForm({
         setGlobalError(message);
         if (error?.field) {
           setServerFieldErrors({ [error.field]: message });
-        }
-        if (
-          error?.code === 'ADDRESS_SCOPE_MISMATCH' ||
-          error?.code === 'ADDRESS_NOT_FOUND'
-        ) {
-          if (error.field?.startsWith('pickupPoints.')) {
-            const index = Number(error.field.split('.')[1]);
-            setPickupPoints((current) =>
-              current.map((point, pointIndex) =>
-                pointIndex === index ? { ...point, address: null } : point
-              )
-            );
-            setPickupClearSignal((current) => current + 1);
-          } else if (error.field === 'farmExternalAddressId') {
-            setFarmAddress(null);
-            setFarmClearSignal((current) => current + 1);
-          }
         }
         focusServerError(error?.field);
         return;
@@ -528,11 +499,8 @@ export function LogisticsRequestForm({
             </select>
           </label>
           <p className="mt-2 text-xs leading-5 text-public-muted">
-            Усі точки відвантаження в одній заявці повинні знаходитися в одному
-            вибраному місті.
-          </p>
-          <p aria-live="polite" className="mt-3 text-sm font-semibold text-accent">
-            {cityChangeNotice}
+            Усі точки відвантаження мають знаходитися в межах вибраного тарифного
+            міста.
           </p>
         </fieldset>
 
@@ -542,10 +510,31 @@ export function LogisticsRequestForm({
           </legend>
           <div className="mt-4 grid gap-5">
             {pickupPoints.map((point, index) => {
+              const supplierField = `supplier-${point.id}`;
+              const supplierLength = point.supplierName.trim().length;
+              const supplierError =
+                serverFieldErrors[`pickupPoints.${index}.supplierName`] ||
+                (touchedFields[supplierField] &&
+                (supplierLength < LOGISTICS_SUPPLIER_NAME_MIN_LENGTH ||
+                  supplierLength > LOGISTICS_SUPPLIER_NAME_MAX_LENGTH)
+                  ? 'Вкажіть назву компанії або постачальника.'
+                  : '');
+              const addressField = `address-${point.id}`;
+              const addressLength = point.address.trim().length;
+              const addressError =
+                serverFieldErrors[`pickupPoints.${index}.address`] ||
+                (touchedFields[addressField] &&
+                (addressLength < LOGISTICS_MANUAL_ADDRESS_MIN_LENGTH ||
+                  addressLength > LOGISTICS_MANUAL_ADDRESS_MAX_LENGTH)
+                  ? 'Вкажіть повну адресу завантаження.'
+                  : '');
               const cargoField = `cargo-${point.id}`;
+              const cargoLength = point.cargoDescription.trim().length;
               const cargoError =
                 serverFieldErrors[`pickupPoints.${index}.cargoDescription`] ||
-                (touchedFields[cargoField] && !point.cargoDescription.trim()
+                (touchedFields[cargoField] &&
+                (cargoLength < LOGISTICS_CARGO_DESCRIPTION_MIN_LENGTH ||
+                  cargoLength > LOGISTICS_CARGO_DESCRIPTION_MAX_LENGTH)
                   ? 'Опишіть, що потрібно забрати.'
                   : '');
 
@@ -571,37 +560,87 @@ export function LogisticsRequestForm({
                     ) : null}
                   </div>
 
-                  <div
-                    data-pickup-address={point.id}
-                    className="mt-5"
+                  <label
+                    htmlFor={`supplier-name-${point.id}`}
+                    className="mt-5 grid gap-2 text-sm font-semibold text-public-secondary"
                   >
-                    <LogisticsAddressCombobox
-                      label="Адреса"
+                    Назва компанії / постачальника{' '}
+                    <span aria-hidden="true">*</span>
+                    <input
+                      id={`supplier-name-${point.id}`}
+                      type="text"
+                      value={point.supplierName}
                       required
-                      disabled={tariffCityCode === null}
-                      scope={
-                        tariffCityCode === null
-                          ? null
-                          : { type: 'TARIFF_CITY', tariffCityCode }
+                      minLength={LOGISTICS_SUPPLIER_NAME_MIN_LENGTH}
+                      maxLength={LOGISTICS_SUPPLIER_NAME_MAX_LENGTH}
+                      placeholder="ТОВ «Агро-Тех»"
+                      aria-invalid={Boolean(supplierError)}
+                      aria-describedby={
+                        supplierError ? `${supplierField}-error` : undefined
                       }
-                      value={point.address}
-                      onResolvedChange={(address) =>
-                        updatePickupPoint(point.id, { address })
+                      onChange={(event) =>
+                        updatePickupPoint(point.id, {
+                          supplierName: event.target.value
+                        })
                       }
-                      clearSignal={pickupClearSignal}
-                      helperText="Оберіть адресу зі списку та дочекайтеся підтвердження."
+                      onBlur={() => touch(supplierField)}
+                      className="public-field min-h-11 w-full"
                     />
-                  </div>
+                  </label>
+                  {supplierError ? (
+                    <p
+                      id={`${supplierField}-error`}
+                      className="mt-2 text-xs font-semibold text-public-danger"
+                    >
+                      {supplierError}
+                    </p>
+                  ) : null}
+
+                  <label
+                    htmlFor={`pickup-address-${point.id}`}
+                    className="mt-5 grid gap-2 text-sm font-semibold text-public-secondary"
+                  >
+                    Повна адреса завантаження <span aria-hidden="true">*</span>
+                    <input
+                      id={`pickup-address-${point.id}`}
+                      type="text"
+                      value={point.address}
+                      required
+                      minLength={LOGISTICS_MANUAL_ADDRESS_MIN_LENGTH}
+                      maxLength={LOGISTICS_MANUAL_ADDRESS_MAX_LENGTH}
+                      placeholder="м. Біла Церква, вул. Київська, 25, склад №3"
+                      aria-invalid={Boolean(addressError)}
+                      aria-describedby={
+                        addressError ? `${addressField}-error` : undefined
+                      }
+                      onChange={(event) =>
+                        updatePickupPoint(point.id, {
+                          address: event.target.value
+                        })
+                      }
+                      onBlur={() => touch(addressField)}
+                      className="public-field min-h-11 w-full"
+                    />
+                  </label>
+                  {addressError ? (
+                    <p
+                      id={`${addressField}-error`}
+                      className="mt-2 text-xs font-semibold text-public-danger"
+                    >
+                      {addressError}
+                    </p>
+                  ) : null}
 
                   <label
                     htmlFor={`cargo-description-${point.id}`}
                     className="mt-5 grid gap-2 text-sm font-semibold text-public-secondary"
                   >
-                    Що потрібно забрати <span aria-hidden="true">*</span>
+                    Опис вантажу <span aria-hidden="true">*</span>
                     <textarea
                       id={`cargo-description-${point.id}`}
                       value={point.cargoDescription}
                       required
+                      minLength={LOGISTICS_CARGO_DESCRIPTION_MIN_LENGTH}
                       maxLength={LOGISTICS_CARGO_DESCRIPTION_MAX_LENGTH}
                       rows={4}
                       aria-invalid={Boolean(cargoError)}
@@ -680,15 +719,43 @@ export function LogisticsRequestForm({
             </div>
           ) : (
             <div className="mt-5">
-              <LogisticsAddressCombobox
-                label="Адреса господарства"
-                required
-                scope={{ type: 'KAHARLYK_COMMUNITY' }}
-                value={farmAddress}
-                onResolvedChange={setFarmAddress}
-                clearSignal={farmClearSignal}
-                helperText="Доставка в господарство доступна в межах Кагарлицької громади."
-              />
+              <label
+                htmlFor="logistics-farm-address"
+                className="grid gap-2 text-sm font-semibold text-public-secondary"
+              >
+                Повна адреса господарства <span aria-hidden="true">*</span>
+                <input
+                  id="logistics-farm-address"
+                  type="text"
+                  value={farmAddress}
+                  required
+                  minLength={LOGISTICS_MANUAL_ADDRESS_MIN_LENGTH}
+                  maxLength={LOGISTICS_MANUAL_ADDRESS_MAX_LENGTH}
+                  placeholder="Область, район, населений пункт, вулиця, будинок"
+                  aria-invalid={Boolean(serverFieldErrors.farmAddress)}
+                  aria-describedby={
+                    serverFieldErrors.farmAddress
+                      ? 'logistics-farm-address-error'
+                      : 'logistics-farm-address-helper'
+                  }
+                  onChange={(event) => setFarmAddress(event.target.value)}
+                  className="public-field min-h-11 w-full"
+                />
+              </label>
+              <p
+                id="logistics-farm-address-helper"
+                className="mt-2 text-xs leading-5 text-public-muted"
+              >
+                Доставка в господарство доступна в межах Кагарлицької громади.
+              </p>
+              {serverFieldErrors.farmAddress ? (
+                <p
+                  id="logistics-farm-address-error"
+                  className="mt-2 text-xs font-semibold text-public-danger"
+                >
+                  {serverFieldErrors.farmAddress}
+                </p>
+              ) : null}
             </div>
           )}
         </fieldset>
@@ -876,7 +943,7 @@ export function LogisticsRequestForm({
         >
           {isReady && verifiedQuote
             ? 'Дані форми заповнено, тариф актуальний.'
-            : 'Заповніть обов’язкові поля та підтвердьте адреси.'}
+            : 'Заповніть усі обов’язкові поля.'}
         </div>
 
         {globalError ? (
@@ -909,7 +976,7 @@ export function LogisticsRequestForm({
           className="mt-3 text-center text-xs leading-5 text-public-muted"
         >
           {submitEnabled
-            ? 'Сервер повторно перевірить адреси, тариф і остаточну суму.'
+            ? 'Сервер нормалізує адреси та повторно перевірить тариф і остаточну суму.'
             : 'Надсилання заявок вимкнено конфігурацією середовища.'}
         </p>
       </aside>

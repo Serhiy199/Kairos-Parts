@@ -152,10 +152,22 @@ export default async function AdminLogisticsDetailPage({
                   <h4 className="font-bold text-foreground">
                     Точка {index + 1}
                   </h4>
-                  <p className="mt-2 break-words text-sm text-muted">
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted">
+                    Назва компанії / постачальника
+                  </p>
+                  <p className="mt-1 break-words text-sm text-foreground">
+                    {point.supplierName || 'Компанію не вказано'}
+                  </p>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted">
+                    Адреса завантаження
+                  </p>
+                  <p className="mt-1 break-words text-sm text-foreground">
                     {point.formattedAddress}
                   </p>
-                  <p className="mt-3 whitespace-pre-wrap break-words text-sm text-foreground">
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted">
+                    Опис вантажу
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground">
                     {point.cargoDescription}
                   </p>
                 </article>

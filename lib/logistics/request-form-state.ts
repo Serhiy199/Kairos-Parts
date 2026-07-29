@@ -1,4 +1,3 @@
-import type { LogisticsResolvedAddress } from '@/lib/logistics/address-provider/contracts';
 import type { LogisticsDestinationType } from '@/lib/logistics/pricing-preview';
 import {
   isLogisticsTariffCityCode,
@@ -7,12 +6,18 @@ import {
 import { formatPhoneIdentifierInput } from '@/lib/phone/client-format';
 
 export const LOGISTICS_CONTACT_NAME_MAX_LENGTH = 120;
+export const LOGISTICS_SUPPLIER_NAME_MIN_LENGTH = 2;
+export const LOGISTICS_SUPPLIER_NAME_MAX_LENGTH = 160;
+export const LOGISTICS_MANUAL_ADDRESS_MIN_LENGTH = 5;
+export const LOGISTICS_MANUAL_ADDRESS_MAX_LENGTH = 500;
+export const LOGISTICS_CARGO_DESCRIPTION_MIN_LENGTH = 2;
 export const LOGISTICS_CARGO_DESCRIPTION_MAX_LENGTH = 1_000;
 export const LOGISTICS_CLIENT_COMMENT_MAX_LENGTH = 2_000;
 
 export type LogisticsPickupPointDraft = {
   id: string;
-  address: LogisticsResolvedAddress | null;
+  supplierName: string;
+  address: string;
   cargoDescription: string;
 };
 
@@ -20,7 +25,7 @@ export type LogisticsRequestFormDraft = {
   tariffCityCode: LogisticsTariffCityCode | null;
   pickupPoints: LogisticsPickupPointDraft[];
   destinationType: LogisticsDestinationType;
-  farmAddress: LogisticsResolvedAddress | null;
+  farmAddress: string;
   contactName: string;
   contactPhone: string;
   clientComment: string;
@@ -35,7 +40,8 @@ export function parseLogisticsTariffCitySelection(
 export function createLogisticsPickupPoint(id: string): LogisticsPickupPointDraft {
   return {
     id,
-    address: null,
+    supplierName: '',
+    address: '',
     cargoDescription: ''
   };
 }
@@ -63,36 +69,42 @@ export function removeLogisticsPickupPoint(
   return nextPoints.length > 0 ? nextPoints : [...points];
 }
 
-export function invalidateLogisticsPickupAddresses(
-  points: readonly LogisticsPickupPointDraft[]
-) {
-  return points.map((point) => ({ ...point, address: null }));
-}
-
 export function transitionLogisticsDestination(
   destinationType: LogisticsDestinationType,
-  currentFarmAddress: LogisticsResolvedAddress | null
+  currentFarmAddress: string
 ) {
   return {
     destinationType,
-    farmAddress: destinationType === 'KAIROS_BASE' ? null : currentFarmAddress
+    farmAddress: destinationType === 'KAIROS_BASE' ? '' : currentFarmAddress
   };
 }
 
 export function isLogisticsRequestDraftReady(draft: LogisticsRequestFormDraft) {
   const phone = formatPhoneIdentifierInput(draft.contactPhone);
+  const farmAddress = draft.farmAddress.trim();
 
   return Boolean(
     draft.tariffCityCode &&
       draft.pickupPoints.length > 0 &&
       draft.pickupPoints.every(
-        (point) =>
-          point.address &&
-          point.cargoDescription.trim().length > 0 &&
-          point.cargoDescription.trim().length <=
-            LOGISTICS_CARGO_DESCRIPTION_MAX_LENGTH
+        (point) => {
+          const supplierName = point.supplierName.trim();
+          const address = point.address.trim();
+          const cargoDescription = point.cargoDescription.trim();
+
+          return (
+            supplierName.length >= LOGISTICS_SUPPLIER_NAME_MIN_LENGTH &&
+            supplierName.length <= LOGISTICS_SUPPLIER_NAME_MAX_LENGTH &&
+            address.length >= LOGISTICS_MANUAL_ADDRESS_MIN_LENGTH &&
+            address.length <= LOGISTICS_MANUAL_ADDRESS_MAX_LENGTH &&
+            cargoDescription.length >= LOGISTICS_CARGO_DESCRIPTION_MIN_LENGTH &&
+            cargoDescription.length <= LOGISTICS_CARGO_DESCRIPTION_MAX_LENGTH
+          );
+        }
       ) &&
-      (draft.destinationType === 'KAIROS_BASE' || draft.farmAddress) &&
+      (draft.destinationType === 'KAIROS_BASE' ||
+        (farmAddress.length >= LOGISTICS_MANUAL_ADDRESS_MIN_LENGTH &&
+          farmAddress.length <= LOGISTICS_MANUAL_ADDRESS_MAX_LENGTH)) &&
       draft.contactName.trim().length > 0 &&
       draft.contactName.trim().length <= LOGISTICS_CONTACT_NAME_MAX_LENGTH &&
       phone.canonical &&

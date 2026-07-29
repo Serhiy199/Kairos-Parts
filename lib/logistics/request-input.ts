@@ -10,17 +10,20 @@ import {
   type LogisticsTariffCityCode
 } from '@/lib/logistics/tariff-cities';
 import {
+  LOGISTICS_CARGO_DESCRIPTION_MIN_LENGTH,
   LOGISTICS_CARGO_DESCRIPTION_MAX_LENGTH,
   LOGISTICS_CLIENT_COMMENT_MAX_LENGTH,
-  LOGISTICS_CONTACT_NAME_MAX_LENGTH
+  LOGISTICS_CONTACT_NAME_MAX_LENGTH,
+  LOGISTICS_MANUAL_ADDRESS_MAX_LENGTH,
+  LOGISTICS_MANUAL_ADDRESS_MIN_LENGTH,
+  LOGISTICS_SUPPLIER_NAME_MAX_LENGTH,
+  LOGISTICS_SUPPLIER_NAME_MIN_LENGTH
 } from '@/lib/logistics/request-form-state';
 
 export const LOGISTICS_QUOTE_JSON_MAX_BYTES = 4 * 1024;
 export const LOGISTICS_CREATE_JSON_MAX_BYTES = 64 * 1024;
 const IDEMPOTENCY_KEY_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const EXTERNAL_ADDRESS_ID_MAX_LENGTH = 240;
-
 type UnknownRecord = Record<string, unknown>;
 
 export type LogisticsQuoteInput = {
@@ -34,11 +37,12 @@ export type LogisticsCreateInput = {
   honeypot: string;
   tariffCityCode: LogisticsTariffCityCode;
   pickupPoints: Array<{
-    externalAddressId: string;
+    supplierName: string;
+    address: string;
     cargoDescription: string;
   }>;
   destinationType: LogisticsDestinationType;
-  farmExternalAddressId: string | null;
+  farmAddress: string | null;
   contactName: string;
   contactPhone: string;
   clientComment: string | null;
@@ -92,19 +96,33 @@ function parsePickupPointCount(value: unknown) {
 
 function requiredBoundedString(
   value: unknown,
+  minLength: number,
   maxLength: number,
-  error: LogisticsRequestError
+  error: LogisticsRequestError,
+  normalize: (value: string) => string = normalizeManualSingleLine
 ) {
   if (typeof value !== 'string') {
     throw error;
   }
 
-  const normalized = value.trim();
-  if (!normalized || normalized.length > maxLength) {
+  const normalized = normalize(value);
+  if (normalized.length < minLength || normalized.length > maxLength) {
     throw error;
   }
 
   return normalized;
+}
+
+export function normalizeManualSingleLine(value: string) {
+  return value.normalize('NFC').replace(/\s+/gu, ' ').trim();
+}
+
+export function normalizeLogisticsCargoDescription(value: string) {
+  return value
+    .normalize('NFC')
+    .replace(/\r\n?/gu, '\n')
+    .replace(/[^\S\r\n]+/gu, ' ')
+    .trim();
 }
 
 export function parseLogisticsQuoteInput(value: unknown): LogisticsQuoteInput {
@@ -163,46 +181,62 @@ export function parseLogisticsCreateInput(value: unknown): LogisticsCreateInput 
     }
 
     return {
-      externalAddressId: requiredBoundedString(
-        point.externalAddressId,
-        EXTERNAL_ADDRESS_ID_MAX_LENGTH,
+      supplierName: requiredBoundedString(
+        point.supplierName,
+        LOGISTICS_SUPPLIER_NAME_MIN_LENGTH,
+        LOGISTICS_SUPPLIER_NAME_MAX_LENGTH,
         new LogisticsRequestError(
           'INVALID_PICKUP_POINTS',
           422,
-          'Повторно оберіть адресу зі списку.',
-          `pickupPoints.${index}.externalAddressId`
+          'Вкажіть назву компанії або постачальника.',
+          `pickupPoints.${index}.supplierName`
+        )
+      ),
+      address: requiredBoundedString(
+        point.address,
+        LOGISTICS_MANUAL_ADDRESS_MIN_LENGTH,
+        LOGISTICS_MANUAL_ADDRESS_MAX_LENGTH,
+        new LogisticsRequestError(
+          'INVALID_PICKUP_POINTS',
+          422,
+          'Вкажіть повну адресу завантаження.',
+          `pickupPoints.${index}.address`
         )
       ),
       cargoDescription: requiredBoundedString(
         point.cargoDescription,
+        LOGISTICS_CARGO_DESCRIPTION_MIN_LENGTH,
         LOGISTICS_CARGO_DESCRIPTION_MAX_LENGTH,
         new LogisticsRequestError(
           'INVALID_PICKUP_POINTS',
           422,
           'Опишіть, що потрібно забрати.',
           `pickupPoints.${index}.cargoDescription`
-        )
+        ),
+        normalizeLogisticsCargoDescription
       )
     };
   });
 
   const destinationType = parseDestinationType(value.destinationType);
-  const farmExternalAddressId =
+  const farmAddress =
     destinationType === 'FARM'
       ? requiredBoundedString(
-          value.farmExternalAddressId,
-          EXTERNAL_ADDRESS_ID_MAX_LENGTH,
+          value.farmAddress,
+          LOGISTICS_MANUAL_ADDRESS_MIN_LENGTH,
+          LOGISTICS_MANUAL_ADDRESS_MAX_LENGTH,
           new LogisticsRequestError(
             'INVALID_DESTINATION',
             422,
-            'Оберіть адресу господарства зі списку.',
-            'farmExternalAddressId'
+            'Вкажіть повну адресу господарства.',
+            'farmAddress'
           )
         )
       : null;
 
   const contactName = requiredBoundedString(
     value.contactName,
+    1,
     LOGISTICS_CONTACT_NAME_MAX_LENGTH,
     new LogisticsRequestError(
       'INVALID_CONTACT_NAME',
@@ -239,7 +273,7 @@ export function parseLogisticsCreateInput(value: unknown): LogisticsCreateInput 
     tariffCityCode: parseTariffCityCode(value.tariffCityCode),
     pickupPoints,
     destinationType,
-    farmExternalAddressId,
+    farmAddress,
     contactName,
     contactPhone,
     clientComment: rawComment || null

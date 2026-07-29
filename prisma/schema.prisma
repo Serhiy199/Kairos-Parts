@@ -265,6 +265,7 @@ enum LogisticsDestinationType {
 enum LogisticsAddressProvider {
   MOCK
   GOOGLE
+  MANUAL
 }
 
 model User {
@@ -982,10 +983,11 @@ model LogisticsPickupPoint {
   id                           String                   @id @default(cuid())
   logisticsRequestId           String
   logisticsRequest             LogisticsRequest         @relation(fields: [logisticsRequestId], references: [id], onDelete: Cascade)
+  supplierName                 String?
   formattedAddress             String
   externalAddressId            String?
   addressProvider              LogisticsAddressProvider
-  normalizedLocality           String
+  normalizedLocality           String?
   normalizedAdministrativeArea String?
   cargoDescription             String                   @db.Text
   createdAt                    DateTime                 @default(now())
