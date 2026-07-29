@@ -9,6 +9,7 @@ import {
   TbTruckDelivery
 } from 'react-icons/tb';
 
+import { LogisticsFinalCta } from '@/components/public/logistics/logistics-final-cta';
 import { LogisticsOverviewSection } from '@/components/public/logistics/logistics-overview-section';
 import { LogisticsRatesSection } from '@/components/public/logistics/logistics-rates-section';
 import {
@@ -140,20 +141,7 @@ export default function LogisticsPage() {
 
       <LogisticsOverviewSection />
 
-      <section aria-labelledby="logistics-final-cta-title" className="relative overflow-hidden bg-primary py-14 text-white sm:py-16 lg:py-20">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(200,150,66,0.18),transparent_32%),linear-gradient(120deg,rgba(5,5,5,1),rgba(15,18,22,1))]" />
-        <div className="kp-container relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-3xl">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Kairos Logistics</p>
-            <h2 id="logistics-final-cta-title" className="mt-3 font-display text-3xl font-bold leading-tight sm:text-4xl lg:text-[44px]">
-              Працюємо, щоб ваше підприємство <span className="text-accent">не зупинялося.</span>
-            </h2>
-          </div>
-          <div className="w-full max-w-md shrink-0">
-            <LogisticsRequestCta helperId="final-logistics-cta-status" />
-          </div>
-        </div>
-      </section>
+      <LogisticsFinalCta />
     </>
   );
 }
