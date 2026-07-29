@@ -2,6 +2,13 @@ import type {
   LogisticsDestinationType,
   LogisticsRequestStatus
 } from '@prisma/client';
+export {
+  LOGISTICS_PRICING_TYPE_LABELS
+} from '@/lib/logistics/pricing-type';
+
+export const LOGISTICS_PENDING_PRICE_LABEL = 'Очікує розрахунку';
+export const LOGISTICS_CLIENT_PENDING_PRICE_LABEL =
+  'Очікує розрахунку менеджером';
 
 export const LOGISTICS_STATUSES = [
   'NEW',
@@ -76,6 +83,20 @@ export function formatLogisticsUahCompact(value: string) {
   return normalizedFraction === '00'
     ? exact.replace(',00 грн', ' грн')
     : exact;
+}
+
+export function formatNullableLogisticsUah(
+  value: string | null,
+  pendingLabel = LOGISTICS_PENDING_PRICE_LABEL
+) {
+  return value === null ? pendingLabel : formatLogisticsUah(value);
+}
+
+export function formatNullableLogisticsUahCompact(
+  value: string | null,
+  pendingLabel = LOGISTICS_PENDING_PRICE_LABEL
+) {
+  return value === null ? pendingLabel : formatLogisticsUahCompact(value);
 }
 
 export function logisticsStatusClass(status: LogisticsRequestStatus) {

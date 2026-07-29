@@ -186,7 +186,9 @@ assert.equal(
 assert.equal(
   isLogisticsRequestDraftReady(
     {
+      pricingType: 'FIXED',
       tariffCityCode: 'MYRONIVKA',
+      customLocality: '',
       pickupPoints: [firstPoint],
       destinationType: 'KAIROS_BASE',
       farmAddress: '',
@@ -202,7 +204,9 @@ assert.equal(
 assert.equal(
   isLogisticsRequestDraftReady(
     {
+      pricingType: 'FIXED',
       tariffCityCode: 'MYRONIVKA',
+      customLocality: '',
       pickupPoints: [firstPoint],
       destinationType: 'FARM',
       farmAddress: '',

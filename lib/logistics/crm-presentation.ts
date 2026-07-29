@@ -5,7 +5,10 @@ export {
   LOGISTICS_DESTINATIONS,
   LOGISTICS_DESTINATION_LABELS,
   LOGISTICS_STATUS_LABELS,
+  LOGISTICS_PENDING_PRICE_LABEL,
+  LOGISTICS_PRICING_TYPE_LABELS,
   formatLogisticsUah,
+  formatNullableLogisticsUah,
   isLogisticsDestinationType,
   isLogisticsRequestStatus,
   logisticsStatusClass

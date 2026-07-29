@@ -11,6 +11,7 @@ import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import {
   addLogisticsInternalComment,
+  updateLogisticsIndividualPrice,
   updateLogisticsPreferredDeliveryDate,
   updateLogisticsRequestStatus
 } from '@/lib/logistics/crm-actions';
@@ -21,9 +22,10 @@ import {
 import {
   LOGISTICS_DESTINATION_LABELS,
   LOGISTICS_SOURCE_LABELS,
+  LOGISTICS_PRICING_TYPE_LABELS,
   LOGISTICS_STATUS_LABELS,
   LOGISTICS_STATUS_TRANSITIONS,
-  formatLogisticsUah
+  formatNullableLogisticsUah
 } from '@/lib/logistics/crm-presentation';
 import { getLogisticsRequestDetail } from '@/lib/logistics/crm-queries';
 
@@ -86,7 +88,10 @@ export default async function AdminLogisticsDetailPage({
           />
           <DetailField
             label="Кінцева сума"
-            value={formatLogisticsUah(request.totalPrice)}
+            value={formatNullableLogisticsUah(
+              request.totalPrice,
+              'Ще не встановлена'
+            )}
             emphasis
           />
         </dl>
@@ -116,14 +121,19 @@ export default async function AdminLogisticsDetailPage({
             <h3 className="text-lg font-bold text-foreground">
               Тариф і розрахунок
             </h3>
-            <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            {request.pricingType === 'FIXED' ? (
+              <>
+              <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
               <DetailField
                 label="Тарифне місто"
-                value={request.tariffCityName}
+                value={request.tariffCityName ?? 'Дані тарифу недоступні'}
               />
               <DetailField
                 label="Базовий тариф"
-                value={formatLogisticsUah(request.baseTariff)}
+                value={formatNullableLogisticsUah(
+                  request.baseTariff,
+                  'Дані тарифу недоступні'
+                )}
               />
               <DetailField
                 label="Кількість точок"
@@ -131,22 +141,52 @@ export default async function AdminLogisticsDetailPage({
               />
               <DetailField
                 label="Доплата за точки"
-                value={formatLogisticsUah(request.additionalPointsCharge)}
+                value={formatNullableLogisticsUah(
+                  request.additionalPointsCharge,
+                  'Дані тарифу недоступні'
+                )}
               />
               <DetailField
                 label="Доплата за господарство"
-                value={formatLogisticsUah(request.farmDeliveryCharge)}
+                value={formatNullableLogisticsUah(
+                  request.farmDeliveryCharge,
+                  'Дані тарифу недоступні'
+                )}
               />
               <DetailField
                 label="Загальна кінцева сума"
-                value={formatLogisticsUah(request.totalPrice)}
+                value={formatNullableLogisticsUah(
+                  request.totalPrice,
+                  'Дані тарифу недоступні'
+                )}
                 emphasis
               />
-            </dl>
-            <p className="mt-4 rounded-md bg-surface-muted px-3 py-2 text-sm font-semibold text-muted">
-              Усі ціни включають ПДВ. Розрахунок зафіксовано на момент створення
-              заявки.
-            </p>
+              </dl>
+              <p className="mt-4 rounded-md bg-surface-muted px-3 py-2 text-sm font-semibold text-muted">
+                Усі ціни включають ПДВ. Розрахунок зафіксовано на момент
+                створення заявки.
+              </p>
+              </>
+            ) : (
+              <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                <DetailField
+                  label="Тип розрахунку"
+                  value={LOGISTICS_PRICING_TYPE_LABELS.INDIVIDUAL}
+                />
+                <DetailField
+                  label="Населений пункт"
+                  value={request.customLocality ?? 'Не вказано'}
+                />
+                <DetailField
+                  label="Кінцева вартість"
+                  value={formatNullableLogisticsUah(
+                    request.totalPrice,
+                    'Ще не встановлена'
+                  )}
+                  emphasis
+                />
+              </dl>
+            )}
           </section>
 
           <section className="cabinet-card">
@@ -212,6 +252,48 @@ export default async function AdminLogisticsDetailPage({
         </div>
 
         <div className="grid min-w-0 content-start gap-5">
+          {request.pricingType === 'INDIVIDUAL' ? (
+            <section className="cabinet-card">
+              <h3 className="text-lg font-bold text-foreground">
+                Індивідуальний розрахунок
+              </h3>
+              <ReactiveActionForm action={updateLogisticsIndividualPrice}>
+                <input type="hidden" name="requestId" value={request.id} />
+                <input
+                  type="hidden"
+                  name="expectedUpdatedAt"
+                  value={request.updatedAt}
+                />
+                <label
+                  htmlFor="logistics-individual-total-price"
+                  className="mt-4 block text-sm font-semibold text-foreground"
+                >
+                  Кінцева вартість перевезення
+                </label>
+                <input
+                  id="logistics-individual-total-price"
+                  name="totalPrice"
+                  type="text"
+                  inputMode="decimal"
+                  pattern="[0-9]+([.,][0-9]{1,2})?"
+                  defaultValue={request.totalPrice ?? ''}
+                  required
+                  className="mt-2 h-11 w-full rounded-md border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                />
+                <p className="mt-2 text-xs leading-5 text-muted">
+                  Вкажіть кінцеву суму з ПДВ після уточнення маршруту та умов
+                  перевезення.
+                </p>
+                <ReactiveSubmitButton
+                  pendingLabel="Зберігаємо…"
+                  className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-accent px-4 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Зберегти розрахунок
+                </ReactiveSubmitButton>
+              </ReactiveActionForm>
+            </section>
+          ) : null}
+
           <section className="cabinet-card">
             <h3 className="text-lg font-bold text-foreground">
               Бажана дата перевезення

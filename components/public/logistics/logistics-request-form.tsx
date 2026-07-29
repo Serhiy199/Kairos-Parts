@@ -48,6 +48,13 @@ import {
   type LogisticsPickupPointDraft
 } from '@/lib/logistics/request-form-state';
 import {
+  INDIVIDUAL_PRICING_SELECT_VALUE,
+  LOGISTICS_CUSTOM_LOCALITY_MAX_LENGTH,
+  LOGISTICS_CUSTOM_LOCALITY_MIN_LENGTH,
+  normalizeLogisticsCustomLocality,
+  type LogisticsPricingTypeValue
+} from '@/lib/logistics/pricing-type';
+import {
   LOGISTICS_TARIFF_CITIES,
   type LogisticsTariffCityCode
 } from '@/lib/logistics/tariff-cities';
@@ -77,7 +84,8 @@ type ServerQuote = {
 
 type CreatedRequest = {
   requestNumber: string;
-  totalPrice: string;
+  pricingType: LogisticsPricingTypeValue;
+  totalPrice: string | null;
   currency: 'UAH';
   vatIncluded: true;
   status: 'NEW';
@@ -137,7 +145,10 @@ function readCreatedRequest(value: unknown): CreatedRequest | null {
   const request = value.request;
   if (
     typeof request.requestNumber !== 'string' ||
-    typeof request.totalPrice !== 'string' ||
+    (request.pricingType !== 'FIXED' &&
+      request.pricingType !== 'INDIVIDUAL') ||
+    (request.totalPrice !== null &&
+      typeof request.totalPrice !== 'string') ||
     request.currency !== 'UAH' ||
     request.vatIncluded !== true ||
     request.status !== 'NEW' ||
@@ -212,6 +223,9 @@ export function LogisticsRequestForm({
   const [tariffCityCode, setTariffCityCode] = useState<
     LogisticsTariffCityCode | null
   >(null);
+  const [pricingType, setPricingType] =
+    useState<LogisticsPricingTypeValue>('FIXED');
+  const [customLocality, setCustomLocality] = useState('');
   const [pickupPoints, setPickupPoints] = useState<LogisticsPickupPointDraft[]>([
     createLogisticsPickupPoint('pickup-1')
   ]);
@@ -246,18 +260,20 @@ export function LogisticsRequestForm({
 
   const preview = useMemo(
     () =>
-      tariffCityCode
+      pricingType === 'FIXED' && tariffCityCode
         ? calculateLogisticsPricePreview(
             tariffCityCode,
             pickupPoints.length,
             destinationType
           )
         : null,
-    [destinationType, pickupPoints.length, tariffCityCode]
+    [destinationType, pickupPoints.length, pricingType, tariffCityCode]
   );
   const isReady = isLogisticsRequestDraftReady(
     {
+      pricingType,
       tariffCityCode,
+      customLocality,
       pickupPoints,
       destinationType,
       farmAddress,
@@ -277,20 +293,24 @@ export function LogisticsRequestForm({
         minPreferredDeliveryDate
       ) < 0);
   const parsedPhone = formatPhoneIdentifierInput(contactPhone);
-  const quoteKey = tariffCityCode
+  const quoteKey = pricingType === 'FIXED' && tariffCityCode
     ? `${tariffCityCode}:${pickupPoints.length}:${destinationType}`
     : '';
   const verifiedQuote =
     serverQuote?.key === quoteKey ? serverQuote.value : null;
   const canSubmit =
     isReady &&
-    quoteStatus === 'verified' &&
-    Boolean(verifiedQuote) &&
+    (pricingType === 'INDIVIDUAL' ||
+      (quoteStatus === 'verified' && Boolean(verifiedQuote))) &&
     Boolean(idempotencyKey) &&
     !isSubmitting;
 
   useEffect(() => {
-    if (!tariffCityCode || pickupPoints.length < 1) {
+    if (
+      pricingType !== 'FIXED' ||
+      !tariffCityCode ||
+      pickupPoints.length < 1
+    ) {
       setServerQuote(null);
       setQuoteStatus('idle');
       setQuoteMessage('');
@@ -340,7 +360,13 @@ export function LogisticsRequestForm({
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [destinationType, pickupPoints.length, quoteKey, tariffCityCode]);
+  }, [
+    destinationType,
+    pickupPoints.length,
+    pricingType,
+    quoteKey,
+    tariffCityCode
+  ]);
 
   useEffect(() => {
     if (createdRequest) {
@@ -362,7 +388,20 @@ export function LogisticsRequestForm({
   }
 
   function handleCityChange(nextCode: string) {
+    if (nextCode === INDIVIDUAL_PRICING_SELECT_VALUE) {
+      setPricingType('INDIVIDUAL');
+      setTariffCityCode(null);
+      setServerQuote(null);
+      setQuoteStatus('idle');
+      setQuoteMessage('');
+      clearServerFieldError('tariffCityCode');
+      return;
+    }
+
+    setPricingType('FIXED');
+    setCustomLocality('');
     setTariffCityCode(parseLogisticsTariffCitySelection(nextCode));
+    clearServerFieldError('customLocality');
   }
 
   function updatePickupPoint(
@@ -425,7 +464,9 @@ export function LogisticsRequestForm({
         }
       }
       const fieldIds: Record<string, string> = {
+        pricingType: 'logistics-tariff-city',
         tariffCityCode: 'logistics-tariff-city',
+        customLocality: 'logistics-custom-locality',
         farmAddress: 'logistics-farm-address',
         preferredDeliveryDate: 'logistics-preferred-delivery-date',
         contactName: 'logistics-contact-name',
@@ -442,7 +483,13 @@ export function LogisticsRequestForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canSubmit || !tariffCityCode || !parsedPhone.canonical) return;
+    if (
+      !canSubmit ||
+      (pricingType === 'FIXED' && !tariffCityCode) ||
+      !parsedPhone.canonical
+    ) {
+      return;
+    }
 
     setIsSubmitting(true);
     setGlobalError('');
@@ -455,7 +502,13 @@ export function LogisticsRequestForm({
         body: JSON.stringify({
           idempotencyKey,
           honeypot,
-          tariffCityCode,
+          pricingType,
+          ...(pricingType === 'FIXED'
+            ? { tariffCityCode }
+            : {
+                customLocality:
+                  normalizeLogisticsCustomLocality(customLocality)
+              }),
           pickupPoints: pickupPoints.map((point) => ({
             supplierName: point.supplierName,
             address: point.address,
@@ -517,7 +570,9 @@ export function LogisticsRequestForm({
           Заявку створено
         </h2>
         <p className="mx-auto mt-3 max-w-xl leading-7 text-public-secondary">
-          Представник Kairos підтвердить можливість виконання на вибрану дату.
+          {createdRequest.pricingType === 'INDIVIDUAL'
+            ? 'Представник Kairos зв’яжеться з вами для уточнення деталей і погодження кінцевої суми.'
+            : 'Представник Kairos підтвердить можливість виконання на вибрану дату.'}
         </p>
         <dl className="mx-auto mt-7 grid max-w-3xl gap-4 rounded-xl border border-public-border bg-public-elevated p-5 text-left sm:grid-cols-2 lg:grid-cols-4">
           <div>
@@ -538,10 +593,15 @@ export function LogisticsRequestForm({
           </div>
           <div>
             <dt className="text-sm font-semibold text-public-muted">
-              Остаточна сума
+              {createdRequest.pricingType === 'INDIVIDUAL' &&
+              createdRequest.totalPrice === null
+                ? 'Вартість'
+                : 'Кінцева вартість'}
             </dt>
             <dd className="mt-2 break-words text-lg font-bold tabular-nums text-accent">
-              {formatServerMoney(createdRequest.totalPrice)}
+              {createdRequest.totalPrice === null
+                ? 'Очікує індивідуального розрахунку'
+                : formatServerMoney(createdRequest.totalPrice)}
             </dd>
           </div>
           <div>
@@ -593,7 +653,11 @@ export function LogisticsRequestForm({
             <RequiredLabel>Місто відвантаження</RequiredLabel>
             <select
               id="logistics-tariff-city"
-              value={tariffCityCode ?? ''}
+              value={
+                pricingType === 'INDIVIDUAL'
+                  ? INDIVIDUAL_PRICING_SELECT_VALUE
+                  : (tariffCityCode ?? '')
+              }
               required
               onChange={(event) => handleCityChange(event.target.value)}
               className={logisticsFieldClassName}
@@ -604,16 +668,65 @@ export function LogisticsRequestForm({
                   {city.displayName}
                 </option>
               ))}
+              <option value={INDIVIDUAL_PRICING_SELECT_VALUE}>
+                Інші населені пункти — Індивідуальний розрахунок
+              </option>
             </select>
           </label>
+          {pricingType === 'INDIVIDUAL' ? (
+            <label
+              htmlFor="logistics-custom-locality"
+              className={`${logisticsLabelClassName} mt-4`}
+            >
+              <RequiredLabel>Населений пункт відвантаження</RequiredLabel>
+              <input
+                id="logistics-custom-locality"
+                value={customLocality}
+                required
+                minLength={LOGISTICS_CUSTOM_LOCALITY_MIN_LENGTH}
+                maxLength={LOGISTICS_CUSTOM_LOCALITY_MAX_LENGTH}
+                placeholder="Наприклад: м. Черкаси або с. Стайки, Київська область"
+                onChange={(event) => {
+                  setCustomLocality(event.target.value);
+                  clearServerFieldError('customLocality');
+                }}
+                onBlur={() => touch('customLocality')}
+                aria-invalid={
+                  serverFieldErrors.customLocality ||
+                  (touchedFields.customLocality &&
+                    (normalizeLogisticsCustomLocality(customLocality).length <
+                      LOGISTICS_CUSTOM_LOCALITY_MIN_LENGTH ||
+                      normalizeLogisticsCustomLocality(customLocality).length >
+                        LOGISTICS_CUSTOM_LOCALITY_MAX_LENGTH))
+                    ? true
+                    : undefined
+                }
+                aria-describedby="logistics-custom-locality-help"
+                className={logisticsFieldClassName}
+              />
+              {serverFieldErrors.customLocality ? (
+                <span className="text-xs font-semibold text-public-danger">
+                  {serverFieldErrors.customLocality}
+                </span>
+              ) : null}
+              <span
+                id="logistics-custom-locality-help"
+                className="text-xs font-normal leading-5 text-public-muted"
+              >
+                Вкажіть населений пункт або регіон, для якого менеджер має
+                розрахувати маршрут.
+              </span>
+            </label>
+          ) : null}
           <p className="mt-2 flex items-start gap-2 text-xs leading-5 text-public-muted">
             <TbInfoCircle
               aria-hidden="true"
               className="mt-0.5 size-4 shrink-0 text-accent"
             />
             <span>
-            Усі точки відвантаження мають знаходитися в межах вибраного тарифного
-            міста.
+            {pricingType === 'FIXED'
+              ? 'Усі точки відвантаження мають знаходитися в межах вибраного тарифного міста.'
+              : 'Маршрут і вартість для цього населеного пункту розрахує менеджер.'}
             </span>
           </p>
           </div>
@@ -1090,15 +1203,36 @@ export function LogisticsRequestForm({
           aria-labelledby="logistics-price-preview-title"
           className="public-card min-w-0 p-5 sm:p-7"
         >
-        <h2
-          id="logistics-price-preview-title"
-          className="text-2xl font-bold text-public-primary"
-        >
-          Розрахунок вартості
-        </h2>
-        <p className="mt-3 text-sm leading-6 text-public-muted">
-          Сума розраховується за актуальним тарифом і кількістю точок.
-        </p>
+        {pricingType === 'INDIVIDUAL' ? (
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">
+              Індивідуальний розрахунок
+            </p>
+            <h2
+              id="logistics-price-preview-title"
+              className="mt-3 text-2xl font-bold text-public-primary"
+            >
+              Вартість розрахує менеджер
+            </h2>
+            <p className="mt-4 text-sm leading-6 text-public-muted">
+              Після надсилання заявки менеджер оцінить маршрут, кількість точок
+              відвантаження, тип вантажу та місце доставки.
+            </p>
+            <p className="mt-3 text-sm leading-6 text-public-muted">
+              Кінцева сума буде погоджена з вами до виконання перевезення.
+            </p>
+          </div>
+        ) : (
+          <>
+            <h2
+              id="logistics-price-preview-title"
+              className="text-2xl font-bold text-public-primary"
+            >
+              Розрахунок вартості
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-public-muted">
+              Сума розраховується за актуальним тарифом і кількістю точок.
+            </p>
 
         {verifiedQuote ? (
           <dl className="mt-6 grid gap-3 text-sm">
@@ -1160,7 +1294,11 @@ export function LogisticsRequestForm({
           <TbCheck aria-hidden="true" className="size-5 text-public-success" />
           Усі ціни включають ПДВ
         </p>
-        {quoteStatus === 'error' && quoteMessage ? (
+          </>
+        )}
+        {pricingType === 'FIXED' &&
+        quoteStatus === 'error' &&
+        quoteMessage ? (
           <div
             role="alert"
             className="mt-4 flex min-h-11 items-center gap-2 rounded-lg border border-public-danger/30 bg-public-danger/10 px-3 py-2 text-sm font-semibold text-public-danger"

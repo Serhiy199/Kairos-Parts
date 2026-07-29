@@ -7,6 +7,12 @@ import {
   isLogisticsTariffCityCode,
   type LogisticsTariffCityCode
 } from '@/lib/logistics/tariff-cities';
+import {
+  LOGISTICS_CUSTOM_LOCALITY_MAX_LENGTH,
+  LOGISTICS_CUSTOM_LOCALITY_MIN_LENGTH,
+  normalizeLogisticsCustomLocality,
+  type LogisticsPricingTypeValue
+} from '@/lib/logistics/pricing-type';
 import { formatPhoneIdentifierInput } from '@/lib/phone/client-format';
 
 export const LOGISTICS_CONTACT_NAME_MAX_LENGTH = 120;
@@ -26,7 +32,9 @@ export type LogisticsPickupPointDraft = {
 };
 
 export type LogisticsRequestFormDraft = {
+  pricingType: LogisticsPricingTypeValue;
   tariffCityCode: LogisticsTariffCityCode | null;
+  customLocality: string;
   pickupPoints: LogisticsPickupPointDraft[];
   destinationType: LogisticsDestinationType;
   farmAddress: string;
@@ -90,10 +98,19 @@ export function isLogisticsRequestDraftReady(
 ) {
   const phone = formatPhoneIdentifierInput(draft.contactPhone);
   const farmAddress = draft.farmAddress.trim();
+  const customLocality = normalizeLogisticsCustomLocality(
+    draft.customLocality
+  );
   const preferredDeliveryDate = parseDateOnly(draft.preferredDeliveryDate);
+  const pricingReady =
+    draft.pricingType === 'FIXED'
+      ? Boolean(draft.tariffCityCode) && customLocality.length === 0
+      : !draft.tariffCityCode &&
+        customLocality.length >= LOGISTICS_CUSTOM_LOCALITY_MIN_LENGTH &&
+        customLocality.length <= LOGISTICS_CUSTOM_LOCALITY_MAX_LENGTH;
 
   return Boolean(
-    draft.tariffCityCode &&
+    pricingReady &&
       draft.pickupPoints.length > 0 &&
       draft.pickupPoints.every(
         (point) => {

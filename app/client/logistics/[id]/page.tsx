@@ -10,8 +10,10 @@ import {
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { getClientLogisticsDetail } from '@/lib/logistics/client-queries';
 import {
-  formatLogisticsUahCompact,
-  LOGISTICS_DESTINATION_SENTENCE_LABELS
+  formatNullableLogisticsUahCompact,
+  LOGISTICS_CLIENT_PENDING_PRICE_LABEL,
+  LOGISTICS_DESTINATION_SENTENCE_LABELS,
+  LOGISTICS_PRICING_TYPE_LABELS
 } from '@/lib/logistics/presentation';
 import { formatDateOnlyLongUk } from '@/lib/logistics/date-only';
 
@@ -167,14 +169,19 @@ export default async function ClientLogisticsDetailPage({
         <h3 className="text-lg font-bold text-foreground">
           Розрахунок вартості
         </h3>
-        <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        {request.pricingType === 'FIXED' ? (
+          <>
+          <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <DetailField
             label="Тарифне місто"
-            value={request.tariffCityName}
+            value={request.tariffCityName ?? 'Дані тарифу недоступні'}
           />
           <DetailField
             label="Базовий тариф"
-            value={formatLogisticsUahCompact(request.baseTariff)}
+            value={formatNullableLogisticsUahCompact(
+              request.baseTariff,
+              'Дані тарифу недоступні'
+            )}
           />
           <DetailField
             label="Кількість точок"
@@ -182,23 +189,61 @@ export default async function ClientLogisticsDetailPage({
           />
           <DetailField
             label="Доплата за додаткові точки"
-            value={formatLogisticsUahCompact(
-              request.additionalPointsCharge
+            value={formatNullableLogisticsUahCompact(
+              request.additionalPointsCharge,
+              'Дані тарифу недоступні'
             )}
           />
           <DetailField
             label="Доплата за господарство"
-            value={formatLogisticsUahCompact(request.farmDeliveryCharge)}
+            value={formatNullableLogisticsUahCompact(
+              request.farmDeliveryCharge,
+              'Дані тарифу недоступні'
+            )}
           />
           <DetailField
             label="Загальна кінцева сума"
-            value={formatLogisticsUahCompact(request.totalPrice)}
+            value={formatNullableLogisticsUahCompact(
+              request.totalPrice,
+              'Дані тарифу недоступні'
+            )}
           />
-        </dl>
-        <p className="mt-4 text-sm font-semibold text-muted">
-          Усі ціни включають ПДВ. Показані суми зафіксовані під час створення
-          заявки.
-        </p>
+          </dl>
+          <p className="mt-4 text-sm font-semibold text-muted">
+            Усі ціни включають ПДВ. Показані суми зафіксовані під час
+            створення заявки.
+          </p>
+          </>
+        ) : (
+          <>
+            <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+              <DetailField
+                label="Тип розрахунку"
+                value={LOGISTICS_PRICING_TYPE_LABELS.INDIVIDUAL}
+              />
+              <DetailField
+                label="Населений пункт"
+                value={request.customLocality ?? 'Не вказано'}
+              />
+              <DetailField
+                label={
+                  request.totalPrice === null
+                    ? 'Вартість'
+                    : 'Кінцева вартість'
+                }
+                value={formatNullableLogisticsUahCompact(
+                  request.totalPrice,
+                  LOGISTICS_CLIENT_PENDING_PRICE_LABEL
+                )}
+              />
+            </dl>
+            {request.totalPrice !== null ? (
+              <p className="mt-4 text-sm font-semibold text-muted">
+                Усі погоджені суми включають ПДВ.
+              </p>
+            ) : null}
+          </>
+        )}
       </section>
     </div>
   );

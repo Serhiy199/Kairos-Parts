@@ -13,17 +13,11 @@ import type { LogisticsTariffCityCode } from '@/lib/logistics/tariff-cities';
 import { serializeDateOnly } from '@/lib/logistics/date-only';
 import { prisma } from '@/lib/prisma';
 
-export type PreparedLogisticsRequest = {
+type PreparedLogisticsRequestCommon = {
   identity: LogisticsSubmitIdentity;
   idempotencyKey: string;
   contactName: string;
   contactPhone: string;
-  tariff: {
-    id: string;
-    code: LogisticsTariffCityCode;
-    name: string;
-    price: Prisma.Decimal;
-  };
   destinationType: LogisticsDestinationType;
   preferredDeliveryDate: Date;
   preferredDeliveryDateValue: string;
@@ -44,10 +38,30 @@ export type PreparedLogisticsRequest = {
     normalizedAdministrativeArea: string | null;
     cargoDescription: string;
   }>;
-  pricing: LogisticsPricingBreakdown;
   clientComment: string | null;
   requestContext?: AuditRequestContext;
 };
+
+export type PreparedLogisticsRequest = PreparedLogisticsRequestCommon &
+  (
+    | {
+        pricingType: 'FIXED';
+        customLocality: null;
+        tariff: {
+          id: string;
+          code: LogisticsTariffCityCode;
+          name: string;
+          price: Prisma.Decimal;
+        };
+        pricing: LogisticsPricingBreakdown;
+      }
+    | {
+        pricingType: 'INDIVIDUAL';
+        customLocality: string;
+        tariff: null;
+        pricing: null;
+      }
+  );
 
 type ExistingRequest = Awaited<ReturnType<typeof findExistingRequest>>;
 
@@ -60,6 +74,8 @@ const existingRequestSelect = {
   companyId: true,
   contactName: true,
   contactPhone: true,
+  pricingType: true,
+  customLocality: true,
   tariffCityCodeSnapshot: true,
   destinationType: true,
   preferredDeliveryDate: true,
@@ -116,7 +132,10 @@ export function logisticsIdempotencyIntentMatches(
   return (
     identityMatches &&
     existing.contactName === input.contactName &&
-    existing.tariffCityCodeSnapshot === input.tariff.code &&
+    existing.pricingType === input.pricingType &&
+    existing.customLocality === input.customLocality &&
+    existing.tariffCityCodeSnapshot ===
+      (input.pricingType === 'FIXED' ? input.tariff.code : null) &&
     existing.destinationType === input.destinationType &&
     serializeDateOnly(existing.preferredDeliveryDateSnapshot) ===
       input.preferredDeliveryDateValue &&
@@ -132,6 +151,7 @@ function idempotentResult(existing: NonNullable<ExistingRequest>) {
   return {
     id: existing.id,
     requestNumber: existing.requestNumber,
+    pricingType: existing.pricingType,
     totalPrice: existing.totalPrice,
     status: existing.status,
     preferredDeliveryDate: existing.preferredDeliveryDate,
@@ -166,10 +186,16 @@ export async function createLogisticsRequestInTransaction(
       companyId: input.identity.companyId,
       contactName: input.contactName,
       contactPhone: input.contactPhone,
-      tariffCityId: input.tariff.id,
-      tariffCityCodeSnapshot: input.tariff.code,
-      tariffCityNameSnapshot: input.tariff.name,
-      baseTariffSnapshot: input.pricing.baseTariff,
+      pricingType: input.pricingType,
+      customLocality: input.customLocality,
+      tariffCityId:
+        input.pricingType === 'FIXED' ? input.tariff.id : null,
+      tariffCityCodeSnapshot:
+        input.pricingType === 'FIXED' ? input.tariff.code : null,
+      tariffCityNameSnapshot:
+        input.pricingType === 'FIXED' ? input.tariff.name : null,
+      baseTariffSnapshot:
+        input.pricingType === 'FIXED' ? input.pricing.baseTariff : null,
       destinationType: input.destinationType,
       preferredDeliveryDate: input.preferredDeliveryDate,
       preferredDeliveryDateSnapshot: input.preferredDeliveryDate,
@@ -179,9 +205,16 @@ export async function createLogisticsRequestInTransaction(
       farmAddressProvider: input.farmAddress?.addressProvider ?? null,
       farmNormalizedLocality: input.farmAddress?.normalizedLocality ?? null,
       pickupPointCount: input.pickupPoints.length,
-      additionalPointsCharge: input.pricing.additionalPointsCharge,
-      farmDeliveryCharge: input.pricing.farmDeliveryCharge,
-      totalPrice: input.pricing.totalPrice,
+      additionalPointsCharge:
+        input.pricingType === 'FIXED'
+          ? input.pricing.additionalPointsCharge
+          : null,
+      farmDeliveryCharge:
+        input.pricingType === 'FIXED'
+          ? input.pricing.farmDeliveryCharge
+          : null,
+      totalPrice:
+        input.pricingType === 'FIXED' ? input.pricing.totalPrice : null,
       clientComment: input.clientComment,
       idempotencyKey: input.idempotencyKey,
       pickupPoints: {
@@ -199,6 +232,7 @@ export async function createLogisticsRequestInTransaction(
     select: {
       id: true,
       requestNumber: true,
+      pricingType: true,
       totalPrice: true,
       status: true,
       preferredDeliveryDate: true
@@ -219,18 +253,24 @@ export async function createLogisticsRequestInTransaction(
     newValue: {
       requestNumber: created.requestNumber,
       source: input.identity.type,
-      tariffCityCode: input.tariff.code,
+      pricingType: input.pricingType,
+      tariffCityCode:
+        input.pricingType === 'FIXED' ? input.tariff.code : null,
+      customLocality: input.customLocality,
       pickupPointCount: input.pickupPoints.length,
       destinationType: input.destinationType,
       preferredDeliveryDate: input.preferredDeliveryDateValue,
-      totalPrice: input.pricing.totalPrice,
+      totalPrice:
+        input.pricingType === 'FIXED' ? input.pricing.totalPrice : null,
       vatIncluded: true
     },
     allowedFields: {
       newValue: [
         'requestNumber',
         'source',
+        'pricingType',
         'tariffCityCode',
+        'customLocality',
         'pickupPointCount',
         'destinationType',
         'preferredDeliveryDate',
@@ -244,6 +284,7 @@ export async function createLogisticsRequestInTransaction(
   return {
     id: created.id,
     requestNumber: created.requestNumber,
+    pricingType: created.pricingType,
     totalPrice: created.totalPrice,
     status: created.status,
     preferredDeliveryDate: created.preferredDeliveryDate,

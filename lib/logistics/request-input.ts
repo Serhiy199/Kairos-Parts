@@ -25,6 +25,12 @@ import {
   LOGISTICS_SUPPLIER_NAME_MAX_LENGTH,
   LOGISTICS_SUPPLIER_NAME_MIN_LENGTH
 } from '@/lib/logistics/request-form-state';
+import {
+  isLogisticsPricingType,
+  LOGISTICS_CUSTOM_LOCALITY_MAX_LENGTH,
+  LOGISTICS_CUSTOM_LOCALITY_MIN_LENGTH,
+  normalizeLogisticsCustomLocality
+} from '@/lib/logistics/pricing-type';
 
 export const LOGISTICS_QUOTE_JSON_MAX_BYTES = 4 * 1024;
 export const LOGISTICS_CREATE_JSON_MAX_BYTES = 64 * 1024;
@@ -38,10 +44,9 @@ export type LogisticsQuoteInput = {
   destinationType: LogisticsDestinationType;
 };
 
-export type LogisticsCreateInput = {
+type LogisticsCreateCommonInput = {
   idempotencyKey: string;
   honeypot: string;
-  tariffCityCode: LogisticsTariffCityCode;
   pickupPoints: Array<{
     supplierName: string;
     address: string;
@@ -54,6 +59,21 @@ export type LogisticsCreateInput = {
   contactPhone: string;
   clientComment: string | null;
 };
+
+export type ParsedLogisticsPricingInput =
+  | {
+      pricingType: 'FIXED';
+      tariffCityCode: LogisticsTariffCityCode;
+      customLocality: null;
+    }
+  | {
+      pricingType: 'INDIVIDUAL';
+      tariffCityCode: null;
+      customLocality: string;
+    };
+
+export type LogisticsCreateInput =
+  LogisticsCreateCommonInput & ParsedLogisticsPricingInput;
 
 function isRecord(value: unknown): value is UnknownRecord {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -69,6 +89,75 @@ function parseTariffCityCode(value: unknown) {
   }
 
   return value;
+}
+
+function invalidPricingType() {
+  return new LogisticsRequestError(
+    'INVALID_PRICING_TYPE',
+    422,
+    'Оберіть тип розрахунку та заповніть відповідні дані.',
+    'pricingType'
+  );
+}
+
+function parseCreatePricing(value: UnknownRecord): ParsedLogisticsPricingInput {
+  const rawPricingType = value.pricingType;
+  const inferredLegacyFixed =
+    rawPricingType === undefined &&
+    typeof value.tariffCityCode === 'string' &&
+    isLogisticsTariffCityCode(value.tariffCityCode);
+  const pricingType = inferredLegacyFixed ? 'FIXED' : rawPricingType;
+
+  if (typeof pricingType !== 'string' || !isLogisticsPricingType(pricingType)) {
+    throw invalidPricingType();
+  }
+
+  if (pricingType === 'FIXED') {
+    const customLocality =
+      typeof value.customLocality === 'string'
+        ? normalizeLogisticsCustomLocality(value.customLocality)
+        : '';
+    if (customLocality) throw invalidPricingType();
+
+    return {
+      pricingType: 'FIXED',
+      tariffCityCode: parseTariffCityCode(value.tariffCityCode),
+      customLocality: null
+    };
+  }
+
+  if (value.tariffCityCode !== undefined && value.tariffCityCode !== null) {
+    throw invalidPricingType();
+  }
+  if (typeof value.customLocality !== 'string') {
+    throw new LogisticsRequestError(
+      'INVALID_CUSTOM_LOCALITY',
+      422,
+      'Вкажіть населений пункт для індивідуального розрахунку.',
+      'customLocality'
+    );
+  }
+
+  const customLocality = normalizeLogisticsCustomLocality(
+    value.customLocality
+  );
+  if (
+    customLocality.length < LOGISTICS_CUSTOM_LOCALITY_MIN_LENGTH ||
+    customLocality.length > LOGISTICS_CUSTOM_LOCALITY_MAX_LENGTH
+  ) {
+    throw new LogisticsRequestError(
+      'INVALID_CUSTOM_LOCALITY',
+      422,
+      'Вкажіть населений пункт довжиною від 2 до 200 символів.',
+      'customLocality'
+    );
+  }
+
+  return {
+    pricingType: 'INDIVIDUAL',
+    tariffCityCode: null,
+    customLocality
+  };
 }
 
 function parseDestinationType(value: unknown): LogisticsDestinationType {
@@ -299,10 +388,12 @@ export function parseLogisticsCreateInput(value: unknown): LogisticsCreateInput 
     );
   }
 
+  const pricing = parseCreatePricing(value);
+
   return {
+    ...pricing,
     idempotencyKey,
     honeypot: '',
-    tariffCityCode: parseTariffCityCode(value.tariffCityCode),
     pickupPoints,
     destinationType,
     farmAddress,

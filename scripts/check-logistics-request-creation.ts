@@ -309,6 +309,8 @@ const samplePrepared = {
   idempotencyKey: validCreatePayload.idempotencyKey,
   contactName: validCreatePayload.contactName,
   contactPhone: validCreatePayload.contactPhone,
+  pricingType: 'FIXED',
+  customLocality: null,
   tariff: {
     id: 'synthetic-tariff',
     code: 'BILA_TSERKVA',
@@ -355,6 +357,8 @@ assert.equal(
       companyId: null,
       contactName: samplePrepared.contactName,
       contactPhone: samplePrepared.contactPhone,
+      pricingType: 'FIXED',
+      customLocality: null,
       tariffCityCodeSnapshot: samplePrepared.tariff.code,
       destinationType: samplePrepared.destinationType,
       preferredDeliveryDate: samplePrepared.preferredDeliveryDate,
@@ -424,7 +428,7 @@ async function runStagingIntegration() {
           assert.equal(duplicate.requestNumber, guest.requestNumber);
           assert.equal(guest.status, 'NEW');
           assert.match(guest.requestNumber, /^LG-\d{6,}$/);
-          assert.equal(guest.totalPrice.toFixed(2), '2700.00');
+          assert.equal(guest.totalPrice!.toFixed(2), '2700.00');
 
           await assert.rejects(
             () =>
@@ -444,10 +448,10 @@ async function runStagingIntegration() {
           assert.equal(createdGuest.clientId, null);
           assert.equal(createdGuest.companyId, null);
           assert.equal(createdGuest.pickupPoints.length, 1);
-          assert.equal(createdGuest.baseTariffSnapshot.toFixed(2), '2200.00');
-          assert.equal(createdGuest.additionalPointsCharge.toFixed(2), '0.00');
-          assert.equal(createdGuest.farmDeliveryCharge.toFixed(2), '500.00');
-          assert.equal(createdGuest.totalPrice.toFixed(2), '2700.00');
+          assert.equal(createdGuest.baseTariffSnapshot!.toFixed(2), '2200.00');
+          assert.equal(createdGuest.additionalPointsCharge!.toFixed(2), '0.00');
+          assert.equal(createdGuest.farmDeliveryCharge!.toFixed(2), '500.00');
+          assert.equal(createdGuest.totalPrice!.toFixed(2), '2700.00');
           assert.equal(
             await writer.auditLog.count({
               where: {
@@ -511,7 +515,7 @@ async function runStagingIntegration() {
           });
           assert.equal(createdClient.clientId, syntheticClient.id);
           assert.equal(createdClient.companyId, syntheticCompany.id);
-          assert.equal(createdClient.totalPrice.toFixed(2), '2200.00');
+          assert.equal(createdClient.totalPrice!.toFixed(2), '2200.00');
           assert.equal(createdClient.baseAddressSnapshot, clientPrepared.baseAddressSnapshot);
           assert.equal(createdClient.farmFormattedAddress, null);
           assert.equal(

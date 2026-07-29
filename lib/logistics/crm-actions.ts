@@ -29,6 +29,7 @@ type LogisticsActionCode =
   | 'INVALID_INPUT'
   | 'NOT_FOUND'
   | 'INVALID_TRANSITION'
+  | 'INVALID_OPERATION'
   | 'CONFLICT';
 
 class LogisticsCrmActionError extends Error {
@@ -68,6 +69,11 @@ function actionFailure(error: unknown, fallback: string): WorkflowActionResult {
           'invalid-transition',
           'Ця зміна статусу більше недоступна.'
         );
+      case 'INVALID_OPERATION':
+        return failure(
+          'invalid-operation',
+          'Ця дія недоступна для заявки з фіксованим тарифом.'
+        );
       case 'CONFLICT':
         return failure(
           'concurrency-conflict',
@@ -94,7 +100,7 @@ function revalidateLogisticsRequest(id: string) {
   revalidatePath('/admin', 'layout');
 }
 
-function revalidateLogisticsPreferredDate(id: string) {
+function revalidateLogisticsRequestEverywhere(id: string) {
   revalidateLogisticsRequest(id);
   revalidatePath('/client/logistics');
   revalidatePath(`/client/logistics/${id}`);
@@ -195,7 +201,7 @@ export async function updateLogisticsPreferredDeliveryDate(
     });
 
     if (outcome === 'updated') {
-      revalidateLogisticsPreferredDate(requestId);
+      revalidateLogisticsRequestEverywhere(requestId);
       return success(
         'preferred-date-updated',
         'Бажану дату перевезення оновлено.'
@@ -339,6 +345,124 @@ export async function addLogisticsInternalComment(
     return success('comment-created', 'Внутрішній коментар додано.');
   } catch (error) {
     return actionFailure(error, 'Перевірте текст коментаря.');
+  }
+}
+
+export async function updateLogisticsIndividualPrice(
+  formData: FormData
+): Promise<WorkflowActionResult> {
+  const session = await requireCrmSession();
+  const requestId = field(formData, 'requestId');
+  const expectedUpdatedAt = field(formData, 'expectedUpdatedAt', 40);
+  const rawPrice = field(formData, 'totalPrice', 32).replace(',', '.');
+
+  if (!requestId || !expectedUpdatedAt || !PRICE_PATTERN.test(rawPrice)) {
+    return failure(
+      'invalid-individual-price',
+      'Вкажіть додатну суму не більше ніж із двома знаками після коми.'
+    );
+  }
+
+  let nextPrice: Prisma.Decimal;
+  try {
+    nextPrice = new Prisma.Decimal(rawPrice);
+  } catch {
+    return failure(
+      'invalid-individual-price',
+      'Введено некоректну суму.'
+    );
+  }
+  if (
+    nextPrice.lessThanOrEqualTo(0) ||
+    nextPrice.greaterThan(MAX_TARIFF_PRICE)
+  ) {
+    return failure(
+      'invalid-individual-price',
+      'Сума має бути більшою за нуль і не перевищувати 9 999 999 999,99 грн.'
+    );
+  }
+
+  const expectedDate = new Date(expectedUpdatedAt);
+  if (Number.isNaN(expectedDate.getTime())) {
+    return failure(
+      'invalid-individual-price',
+      'Не вдалося перевірити версію логістичної заявки.'
+    );
+  }
+
+  try {
+    const context = await requestContext();
+    const outcome = await prisma.$transaction(async (tx) => {
+      const current = await tx.logisticsRequest.findUnique({
+        where: { id: requestId },
+        select: {
+          id: true,
+          requestNumber: true,
+          pricingType: true,
+          totalPrice: true,
+          updatedAt: true
+        }
+      });
+      if (!current) throw new LogisticsCrmActionError('NOT_FOUND');
+      if (current.pricingType !== 'INDIVIDUAL') {
+        throw new LogisticsCrmActionError('INVALID_OPERATION');
+      }
+      if (current.updatedAt.getTime() !== expectedDate.getTime()) {
+        throw new LogisticsCrmActionError('CONFLICT');
+      }
+      if (current.totalPrice?.equals(nextPrice)) {
+        return 'unchanged' as const;
+      }
+
+      const updated = await tx.logisticsRequest.updateMany({
+        where: {
+          id: requestId,
+          updatedAt: expectedDate,
+          pricingType: 'INDIVIDUAL'
+        },
+        data: { totalPrice: nextPrice }
+      });
+      if (updated.count !== 1) {
+        throw new LogisticsCrmActionError('CONFLICT');
+      }
+
+      await writeAuditLog(tx, {
+        actor: auditUserActor(session.user.id),
+        entityType: 'LOGISTICS_REQUEST',
+        entityId: current.id,
+        entityLabel: current.requestNumber,
+        action: 'LOGISTICS_INDIVIDUAL_PRICE_CHANGED',
+        category: 'FINANCIAL_CRITICAL',
+        oldValue: {
+          requestNumber: current.requestNumber,
+          oldTotalPrice: current.totalPrice
+        },
+        newValue: {
+          requestNumber: current.requestNumber,
+          newTotalPrice: nextPrice
+        },
+        allowedFields: {
+          oldValue: ['requestNumber', 'oldTotalPrice'],
+          newValue: ['requestNumber', 'newTotalPrice']
+        },
+        requestContext: context
+      });
+
+      return 'updated' as const;
+    });
+
+    revalidateLogisticsRequestEverywhere(requestId);
+    return outcome === 'unchanged'
+      ? success(
+          'individual-price-unchanged',
+          'Кінцева вартість уже має вказане значення.'
+        )
+      : success(
+          'individual-price-updated',
+          'Кінцеву вартість перевезення збережено.'
+        );
+  } catch (error) {
+    return actionFailure(error, 'Перевірте кінцеву вартість.');
   }
 }
 

@@ -2,6 +2,7 @@ import 'server-only';
 
 import type {
   LogisticsDestinationType,
+  LogisticsPricingType,
   LogisticsRequestStatus
 } from '@prisma/client';
 
@@ -17,10 +18,12 @@ export type ClientLogisticsListItem = {
   requestNumber: string;
   createdAt: string;
   preferredDeliveryDate: string | null;
-  tariffCityName: string;
+  pricingType: LogisticsPricingType;
+  customLocality: string | null;
+  tariffCityName: string | null;
   pickupPointCount: number;
   destinationType: LogisticsDestinationType;
-  totalPrice: string;
+  totalPrice: string | null;
   status: LogisticsRequestStatus;
 };
 
@@ -32,12 +35,14 @@ export type ClientLogisticsDetail = {
   status: LogisticsRequestStatus;
   contactName: string;
   contactPhone: string;
-  tariffCityName: string;
-  baseTariff: string;
+  pricingType: LogisticsPricingType;
+  customLocality: string | null;
+  tariffCityName: string | null;
+  baseTariff: string | null;
   pickupPointCount: number;
-  additionalPointsCharge: string;
-  farmDeliveryCharge: string;
-  totalPrice: string;
+  additionalPointsCharge: string | null;
+  farmDeliveryCharge: string | null;
+  totalPrice: string | null;
   destinationType: LogisticsDestinationType;
   destinationAddress: string | null;
   clientComment: string | null;
@@ -70,6 +75,8 @@ export async function getClientLogisticsPage(
       requestNumber: true,
       createdAt: true,
       preferredDeliveryDate: true,
+      pricingType: true,
+      customLocality: true,
       tariffCityNameSnapshot: true,
       pickupPointCount: true,
       destinationType: true,
@@ -83,10 +90,12 @@ export async function getClientLogisticsPage(
     requestNumber: record.requestNumber,
     createdAt: record.createdAt.toISOString(),
     preferredDeliveryDate: serializeDateOnly(record.preferredDeliveryDate),
+    pricingType: record.pricingType,
+    customLocality: record.customLocality,
     tariffCityName: record.tariffCityNameSnapshot,
     pickupPointCount: record.pickupPointCount,
     destinationType: record.destinationType,
-    totalPrice: record.totalPrice.toFixed(2),
+    totalPrice: record.totalPrice?.toFixed(2) ?? null,
     status: record.status
   }));
 
@@ -117,6 +126,8 @@ export async function getClientLogisticsDetail(
       status: true,
       contactName: true,
       contactPhone: true,
+      pricingType: true,
+      customLocality: true,
       tariffCityNameSnapshot: true,
       baseTariffSnapshot: true,
       pickupPointCount: true,
@@ -148,12 +159,15 @@ export async function getClientLogisticsDetail(
     status: record.status,
     contactName: record.contactName,
     contactPhone: record.contactPhone,
+    pricingType: record.pricingType,
+    customLocality: record.customLocality,
     tariffCityName: record.tariffCityNameSnapshot,
-    baseTariff: record.baseTariffSnapshot.toFixed(2),
+    baseTariff: record.baseTariffSnapshot?.toFixed(2) ?? null,
     pickupPointCount: record.pickupPointCount,
-    additionalPointsCharge: record.additionalPointsCharge.toFixed(2),
-    farmDeliveryCharge: record.farmDeliveryCharge.toFixed(2),
-    totalPrice: record.totalPrice.toFixed(2),
+    additionalPointsCharge:
+      record.additionalPointsCharge?.toFixed(2) ?? null,
+    farmDeliveryCharge: record.farmDeliveryCharge?.toFixed(2) ?? null,
+    totalPrice: record.totalPrice?.toFixed(2) ?? null,
     destinationType: record.destinationType,
     destinationAddress:
       record.destinationType === 'KAIROS_BASE'

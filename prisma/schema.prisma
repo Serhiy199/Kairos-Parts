@@ -228,6 +228,7 @@ enum AuditAction {
   LOGISTICS_INTERNAL_COMMENT_CREATED
   LOGISTICS_TARIFF_UPDATED
   LOGISTICS_PREFERRED_DATE_CHANGED
+  LOGISTICS_INDIVIDUAL_PRICE_CHANGED
 }
 
 enum AuditLogCategory {
@@ -267,6 +268,11 @@ enum LogisticsAddressProvider {
   MOCK
   GOOGLE
   MANUAL
+}
+
+enum LogisticsPricingType {
+  FIXED
+  INDIVIDUAL
 }
 
 model User {
@@ -951,11 +957,13 @@ model LogisticsRequest {
   company                Company?                   @relation(fields: [companyId], references: [id], onDelete: SetNull)
   contactName            String
   contactPhone           String
-  tariffCityId           String
-  tariffCity             LogisticsTariffCity        @relation(fields: [tariffCityId], references: [id], onDelete: Restrict)
-  tariffCityCodeSnapshot String
-  tariffCityNameSnapshot String
-  baseTariffSnapshot     Decimal                    @db.Decimal(12, 2)
+  pricingType            LogisticsPricingType       @default(FIXED)
+  customLocality         String?
+  tariffCityId           String?
+  tariffCity             LogisticsTariffCity?       @relation(fields: [tariffCityId], references: [id], onDelete: Restrict)
+  tariffCityCodeSnapshot String?
+  tariffCityNameSnapshot String?
+  baseTariffSnapshot     Decimal?                   @db.Decimal(12, 2)
   destinationType        LogisticsDestinationType
   baseAddressSnapshot    String?
   farmFormattedAddress   String?
@@ -963,9 +971,9 @@ model LogisticsRequest {
   farmAddressProvider    LogisticsAddressProvider?
   farmNormalizedLocality String?
   pickupPointCount       Int
-  additionalPointsCharge Decimal                    @db.Decimal(12, 2)
-  farmDeliveryCharge     Decimal                    @db.Decimal(12, 2)
-  totalPrice             Decimal                    @db.Decimal(12, 2)
+  additionalPointsCharge Decimal?                   @db.Decimal(12, 2)
+  farmDeliveryCharge     Decimal?                   @db.Decimal(12, 2)
+  totalPrice             Decimal?                   @db.Decimal(12, 2)
   clientComment          String?                    @db.Text
   preferredDeliveryDate         DateTime?           @db.Date
   preferredDeliveryDateSnapshot DateTime?           @db.Date

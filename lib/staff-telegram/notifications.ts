@@ -1,10 +1,9 @@
 import 'server-only';
 
-import type { LogisticsDestinationType } from '@prisma/client';
-
 import {
   buildNewLogisticsRequestMessage,
-  buildNewPartsRequestMessage
+  buildNewPartsRequestMessage,
+  type NewLogisticsRequestMessageInput
 } from '@/lib/staff-telegram/messages';
 import {
   sendStaffTelegramMessage,
@@ -56,17 +55,9 @@ async function notify(
   }
 }
 
-export async function notifyNewLogisticsRequest(input: {
-  id: string;
-  requestNumber: string;
-  contactName: string;
-  contactPhone: string;
-  tariffCityName: string;
-  pickupPointCount: number;
-  destinationType: LogisticsDestinationType;
-  preferredDeliveryDate: string | null;
-  totalPrice: string;
-}) {
+export async function notifyNewLogisticsRequest(
+  input: NewLogisticsRequestMessageInput
+) {
   await notify(
     'NEW_LOGISTICS_REQUEST',
     input.id,

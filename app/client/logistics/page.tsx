@@ -12,7 +12,8 @@ import {
   parseClientLogisticsPage
 } from '@/lib/logistics/client-queries';
 import {
-  formatLogisticsUahCompact,
+  formatNullableLogisticsUahCompact,
+  LOGISTICS_CLIENT_PENDING_PRICE_LABEL,
   LOGISTICS_DESTINATION_SENTENCE_LABELS
 } from '@/lib/logistics/presentation';
 import { formatDateOnlyShort } from '@/lib/logistics/date-only';
@@ -106,8 +107,16 @@ export default async function ClientLogisticsPage({
                       }
                     />
                     <ListField
-                      label="Тарифне місто"
-                      value={request.tariffCityName}
+                      label={
+                        request.pricingType === 'INDIVIDUAL'
+                          ? 'Населений пункт'
+                          : 'Тарифне місто'
+                      }
+                      value={
+                        request.pricingType === 'INDIVIDUAL'
+                          ? (request.customLocality ?? 'Не вказано')
+                          : (request.tariffCityName ?? 'Не вказано')
+                      }
                     />
                     <ListField
                       label="Точки"
@@ -122,8 +131,15 @@ export default async function ClientLogisticsPage({
                       }
                     />
                     <ListField
-                      label="Кінцева сума"
-                      value={formatLogisticsUahCompact(request.totalPrice)}
+                      label={
+                        request.totalPrice === null
+                          ? 'Вартість'
+                          : 'Кінцева вартість'
+                      }
+                      value={formatNullableLogisticsUahCompact(
+                        request.totalPrice,
+                        LOGISTICS_CLIENT_PENDING_PRICE_LABEL
+                      )}
                     />
                   </dl>
                   <Link
@@ -142,7 +158,9 @@ export default async function ClientLogisticsPage({
                   <tr className="border-b border-border bg-surface-muted text-muted">
                     <th className="px-4 py-3 font-bold">Номер</th>
                     <th className="px-4 py-3 font-bold">Дати</th>
-                    <th className="px-4 py-3 font-bold">Тарифне місто</th>
+                    <th className="px-4 py-3 font-bold">
+                      Місто / населений пункт
+                    </th>
                     <th className="px-4 py-3 font-bold">Точки</th>
                     <th className="px-4 py-3 font-bold">Доставка</th>
                     <th className="px-4 py-3 font-bold">Сума</th>
@@ -173,7 +191,9 @@ export default async function ClientLogisticsPage({
                         </span>
                       </td>
                       <td className="px-4 py-3 text-muted">
-                        {request.tariffCityName}
+                        {request.pricingType === 'INDIVIDUAL'
+                          ? (request.customLocality ?? 'Не вказано')
+                          : (request.tariffCityName ?? 'Не вказано')}
                       </td>
                       <td className="px-4 py-3 text-muted">
                         {pointCount(request.pickupPointCount)}
@@ -186,7 +206,10 @@ export default async function ClientLogisticsPage({
                         }
                       </td>
                       <td className="px-4 py-3 font-semibold text-foreground">
-                        {formatLogisticsUahCompact(request.totalPrice)}
+                        {formatNullableLogisticsUahCompact(
+                          request.totalPrice,
+                          LOGISTICS_CLIENT_PENDING_PRICE_LABEL
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <ClientLogisticsStatusBadge status={request.status} />

@@ -11,7 +11,7 @@ const canonicalUrl = buildAbsoluteUrl('/logistics/request');
 export const metadata: Metadata = {
   title: 'Заявка на перевезення | Kairos Logistics',
   description:
-    'Заповніть дані точок відвантаження, оберіть спосіб доставки та перегляньте попередній розрахунок вартості Kairos Logistics.',
+    'Заповніть дані точок відвантаження й отримайте фіксований або індивідуальний розрахунок перевезення Kairos Logistics.',
   alternates: {
     canonical: canonicalUrl
   },
@@ -42,9 +42,9 @@ export default async function LogisticsRequestPage() {
             Заявка на перевезення
           </h1>
           <p className="mt-5 max-w-3xl text-base leading-7 text-white/75 sm:text-lg">
-            Додайте точки відвантаження, оберіть місце доставки та перегляньте
-            актуальний розрахунок. Остаточну суму сервер повторно визначить під
-            час створення заявки.
+            Додайте точки відвантаження та оберіть місце доставки. Для тарифних
+            міст вартість розраховується автоматично, а для інших населених
+            пунктів її погодить із вами менеджер.
           </p>
         </div>
       </section>

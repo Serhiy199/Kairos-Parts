@@ -50,19 +50,11 @@ export async function prepareLogisticsRequest(input: {
     );
   }
 
-  const tariff = await getActiveLogisticsTariff(input.parsed.tariffCityCode);
-  const pricing = calculateAuthoritativeLogisticsPrice({
-    baseTariff: tariff.price,
-    pickupPointCount: input.parsed.pickupPoints.length,
-    destinationType: input.parsed.destinationType
-  });
-
-  return {
+  const common = {
     identity: input.identity,
     idempotencyKey: input.parsed.idempotencyKey,
     contactName: input.parsed.contactName,
     contactPhone: canonicalPhone,
-    tariff,
     destinationType: input.parsed.destinationType,
     preferredDeliveryDate: input.parsed.preferredDeliveryDate.date,
     preferredDeliveryDateValue: input.parsed.preferredDeliveryDate.value,
@@ -75,7 +67,7 @@ export async function prepareLogisticsRequest(input: {
         ? {
             formattedAddress: input.parsed.farmAddress,
             externalAddressId: null,
-            addressProvider: 'MANUAL',
+            addressProvider: 'MANUAL' as const,
             normalizedLocality: null,
             normalizedAdministrativeArea: null
           }
@@ -84,14 +76,40 @@ export async function prepareLogisticsRequest(input: {
       supplierName: point.supplierName,
       formattedAddress: point.address,
       externalAddressId: null,
-      addressProvider: 'MANUAL',
+      addressProvider: 'MANUAL' as const,
       normalizedLocality: null,
       normalizedAdministrativeArea: null,
       cargoDescription: point.cargoDescription
     })),
-    pricing,
     clientComment: input.parsed.clientComment,
     requestContext: input.requestContext
+  };
+
+  if (input.parsed.pricingType === 'INDIVIDUAL') {
+    return {
+      ...common,
+      pricingType: 'INDIVIDUAL',
+      customLocality: input.parsed.customLocality,
+      tariff: null,
+      pricing: null
+    };
+  }
+
+  const tariff = await getActiveLogisticsTariff(
+    input.parsed.tariffCityCode
+  );
+  const pricing = calculateAuthoritativeLogisticsPrice({
+    baseTariff: tariff.price,
+    pickupPointCount: input.parsed.pickupPoints.length,
+    destinationType: input.parsed.destinationType
+  });
+
+  return {
+    ...common,
+    pricingType: 'FIXED',
+    customLocality: null,
+    tariff,
+    pricing
   };
 }
 
@@ -106,17 +124,30 @@ export async function createPreparedLogisticsRequest(
       requestNumber: result.requestNumber,
       contactName: input.contactName,
       contactPhone: input.contactPhone,
-      tariffCityName: input.tariff.name,
       pickupPointCount: input.pickupPoints.length,
       destinationType: input.destinationType,
       preferredDeliveryDate: serializeDateOnly(result.preferredDeliveryDate),
-      totalPrice: serializeLogisticsMoney(result.totalPrice)
+      ...(input.pricingType === 'FIXED'
+        ? {
+            pricingType: 'FIXED' as const,
+            tariffCityName: input.tariff.name,
+            totalPrice: serializeLogisticsMoney(input.pricing.totalPrice)
+          }
+        : {
+            pricingType: 'INDIVIDUAL' as const,
+            customLocality: input.customLocality,
+            totalPrice: null
+          })
     });
   }
 
   return {
     requestNumber: result.requestNumber,
-    totalPrice: serializeLogisticsMoney(result.totalPrice),
+    pricingType: result.pricingType,
+    totalPrice:
+      result.totalPrice === null
+        ? null
+        : serializeLogisticsMoney(result.totalPrice),
     currency: 'UAH' as const,
     vatIncluded: true as const,
     status: result.status,

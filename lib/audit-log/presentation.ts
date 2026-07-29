@@ -107,7 +107,9 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   LOGISTICS_STATUS_CHANGED: 'Статус логістичної заявки змінено',
   LOGISTICS_INTERNAL_COMMENT_CREATED: 'Внутрішній коментар додано',
   LOGISTICS_TARIFF_UPDATED: 'Тариф Logistics оновлено',
-  LOGISTICS_PREFERRED_DATE_CHANGED: 'Змінено бажану дату перевезення'
+  LOGISTICS_PREFERRED_DATE_CHANGED: 'Змінено бажану дату перевезення',
+  LOGISTICS_INDIVIDUAL_PRICE_CHANGED:
+    'Змінено індивідуальну вартість перевезення'
 };
 
 export const AUDIT_EVENT_LABELS: Record<string, string> = {

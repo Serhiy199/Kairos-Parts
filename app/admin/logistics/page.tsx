@@ -12,7 +12,7 @@ import {
   LOGISTICS_DESTINATION_LABELS,
   LOGISTICS_SOURCE_LABELS,
   LOGISTICS_STATUS_LABELS,
-  formatLogisticsUah
+  formatNullableLogisticsUah
 } from '@/lib/logistics/crm-presentation';
 import {
   getLogisticsCrmPage,
@@ -204,7 +204,10 @@ export default async function AdminLogisticsPage({
                   />
                   <CardField label="Контакт" value={request.contactName} />
                   <CardField label="Телефон" value={request.contactPhone} />
-                  <CardField label="Місто" value={request.tariffCityName} />
+                  <CardField
+                    label="Місто"
+                    value={logisticsLocality(request)}
+                  />
                   <CardField
                     label="Точки"
                     value={String(request.pickupPointCount)}
@@ -221,7 +224,7 @@ export default async function AdminLogisticsPage({
                   />
                   <CardField
                     label="Сума"
-                    value={formatLogisticsUah(request.totalPrice)}
+                    value={formatNullableLogisticsUah(request.totalPrice)}
                   />
                 </dl>
                 <Link
@@ -283,7 +286,9 @@ export default async function AdminLogisticsPage({
                     {request.contactPhone}
                   </td>
                   <td className="px-4 py-3 text-muted">
-                    {request.tariffCityName}
+                    <span className="whitespace-pre-line">
+                      {logisticsLocality(request)}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-muted">
                     {request.pickupPointCount}
@@ -292,7 +297,7 @@ export default async function AdminLogisticsPage({
                     {LOGISTICS_DESTINATION_LABELS[request.destinationType]}
                   </td>
                   <td className="px-4 py-3 font-semibold text-foreground">
-                    {formatLogisticsUah(request.totalPrice)}
+                    {formatNullableLogisticsUah(request.totalPrice)}
                   </td>
                   <td className="px-4 py-3">
                     <LogisticsStatusBadge status={request.status} />
@@ -329,9 +334,21 @@ function CardField({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
       <dt className="font-semibold text-muted">{label}</dt>
-      <dd className="mt-1 break-words text-foreground">{value}</dd>
+      <dd className="mt-1 whitespace-pre-line break-words text-foreground">
+        {value}
+      </dd>
     </div>
   );
+}
+
+function logisticsLocality(request: {
+  pricingType: 'FIXED' | 'INDIVIDUAL';
+  tariffCityName: string | null;
+  customLocality: string | null;
+}) {
+  return request.pricingType === 'INDIVIDUAL'
+    ? `Інший населений пункт\n${request.customLocality ?? 'Не вказано'}`
+    : (request.tariffCityName ?? 'Не вказано');
 }
 
 function Pagination({
