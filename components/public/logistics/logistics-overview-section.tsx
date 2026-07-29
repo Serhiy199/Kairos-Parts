@@ -55,31 +55,12 @@ const processSteps = [
   'Доставляємо товар до логістичної бази Kairos Parts у Кагарлику.'
 ];
 
-export function LogisticsOverviewSection() {
+export function LogisticsOverviewPanel() {
   return (
-    <section
-      aria-labelledby="logistics-overview-title"
-      className="relative overflow-hidden bg-public-section py-16 sm:py-20 lg:py-24"
+    <div
+      aria-label="Для кого створений сервіс, коли він потрібен і як працює"
+      className="overflow-hidden rounded-xl border border-public-border-accent bg-public-card shadow-[0_18px_50px_rgba(200,150,66,0.16),0_0_26px_rgba(200,150,66,0.12)] lg:grid lg:grid-cols-3"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(200,150,66,0.09),transparent_34%)]" />
-      <div className="kp-container relative">
-        <div className="max-w-4xl">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
-            Kairos Logistics для агробізнесу
-          </p>
-          <h2
-            id="logistics-overview-title"
-            className="mt-3 text-3xl font-bold leading-tight text-public-primary sm:text-4xl"
-          >
-            Кому підходить сервіс і як він працює
-          </h2>
-          <p className="mt-4 max-w-3xl text-base leading-7 text-public-muted sm:text-lg sm:leading-8">
-            Коротко про клієнтів Kairos Logistics, ситуації, у яких потрібне перевезення, та шлях
-            товару від заявки до логістичної бази в Кагарлику.
-          </p>
-        </div>
-
-        <div className="mt-10 overflow-hidden rounded-xl border border-public-border bg-public-card shadow-card lg:grid lg:grid-cols-3">
           <div className="p-5 sm:p-7 lg:p-8">
             <OverviewHeading icon={TbUsers}>Для кого створений сервіс</OverviewHeading>
             <p className="mt-5 text-base leading-7 text-public-muted">
@@ -156,9 +137,7 @@ export function LogisticsOverviewSection() {
               })}
             </ol>
           </div>
-        </div>
-      </div>
-    </section>
+    </div>
   );
 }
 

@@ -10,7 +10,6 @@ import {
 } from 'react-icons/tb';
 
 import { LogisticsFinalCta } from '@/components/public/logistics/logistics-final-cta';
-import { LogisticsOverviewSection } from '@/components/public/logistics/logistics-overview-section';
 import { LogisticsRatesSection } from '@/components/public/logistics/logistics-rates-section';
 import {
   LOGISTICS_LANDING_ENABLED,
@@ -138,8 +137,6 @@ export default function LogisticsPage() {
       </section>
 
       <LogisticsRatesSection />
-
-      <LogisticsOverviewSection />
 
       <LogisticsFinalCta />
     </>

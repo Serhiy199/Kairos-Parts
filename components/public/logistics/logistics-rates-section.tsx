@@ -6,6 +6,8 @@ import {
   TbTruckDelivery
 } from 'react-icons/tb';
 
+import { LogisticsOverviewPanel } from './logistics-overview-section';
+
 type LogisticsRate =
   | {
       location: string;
@@ -221,6 +223,10 @@ export function LogisticsRatesSection() {
             </div>
 
           </aside>
+        </div>
+
+        <div className="mt-8 sm:mt-10">
+          <LogisticsOverviewPanel />
         </div>
       </div>
     </section>
