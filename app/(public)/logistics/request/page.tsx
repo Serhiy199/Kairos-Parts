@@ -1,12 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 
 import { LogisticsRequestForm } from '@/components/public/logistics/logistics-request-form';
-import {
-  LOGISTICS_REQUEST_FORM_ENABLED,
-  LOGISTICS_REQUEST_SUBMIT_ENABLED
-} from '@/lib/features/logistics';
 import { getLogisticsRequestContactPrefill } from '@/lib/logistics/access';
 import { buildAbsoluteUrl } from '@/lib/site-url';
 
@@ -26,10 +21,6 @@ export const metadata: Metadata = {
 };
 
 export default async function LogisticsRequestPage() {
-  if (!LOGISTICS_REQUEST_FORM_ENABLED) {
-    notFound();
-  }
-
   const initialContact = await getLogisticsRequestContactPrefill();
 
   return (
@@ -58,10 +49,7 @@ export default async function LogisticsRequestPage() {
 
       <section className="bg-public-page py-10 sm:py-14 lg:py-16">
         <div className="kp-container">
-          <LogisticsRequestForm
-            initialContact={initialContact}
-            submitEnabled={LOGISTICS_REQUEST_SUBMIT_ENABLED}
-          />
+          <LogisticsRequestForm initialContact={initialContact} />
         </div>
       </section>
     </>

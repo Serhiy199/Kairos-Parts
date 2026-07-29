@@ -1,15 +1,10 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { TbTruckDelivery } from 'react-icons/tb';
 
 import { LogisticsFinalCta } from '@/components/public/logistics/logistics-final-cta';
 import { LogisticsRatesSection } from '@/components/public/logistics/logistics-rates-section';
-import {
-  LOGISTICS_LANDING_ENABLED,
-  LOGISTICS_REQUEST_FORM_ENABLED
-} from '@/lib/features/logistics';
 import { buildAbsoluteUrl } from '@/lib/site-url';
 
 const canonicalUrl = buildAbsoluteUrl('/logistics');
@@ -37,10 +32,6 @@ export const metadata: Metadata = {
 };
 
 export default function LogisticsPage() {
-  if (!LOGISTICS_LANDING_ENABLED) {
-    notFound();
-  }
-
   return (
     <>
       <section
@@ -103,28 +94,13 @@ export default function LogisticsPage() {
 }
 
 function LogisticsRequestCta() {
-  const isAvailable = LOGISTICS_REQUEST_FORM_ENABLED;
-
   return (
-    <div>
-      {isAvailable ? (
-        <Link
-          href="/logistics/request"
-          className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
-        >
-          <TbTruckDelivery aria-hidden="true" focusable="false" className="size-5" />
-          Створити заявку на перевезення
-        </Link>
-      ) : (
-        <button
-          type="button"
-          disabled
-          className="inline-flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-primary opacity-60 shadow-panel sm:w-auto"
-        >
-          <TbTruckDelivery aria-hidden="true" focusable="false" className="size-5" />
-          Створити заявку на перевезення
-        </button>
-      )}
-    </div>
+    <Link
+      href="/logistics/request"
+      className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
+    >
+      <TbTruckDelivery aria-hidden="true" focusable="false" className="size-5" />
+      Створити заявку на перевезення
+    </Link>
   );
 }

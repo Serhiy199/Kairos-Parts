@@ -1,8 +1,4 @@
 import { auditRequestContextFromHeaders } from '@/lib/audit-log/request-context';
-import {
-  LOGISTICS_REQUEST_FORM_ENABLED,
-  LOGISTICS_REQUEST_SUBMIT_ENABLED
-} from '@/lib/features/logistics';
 import { resolveLogisticsSubmitIdentity } from '@/lib/logistics/access';
 import {
   LOGISTICS_CREATE_JSON_MAX_BYTES,
@@ -28,21 +24,6 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    if (!LOGISTICS_REQUEST_FORM_ENABLED) {
-      throw new LogisticsRequestError(
-        'FORM_DISABLED',
-        503,
-        'Форма логістичної заявки тимчасово недоступна.'
-      );
-    }
-    if (!LOGISTICS_REQUEST_SUBMIT_ENABLED) {
-      throw new LogisticsRequestError(
-        'SUBMIT_DISABLED',
-        503,
-        'Надсилання логістичних заявок тимчасово недоступне.'
-      );
-    }
-
     assertLogisticsSameOrigin(request);
     const body = await readBoundedLogisticsJson(
       request,

@@ -49,7 +49,6 @@ type LogisticsRequestFormProps = {
     name: string;
     phone: string;
   };
-  submitEnabled: boolean;
 };
 
 type ServerQuote = {
@@ -180,10 +179,7 @@ function SectionHeading({
   );
 }
 
-export function LogisticsRequestForm({
-  initialContact,
-  submitEnabled
-}: LogisticsRequestFormProps) {
+export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormProps) {
   const pointCounterRef = useRef(1);
   const addPointButtonRef = useRef<HTMLButtonElement>(null);
   const successHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -249,7 +245,6 @@ export function LogisticsRequestForm({
   const verifiedQuote =
     serverQuote?.key === quoteKey ? serverQuote.value : null;
   const canSubmit =
-    submitEnabled &&
     isReady &&
     quoteStatus === 'verified' &&
     Boolean(verifiedQuote) &&
@@ -1094,9 +1089,8 @@ export function LogisticsRequestForm({
           id="logistics-submit-helper"
           className="mt-3 text-center text-xs leading-5 text-public-muted"
         >
-          {submitEnabled
-            ? 'Перед створенням заявки сервер повторно перевірить актуальний тариф і кінцеву суму.'
-            : 'Надсилання заявок вимкнено конфігурацією середовища.'}
+          Перед створенням заявки сервер повторно перевірить актуальний тариф і
+          кінцеву суму.
         </p>
       </aside>
     </form>

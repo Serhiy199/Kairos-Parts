@@ -2,11 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { TbArrowRight } from 'react-icons/tb';
 
-import { LOGISTICS_REQUEST_FORM_ENABLED } from '@/lib/features/logistics';
-
 export function LogisticsFinalCta() {
-  const isAvailable = LOGISTICS_REQUEST_FORM_ENABLED;
-
   return (
     <section
       aria-labelledby="logistics-final-cta-title"
@@ -39,32 +35,17 @@ export function LogisticsFinalCta() {
 
           <div className="relative z-10 flex items-center px-6 py-5 sm:px-8 sm:py-6 lg:px-10 lg:py-7">
             <div className="w-full">
-              {isAvailable ? (
-                <Link
-                  href="/logistics/request"
-                  className="inline-flex min-h-16 w-full items-center justify-center gap-3 rounded-md bg-accent px-6 py-5 text-center text-base font-bold text-primary shadow-panel transition hover:-translate-y-0.5 hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:whitespace-nowrap"
-                >
-                  <span>Створити заявку на перевезення</span>
-                  <TbArrowRight
-                    aria-hidden="true"
-                    focusable="false"
-                    className="size-5 shrink-0 stroke-[2]"
-                  />
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  className="inline-flex min-h-16 w-full cursor-not-allowed items-center justify-center gap-3 rounded-md bg-accent px-6 py-5 text-center text-base font-bold text-primary opacity-60 shadow-panel lg:whitespace-nowrap"
-                >
-                  <span>Створити заявку на перевезення</span>
-                  <TbArrowRight
-                    aria-hidden="true"
-                    focusable="false"
-                    className="size-5 shrink-0 stroke-[2]"
-                  />
-                </button>
-              )}
+              <Link
+                href="/logistics/request"
+                className="inline-flex min-h-16 w-full items-center justify-center gap-3 rounded-md bg-accent px-6 py-5 text-center text-base font-bold text-primary shadow-panel transition hover:-translate-y-0.5 hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:whitespace-nowrap"
+              >
+                <span>Створити заявку на перевезення</span>
+                <TbArrowRight
+                  aria-hidden="true"
+                  focusable="false"
+                  className="size-5 shrink-0 stroke-[2]"
+                />
+              </Link>
             </div>
           </div>
         </div>
