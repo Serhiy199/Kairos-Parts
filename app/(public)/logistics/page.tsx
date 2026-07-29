@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   TbBuildingWarehouse,
@@ -167,7 +168,7 @@ export default function LogisticsPage() {
             </p>
 
             <div className="mt-8 max-w-md">
-              <LogisticsUnavailableCta helperId="hero-logistics-cta-status" />
+              <LogisticsRequestCta helperId="hero-logistics-cta-status" />
             </div>
           </div>
         </div>
@@ -348,7 +349,7 @@ export default function LogisticsPage() {
             </h2>
           </div>
           <div className="w-full max-w-md shrink-0">
-            <LogisticsUnavailableCta helperId="final-logistics-cta-status" />
+            <LogisticsRequestCta helperId="final-logistics-cta-status" />
           </div>
         </div>
       </section>
@@ -356,22 +357,35 @@ export default function LogisticsPage() {
   );
 }
 
-function LogisticsUnavailableCta({ helperId }: { helperId: string }) {
+function LogisticsRequestCta({ helperId }: { helperId: string }) {
   const isAvailable = LOGISTICS_REQUEST_FORM_ENABLED;
 
   return (
     <div>
-      <button
-        type="button"
-        disabled={!isAvailable}
-        aria-describedby={helperId}
-        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-primary shadow-panel transition enabled:hover:bg-accent-hover enabled:focus-visible:outline enabled:focus-visible:outline-2 enabled:focus-visible:outline-offset-2 enabled:focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-      >
-        <TbTruckDelivery aria-hidden="true" focusable="false" className="size-5" />
-        Створити заявку на перевезення
-      </button>
+      {isAvailable ? (
+        <Link
+          href="/logistics/request"
+          aria-describedby={helperId}
+          className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
+        >
+          <TbTruckDelivery aria-hidden="true" focusable="false" className="size-5" />
+          Створити заявку на перевезення
+        </Link>
+      ) : (
+        <button
+          type="button"
+          disabled
+          aria-describedby={helperId}
+          className="inline-flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-primary opacity-60 shadow-panel sm:w-auto"
+        >
+          <TbTruckDelivery aria-hidden="true" focusable="false" className="size-5" />
+          Створити заявку на перевезення
+        </button>
+      )}
       <p id={helperId} className="mt-3 text-sm leading-6 text-white/70">
-        Онлайн-заявка готується до запуску.
+        {isAvailable
+          ? 'Форма доступна для попереднього заповнення. Надсилання буде додано на наступному етапі.'
+          : 'Онлайн-заявка готується до запуску.'}
       </p>
     </div>
   );

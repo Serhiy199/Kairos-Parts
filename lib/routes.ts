@@ -3,6 +3,7 @@ export const PUBLIC_ROUTES = [
   '/about',
   '/how-it-works',
   '/logistics',
+  '/logistics/request',
   '/categories',
   '/categories/[slug]',
   '/contacts',
