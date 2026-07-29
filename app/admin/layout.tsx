@@ -127,9 +127,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     '/admin/used-equipment',
     '/admin/team'
   ].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  const isAdmin = session.user.role === 'ADMIN';
 
   return (
-    <DashboardShell title="CRM менеджера" subtitle={session.user.role === 'ADMIN' ? 'Admin / CRM' : 'Manager / CRM'} navItems={navItemsWithBadges} homeHref="/admin" logoutTarget="staff" contentWidth={wideContent ? 'wide' : 'default'}>
+    <DashboardShell
+      title={isAdmin ? 'CRM адміністратора' : 'CRM менеджера'}
+      subtitle={isAdmin ? 'Адміністратор / CRM' : 'Менеджер / CRM'}
+      navItems={navItemsWithBadges}
+      homeHref="/admin"
+      logoutTarget="staff"
+      contentWidth={wideContent ? 'wide' : 'default'}
+    >
       {children}
     </DashboardShell>
   );

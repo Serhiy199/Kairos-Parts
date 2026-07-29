@@ -49,6 +49,8 @@ export default async function AdminLogisticsDetailPage({
   const request = await getLogisticsRequestDetail(id);
   if (!request) notFound();
   const transitions = LOGISTICS_STATUS_TRANSITIONS[request.status];
+  const canUpdateStatus =
+    session.user.role === 'ADMIN' || session.user.role === 'MANAGER';
   const minPreferredDeliveryDate = getKyivTodayDateOnly();
 
   return (
@@ -264,7 +266,7 @@ export default async function AdminLogisticsDetailPage({
             <div className="mt-3">
               <LogisticsStatusBadge status={request.status} />
             </div>
-            {session.user.role === 'ADMIN' && transitions.length > 0 ? (
+            {canUpdateStatus && transitions.length > 0 ? (
               <div className="mt-5 grid gap-2">
                 <p className="text-sm font-semibold text-muted">
                   Доступні переходи
@@ -295,7 +297,7 @@ export default async function AdminLogisticsDetailPage({
                 ))}
               </div>
             ) : null}
-            {session.user.role === 'ADMIN' && transitions.length === 0 ? (
+            {canUpdateStatus && transitions.length === 0 ? (
               <p className="mt-4 text-sm text-muted">
                 Статус є кінцевим і не може бути змінений.
               </p>

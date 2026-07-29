@@ -213,7 +213,7 @@ export async function updateLogisticsPreferredDeliveryDate(
 export async function updateLogisticsRequestStatus(
   formData: FormData
 ): Promise<WorkflowActionResult> {
-  const session = await requireAdminSession();
+  const session = await requireCrmSession();
   const requestId = field(formData, 'requestId');
   const expectedStatusValue = field(formData, 'expectedStatus', 32);
   const targetStatusValue = field(formData, 'targetStatus', 32);
