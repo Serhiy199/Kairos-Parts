@@ -10,7 +10,6 @@ import {
   TbCircleCheck,
   TbClockHour3,
   TbInfoCircle,
-  TbLoader2,
   TbMapPin,
   TbPlus,
   TbTractor,
@@ -48,6 +47,7 @@ import {
   type LogisticsTariffCityCode
 } from '@/lib/logistics/tariff-cities';
 import { formatPhoneIdentifierInput } from '@/lib/phone/client-format';
+import { siteContacts } from '@/lib/site-contacts';
 
 type LogisticsRequestFormProps = {
   initialContact: {
@@ -275,7 +275,7 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
 
     const controller = new AbortController();
     setQuoteStatus('loading');
-    setQuoteMessage('Перевіряємо актуальний тариф…');
+    setQuoteMessage('');
     const timeoutId = window.setTimeout(async () => {
       try {
         const response = await fetch('/api/logistics/quote', {
@@ -303,7 +303,7 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
 
         setServerQuote({ key: quoteKey, value: quote });
         setQuoteStatus('verified');
-        setQuoteMessage('Тариф актуальний');
+        setQuoteMessage('');
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
         setServerQuote(null);
@@ -810,10 +810,16 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
 
           {destinationType === 'KAIROS_BASE' ? (
             <div className="mt-4 rounded-lg border border-public-border/70 bg-public-elevated/60 p-4">
-              <p className="flex items-start gap-2 font-semibold text-public-primary">
+              <a
+                href={siteContacts.address.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Відкрити адресу ${KAIROS_LOGISTICS_BASE_ADDRESS} у Google Maps`}
+                className="flex items-start gap-2 font-semibold text-public-primary transition hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
                 <TbMapPin aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-accent" />
                 {KAIROS_LOGISTICS_BASE_ADDRESS}
-              </p>
+              </a>
               <p className="mt-2 text-sm leading-6 text-public-muted">
                 Доставка до бази входить у розрахунок без додаткової оплати.
               </p>
@@ -973,14 +979,11 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
       <div className="grid min-w-0 content-start gap-5">
         <aside
           aria-labelledby="logistics-price-preview-title"
-          className="public-card min-w-0 p-5 sm:p-7 lg:sticky lg:top-24"
+          className="public-card min-w-0 p-5 sm:p-7"
         >
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
-          Серверний тариф
-        </p>
         <h2
           id="logistics-price-preview-title"
-          className="mt-2 text-2xl font-bold text-public-primary"
+          className="text-2xl font-bold text-public-primary"
         >
           Розрахунок вартості
         </h2>
@@ -1048,35 +1051,15 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
           <TbCheck aria-hidden="true" className="size-5 text-public-success" />
           Усі ціни включають ПДВ
         </p>
-        <div
-          aria-live="polite"
-          className={`mt-4 flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${
-            quoteStatus === 'verified'
-              ? 'border-public-success/30 bg-public-success/10 text-public-success'
-              : quoteStatus === 'error'
-                ? 'border-public-danger/30 bg-public-danger/10 text-public-danger'
-                : 'border-public-border bg-public-elevated text-public-muted'
-          }`}
-        >
-          {quoteStatus === 'loading' ? (
-            <TbLoader2 aria-hidden="true" className="size-5 shrink-0 animate-spin" />
-          ) : quoteStatus === 'verified' ? (
-            <TbCheck aria-hidden="true" className="size-5 shrink-0" />
-          ) : (
+        {quoteStatus === 'error' && quoteMessage ? (
+          <div
+            role="alert"
+            className="mt-4 flex min-h-11 items-center gap-2 rounded-lg border border-public-danger/30 bg-public-danger/10 px-3 py-2 text-sm font-semibold text-public-danger"
+          >
             <TbInfoCircle aria-hidden="true" className="size-5 shrink-0" />
-          )}
-          <span>
-            {quoteStatus === 'verified'
-              ? `${quoteMessage} · ${
-                  isReady
-                    ? 'Дані форми заповнено'
-                    : 'Заповніть обов’язкові поля'
-                }`
-              : quoteStatus === 'idle'
-                ? 'Оберіть місто для перевірки тарифу'
-                : quoteMessage}
-          </span>
-        </div>
+            <span>{quoteMessage}</span>
+          </div>
+        ) : null}
 
         {globalError ? (
           <div
