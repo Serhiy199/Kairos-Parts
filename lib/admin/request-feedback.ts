@@ -125,6 +125,15 @@ const feedbackByResult = {
   'document-not-found': { tone: 'warning', message: 'Документ не знайдено.' },
   'invoice-created': { tone: 'success', message: 'Рахунок створено.' },
   'invoice-sent': { tone: 'success', message: 'Рахунок надіслано клієнту.' },
+  'invoice-sent-notification-failed': {
+    tone: 'warning',
+    message:
+      'Рахунок надіслано в кабінет клієнта, але повідомлення не доставлено.'
+  },
+  'invoice-already-sent': {
+    tone: 'warning',
+    message: 'Рахунок уже надіслано клієнту.'
+  },
   'invoice-cancelled': { tone: 'success', message: 'Рахунок скасовано.' },
   'invoice-paid': { tone: 'success', message: 'Рахунок позначено як оплачений.' },
   'invoice-no-approved-items': {
@@ -160,6 +169,14 @@ const feedbackByResult = {
     tone: 'warning',
     message: 'Некоректна зміна статусу рахунку.'
   },
+  'invoice-request-mismatch': {
+    tone: 'error',
+    message: 'Рахунок не належить цій заявці.'
+  },
+  'invoice-request-not-awaiting-send': {
+    tone: 'warning',
+    message: 'Поточний статус заявки не дозволяє надіслати рахунок.'
+  },
   'invoice-empty': { tone: 'warning', message: 'Не можна надіслати порожній рахунок.' },
   'invoice-forbidden': {
     tone: 'warning',
@@ -169,7 +186,11 @@ const feedbackByResult = {
     tone: 'warning',
     message: 'Спочатку заповніть реквізити продавця.'
   },
-  'invoice-error': { tone: 'error', message: 'Не вдалося обробити рахунок.' }
+  'invoice-error': { tone: 'error', message: 'Не вдалося обробити рахунок.' },
+  'invoice-send-error': {
+    tone: 'error',
+    message: 'Не вдалося надіслати рахунок. Спробуйте ще раз.'
+  }
 } as const satisfies Record<string, { tone: AdminActionFeedbackTone; message: string }>;
 
 export function getAdminRequestFeedback(result?: string): AdminActionFeedback | null {

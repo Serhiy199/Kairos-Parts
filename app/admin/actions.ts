@@ -958,10 +958,19 @@ export async function sendAdminInvoice(formData: FormData) {
   const invoiceId = readString(formData, 'invoiceId');
 
   if (!hasDatabaseUrl() || !requestId || !invoiceId) {
-    return workflowResult('invoice-error', false, false);
+    return workflowResult('invoice-send-error', false, false);
   }
 
-  const result = await sendInvoiceToClient(invoiceId, await getInvoiceAuditContext(session));
+  let result: Awaited<ReturnType<typeof sendInvoiceToClient>>;
+  try {
+    result = await sendInvoiceToClient({
+      invoiceId,
+      expectedRequestId: requestId,
+      audit: await getInvoiceAuditContext(session)
+    });
+  } catch {
+    return workflowResult('invoice-send-error', false);
+  }
 
   if (!result.ok) {
     return workflowResult(result.status, false);
@@ -969,6 +978,12 @@ export async function sendAdminInvoice(formData: FormData) {
 
   revalidatePath(`/admin/requests/${requestId}`);
   revalidatePath(`/client/requests/${requestId}`);
+  if (result.outcome === 'noop') {
+    return workflowResult('invoice-already-sent', true);
+  }
+  if (!result.notificationDelivered) {
+    return workflowResult('invoice-sent-notification-failed', true);
+  }
   return workflowResult('invoice-sent', true);
 }
 

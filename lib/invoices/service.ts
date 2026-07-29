@@ -11,7 +11,12 @@ import {
   InvoiceSelectionError,
   resolveInvoiceSelection
 } from '@/lib/invoices/selection';
+import { createSendInvoiceToClientService } from '@/lib/invoices/send-workflow';
 import { prisma } from '@/lib/prisma';
+import {
+  REQUEST_STATUS_EVENTS,
+  transitionRequestStatus
+} from '@/lib/requests/status-transition';
 import { sendTelegramInvoiceSentNotification } from '@/lib/telegram/notifications';
 
 const crmRoles: UserRole[] = ['MANAGER', 'ADMIN'];
@@ -39,7 +44,7 @@ const invoiceAuditSelect = {
   sentAt: true,
   paidAt: true,
   cancelledAt: true,
-  request: { select: { requestNumber: true } },
+  request: { select: { requestNumber: true, status: true } },
   selectionBatch: { select: { revision: true } },
   _count: { select: { items: true } }
 } satisfies Prisma.InvoiceSelect;
@@ -371,41 +376,64 @@ export async function getInvoiceForAdmin(invoiceId: string) {
   });
 }
 
-export async function sendInvoiceToClient(invoiceId: string, audit: InvoiceAuditContext) {
-  if (!isCrmRole(audit.actorRole)) {
-    return { ok: false as const, status: 'invoice-forbidden' };
-  }
-
-  const result = await prisma.$transaction(async (tx) => {
-    const invoice = await tx.invoice.findUnique({ where: { id: invoiceId }, select: invoiceAuditSelect });
-    if (!invoice) return { ok: false as const, status: 'invoice-not-found' };
-    if (invoice.status !== 'DRAFT') return { ok: false as const, status: 'invoice-invalid-transition' };
-    if (invoice._count.items === 0) return { ok: false as const, status: 'invoice-empty' };
-
-    const updated = await tx.invoice.update({
-      where: { id: invoice.id },
-      data: { status: 'SENT', sentAt: new Date() }
-    });
-    const auditUpdated = await tx.invoice.findUniqueOrThrow({ where: { id: invoice.id }, select: invoiceAuditSelect });
-    const diff = buildAuditDiff(invoiceSnapshot(invoice), invoiceSnapshot(auditUpdated), INVOICE_AUDIT_FIELDS);
-    await writeInvoiceAudit(tx, audit, auditUpdated, {
+export const sendInvoiceToClient = createSendInvoiceToClientService<
+  Prisma.TransactionClient,
+  InvoiceAuditRecord,
+  InvoiceAuditContext
+>({
+  runTransaction: <T>(callback: (tx: Prisma.TransactionClient) => Promise<T>) =>
+    prisma.$transaction(callback),
+  findActor: (tx, actorId) =>
+    tx.user.findUnique({
+      where: { id: actorId },
+      select: { id: true, role: true, status: true }
+    }),
+  findInvoice: (tx, invoiceId) =>
+    tx.invoice.findUnique({
+      where: { id: invoiceId },
+      select: invoiceAuditSelect
+    }),
+  markInvoiceSent: (tx, invoiceId, sentAt) =>
+    tx.invoice.updateMany({
+      where: { id: invoiceId, status: 'DRAFT' },
+      data: { status: 'SENT', sentAt }
+    }),
+  transitionRequest: (tx, input) =>
+    transitionRequestStatus({
+      requestId: input.requestId,
+      event: REQUEST_STATUS_EVENTS.INVOICE_SENT,
+      actor: { id: input.actorId },
+      metadata: {
+        source: 'ADMIN_CRM',
+        eventKey: REQUEST_STATUS_EVENTS.INVOICE_SENT,
+        triggerEntityType: 'INVOICE',
+        triggerEntityId: input.invoiceId
+      },
+      requestContext: input.requestContext,
+      tx
+    }),
+  writeInvoiceSentAudit: async (tx, audit, before, after) => {
+    const diff = buildAuditDiff(
+      invoiceSnapshot(before),
+      invoiceSnapshot(after),
+      INVOICE_AUDIT_FIELDS
+    );
+    await writeInvoiceAudit(tx, audit, after, {
       action: 'INVOICE_SENT',
       oldValue: diff.before,
       newValue: diff.after
     });
-    return { ok: true as const, invoice: updated };
-  });
-
-  if (!result.ok) return result;
-
-  try {
-    await sendTelegramInvoiceSentNotification({ invoiceId: result.invoice.id });
-  } catch {
-    // Telegram delivery must not block the invoice status transition.
-  }
-
-  return result;
-}
+  },
+  notify: async (invoiceId) => {
+    const notification = await sendTelegramInvoiceSentNotification({
+      invoiceId
+    });
+    if (notification.status !== 'sent') {
+      throw new Error(`INVOICE_NOTIFICATION_${notification.status}`);
+    }
+  },
+  now: () => new Date()
+});
 
 export async function cancelInvoice(invoiceId: string, audit: InvoiceAuditContext) {
   if (!isCrmRole(audit.actorRole)) {
