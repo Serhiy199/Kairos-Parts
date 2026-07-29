@@ -64,6 +64,7 @@ export async function notifyNewLogisticsRequest(input: {
   tariffCityName: string;
   pickupPointCount: number;
   destinationType: LogisticsDestinationType;
+  preferredDeliveryDate: string | null;
   totalPrice: string;
 }) {
   await notify(

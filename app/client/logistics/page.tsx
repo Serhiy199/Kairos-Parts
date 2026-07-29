@@ -15,6 +15,7 @@ import {
   formatLogisticsUahCompact,
   LOGISTICS_DESTINATION_SENTENCE_LABELS
 } from '@/lib/logistics/presentation';
+import { formatDateOnlyShort } from '@/lib/logistics/date-only';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,6 +98,14 @@ export default async function ClientLogisticsPage({
                   <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                     <ListField label="Створено" value={date(request.createdAt)} />
                     <ListField
+                      label="Бажана дата"
+                      value={
+                        request.preferredDeliveryDate
+                          ? formatDateOnlyShort(request.preferredDeliveryDate)
+                          : 'Не вказана'
+                      }
+                    />
+                    <ListField
                       label="Тарифне місто"
                       value={request.tariffCityName}
                     />
@@ -132,7 +141,7 @@ export default async function ClientLogisticsPage({
                 <thead>
                   <tr className="border-b border-border bg-surface-muted text-muted">
                     <th className="px-4 py-3 font-bold">Номер</th>
-                    <th className="px-4 py-3 font-bold">Дата</th>
+                    <th className="px-4 py-3 font-bold">Дати</th>
                     <th className="px-4 py-3 font-bold">Тарифне місто</th>
                     <th className="px-4 py-3 font-bold">Точки</th>
                     <th className="px-4 py-3 font-bold">Доставка</th>
@@ -151,7 +160,17 @@ export default async function ClientLogisticsPage({
                         {request.requestNumber}
                       </td>
                       <td className="px-4 py-3 text-muted">
-                        {date(request.createdAt)}
+                        <span className="block">
+                          Створено: {date(request.createdAt)}
+                        </span>
+                        <span className="mt-1 block">
+                          Бажана:{' '}
+                          {request.preferredDeliveryDate
+                            ? formatDateOnlyShort(
+                                request.preferredDeliveryDate
+                              )
+                            : 'не вказана'}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-muted">
                         {request.tariffCityName}

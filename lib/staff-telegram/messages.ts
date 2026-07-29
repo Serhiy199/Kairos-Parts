@@ -3,6 +3,9 @@ import 'server-only';
 import type { LogisticsDestinationType } from '@prisma/client';
 
 import {
+  formatDateOnlyShort
+} from '@/lib/logistics/date-only';
+import {
   formatLogisticsUahCompact,
   LOGISTICS_DESTINATION_DIRECTION_LABELS
 } from '@/lib/logistics/presentation';
@@ -27,6 +30,7 @@ export function buildNewLogisticsRequestMessage(input: {
   tariffCityName: string;
   pickupPointCount: number;
   destinationType: LogisticsDestinationType;
+  preferredDeliveryDate: string | null;
   totalPrice: string;
 }) {
   return [
@@ -38,6 +42,9 @@ export function buildNewLogisticsRequestMessage(input: {
     `Місто: ${plainText(input.tariffCityName, 120)}`,
     `Точок відвантаження: ${input.pickupPointCount}`,
     `Доставка: ${LOGISTICS_DESTINATION_DIRECTION_LABELS[input.destinationType]}`,
+    `Бажана дата: ${
+      formatDateOnlyShort(input.preferredDeliveryDate) || 'не вказана'
+    }`,
     `Кінцева сума: ${formatLogisticsUahCompact(input.totalPrice)}`,
     '',
     'Відкрити в CRM:',

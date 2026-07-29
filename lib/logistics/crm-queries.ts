@@ -19,6 +19,7 @@ import {
   type LogisticsTariffCityCode
 } from '@/lib/logistics/tariff-cities';
 import { prisma } from '@/lib/prisma';
+import { serializeDateOnly } from '@/lib/logistics/date-only';
 
 export const LOGISTICS_CRM_PAGE_SIZE = 25;
 const SEARCH_MAX_LENGTH = 80;
@@ -161,6 +162,7 @@ export async function getLogisticsCrmPage(filters: LogisticsCrmFilters) {
       id: true,
       requestNumber: true,
       createdAt: true,
+      preferredDeliveryDate: true,
       contactName: true,
       contactPhone: true,
       tariffCityCodeSnapshot: true,
@@ -179,6 +181,7 @@ export async function getLogisticsCrmPage(filters: LogisticsCrmFilters) {
       id: record.id,
       requestNumber: record.requestNumber,
       createdAt: record.createdAt.toISOString(),
+      preferredDeliveryDate: serializeDateOnly(record.preferredDeliveryDate),
       contactName: record.contactName,
       contactPhone: record.contactPhone,
       tariffCityCode: record.tariffCityCodeSnapshot,
@@ -205,6 +208,7 @@ export async function getLogisticsRequestDetail(id: string) {
       status: true,
       createdAt: true,
       updatedAt: true,
+      preferredDeliveryDate: true,
       clientId: true,
       companyId: true,
       contactName: true,
@@ -265,6 +269,7 @@ export async function getLogisticsRequestDetail(id: string) {
     status: record.status,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
+    preferredDeliveryDate: serializeDateOnly(record.preferredDeliveryDate),
     source: resolveLogisticsSourceKind(record),
     sourceName:
       record.company?.name ??

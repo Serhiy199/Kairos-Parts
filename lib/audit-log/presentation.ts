@@ -1,3 +1,5 @@
+import { formatDateOnlyShort } from '@/lib/logistics/date-only';
+
 type AuditDetail = {
   key: string;
   label: string;
@@ -104,7 +106,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   LOGISTICS_REQUEST_CREATED: 'Логістичну заявку створено',
   LOGISTICS_STATUS_CHANGED: 'Статус логістичної заявки змінено',
   LOGISTICS_INTERNAL_COMMENT_CREATED: 'Внутрішній коментар додано',
-  LOGISTICS_TARIFF_UPDATED: 'Тариф Logistics оновлено'
+  LOGISTICS_TARIFF_UPDATED: 'Тариф Logistics оновлено',
+  LOGISTICS_PREFERRED_DATE_CHANGED: 'Змінено бажану дату перевезення'
 };
 
 export const AUDIT_EVENT_LABELS: Record<string, string> = {
@@ -177,6 +180,7 @@ const KEY_LABELS: Record<string, string> = {
   requestId: 'ID заявки',
   requestNumber: 'Номер заявки',
   tariffCityCode: 'Код тарифного міста',
+  preferredDeliveryDate: 'Бажана дата перевезення',
   commentId: 'ID внутрішнього коментаря',
   invoiceNumber: 'Номер рахунку',
   commercialOfferNumber: 'Номер пропозиції',
@@ -258,6 +262,8 @@ const DATE_KEYS = new Set([
   'rejectedAt'
 ]);
 
+const DATE_ONLY_KEYS = new Set(['preferredDeliveryDate']);
+
 export function asAuditRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -333,6 +339,9 @@ export function formatAuditValue(value: unknown, key?: string): string {
     }
     if (key && DATE_KEYS.has(key)) {
       return formatDateValue(value) ?? shorten(value);
+    }
+    if (key && DATE_ONLY_KEYS.has(key)) {
+      return formatDateOnlyShort(value) || shorten(value);
     }
     return VALUE_LABELS[value] ?? shorten(value);
   }

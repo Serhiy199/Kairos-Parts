@@ -161,6 +161,7 @@ const validCreatePayload = {
     }
   ],
   destinationType: 'FARM',
+  preferredDeliveryDate: '2099-08-05',
   farmExternalAddressId: 'mock:community:kaharlyk:001',
   contactName: 'Synthetic Stage Five',
   contactPhone: '+380000000001',
@@ -315,6 +316,8 @@ const samplePrepared = {
     price: new Prisma.Decimal('2200.00')
   },
   destinationType: 'FARM',
+  preferredDeliveryDate: new Date(Date.UTC(2099, 7, 5)),
+  preferredDeliveryDateValue: '2099-08-05',
   baseAddressSnapshot: null,
   farmAddress: {
     formattedAddress: 'Synthetic farm',
@@ -354,6 +357,8 @@ assert.equal(
       contactPhone: samplePrepared.contactPhone,
       tariffCityCodeSnapshot: samplePrepared.tariff.code,
       destinationType: samplePrepared.destinationType,
+      preferredDeliveryDate: samplePrepared.preferredDeliveryDate,
+      preferredDeliveryDateSnapshot: samplePrepared.preferredDeliveryDate,
       farmFormattedAddress: samplePrepared.farmAddress.formattedAddress,
       clientComment: null,
       pickupPoints: samplePrepared.pickupPoints.map((point) => ({

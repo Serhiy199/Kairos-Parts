@@ -21,6 +21,7 @@ import {
   type LogisticsCrmSearchParams
 } from '@/lib/logistics/crm-queries';
 import { LOGISTICS_TARIFF_CITIES } from '@/lib/logistics/tariff-cities';
+import { formatDateOnlyShort } from '@/lib/logistics/date-only';
 
 export const dynamic = 'force-dynamic';
 
@@ -193,6 +194,14 @@ export default async function AdminLogisticsPage({
                 </div>
                 <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
                   <CardField label="Створено" value={dateTime(request.createdAt)} />
+                  <CardField
+                    label="Бажана дата"
+                    value={
+                      request.preferredDeliveryDate
+                        ? formatDateOnlyShort(request.preferredDeliveryDate)
+                        : 'Не вказано'
+                    }
+                  />
                   <CardField label="Контакт" value={request.contactName} />
                   <CardField label="Телефон" value={request.contactPhone} />
                   <CardField label="Місто" value={request.tariffCityName} />
@@ -231,7 +240,7 @@ export default async function AdminLogisticsPage({
             <thead>
               <tr className="border-b border-border bg-surface-muted text-muted">
                 <th className="px-4 py-3 font-bold">№</th>
-                <th className="px-4 py-3 font-bold">Створено</th>
+                <th className="px-4 py-3 font-bold">Дати</th>
                 <th className="px-4 py-3 font-bold">Контакт</th>
                 <th className="px-4 py-3 font-bold">Телефон</th>
                 <th className="px-4 py-3 font-bold">Місто</th>
@@ -257,7 +266,15 @@ export default async function AdminLogisticsPage({
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-muted">
-                    {dateTime(request.createdAt)}
+                    <span className="block">
+                      Створено: {dateTime(request.createdAt)}
+                    </span>
+                    <span className="mt-1 block">
+                      Бажана:{' '}
+                      {request.preferredDeliveryDate
+                        ? formatDateOnlyShort(request.preferredDeliveryDate)
+                        : 'не вказано'}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-muted">
                     {request.contactName}

@@ -13,6 +13,7 @@ import {
   formatLogisticsUahCompact,
   LOGISTICS_DESTINATION_SENTENCE_LABELS
 } from '@/lib/logistics/presentation';
+import { formatDateOnlyLongUk } from '@/lib/logistics/date-only';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,6 +79,14 @@ export default async function ClientLogisticsDetailPage({
         <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2">
           <DetailField label="Створено" value={dateTime(request.createdAt)} />
           <DetailField label="Оновлено" value={dateTime(request.updatedAt)} />
+          <DetailField
+            label="Бажана дата перевезення"
+            value={
+              request.preferredDeliveryDate
+                ? formatDateOnlyLongUk(request.preferredDeliveryDate)
+                : 'Бажану дату не вказано'
+            }
+          />
         </dl>
       </section>
 

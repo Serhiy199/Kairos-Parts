@@ -3,6 +3,11 @@ import 'server-only';
 import type { LogisticsSubmitIdentity } from '@/lib/logistics/access';
 import { KAIROS_LOGISTICS_BASE_ADDRESS } from '@/lib/logistics/constants';
 import {
+  compareDateOnly,
+  getKyivTodayDateOnly,
+  serializeDateOnly
+} from '@/lib/logistics/date-only';
+import {
   createLogisticsRequest,
   type PreparedLogisticsRequest
 } from '@/lib/logistics/create-request';
@@ -31,6 +36,19 @@ export async function prepareLogisticsRequest(input: {
       'contactPhone'
     );
   }
+  if (
+    compareDateOnly(
+      input.parsed.preferredDeliveryDate.value,
+      getKyivTodayDateOnly()
+    ) < 0
+  ) {
+    throw new LogisticsRequestError(
+      'PREFERRED_DELIVERY_DATE_IN_PAST',
+      422,
+      'Бажана дата перевезення не може бути в минулому.',
+      'preferredDeliveryDate'
+    );
+  }
 
   const tariff = await getActiveLogisticsTariff(input.parsed.tariffCityCode);
   const pricing = calculateAuthoritativeLogisticsPrice({
@@ -46,6 +64,8 @@ export async function prepareLogisticsRequest(input: {
     contactPhone: canonicalPhone,
     tariff,
     destinationType: input.parsed.destinationType,
+    preferredDeliveryDate: input.parsed.preferredDeliveryDate.date,
+    preferredDeliveryDateValue: input.parsed.preferredDeliveryDate.value,
     baseAddressSnapshot:
       input.parsed.destinationType === 'KAIROS_BASE'
         ? KAIROS_LOGISTICS_BASE_ADDRESS
@@ -89,6 +109,7 @@ export async function createPreparedLogisticsRequest(
       tariffCityName: input.tariff.name,
       pickupPointCount: input.pickupPoints.length,
       destinationType: input.destinationType,
+      preferredDeliveryDate: serializeDateOnly(result.preferredDeliveryDate),
       totalPrice: serializeLogisticsMoney(result.totalPrice)
     });
   }
@@ -98,6 +119,7 @@ export async function createPreparedLogisticsRequest(
     totalPrice: serializeLogisticsMoney(result.totalPrice),
     currency: 'UAH' as const,
     vatIncluded: true as const,
-    status: result.status
+    status: result.status,
+    preferredDeliveryDate: serializeDateOnly(result.preferredDeliveryDate)
   };
 }

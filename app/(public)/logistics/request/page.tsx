@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { LogisticsRequestForm } from '@/components/public/logistics/logistics-request-form';
 import { getLogisticsRequestContactPrefill } from '@/lib/logistics/access';
+import { getKyivTodayDateOnly } from '@/lib/logistics/date-only';
 import { buildAbsoluteUrl } from '@/lib/site-url';
 
 const canonicalUrl = buildAbsoluteUrl('/logistics/request');
@@ -22,6 +23,7 @@ export const metadata: Metadata = {
 
 export default async function LogisticsRequestPage() {
   const initialContact = await getLogisticsRequestContactPrefill();
+  const minPreferredDeliveryDate = getKyivTodayDateOnly();
 
   return (
     <>
@@ -49,7 +51,10 @@ export default async function LogisticsRequestPage() {
 
       <section className="bg-public-page py-10 sm:py-14 lg:py-16">
         <div className="kp-container">
-          <LogisticsRequestForm initialContact={initialContact} />
+          <LogisticsRequestForm
+            initialContact={initialContact}
+            minPreferredDeliveryDate={minPreferredDeliveryDate}
+          />
         </div>
       </section>
     </>

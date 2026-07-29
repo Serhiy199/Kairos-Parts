@@ -10,6 +10,7 @@ import type { LogisticsSubmitIdentity } from '@/lib/logistics/access';
 import type { LogisticsPricingBreakdown } from '@/lib/logistics/pricing';
 import { LogisticsRequestError } from '@/lib/logistics/request-errors';
 import type { LogisticsTariffCityCode } from '@/lib/logistics/tariff-cities';
+import { serializeDateOnly } from '@/lib/logistics/date-only';
 import { prisma } from '@/lib/prisma';
 
 export type PreparedLogisticsRequest = {
@@ -24,6 +25,8 @@ export type PreparedLogisticsRequest = {
     price: Prisma.Decimal;
   };
   destinationType: LogisticsDestinationType;
+  preferredDeliveryDate: Date;
+  preferredDeliveryDateValue: string;
   baseAddressSnapshot: string | null;
   farmAddress: {
     formattedAddress: string;
@@ -59,6 +62,8 @@ const existingRequestSelect = {
   contactPhone: true,
   tariffCityCodeSnapshot: true,
   destinationType: true,
+  preferredDeliveryDate: true,
+  preferredDeliveryDateSnapshot: true,
   farmFormattedAddress: true,
   clientComment: true,
   pickupPoints: {
@@ -113,6 +118,8 @@ export function logisticsIdempotencyIntentMatches(
     existing.contactName === input.contactName &&
     existing.tariffCityCodeSnapshot === input.tariff.code &&
     existing.destinationType === input.destinationType &&
+    serializeDateOnly(existing.preferredDeliveryDateSnapshot) ===
+      input.preferredDeliveryDateValue &&
     existing.farmFormattedAddress ===
       (input.farmAddress?.formattedAddress ?? null) &&
     existing.clientComment === input.clientComment &&
@@ -127,6 +134,7 @@ function idempotentResult(existing: NonNullable<ExistingRequest>) {
     requestNumber: existing.requestNumber,
     totalPrice: existing.totalPrice,
     status: existing.status,
+    preferredDeliveryDate: existing.preferredDeliveryDate,
     createdNew: false
   };
 }
@@ -163,6 +171,8 @@ export async function createLogisticsRequestInTransaction(
       tariffCityNameSnapshot: input.tariff.name,
       baseTariffSnapshot: input.pricing.baseTariff,
       destinationType: input.destinationType,
+      preferredDeliveryDate: input.preferredDeliveryDate,
+      preferredDeliveryDateSnapshot: input.preferredDeliveryDate,
       baseAddressSnapshot: input.baseAddressSnapshot,
       farmFormattedAddress: input.farmAddress?.formattedAddress ?? null,
       farmExternalAddressId: input.farmAddress?.externalAddressId ?? null,
@@ -190,7 +200,8 @@ export async function createLogisticsRequestInTransaction(
       id: true,
       requestNumber: true,
       totalPrice: true,
-      status: true
+      status: true,
+      preferredDeliveryDate: true
     }
   });
 
@@ -211,6 +222,7 @@ export async function createLogisticsRequestInTransaction(
       tariffCityCode: input.tariff.code,
       pickupPointCount: input.pickupPoints.length,
       destinationType: input.destinationType,
+      preferredDeliveryDate: input.preferredDeliveryDateValue,
       totalPrice: input.pricing.totalPrice,
       vatIncluded: true
     },
@@ -221,6 +233,7 @@ export async function createLogisticsRequestInTransaction(
         'tariffCityCode',
         'pickupPointCount',
         'destinationType',
+        'preferredDeliveryDate',
         'totalPrice',
         'vatIncluded'
       ]
@@ -233,6 +246,7 @@ export async function createLogisticsRequestInTransaction(
     requestNumber: created.requestNumber,
     totalPrice: created.totalPrice,
     status: created.status,
+    preferredDeliveryDate: created.preferredDeliveryDate,
     createdNew: true
   };
 }

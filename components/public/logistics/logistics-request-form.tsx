@@ -19,6 +19,11 @@ import {
 
 import { KAIROS_LOGISTICS_BASE_ADDRESS } from '@/lib/logistics/constants';
 import {
+  compareDateOnly,
+  formatDateOnlyShort,
+  parseDateOnly
+} from '@/lib/logistics/date-only';
+import {
   ADDITIONAL_PICKUP_CHARGE_MINOR_UNITS,
   calculateLogisticsPricePreview,
   FARM_DELIVERY_CHARGE_MINOR_UNITS,
@@ -54,6 +59,7 @@ type LogisticsRequestFormProps = {
     name: string;
     phone: string;
   };
+  minPreferredDeliveryDate: string;
 };
 
 type ServerQuote = {
@@ -75,6 +81,7 @@ type CreatedRequest = {
   currency: 'UAH';
   vatIncluded: true;
   status: 'NEW';
+  preferredDeliveryDate: string;
 };
 
 type ApiError = {
@@ -133,7 +140,8 @@ function readCreatedRequest(value: unknown): CreatedRequest | null {
     typeof request.totalPrice !== 'string' ||
     request.currency !== 'UAH' ||
     request.vatIncluded !== true ||
-    request.status !== 'NEW'
+    request.status !== 'NEW' ||
+    typeof request.preferredDeliveryDate !== 'string'
   ) {
     return null;
   }
@@ -193,7 +201,10 @@ function SectionHeading({
   );
 }
 
-export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormProps) {
+export function LogisticsRequestForm({
+  initialContact,
+  minPreferredDeliveryDate
+}: LogisticsRequestFormProps) {
   const pointCounterRef = useRef(1);
   const addPointButtonRef = useRef<HTMLButtonElement>(null);
   const successHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -207,6 +218,7 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
   const [destinationType, setDestinationType] =
     useState<LogisticsDestinationType>('KAIROS_BASE');
   const [farmAddress, setFarmAddress] = useState('');
+  const [preferredDeliveryDate, setPreferredDeliveryDate] = useState('');
   const [contactName, setContactName] = useState(initialContact.name);
   const [contactPhone, setContactPhone] = useState(
     formatPhoneIdentifierInput(initialContact.phone).display
@@ -243,15 +255,27 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
         : null,
     [destinationType, pickupPoints.length, tariffCityCode]
   );
-  const isReady = isLogisticsRequestDraftReady({
-    tariffCityCode,
-    pickupPoints,
-    destinationType,
-    farmAddress,
-    contactName,
-    contactPhone,
-    clientComment
-  });
+  const isReady = isLogisticsRequestDraftReady(
+    {
+      tariffCityCode,
+      pickupPoints,
+      destinationType,
+      farmAddress,
+      preferredDeliveryDate,
+      contactName,
+      contactPhone,
+      clientComment
+    },
+    minPreferredDeliveryDate
+  );
+  const parsedPreferredDeliveryDate = parseDateOnly(preferredDeliveryDate);
+  const preferredDeliveryDateInvalid =
+    Boolean(touchedFields.preferredDeliveryDate) &&
+    (!parsedPreferredDeliveryDate ||
+      compareDateOnly(
+        parsedPreferredDeliveryDate.value,
+        minPreferredDeliveryDate
+      ) < 0);
   const parsedPhone = formatPhoneIdentifierInput(contactPhone);
   const quoteKey = tariffCityCode
     ? `${tariffCityCode}:${pickupPoints.length}:${destinationType}`
@@ -328,6 +352,15 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
     setTouchedFields((current) => ({ ...current, [field]: true }));
   }
 
+  function clearServerFieldError(field: string) {
+    setServerFieldErrors((current) => {
+      if (!(field in current)) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
   function handleCityChange(nextCode: string) {
     setTariffCityCode(parseLogisticsTariffCitySelection(nextCode));
   }
@@ -394,6 +427,7 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
       const fieldIds: Record<string, string> = {
         tariffCityCode: 'logistics-tariff-city',
         farmAddress: 'logistics-farm-address',
+        preferredDeliveryDate: 'logistics-preferred-delivery-date',
         contactName: 'logistics-contact-name',
         contactPhone: 'logistics-contact-phone'
       };
@@ -429,6 +463,7 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
           })),
           destinationType,
           farmAddress: destinationType === 'FARM' ? farmAddress : undefined,
+          preferredDeliveryDate,
           contactName,
           contactPhone: parsedPhone.canonical,
           clientComment
@@ -482,9 +517,17 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
           Заявку створено
         </h2>
         <p className="mx-auto mt-3 max-w-xl leading-7 text-public-secondary">
-          Представник Kairos зв’яжеться з вами за вказаним номером телефону.
+          Представник Kairos підтвердить можливість виконання на вибрану дату.
         </p>
-        <dl className="mx-auto mt-7 grid max-w-2xl gap-4 rounded-xl border border-public-border bg-public-elevated p-5 text-left md:grid-cols-3">
+        <dl className="mx-auto mt-7 grid max-w-3xl gap-4 rounded-xl border border-public-border bg-public-elevated p-5 text-left sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <dt className="text-sm font-semibold text-public-muted">
+              Бажана дата
+            </dt>
+            <dd className="mt-2 text-lg font-bold text-public-primary">
+              {formatDateOnlyShort(createdRequest.preferredDeliveryDate)}
+            </dd>
+          </div>
           <div>
             <dt className="text-sm font-semibold text-public-muted">
               Номер заявки
@@ -870,10 +913,76 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
         </section>
 
         <section
+          aria-labelledby="logistics-preferred-delivery-date-section"
+          className="grid min-w-0 gap-3"
+        >
+          <SectionHeading
+            id="logistics-preferred-delivery-date-section"
+            number={4}
+          >
+            Бажана дата перевезення
+          </SectionHeading>
+          <div className="public-card min-w-0 p-4 sm:p-6">
+            <label
+              htmlFor="logistics-preferred-delivery-date"
+              className={logisticsLabelClassName}
+            >
+              <RequiredLabel>Бажана дата перевезення</RequiredLabel>
+              <input
+                id="logistics-preferred-delivery-date"
+                name="preferredDeliveryDate"
+                type="date"
+                value={preferredDeliveryDate}
+                min={minPreferredDeliveryDate}
+                required
+                onChange={(event) => {
+                  setPreferredDeliveryDate(event.target.value);
+                  clearServerFieldError('preferredDeliveryDate');
+                }}
+                onBlur={() => touch('preferredDeliveryDate')}
+                aria-invalid={
+                  preferredDeliveryDateInvalid ||
+                  Boolean(serverFieldErrors.preferredDeliveryDate)
+                    ? true
+                    : undefined
+                }
+                aria-describedby={[
+                  'logistics-preferred-delivery-date-helper',
+                  preferredDeliveryDateInvalid ||
+                  serverFieldErrors.preferredDeliveryDate
+                    ? 'logistics-preferred-delivery-date-error'
+                    : ''
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                className={`${logisticsFieldClassName} [color-scheme:dark]`}
+              />
+            </label>
+            <p
+              id="logistics-preferred-delivery-date-helper"
+              className="mt-2 text-xs leading-5 text-public-muted"
+            >
+              Вкажіть бажану дату. Остаточний час виконання узгоджується з
+              менеджером.
+            </p>
+            {preferredDeliveryDateInvalid ||
+            serverFieldErrors.preferredDeliveryDate ? (
+              <p
+                id="logistics-preferred-delivery-date-error"
+                className="mt-2 text-xs font-semibold text-public-danger"
+              >
+                {serverFieldErrors.preferredDeliveryDate ??
+                  'Вкажіть сьогоднішню або майбутню дату перевезення.'}
+              </p>
+            ) : null}
+          </div>
+        </section>
+
+        <section
           aria-labelledby="logistics-contact-section"
           className="grid min-w-0 gap-3"
         >
-          <SectionHeading id="logistics-contact-section" number={4}>
+          <SectionHeading id="logistics-contact-section" number={5}>
             Контактні дані
           </SectionHeading>
           <div className="public-card min-w-0 p-4 sm:p-6">
@@ -950,7 +1059,7 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
           aria-labelledby="logistics-comment-section"
           className="grid min-w-0 gap-3"
         >
-          <SectionHeading id="logistics-comment-section" number={5}>
+          <SectionHeading id="logistics-comment-section" number={6}>
             Коментар
           </SectionHeading>
           <div className="public-card min-w-0 p-4 sm:p-6">

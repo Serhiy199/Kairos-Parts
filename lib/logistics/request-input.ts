@@ -10,6 +10,12 @@ import {
   type LogisticsTariffCityCode
 } from '@/lib/logistics/tariff-cities';
 import {
+  compareDateOnly,
+  getKyivTodayDateOnly,
+  parseDateOnly,
+  type DateOnlyParseResult
+} from '@/lib/logistics/date-only';
+import {
   LOGISTICS_CARGO_DESCRIPTION_MIN_LENGTH,
   LOGISTICS_CARGO_DESCRIPTION_MAX_LENGTH,
   LOGISTICS_CLIENT_COMMENT_MAX_LENGTH,
@@ -43,6 +49,7 @@ export type LogisticsCreateInput = {
   }>;
   destinationType: LogisticsDestinationType;
   farmAddress: string | null;
+  preferredDeliveryDate: DateOnlyParseResult;
   contactName: string;
   contactPhone: string;
   clientComment: string | null;
@@ -75,6 +82,28 @@ function parseDestinationType(value: unknown): LogisticsDestinationType {
   }
 
   return value;
+}
+
+function parsePreferredDeliveryDate(value: unknown) {
+  const parsed = parseDateOnly(value);
+  if (!parsed) {
+    throw new LogisticsRequestError(
+      'INVALID_PREFERRED_DELIVERY_DATE',
+      422,
+      'Вкажіть коректну бажану дату перевезення.',
+      'preferredDeliveryDate'
+    );
+  }
+  if (compareDateOnly(parsed.value, getKyivTodayDateOnly()) < 0) {
+    throw new LogisticsRequestError(
+      'PREFERRED_DELIVERY_DATE_IN_PAST',
+      422,
+      'Бажана дата перевезення не може бути в минулому.',
+      'preferredDeliveryDate'
+    );
+  }
+
+  return parsed;
 }
 
 function parsePickupPointCount(value: unknown) {
@@ -233,6 +262,9 @@ export function parseLogisticsCreateInput(value: unknown): LogisticsCreateInput 
           )
         )
       : null;
+  const preferredDeliveryDate = parsePreferredDeliveryDate(
+    value.preferredDeliveryDate
+  );
 
   const contactName = requiredBoundedString(
     value.contactName,
@@ -274,6 +306,7 @@ export function parseLogisticsCreateInput(value: unknown): LogisticsCreateInput 
     pickupPoints,
     destinationType,
     farmAddress,
+    preferredDeliveryDate,
     contactName,
     contactPhone,
     clientComment: rawComment || null

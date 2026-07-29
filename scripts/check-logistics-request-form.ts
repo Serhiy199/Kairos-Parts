@@ -184,27 +184,35 @@ assert.equal(
   manualAddress
 );
 assert.equal(
-  isLogisticsRequestDraftReady({
-    tariffCityCode: 'MYRONIVKA',
-    pickupPoints: [firstPoint],
-    destinationType: 'KAIROS_BASE',
-    farmAddress: '',
-    contactName: 'Іван',
-    contactPhone: '+380671234567',
-    clientComment: ''
-  }),
+  isLogisticsRequestDraftReady(
+    {
+      tariffCityCode: 'MYRONIVKA',
+      pickupPoints: [firstPoint],
+      destinationType: 'KAIROS_BASE',
+      farmAddress: '',
+      preferredDeliveryDate: '2099-08-05',
+      contactName: 'Іван',
+      contactPhone: '+380671234567',
+      clientComment: ''
+    },
+    '2099-08-01'
+  ),
   true
 );
 assert.equal(
-  isLogisticsRequestDraftReady({
-    tariffCityCode: 'MYRONIVKA',
-    pickupPoints: [firstPoint],
-    destinationType: 'FARM',
-    farmAddress: '',
-    contactName: 'Іван',
-    contactPhone: '+380671234567',
-    clientComment: ''
-  }),
+  isLogisticsRequestDraftReady(
+    {
+      tariffCityCode: 'MYRONIVKA',
+      pickupPoints: [firstPoint],
+      destinationType: 'FARM',
+      farmAddress: '',
+      preferredDeliveryDate: '2099-08-05',
+      contactName: 'Іван',
+      contactPhone: '+380671234567',
+      clientComment: ''
+    },
+    '2099-08-01'
+  ),
   false
 );
 

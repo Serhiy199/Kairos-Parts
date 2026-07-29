@@ -8,6 +8,7 @@ import type {
 import type { ClientAccessContext } from '@/lib/client/access';
 import { logisticsRequestAccessWhere } from '@/lib/logistics/client-access';
 import { prisma } from '@/lib/prisma';
+import { serializeDateOnly } from '@/lib/logistics/date-only';
 
 export const CLIENT_LOGISTICS_PAGE_SIZE = 20;
 
@@ -15,6 +16,7 @@ export type ClientLogisticsListItem = {
   id: string;
   requestNumber: string;
   createdAt: string;
+  preferredDeliveryDate: string | null;
   tariffCityName: string;
   pickupPointCount: number;
   destinationType: LogisticsDestinationType;
@@ -26,6 +28,7 @@ export type ClientLogisticsDetail = {
   requestNumber: string;
   createdAt: string;
   updatedAt: string;
+  preferredDeliveryDate: string | null;
   status: LogisticsRequestStatus;
   contactName: string;
   contactPhone: string;
@@ -66,6 +69,7 @@ export async function getClientLogisticsPage(
       id: true,
       requestNumber: true,
       createdAt: true,
+      preferredDeliveryDate: true,
       tariffCityNameSnapshot: true,
       pickupPointCount: true,
       destinationType: true,
@@ -78,6 +82,7 @@ export async function getClientLogisticsPage(
     id: record.id,
     requestNumber: record.requestNumber,
     createdAt: record.createdAt.toISOString(),
+    preferredDeliveryDate: serializeDateOnly(record.preferredDeliveryDate),
     tariffCityName: record.tariffCityNameSnapshot,
     pickupPointCount: record.pickupPointCount,
     destinationType: record.destinationType,
@@ -108,6 +113,7 @@ export async function getClientLogisticsDetail(
       requestNumber: true,
       createdAt: true,
       updatedAt: true,
+      preferredDeliveryDate: true,
       status: true,
       contactName: true,
       contactPhone: true,
@@ -138,6 +144,7 @@ export async function getClientLogisticsDetail(
     requestNumber: record.requestNumber,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
+    preferredDeliveryDate: serializeDateOnly(record.preferredDeliveryDate),
     status: record.status,
     contactName: record.contactName,
     contactPhone: record.contactPhone,

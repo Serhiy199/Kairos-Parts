@@ -1,5 +1,9 @@
 import type { LogisticsDestinationType } from '@/lib/logistics/pricing-preview';
 import {
+  compareDateOnly,
+  parseDateOnly
+} from '@/lib/logistics/date-only';
+import {
   isLogisticsTariffCityCode,
   type LogisticsTariffCityCode
 } from '@/lib/logistics/tariff-cities';
@@ -26,6 +30,7 @@ export type LogisticsRequestFormDraft = {
   pickupPoints: LogisticsPickupPointDraft[];
   destinationType: LogisticsDestinationType;
   farmAddress: string;
+  preferredDeliveryDate: string;
   contactName: string;
   contactPhone: string;
   clientComment: string;
@@ -79,9 +84,13 @@ export function transitionLogisticsDestination(
   };
 }
 
-export function isLogisticsRequestDraftReady(draft: LogisticsRequestFormDraft) {
+export function isLogisticsRequestDraftReady(
+  draft: LogisticsRequestFormDraft,
+  minPreferredDeliveryDate: string
+) {
   const phone = formatPhoneIdentifierInput(draft.contactPhone);
   const farmAddress = draft.farmAddress.trim();
+  const preferredDeliveryDate = parseDateOnly(draft.preferredDeliveryDate);
 
   return Boolean(
     draft.tariffCityCode &&
@@ -105,6 +114,11 @@ export function isLogisticsRequestDraftReady(draft: LogisticsRequestFormDraft) {
       (draft.destinationType === 'KAIROS_BASE' ||
         (farmAddress.length >= LOGISTICS_MANUAL_ADDRESS_MIN_LENGTH &&
           farmAddress.length <= LOGISTICS_MANUAL_ADDRESS_MAX_LENGTH)) &&
+      preferredDeliveryDate &&
+      compareDateOnly(
+        preferredDeliveryDate.value,
+        minPreferredDeliveryDate
+      ) >= 0 &&
       draft.contactName.trim().length > 0 &&
       draft.contactName.trim().length <= LOGISTICS_CONTACT_NAME_MAX_LENGTH &&
       phone.canonical &&

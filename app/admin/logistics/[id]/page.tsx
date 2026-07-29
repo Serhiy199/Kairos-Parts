@@ -11,8 +11,13 @@ import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import {
   addLogisticsInternalComment,
+  updateLogisticsPreferredDeliveryDate,
   updateLogisticsRequestStatus
 } from '@/lib/logistics/crm-actions';
+import {
+  formatDateOnlyLongUk,
+  getKyivTodayDateOnly
+} from '@/lib/logistics/date-only';
 import {
   LOGISTICS_DESTINATION_LABELS,
   LOGISTICS_SOURCE_LABELS,
@@ -44,6 +49,7 @@ export default async function AdminLogisticsDetailPage({
   const request = await getLogisticsRequestDetail(id);
   if (!request) notFound();
   const transitions = LOGISTICS_STATUS_TRANSITIONS[request.status];
+  const minPreferredDeliveryDate = getKyivTodayDateOnly();
 
   return (
     <div className="cabinet-stack">
@@ -204,6 +210,53 @@ export default async function AdminLogisticsDetailPage({
         </div>
 
         <div className="grid min-w-0 content-start gap-5">
+          <section className="cabinet-card">
+            <h3 className="text-lg font-bold text-foreground">
+              Бажана дата перевезення
+            </h3>
+            <p className="mt-3 font-semibold text-foreground">
+              {request.preferredDeliveryDate
+                ? formatDateOnlyLongUk(request.preferredDeliveryDate)
+                : 'Бажану дату не вказано'}
+            </p>
+            <ReactiveActionForm
+              action={updateLogisticsPreferredDeliveryDate}
+              className="mt-5"
+            >
+              <input type="hidden" name="requestId" value={request.id} />
+              <input
+                type="hidden"
+                name="expectedUpdatedAt"
+                value={request.updatedAt}
+              />
+              <label
+                htmlFor="logistics-preferred-delivery-date"
+                className="text-sm font-semibold text-foreground"
+              >
+                Змінити бажану дату
+              </label>
+              <input
+                id="logistics-preferred-delivery-date"
+                name="preferredDeliveryDate"
+                type="date"
+                min={minPreferredDeliveryDate}
+                defaultValue={request.preferredDeliveryDate ?? ''}
+                required
+                className="mt-2 h-11 w-full rounded-md border border-border bg-card px-3 text-sm text-foreground outline-none [color-scheme:dark] focus:border-accent focus:ring-2 focus:ring-accent/20"
+              />
+              <p className="mt-2 text-xs leading-5 text-muted">
+                Дата є бажаною. Остаточну можливість виконання потрібно
+                узгодити з клієнтом.
+              </p>
+              <ReactiveSubmitButton
+                pendingLabel="Зберігаємо…"
+                className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-accent px-4 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Зберегти дату
+              </ReactiveSubmitButton>
+            </ReactiveActionForm>
+          </section>
+
           <section className="cabinet-card">
             <h3 className="text-lg font-bold text-foreground">
               Поточний статус

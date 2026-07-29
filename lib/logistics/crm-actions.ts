@@ -12,6 +12,12 @@ import {
   isLogisticsRequestStatus,
   LOGISTICS_STATUS_TRANSITIONS
 } from '@/lib/logistics/crm-presentation';
+import {
+  compareDateOnly,
+  getKyivTodayDateOnly,
+  parseDateOnly,
+  serializeDateOnly
+} from '@/lib/logistics/date-only';
 import { prisma } from '@/lib/prisma';
 
 const COMMENT_MAX_LENGTH = 2_000;
@@ -86,6 +92,122 @@ function revalidateLogisticsRequest(id: string) {
   revalidatePath('/admin/logistics');
   revalidatePath(`/admin/logistics/${id}`);
   revalidatePath('/admin', 'layout');
+}
+
+function revalidateLogisticsPreferredDate(id: string) {
+  revalidateLogisticsRequest(id);
+  revalidatePath('/client/logistics');
+  revalidatePath(`/client/logistics/${id}`);
+}
+
+export async function updateLogisticsPreferredDeliveryDate(
+  formData: FormData
+): Promise<WorkflowActionResult> {
+  const session = await requireCrmSession();
+  const requestId = field(formData, 'requestId');
+  const rawPreferredDeliveryDate = field(
+    formData,
+    'preferredDeliveryDate',
+    10
+  );
+  const expectedUpdatedAt = field(formData, 'expectedUpdatedAt', 40);
+  const preferredDeliveryDate = parseDateOnly(rawPreferredDeliveryDate);
+
+  if (!requestId || !expectedUpdatedAt || !preferredDeliveryDate) {
+    return failure(
+      'invalid-preferred-delivery-date',
+      'Вкажіть коректну бажану дату перевезення.'
+    );
+  }
+  if (
+    compareDateOnly(
+      preferredDeliveryDate.value,
+      getKyivTodayDateOnly()
+    ) < 0
+  ) {
+    return failure(
+      'preferred-delivery-date-in-past',
+      'Бажана дата перевезення не може бути в минулому.'
+    );
+  }
+
+  const expectedDate = new Date(expectedUpdatedAt);
+  if (Number.isNaN(expectedDate.getTime())) {
+    return failure(
+      'invalid-preferred-delivery-date',
+      'Не вдалося перевірити версію логістичної заявки.'
+    );
+  }
+
+  try {
+    const context = await requestContext();
+    const outcome = await prisma.$transaction(async (tx) => {
+      const current = await tx.logisticsRequest.findUnique({
+        where: { id: requestId },
+        select: {
+          id: true,
+          requestNumber: true,
+          preferredDeliveryDate: true,
+          updatedAt: true
+        }
+      });
+      if (!current) throw new LogisticsCrmActionError('NOT_FOUND');
+      if (current.updatedAt.getTime() !== expectedDate.getTime()) {
+        throw new LogisticsCrmActionError('CONFLICT');
+      }
+
+      const currentValue = serializeDateOnly(current.preferredDeliveryDate);
+      if (currentValue === preferredDeliveryDate.value) {
+        return 'unchanged' as const;
+      }
+
+      const updated = await tx.logisticsRequest.updateMany({
+        where: { id: requestId, updatedAt: expectedDate },
+        data: { preferredDeliveryDate: preferredDeliveryDate.date }
+      });
+      if (updated.count !== 1) {
+        throw new LogisticsCrmActionError('CONFLICT');
+      }
+
+      await writeAuditLog(tx, {
+        actor: auditUserActor(session.user.id),
+        entityType: 'LOGISTICS_REQUEST',
+        entityId: current.id,
+        entityLabel: current.requestNumber,
+        action: 'LOGISTICS_PREFERRED_DATE_CHANGED',
+        category: 'STANDARD',
+        oldValue: {
+          requestNumber: current.requestNumber,
+          preferredDeliveryDate: currentValue
+        },
+        newValue: {
+          requestNumber: current.requestNumber,
+          preferredDeliveryDate: preferredDeliveryDate.value
+        },
+        allowedFields: {
+          oldValue: ['requestNumber', 'preferredDeliveryDate'],
+          newValue: ['requestNumber', 'preferredDeliveryDate']
+        },
+        requestContext: context
+      });
+
+      return 'updated' as const;
+    });
+
+    if (outcome === 'updated') {
+      revalidateLogisticsPreferredDate(requestId);
+      return success(
+        'preferred-date-updated',
+        'Бажану дату перевезення оновлено.'
+      );
+    }
+    return success(
+      'preferred-date-unchanged',
+      'Бажана дата перевезення вже має вказане значення.'
+    );
+  } catch (error) {
+    return actionFailure(error, 'Перевірте бажану дату перевезення.');
+  }
 }
 
 export async function updateLogisticsRequestStatus(
