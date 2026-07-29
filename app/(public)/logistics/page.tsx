@@ -47,16 +47,17 @@ export default function LogisticsPage() {
         aria-labelledby="logistics-page-title"
         className="relative isolate min-h-[620px] overflow-hidden bg-primary text-white sm:min-h-[660px] lg:min-h-[700px]"
       >
-        <div className="absolute inset-y-0 right-0 -z-30 hidden md:left-6 md:block lg:left-8 min-[1504px]:left-[calc((100vw-1440px)/2+2rem)]">
+        <div className="absolute inset-0 -z-30 hidden md:block">
           <Image
-            src="/images/logistics/hero-logistic.png"
+            src="/images/logistics/logistics-hero-wide.png"
             alt=""
             fill
             priority
             sizes="100vw"
-            className="object-contain object-left"
+            className="object-cover object-center"
           />
         </div>
+        <div className="absolute inset-0 -z-20 hidden bg-[linear-gradient(90deg,rgba(5,7,10,0.96)_0%,rgba(5,7,10,0.88)_38%,rgba(5,7,10,0.42)_62%,rgba(5,7,10,0.18)_100%)] md:block" />
 
         <div className="relative mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
           <div className="relative min-h-[500px] py-14 sm:min-h-[540px] sm:py-16 md:flex md:items-center lg:min-h-[580px] lg:py-20">
@@ -83,7 +84,7 @@ export default function LogisticsPage() {
 
             <div className="relative mt-10 min-h-[260px] w-full md:hidden">
               <Image
-                src="/images/logistics/hero-logistic.png"
+                src="/images/logistics/logistics-delivery.jpg"
                 alt=""
                 fill
                 sizes="100vw"

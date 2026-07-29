@@ -87,7 +87,7 @@ const audiences = [
       'Пілотний проєкт у Кагарлицькому районі Київської області'
     ],
     icon: TbTruckDelivery,
-    image: '/images/advantages/benefit-5.png'
+    image: '/images/logistics/logistics-delivery.jpg'
   },
   {
     title: 'Електронний парк техніки',
@@ -98,7 +98,7 @@ const audiences = [
       'Майбутній функціонал для швидкого підбору та регулярних закупівель'
     ],
     icon: TbDeviceDesktop,
-    image: '/images/advantages/benefit-6.png'
+    image: '/images/about/service-equipment-fleet.jpg'
   },
   {
     title: 'Майданчик Б/В техніки',
@@ -109,7 +109,7 @@ const audiences = [
       'Укладайте угоди в екосистемі Kairos серед клієнтів і партнерів'
     ],
     icon: TbHeartHandshake,
-    image: '/images/home/for-whom-bg.png'
+    image: '/images/about/service-used-equipment.jpg'
   }
 ];
 

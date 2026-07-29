@@ -6,6 +6,8 @@ import {
   TbTruckDelivery
 } from 'react-icons/tb';
 
+import { siteContacts } from '@/lib/site-contacts';
+
 import { LogisticsOverviewPanel } from './logistics-overview-section';
 
 type LogisticsRate =
@@ -39,8 +41,7 @@ const includedServices = [
   'Організація відвантаження у постачальника',
   'Забір підготовленого товару',
   'Перевезення до логістичної бази Kairos Parts у Кагарлику',
-  'Вартість із ПДВ',
-  'Індивідуальний розрахунок для напрямків, яких немає у списку'
+  'Вартість із ПДВ'
 ];
 
 const priceFormatter = new Intl.NumberFormat('uk-UA');
@@ -152,10 +153,18 @@ export function LogisticsRatesSection() {
               </table>
             </div>
 
-            <p className="border-t border-public-border px-4 py-4 text-base leading-7 text-public-muted sm:px-6 sm:py-5">
-              Тариф включає відвантаження у постачальника та перевезення товару до логістичного хабу
-              Kairos Parts у м. Кагарлик. Вартість вже включає ПДВ.
-            </p>
+            <div className="border-t border-public-border px-4 py-4 sm:px-6 sm:py-5">
+              <p className="text-base leading-7 text-public-muted">
+                Тариф включає відвантаження у постачальника та перевезення товару до логістичного хабу
+                Kairos Parts у м. Кагарлик. Вартість вже включає ПДВ.{' '}
+                <span className="text-accent">
+                  Кожна додаткова точка завантаження — +600 грн з ПДВ.
+                </span>{' '}
+                <span className="text-accent">
+                  Доставка до господарства (в межах Кагарлицької громади) — +1000 грн з ПДВ.
+                </span>
+              </p>
+            </div>
           </div>
 
           <aside
@@ -217,9 +226,16 @@ export function LogisticsRatesSection() {
                   subtitle="м. Кагарлик"
                 />
               </div>
-              <p className="mt-6 text-center text-sm leading-6 text-public-muted sm:text-base">
-                Кінцева точка: м. Кагарлик, вул. Миронівська, 33д
-              </p>
+              <a
+                href={siteContacts.address.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Відкрити адресу ${siteContacts.address.display} у Google Maps`}
+                className="mt-6 flex w-full items-center justify-center gap-2 text-center text-sm leading-6 text-public-muted transition hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:text-base"
+              >
+                <TbMapPin aria-hidden="true" className="size-4 shrink-0 text-accent" />
+                <span>Кінцева точка: {siteContacts.address.display}</span>
+              </a>
             </div>
 
           </aside>
