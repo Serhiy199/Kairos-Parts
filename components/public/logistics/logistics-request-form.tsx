@@ -2,13 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import type { IconType } from 'react-icons';
 import {
+  TbAlertTriangle,
+  TbBuildingWarehouse,
   TbCheck,
   TbCircleCheck,
+  TbClockHour3,
   TbInfoCircle,
   TbLoader2,
   TbMapPin,
   TbPlus,
+  TbTractor,
   TbTrash,
   TbTruckDelivery
 } from 'react-icons/tb';
@@ -147,6 +152,15 @@ const logisticsFieldClassName =
 const logisticsTextareaClassName = `${logisticsFieldClassName} min-h-[128px] resize-y`;
 const logisticsLabelClassName =
   'grid gap-2 text-sm font-semibold text-public-secondary';
+const LOGISTICS_TRANSPORT_RESTRICTIONS = [
+  'є вибухонебезпечними',
+  'є легкозаймистими або горючими без належної упаковки',
+  'містять хімічні речовини, що потребують спеціального дозволу',
+  'потребують механізованого завантаження або розвантаження (кран, навантажувач тощо)',
+  'є великогабаритними або негабаритними та перевищують можливості нашого транспорту',
+  'є живими тваринами',
+  'є готівковими коштами, цінними паперами або іншими цінностями'
+] as const;
 
 function RequiredLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -774,14 +788,17 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
             <DestinationRadio
               value="KAIROS_BASE"
               checked={destinationType === 'KAIROS_BASE'}
+              icon={TbBuildingWarehouse}
               title="Доставити на базу Kairos"
-              description="Без додаткової оплати"
+              description={KAIROS_LOGISTICS_BASE_ADDRESS}
+              supportingText="Без додаткової оплати"
               price={`Вартість: ${formatLogisticsPrice(0)}`}
               onChange={selectDestination}
             />
             <DestinationRadio
               value="FARM"
               checked={destinationType === 'FARM'}
+              icon={TbTractor}
               title="Доставити в господарство"
               description="У межах Кагарлицької громади"
               price={`Додатково: +${formatLogisticsPrice(
@@ -953,10 +970,11 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
         </section>
       </div>
 
-      <aside
-        aria-labelledby="logistics-price-preview-title"
-        className="public-card min-w-0 p-5 sm:p-7 lg:sticky lg:top-24"
-      >
+      <div className="grid min-w-0 content-start gap-5">
+        <aside
+          aria-labelledby="logistics-price-preview-title"
+          className="public-card min-w-0 p-5 sm:p-7 lg:sticky lg:top-24"
+        >
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
           Серверний тариф
         </p>
@@ -1074,7 +1092,6 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
         <button
           type="submit"
           disabled={!canSubmit}
-          aria-describedby="logistics-submit-helper"
           className="mt-5 inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-lg bg-accent px-5 py-3 text-sm font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
         >
           <TbTruckDelivery aria-hidden="true" className="size-5" />
@@ -1085,30 +1102,105 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
         <p aria-live="polite" className="sr-only">
           {isSubmitting ? 'Заявка створюється.' : ''}
         </p>
-        <p
-          id="logistics-submit-helper"
-          className="mt-3 text-center text-xs leading-5 text-public-muted"
-        >
-          Перед створенням заявки сервер повторно перевірить актуальний тариф і
-          кінцеву суму.
-        </p>
-      </aside>
+        </aside>
+
+        <DeliveryGuidance />
+      </div>
     </form>
+  );
+}
+
+function DeliveryGuidance() {
+  return (
+    <div className="grid gap-4">
+      <section
+        aria-labelledby="logistics-estimated-delivery-title"
+        className="rounded-xl border border-accent/30 bg-accent/5 p-4 sm:p-5"
+      >
+        <div className="flex items-start gap-3">
+          <TbClockHour3
+            aria-hidden="true"
+            className="mt-0.5 size-7 shrink-0 text-accent"
+          />
+          <div className="min-w-0">
+            <h2
+              id="logistics-estimated-delivery-title"
+              className="font-bold text-public-primary"
+            >
+              Орієнтовний термін виконання
+            </h2>
+            <p className="mt-3 text-sm font-semibold leading-6 text-public-secondary">
+              Планова доставка: наступний робочий день
+              <br />
+              (забір до 14:00 — доставка до 18:00).
+            </p>
+            <p className="mt-2 text-sm leading-6 text-public-muted">
+              Точний час узгоджується з менеджером.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="logistics-restrictions-title"
+        className="rounded-xl border border-public-danger/30 bg-public-elevated/60 p-4 sm:p-5"
+      >
+        <div className="flex items-start gap-3">
+          <TbAlertTriangle
+            aria-hidden="true"
+            className="mt-0.5 size-7 shrink-0 text-public-danger"
+          />
+          <div className="min-w-0">
+            <h2
+              id="logistics-restrictions-title"
+              className="font-bold text-public-primary"
+            >
+              Обмеження перевезень
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-public-secondary">
+              Ми не перевозимо вантажі, які:
+            </p>
+            <ul className="mt-2 grid gap-2 pl-5 text-sm leading-6 text-public-muted">
+              {LOGISTICS_TRANSPORT_RESTRICTIONS.map((restriction, index) => (
+                <li
+                  key={restriction}
+                  className="list-disc marker:text-public-danger"
+                >
+                  {restriction}
+                  {index === LOGISTICS_TRANSPORT_RESTRICTIONS.length - 1
+                    ? '.'
+                    : ';'}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 border-t border-public-border pt-4 text-sm leading-6 text-public-muted">
+              Kairos Logistics залишає за собою право відмовити у виконанні
+              заявки, якщо перевезення суперечить законодавству України,
+              правилам безпеки або технічним можливостям сервісу.
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
 
 function DestinationRadio({
   value,
   checked,
+  icon: Icon,
   title,
   description,
+  supportingText,
   price,
   onChange
 }: {
   value: LogisticsDestinationType;
   checked: boolean;
+  icon: IconType;
   title: string;
   description: string;
+  supportingText?: string;
   price: string;
   onChange: (value: LogisticsDestinationType) => void;
 }) {
@@ -1129,11 +1221,26 @@ function DestinationRadio({
           onChange={() => onChange(value)}
           className="mt-1 accent-accent"
         />
-        <span>
+        <span
+          aria-hidden="true"
+          className={`flex size-11 shrink-0 items-center justify-center rounded-lg border ${
+            checked
+              ? 'border-accent/40 bg-accent/10 text-accent'
+              : 'border-public-border bg-public-page/40 text-public-muted'
+          }`}
+        >
+          <Icon className="size-9" />
+        </span>
+        <span className="min-w-0">
           <span className="block font-bold text-public-primary">{title}</span>
           <span className="mt-1 block text-xs leading-5 text-public-muted">
             {description}
           </span>
+          {supportingText ? (
+            <span className="mt-1 block text-xs leading-5 text-public-muted">
+              {supportingText}
+            </span>
+          ) : null}
           <span
             className={`mt-2 block text-sm font-bold ${
               checked ? 'text-accent' : 'text-public-secondary'
