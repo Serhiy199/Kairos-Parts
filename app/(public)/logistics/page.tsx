@@ -2,13 +2,9 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import {
-  TbClock,
-  TbPackage,
-  TbShieldCheck,
-  TbTruckDelivery
-} from 'react-icons/tb';
+import { TbTruckDelivery } from 'react-icons/tb';
 
+import { LogisticsBenefitsBar } from '@/components/public/logistics/logistics-benefits-bar';
 import { LogisticsFinalCta } from '@/components/public/logistics/logistics-final-cta';
 import { LogisticsRatesSection } from '@/components/public/logistics/logistics-rates-section';
 import {
@@ -40,24 +36,6 @@ export const metadata: Metadata = {
     follow: true
   }
 };
-
-const trustSignals = [
-  {
-    title: 'Швидко',
-    text: 'Оперативне реагування',
-    icon: TbClock
-  },
-  {
-    title: 'Надійно',
-    text: 'Контроль кожної заявки',
-    icon: TbShieldCheck
-  },
-  {
-    title: 'Просто',
-    text: 'Прозорі тарифи без прихованих умов',
-    icon: TbPackage
-  }
-];
 
 export default function LogisticsPage() {
   if (!LOGISTICS_LANDING_ENABLED) {
@@ -105,36 +83,7 @@ export default function LogisticsPage() {
         </div>
       </section>
 
-      <section aria-labelledby="logistics-trust-title" className="border-y border-white/10 bg-[#080a0d] text-white">
-        <div className="kp-container py-6 sm:py-8">
-          <h2 id="logistics-trust-title" className="sr-only">
-            Ключові переваги Kairos Logistics
-          </h2>
-          <div role="list" className="grid gap-4 md:grid-cols-3 md:gap-0">
-            {trustSignals.map((signal, index) => {
-              const Icon = signal.icon;
-
-              return (
-                <div
-                  key={signal.title}
-                  role="listitem"
-                  className={`flex min-w-0 items-center gap-4 rounded-lg border border-white/10 bg-white/[0.025] px-4 py-4 md:rounded-none md:border-y-0 md:border-l-0 md:bg-transparent md:px-6 ${
-                    index < trustSignals.length - 1 ? 'md:border-r' : 'md:border-r-0'
-                  }`}
-                >
-                  <span className="grid size-11 shrink-0 place-items-center rounded-full border border-accent/35 bg-accent/10 text-accent">
-                    <Icon aria-hidden="true" focusable="false" className="size-6 stroke-[1.6]" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-bold text-white">{signal.title}</p>
-                    <p className="mt-1 text-sm leading-6 text-white/70">{signal.text}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      <LogisticsBenefitsBar />
 
       <LogisticsRatesSection />
 
