@@ -226,8 +226,11 @@ assert.match(routeSource, /notFound\(\)/);
 assert.match(routeSource, /robots:[\s\S]*index: false[\s\S]*follow: false/);
 assert.match(landingSource, /href="\/logistics\/request"/);
 assert.match(landingSource, /Онлайн-заявка готується до запуску\./);
-assert.match(featureSource, /LOGISTICS_REQUEST_SUBMIT_ENABLED = false/);
-assert.match(formSource, /type="submit"[\s\S]{0,100}disabled/);
+assert.match(
+  featureSource,
+  /LOGISTICS_REQUEST_SUBMIT_ENABLED = isExplicitlyEnabled\([\s\S]{0,100}LOGISTICS_REQUEST_SUBMIT_ENABLED/
+);
+assert.match(formSource, /type="submit"[\s\S]{0,100}disabled=\{!canSubmit\}/);
 assert.match(comboboxSource, /AbortController/);
 assert.match(comboboxSource, /400/);
 assert.match(comboboxSource, /aria-activedescendant/);
@@ -254,15 +257,11 @@ assert.doesNotMatch(
 );
 assert.equal(
   existsSync(path.join(root, 'app', 'api', 'logistics', 'requests', 'route.ts')),
-  false,
-  'Stage 4 must not create a Logistics create API.'
+  true,
+  'Stage 5 must add the Logistics create API without breaking the Stage 4 form.'
 );
 
 for (const forbiddenPattern of [
-  /@\/auth/,
-  /getClientProfileForSession/,
-  /@\/lib\/prisma/,
-  /prisma\./,
   /google\.maps/i,
   /@google/i,
   /\blatitude\b/i,
@@ -275,5 +274,5 @@ for (const forbiddenPattern of [
 }
 
 console.log(
-  `logisticsRequestForm=PASS cities=${LOGISTICS_TARIFF_CITIES.length} formulaCases=${cases.length} submit=disabled`
+  `logisticsRequestForm=PASS cities=${LOGISTICS_TARIFF_CITIES.length} formulaCases=${cases.length} submit=gated`
 );

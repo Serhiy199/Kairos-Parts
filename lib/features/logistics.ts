@@ -8,5 +8,6 @@ export const LOGISTICS_REQUEST_FORM_ENABLED = isExplicitlyEnabled(
   process.env.LOGISTICS_REQUEST_FORM_ENABLED
 );
 
-// Stage Logistics 4 is preview-only. This gate must not be environment-driven yet.
-export const LOGISTICS_REQUEST_SUBMIT_ENABLED = false;
+export const LOGISTICS_REQUEST_SUBMIT_ENABLED = isExplicitlyEnabled(
+  process.env.LOGISTICS_REQUEST_SUBMIT_ENABLED
+);

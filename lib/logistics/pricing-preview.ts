@@ -2,11 +2,17 @@ import {
   getLogisticsTariffCity,
   type LogisticsTariffCityCode
 } from '@/lib/logistics/tariff-cities';
+import {
+  LOGISTICS_ADDITIONAL_PICKUP_CHARGE_MINOR_UNITS,
+  LOGISTICS_FARM_DELIVERY_CHARGE_MINOR_UNITS
+} from '@/lib/logistics/constants';
 
 export type LogisticsDestinationType = 'KAIROS_BASE' | 'FARM';
 
-export const ADDITIONAL_PICKUP_CHARGE_MINOR_UNITS = 50_000;
-export const FARM_DELIVERY_CHARGE_MINOR_UNITS = 50_000;
+export const ADDITIONAL_PICKUP_CHARGE_MINOR_UNITS =
+  LOGISTICS_ADDITIONAL_PICKUP_CHARGE_MINOR_UNITS;
+export const FARM_DELIVERY_CHARGE_MINOR_UNITS =
+  LOGISTICS_FARM_DELIVERY_CHARGE_MINOR_UNITS;
 
 export type LogisticsPricePreview = {
   cityCode: LogisticsTariffCityCode;

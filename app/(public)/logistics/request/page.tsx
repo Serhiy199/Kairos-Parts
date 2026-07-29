@@ -3,7 +3,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { LogisticsRequestForm } from '@/components/public/logistics/logistics-request-form';
-import { LOGISTICS_REQUEST_FORM_ENABLED } from '@/lib/features/logistics';
+import {
+  LOGISTICS_REQUEST_FORM_ENABLED,
+  LOGISTICS_REQUEST_SUBMIT_ENABLED
+} from '@/lib/features/logistics';
+import { getLogisticsRequestContactPrefill } from '@/lib/logistics/access';
 import { buildAbsoluteUrl } from '@/lib/site-url';
 
 const canonicalUrl = buildAbsoluteUrl('/logistics/request');
@@ -21,10 +25,12 @@ export const metadata: Metadata = {
   }
 };
 
-export default function LogisticsRequestPage() {
+export default async function LogisticsRequestPage() {
   if (!LOGISTICS_REQUEST_FORM_ENABLED) {
     notFound();
   }
+
+  const initialContact = await getLogisticsRequestContactPrefill();
 
   return (
     <>
@@ -44,15 +50,18 @@ export default function LogisticsRequestPage() {
           </h1>
           <p className="mt-5 max-w-3xl text-base leading-7 text-white/75 sm:text-lg">
             Додайте точки відвантаження, оберіть місце доставки та перегляньте
-            попередній розрахунок. Надсилання заявки буде доступне на наступному
-            етапі.
+            актуальний розрахунок. Остаточну суму сервер повторно визначить під
+            час створення заявки.
           </p>
         </div>
       </section>
 
       <section className="bg-public-page py-10 sm:py-14 lg:py-16">
         <div className="kp-container">
-          <LogisticsRequestForm initialContact={{ name: '', phone: '' }} />
+          <LogisticsRequestForm
+            initialContact={initialContact}
+            submitEnabled={LOGISTICS_REQUEST_SUBMIT_ENABLED}
+          />
         </div>
       </section>
     </>

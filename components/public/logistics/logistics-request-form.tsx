@@ -1,9 +1,11 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { TbMapPin, TbPlus, TbTrash, TbTruckDelivery } from 'react-icons/tb';
 
 import type { LogisticsResolvedAddress } from '@/lib/logistics/address-provider/contracts';
+import { KAIROS_LOGISTICS_BASE_ADDRESS } from '@/lib/logistics/constants';
 import {
   calculateLogisticsPricePreview,
   formatLogisticsPrice,
@@ -35,13 +37,108 @@ type LogisticsRequestFormProps = {
     name: string;
     phone: string;
   };
+  submitEnabled: boolean;
 };
 
-const KAIROS_BASE_ADDRESS = 'м. Кагарлик, вул. Миронівська, 33д';
+type ServerQuote = {
+  tariffCityCode: LogisticsTariffCityCode;
+  tariffCityName: string;
+  pickupPointCount: number;
+  additionalPickupCount: number;
+  destinationType: LogisticsDestinationType;
+  baseTariff: string;
+  additionalPointsCharge: string;
+  farmDeliveryCharge: string;
+  totalPrice: string;
+  vatIncluded: true;
+};
 
-export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormProps) {
+type CreatedRequest = {
+  requestNumber: string;
+  totalPrice: string;
+  currency: 'UAH';
+  vatIncluded: true;
+  status: 'NEW';
+};
+
+type ApiError = {
+  code: string;
+  message: string;
+  field?: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function readApiError(value: unknown): ApiError | null {
+  if (
+    !isRecord(value) ||
+    !isRecord(value.error) ||
+    typeof value.error.code !== 'string' ||
+    typeof value.error.message !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    code: value.error.code,
+    message: value.error.message,
+    field: typeof value.error.field === 'string' ? value.error.field : undefined
+  };
+}
+
+function readServerQuote(value: unknown): ServerQuote | null {
+  if (!isRecord(value) || !isRecord(value.quote)) return null;
+  const quote = value.quote;
+  if (
+    typeof quote.tariffCityCode !== 'string' ||
+    typeof quote.tariffCityName !== 'string' ||
+    typeof quote.pickupPointCount !== 'number' ||
+    typeof quote.additionalPickupCount !== 'number' ||
+    (quote.destinationType !== 'KAIROS_BASE' && quote.destinationType !== 'FARM') ||
+    typeof quote.baseTariff !== 'string' ||
+    typeof quote.additionalPointsCharge !== 'string' ||
+    typeof quote.farmDeliveryCharge !== 'string' ||
+    typeof quote.totalPrice !== 'string' ||
+    quote.vatIncluded !== true
+  ) {
+    return null;
+  }
+
+  return quote as ServerQuote;
+}
+
+function readCreatedRequest(value: unknown): CreatedRequest | null {
+  if (!isRecord(value) || !isRecord(value.request)) return null;
+  const request = value.request;
+  if (
+    typeof request.requestNumber !== 'string' ||
+    typeof request.totalPrice !== 'string' ||
+    request.currency !== 'UAH' ||
+    request.vatIncluded !== true ||
+    request.status !== 'NEW'
+  ) {
+    return null;
+  }
+
+  return request as CreatedRequest;
+}
+
+function formatServerMoney(value: string) {
+  const [whole = '0', fraction = '00'] = value.split('.');
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+  return `${grouped},${fraction.padEnd(2, '0').slice(0, 2)}\u00a0грн`;
+}
+
+export function LogisticsRequestForm({
+  initialContact,
+  submitEnabled
+}: LogisticsRequestFormProps) {
   const pointCounterRef = useRef(1);
   const addPointButtonRef = useRef<HTMLButtonElement>(null);
+  const successHeadingRef = useRef<HTMLHeadingElement>(null);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
   const [tariffCityCode, setTariffCityCode] = useState<
     LogisticsTariffCityCode | null
   >(null);
@@ -62,6 +159,24 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
   const [farmClearSignal, setFarmClearSignal] = useState(0);
   const [cityChangeNotice, setCityChangeNotice] = useState('');
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
+  const [serverQuote, setServerQuote] = useState<{
+    key: string;
+    value: ServerQuote;
+  } | null>(null);
+  const [quoteStatus, setQuoteStatus] = useState<
+    'idle' | 'loading' | 'verified' | 'error'
+  >('idle');
+  const [quoteMessage, setQuoteMessage] = useState('');
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [honeypot, setHoneypot] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [globalError, setGlobalError] = useState('');
+  const [serverFieldErrors, setServerFieldErrors] = useState<
+    Record<string, string>
+  >({});
+  const [createdRequest, setCreatedRequest] = useState<CreatedRequest | null>(
+    null
+  );
 
   const preview = useMemo(
     () =>
@@ -84,6 +199,77 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
     clientComment
   });
   const parsedPhone = formatPhoneIdentifierInput(contactPhone);
+  const quoteKey = tariffCityCode
+    ? `${tariffCityCode}:${pickupPoints.length}:${destinationType}`
+    : '';
+  const verifiedQuote =
+    serverQuote?.key === quoteKey ? serverQuote.value : null;
+  const canSubmit =
+    submitEnabled &&
+    isReady &&
+    quoteStatus === 'verified' &&
+    Boolean(verifiedQuote) &&
+    Boolean(idempotencyKey) &&
+    !isSubmitting;
+
+  useEffect(() => {
+    if (!tariffCityCode || pickupPoints.length < 1) {
+      setServerQuote(null);
+      setQuoteStatus('idle');
+      setQuoteMessage('');
+      return;
+    }
+
+    const controller = new AbortController();
+    setQuoteStatus('loading');
+    setQuoteMessage('Перевіряємо актуальний тариф…');
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await fetch('/api/logistics/quote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tariffCityCode,
+            pickupPointCount: pickupPoints.length,
+            destinationType
+          }),
+          signal: controller.signal
+        });
+        const payload: unknown = await response.json();
+        const quote = readServerQuote(payload);
+
+        if (!response.ok || !quote) {
+          setServerQuote(null);
+          setQuoteStatus('error');
+          setQuoteMessage(
+            readApiError(payload)?.message ??
+              'Не вдалося перевірити тариф. Спробуйте ще раз.'
+          );
+          return;
+        }
+
+        setServerQuote({ key: quoteKey, value: quote });
+        setQuoteStatus('verified');
+        setQuoteMessage('Тариф перевірено сервером.');
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        setServerQuote(null);
+        setQuoteStatus('error');
+        setQuoteMessage('Не вдалося перевірити тариф. Спробуйте ще раз.');
+      }
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [destinationType, pickupPoints.length, quoteKey, tariffCityCode]);
+
+  useEffect(() => {
+    if (createdRequest) {
+      successHeadingRef.current?.focus();
+    }
+  }, [createdRequest]);
 
   function touch(field: string) {
     setTouchedFields((current) => ({ ...current, [field]: true }));
@@ -145,12 +331,177 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
     setContactPhone(formatted.isPhoneLike ? formatted.display : value);
   }
 
+  function focusServerError(field: string | undefined) {
+    window.setTimeout(() => {
+      if (field?.startsWith('pickupPoints.')) {
+        const index = Number(field.split('.')[1]);
+        const point = pickupPoints[index];
+        if (point) {
+          document
+            .querySelector<HTMLInputElement>(
+              `[data-pickup-address="${point.id}"] input`
+            )
+            ?.focus();
+          return;
+        }
+      }
+      const fieldIds: Record<string, string> = {
+        tariffCityCode: 'logistics-tariff-city',
+        contactName: 'logistics-contact-name',
+        contactPhone: 'logistics-contact-phone'
+      };
+      const elementId = field ? fieldIds[field] : undefined;
+      if (elementId) {
+        document.getElementById(elementId)?.focus();
+        return;
+      }
+      errorSummaryRef.current?.focus();
+    }, 0);
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canSubmit || !tariffCityCode || !parsedPhone.canonical) return;
+
+    setIsSubmitting(true);
+    setGlobalError('');
+    setServerFieldErrors({});
+
+    try {
+      const response = await fetch('/api/logistics/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idempotencyKey,
+          honeypot,
+          tariffCityCode,
+          pickupPoints: pickupPoints.map((point) => ({
+            externalAddressId: point.address?.externalAddressId,
+            cargoDescription: point.cargoDescription
+          })),
+          destinationType,
+          farmExternalAddressId:
+            destinationType === 'FARM'
+              ? farmAddress?.externalAddressId
+              : undefined,
+          contactName,
+          contactPhone: parsedPhone.canonical,
+          clientComment
+        })
+      });
+      const payload: unknown = await response.json();
+      const created = readCreatedRequest(payload);
+
+      if (!response.ok || !created) {
+        const error = readApiError(payload);
+        const message =
+          error?.message ?? 'Не вдалося створити заявку. Спробуйте ще раз.';
+        setGlobalError(message);
+        if (error?.field) {
+          setServerFieldErrors({ [error.field]: message });
+        }
+        if (
+          error?.code === 'ADDRESS_SCOPE_MISMATCH' ||
+          error?.code === 'ADDRESS_NOT_FOUND'
+        ) {
+          if (error.field?.startsWith('pickupPoints.')) {
+            const index = Number(error.field.split('.')[1]);
+            setPickupPoints((current) =>
+              current.map((point, pointIndex) =>
+                pointIndex === index ? { ...point, address: null } : point
+              )
+            );
+            setPickupClearSignal((current) => current + 1);
+          } else if (error.field === 'farmExternalAddressId') {
+            setFarmAddress(null);
+            setFarmClearSignal((current) => current + 1);
+          }
+        }
+        focusServerError(error?.field);
+        return;
+      }
+
+      setCreatedRequest(created);
+    } catch {
+      setGlobalError(
+        'З’єднання перервано. Повторіть надсилання — дубль не буде створено.'
+      );
+      errorSummaryRef.current?.focus();
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (createdRequest) {
+    return (
+      <section
+        aria-labelledby="logistics-success-title"
+        className="public-card mx-auto max-w-3xl p-6 text-center sm:p-10"
+      >
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-public-success">
+          Kairos Logistics
+        </p>
+        <h2
+          ref={successHeadingRef}
+          id="logistics-success-title"
+          tabIndex={-1}
+          className="mt-3 font-display text-3xl font-bold text-public-primary focus:outline-none sm:text-4xl"
+        >
+          Заявку створено
+        </h2>
+        <dl className="mx-auto mt-7 grid max-w-xl gap-3 rounded-xl border border-public-border bg-public-elevated p-5 text-left sm:grid-cols-2">
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-public-muted">
+              Номер заявки
+            </dt>
+            <dd className="mt-1 break-words text-xl font-bold text-public-primary">
+              {createdRequest.requestNumber}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-public-muted">
+              Остаточна сума
+            </dt>
+            <dd className="mt-1 break-words text-xl font-bold text-accent">
+              {formatServerMoney(createdRequest.totalPrice)}
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-public-muted">
+              Статус
+            </dt>
+            <dd className="mt-1 font-bold text-public-success">Нова заявка</dd>
+          </div>
+        </dl>
+        <p className="mx-auto mt-6 max-w-xl leading-7 text-public-secondary">
+          Представник Kairos зв’яжеться з вами за вказаним номером телефону.
+        </p>
+        <Link
+          href="/logistics"
+          className="mt-7 inline-flex min-h-11 items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          Повернутися до сторінки логістики
+        </Link>
+      </section>
+    );
+  }
+
   return (
     <form
       aria-label="Форма заявки Kairos Logistics"
-      onSubmit={(event) => event.preventDefault()}
+      onSubmit={handleSubmit}
       className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(310px,0.42fr)] lg:items-start"
     >
+      <label className="absolute -left-[10000px] h-px w-px overflow-hidden">
+        Вебсайт
+        <input
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={honeypot}
+          onChange={(event) => setHoneypot(event.target.value)}
+        />
+      </label>
       <div className="grid min-w-0 gap-6">
         <fieldset className="public-card min-w-0 p-5 sm:p-7">
           <legend className="px-1 text-xl font-bold text-public-primary">
@@ -193,9 +544,10 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
             {pickupPoints.map((point, index) => {
               const cargoField = `cargo-${point.id}`;
               const cargoError =
-                touchedFields[cargoField] && !point.cargoDescription.trim()
+                serverFieldErrors[`pickupPoints.${index}.cargoDescription`] ||
+                (touchedFields[cargoField] && !point.cargoDescription.trim()
                   ? 'Опишіть, що потрібно забрати.'
-                  : '';
+                  : '');
 
               return (
                 <article
@@ -320,7 +672,7 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
             <div className="mt-5 rounded-lg border border-public-border bg-public-elevated p-4">
               <p className="flex items-start gap-2 font-semibold text-public-primary">
                 <TbMapPin aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-accent" />
-                {KAIROS_BASE_ADDRESS}
+                {KAIROS_LOGISTICS_BASE_ADDRESS}
               </p>
               <p className="mt-2 text-sm leading-6 text-public-muted">
                 Доставка до бази входить у розрахунок без додаткової доплати.
@@ -438,7 +790,7 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
         className="public-card min-w-0 p-5 sm:p-7 lg:sticky lg:top-24"
       >
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
-          Preview-only
+          Серверний тариф
         </p>
         <h2
           id="logistics-price-preview-title"
@@ -451,7 +803,28 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
           заявки сервер повторно перевірятиме актуальний тариф.
         </p>
 
-        {preview ? (
+        {verifiedQuote ? (
+          <dl className="mt-6 grid gap-3 text-sm">
+            <PriceRow
+              label={`Базовий тариф — ${verifiedQuote.tariffCityName}`}
+              value={formatServerMoney(verifiedQuote.baseTariff)}
+            />
+            <PriceRow
+              label={`Додаткові точки: ${verifiedQuote.additionalPickupCount} × 500`}
+              value={formatServerMoney(verifiedQuote.additionalPointsCharge)}
+            />
+            <PriceRow
+              label="Доставка в господарство"
+              value={formatServerMoney(verifiedQuote.farmDeliveryCharge)}
+            />
+            <div className="mt-2 flex items-start justify-between gap-4 border-t border-public-border pt-4">
+              <dt className="font-bold text-public-primary">Загальна вартість</dt>
+              <dd className="shrink-0 text-xl font-bold text-accent">
+                {formatServerMoney(verifiedQuote.totalPrice)}
+              </dd>
+            </div>
+          </dl>
+        ) : preview ? (
           <dl className="mt-6 grid gap-3 text-sm">
             <PriceRow
               label={`Базовий тариф — ${preview.cityName}`}
@@ -481,33 +854,63 @@ export function LogisticsRequestForm({ initialContact }: LogisticsRequestFormPro
         <p className="mt-5 text-sm font-semibold text-public-primary">
           Усі ціни включають ПДВ.
         </p>
+        <p
+          aria-live="polite"
+          className={`mt-3 min-h-5 text-sm font-semibold ${
+            quoteStatus === 'verified'
+              ? 'text-public-success'
+              : quoteStatus === 'error'
+                ? 'text-public-danger'
+                : 'text-public-muted'
+          }`}
+        >
+          {quoteMessage}
+        </p>
         <div
           aria-live="polite"
           className={`mt-6 rounded-lg border p-4 text-sm font-semibold ${
-            isReady
+            isReady && verifiedQuote
               ? 'border-public-success/30 bg-public-success/10 text-public-success'
               : 'border-public-border bg-public-elevated text-public-muted'
           }`}
         >
-          {isReady
-            ? 'Дані форми заповнено.'
+          {isReady && verifiedQuote
+            ? 'Дані форми заповнено, тариф актуальний.'
             : 'Заповніть обов’язкові поля та підтвердьте адреси.'}
         </div>
 
+        {globalError ? (
+          <div
+            ref={errorSummaryRef}
+            tabIndex={-1}
+            role="alert"
+            className="mt-5 rounded-lg border border-public-danger/30 bg-public-danger/10 p-4 text-sm font-semibold text-public-danger focus:outline-none"
+          >
+            {globalError}
+          </div>
+        ) : null}
+
         <button
           type="submit"
-          disabled
+          disabled={!canSubmit}
           aria-describedby="logistics-submit-helper"
-          className="mt-5 inline-flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-primary opacity-60"
+          className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-bold text-primary transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           <TbTruckDelivery aria-hidden="true" className="size-5" />
-          Створити заявку на перевезення
+          {isSubmitting
+            ? 'Створюємо заявку…'
+            : 'Створити заявку на перевезення'}
         </button>
+        <p aria-live="polite" className="sr-only">
+          {isSubmitting ? 'Заявка створюється.' : ''}
+        </p>
         <p
           id="logistics-submit-helper"
           className="mt-3 text-center text-xs leading-5 text-public-muted"
         >
-          Надсилання заявки буде доступне на наступному етапі.
+          {submitEnabled
+            ? 'Сервер повторно перевірить адреси, тариф і остаточну суму.'
+            : 'Надсилання заявок вимкнено конфігурацією середовища.'}
         </p>
       </aside>
     </form>
