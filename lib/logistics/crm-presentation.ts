@@ -1,0 +1,106 @@
+import type {
+  LogisticsDestinationType,
+  LogisticsRequestStatus
+} from '@prisma/client';
+
+export const LOGISTICS_CRM_STATUSES = [
+  'NEW',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'CANCELLED'
+] as const satisfies readonly LogisticsRequestStatus[];
+
+export const LOGISTICS_STATUS_LABELS: Record<
+  LogisticsRequestStatus,
+  string
+> = {
+  NEW: 'Нова',
+  IN_PROGRESS: 'У роботі',
+  COMPLETED: 'Виконана',
+  CANCELLED: 'Скасована'
+};
+
+export const LOGISTICS_DESTINATIONS = [
+  'KAIROS_BASE',
+  'FARM'
+] as const satisfies readonly LogisticsDestinationType[];
+
+export const LOGISTICS_DESTINATION_LABELS: Record<
+  LogisticsDestinationType,
+  string
+> = {
+  KAIROS_BASE: 'База Kairos',
+  FARM: 'Господарство'
+};
+
+export const LOGISTICS_CRM_SOURCES = ['GUEST', 'CLIENT'] as const;
+export type LogisticsCrmSource = (typeof LOGISTICS_CRM_SOURCES)[number];
+export type LogisticsCrmSourceKind =
+  | 'GUEST'
+  | 'CLIENT'
+  | 'COMPANY_CLIENT';
+
+export const LOGISTICS_SOURCE_LABELS: Record<
+  LogisticsCrmSourceKind,
+  string
+> = {
+  GUEST: 'Guest',
+  CLIENT: 'CLIENT',
+  COMPANY_CLIENT: 'Company CLIENT'
+};
+
+export const LOGISTICS_STATUS_TRANSITIONS: Record<
+  LogisticsRequestStatus,
+  readonly LogisticsRequestStatus[]
+> = {
+  NEW: ['IN_PROGRESS', 'CANCELLED'],
+  IN_PROGRESS: ['COMPLETED', 'CANCELLED'],
+  COMPLETED: [],
+  CANCELLED: []
+};
+
+export function isLogisticsRequestStatus(
+  value: string
+): value is LogisticsRequestStatus {
+  return LOGISTICS_CRM_STATUSES.includes(value as LogisticsRequestStatus);
+}
+
+export function isLogisticsDestinationType(
+  value: string
+): value is LogisticsDestinationType {
+  return LOGISTICS_DESTINATIONS.includes(value as LogisticsDestinationType);
+}
+
+export function isLogisticsCrmSource(
+  value: string
+): value is LogisticsCrmSource {
+  return LOGISTICS_CRM_SOURCES.includes(value as LogisticsCrmSource);
+}
+
+export function resolveLogisticsSourceKind(input: {
+  clientId: string | null;
+  companyId: string | null;
+}): LogisticsCrmSourceKind {
+  if (input.companyId) return 'COMPANY_CLIENT';
+  if (input.clientId) return 'CLIENT';
+  return 'GUEST';
+}
+
+export function formatLogisticsUah(value: string) {
+  const [whole = '0', fraction = '00'] = value.split('.');
+  const normalizedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+  return `${normalizedWhole},${fraction.padEnd(2, '0').slice(0, 2)} грн`;
+}
+
+export function logisticsStatusClass(status: LogisticsRequestStatus) {
+  switch (status) {
+    case 'NEW':
+      return 'border-accent/35 bg-accent/10 text-foreground';
+    case 'IN_PROGRESS':
+      return 'border-info/30 bg-info/10 text-info';
+    case 'COMPLETED':
+      return 'border-success/30 bg-success/10 text-success';
+    case 'CANCELLED':
+      return 'border-danger/30 bg-danger/10 text-danger';
+  }
+}

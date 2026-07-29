@@ -25,6 +25,8 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   AUTH_ATTEMPT: 'Спроба входу',
   INVITATION: 'Запрошення',
   TELEGRAM_REQUEST: 'Telegram-заявка',
+  LOGISTICS_REQUEST: 'Логістична заявка',
+  LOGISTICS_TARIFF_CITY: 'Тарифне місто Logistics',
   SYSTEM: 'Система'
 };
 
@@ -98,7 +100,11 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   COMPANY_PRIMARY_CONTACT_CHANGED: 'Основний контакт компанії змінено',
   COMPANY_MEMBER_ADDED: 'Учасника компанії додано',
   COMPANY_MEMBER_REMOVED: 'Учасника компанії видалено',
-  CLIENT_BILLING_UPDATED: 'Реквізити клієнта оновлено'
+  CLIENT_BILLING_UPDATED: 'Реквізити клієнта оновлено',
+  LOGISTICS_REQUEST_CREATED: 'Логістичну заявку створено',
+  LOGISTICS_STATUS_CHANGED: 'Статус логістичної заявки змінено',
+  LOGISTICS_INTERNAL_COMMENT_CREATED: 'Внутрішній коментар додано',
+  LOGISTICS_TARIFF_UPDATED: 'Тариф Logistics оновлено'
 };
 
 export const AUDIT_EVENT_LABELS: Record<string, string> = {
@@ -170,6 +176,8 @@ const KEY_LABELS: Record<string, string> = {
   iban: 'IBAN',
   requestId: 'ID заявки',
   requestNumber: 'Номер заявки',
+  tariffCityCode: 'Код тарифного міста',
+  commentId: 'ID внутрішнього коментаря',
   invoiceNumber: 'Номер рахунку',
   commercialOfferNumber: 'Номер пропозиції',
   currency: 'Валюта',

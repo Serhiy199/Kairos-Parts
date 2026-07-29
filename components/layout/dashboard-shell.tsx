@@ -16,6 +16,7 @@ import {
   TbMenu2,
   TbMessageCircle,
   TbTractor,
+  TbTruckDelivery,
   TbUser,
   TbUsers,
   TbUsersGroup,
@@ -318,6 +319,7 @@ function SidebarContent({ navItems, pathname, homeHref, logoutAction, onNavigate
 const NAV_ICONS = {
   dashboard: TbLayoutDashboard,
   requests: TbClipboardList,
+  logistics: TbTruckDelivery,
   messages: TbMessageCircle,
   tractor: TbTractor,
   clients: TbUsers,
