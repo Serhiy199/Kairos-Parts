@@ -4,23 +4,21 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   TbBuildingWarehouse,
-  TbClipboardText,
   TbClock,
-  TbDroplet,
   TbGauge,
   TbPackage,
   TbReportMoney,
   TbShieldCheck,
-  TbTractor,
   TbTruckDelivery
 } from 'react-icons/tb';
 
+import { LogisticsOverviewSection } from '@/components/public/logistics/logistics-overview-section';
+import { LogisticsRatesSection } from '@/components/public/logistics/logistics-rates-section';
 import {
   LOGISTICS_LANDING_ENABLED,
   LOGISTICS_REQUEST_FORM_ENABLED
 } from '@/lib/features/logistics';
 import { buildAbsoluteUrl } from '@/lib/site-url';
-import { LogisticsRatesSection } from '@/components/public/logistics/logistics-rates-section';
 
 const canonicalUrl = buildAbsoluteUrl('/logistics');
 
@@ -61,48 +59,6 @@ const trustSignals = [
     title: 'Просто',
     text: 'Прозорі тарифи без прихованих умов',
     icon: TbPackage
-  }
-];
-
-const useCases = [
-  {
-    text: 'Зупинилася техніка і терміново потрібна запчастина.',
-    icon: TbTractor
-  },
-  {
-    text: 'Не вистачило ЗЗР, мастильних матеріалів або комплектуючих.',
-    icon: TbDroplet
-  },
-  {
-    text: 'Власний транспорт зайнятий або його недоцільно відправляти за одним замовленням.',
-    icon: TbTruckDelivery
-  },
-  {
-    text: 'Потрібно оперативно забрати товар у постачальника в Київській області.',
-    icon: TbPackage
-  }
-];
-
-const processSteps = [
-  {
-    title: 'Створення заявки',
-    text: 'Ви створюєте заявку на перевезення.',
-    icon: TbClipboardText
-  },
-  {
-    title: 'Організація відвантаження',
-    text: 'Ми перевіряємо дані та організовуємо відвантаження.',
-    icon: TbShieldCheck
-  },
-  {
-    title: 'Забір товарів',
-    text: 'Забираємо товари у постачальника.',
-    icon: TbPackage
-  },
-  {
-    title: 'Доставка',
-    text: 'Доставляємо їх на базу Kairos Parts або безпосередньо в господарство.',
-    icon: TbTruckDelivery
   }
 ];
 
@@ -208,79 +164,7 @@ export default function LogisticsPage() {
 
       <LogisticsRatesSection />
 
-      <section aria-labelledby="logistics-use-cases-title" className="bg-public-section py-16 sm:py-20 lg:py-24">
-        <div className="kp-container">
-          <SectionHeading
-            eyebrow="Типові ситуації"
-            id="logistics-use-cases-title"
-            title="Коли потрібен Kairos Logistics"
-            copy="Сервіс допомагає оперативно організувати забір товарів, коли власний транспорт має залишатися на основних роботах."
-          />
-
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            {useCases.map((useCase, index) => {
-              const Icon = useCase.icon;
-
-              return (
-                <article key={useCase.text} className="rounded-xl border border-public-border bg-public-card p-5 shadow-card sm:p-6">
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="grid size-12 place-items-center rounded-lg border border-accent/35 bg-accent/10 text-accent">
-                      <Icon aria-hidden="true" focusable="false" className="size-7 stroke-[1.55]" />
-                    </span>
-                    <span className="font-display text-2xl font-bold text-public-subtle" aria-hidden="true">
-                      0{index + 1}
-                    </span>
-                  </div>
-                  <p className="mt-5 text-base font-semibold leading-7 text-public-primary">{useCase.text}</p>
-                </article>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      <section aria-labelledby="logistics-process-title" className="relative overflow-hidden bg-[#07090c] py-16 text-white sm:py-20 lg:py-24">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(200,150,66,0.16),transparent_38%)]" />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(232,232,232,0.22)_1px,transparent_1px),linear-gradient(90deg,rgba(232,232,232,0.22)_1px,transparent_1px)] [background-size:44px_44px]"
-        />
-        <div className="kp-container relative">
-          <SectionHeading
-            dark
-            eyebrow="Чотири кроки"
-            id="logistics-process-title"
-            title="Як працює сервіс"
-            copy="Зрозумілий процес від заявки до доставки товарів на базу Kairos Parts або в господарство."
-          />
-
-          <ol className="mt-12 space-y-8 md:grid md:grid-cols-4 md:gap-0 md:space-y-0">
-            {processSteps.map((step, index) => {
-              const Icon = step.icon;
-              const isLast = index === processSteps.length - 1;
-
-              return (
-                <li key={step.title} className="relative min-w-0 pl-14 md:pl-0 md:pr-8 md:pt-14">
-                  {!isLast ? (
-                    <span
-                      aria-hidden="true"
-                      className="absolute bottom-[-2rem] left-5 top-10 w-px bg-accent/45 md:bottom-auto md:left-10 md:right-0 md:top-5 md:h-px md:w-auto"
-                    />
-                  ) : null}
-                  <span className="absolute left-0 top-0 z-10 grid size-10 place-items-center rounded-full border border-accent bg-[#0b0d10] font-display text-sm font-bold text-accent shadow-[0_0_0_7px_rgba(200,150,66,0.09)]">
-                    {index + 1}
-                  </span>
-                  <span className="grid size-11 place-items-center rounded-lg border border-white/12 bg-white/[0.04] text-accent">
-                    <Icon aria-hidden="true" focusable="false" className="size-6 stroke-[1.55]" />
-                  </span>
-                  <h3 className="mt-4 text-lg font-bold leading-snug text-white">{step.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-white/70">{step.text}</p>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      </section>
+      <LogisticsOverviewSection />
 
       <section aria-labelledby="logistics-benefits-title" className="bg-public-page py-16 sm:py-20 lg:py-24">
         <div className="kp-container">
