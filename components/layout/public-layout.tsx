@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { TbMapPin } from 'react-icons/tb';
 
 import { ActionIcon } from '@/components/ui/action-icons';
+import { getPublicHeaderCta } from '@/lib/public/header-auth';
 import { siteContacts } from '@/lib/site-contacts';
 
 import { PublicDesktopNavigation } from './public-desktop-navigation';
@@ -16,7 +17,9 @@ const navItems = [
   { href: '/contacts', label: 'Контакти' }
 ];
 
-export function PublicLayout({ children }: { children: React.ReactNode }) {
+export async function PublicLayout({ children }: { children: React.ReactNode }) {
+  const headerCta = await getPublicHeaderCta();
+
   return (
     <div className="public-brand-type min-h-screen bg-public-page text-public-primary">
       <header className="sticky top-0 z-40 bg-primary text-white shadow-panel">
@@ -35,11 +38,11 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
           <PublicDesktopNavigation navItems={navItems} />
           <div className="hidden items-center gap-2 lg:flex">
             <Link
-              href="/login"
+              href={headerCta.href}
               className="hidden items-center gap-2 rounded-md border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 sm:inline-flex"
             >
-              <ActionIcon name="login" />
-              Увійти
+              <ActionIcon name={headerCta.icon} />
+              {headerCta.label}
             </Link>
             <Link
               href="/request"
@@ -49,7 +52,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
               Створити заявку
             </Link>
           </div>
-          <PublicMobileMenu navItems={navItems} />
+          <PublicMobileMenu navItems={navItems} headerCta={headerCta} />
         </div>
       </header>
       <main>{children}</main>
