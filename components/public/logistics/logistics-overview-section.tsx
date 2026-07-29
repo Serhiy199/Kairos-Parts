@@ -63,17 +63,28 @@ export function LogisticsOverviewSection() {
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(200,150,66,0.09),transparent_34%)]" />
       <div className="kp-container relative">
-        <h2 id="logistics-overview-title" className="sr-only">
-          Огляд сервісу Kairos Logistics
-        </h2>
+        <div className="max-w-4xl">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
+            Kairos Logistics для агробізнесу
+          </p>
+          <h2
+            id="logistics-overview-title"
+            className="mt-3 text-3xl font-bold leading-tight text-public-primary sm:text-4xl"
+          >
+            Кому підходить сервіс і як він працює
+          </h2>
+          <p className="mt-4 max-w-3xl text-base leading-7 text-public-muted sm:text-lg sm:leading-8">
+            Коротко про клієнтів Kairos Logistics, ситуації, у яких потрібне перевезення, та шлях
+            товару від заявки до логістичної бази в Кагарлику.
+          </p>
+        </div>
 
-        <div className="overflow-hidden rounded-xl border border-public-border bg-public-card shadow-card lg:grid lg:grid-cols-3">
+        <div className="mt-10 overflow-hidden rounded-xl border border-public-border bg-public-card shadow-card lg:grid lg:grid-cols-3">
           <div className="p-5 sm:p-7 lg:p-8">
             <OverviewHeading icon={TbUsers}>Для кого створений сервіс</OverviewHeading>
-            <p className="mt-5 text-sm leading-6 text-public-muted">
-              Kairos Logistics працює для агропідприємств Кагарлицької громади, яким потрібно
-              забрати товари у постачальників у межах Київської області та доставити їх до
-              логістичної бази Kairos Parts у Кагарлику.
+            <p className="mt-5 text-base leading-7 text-public-muted">
+              Kairos Logistics працює виключно для агропідприємств Кагарлицького району, щоб
+              забезпечити максимальну швидкість організації відвантаження та доставки.
             </p>
 
             <div className="mt-6 space-y-4">
@@ -85,20 +96,21 @@ export function LogisticsOverviewSection() {
                     <Icon
                       aria-hidden="true"
                       focusable="false"
-                      className="mt-0.5 size-5 shrink-0 text-accent"
+                      className="mt-1 size-5 shrink-0 text-accent"
                     />
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold leading-5 text-public-primary">{detail.title}</p>
-                      <p className="mt-1 text-sm leading-5 text-public-muted">{detail.text}</p>
-                    </div>
+                    <p className="min-w-0 text-base leading-6 text-public-muted">
+                      <strong className="font-bold text-public-primary">{detail.title}</strong>
+                      {' — '}
+                      {detail.text}
+                    </p>
                   </div>
                 );
               })}
             </div>
 
-            <p className="mt-6 border-t border-public-border pt-5 text-sm leading-6 text-public-subtle">
-              Такий формат дозволяє замовляти товари без окремої поїздки власного транспорту та
-              заздалегідь розуміти вартість перевезення.
+            <p className="mt-6 border-t border-public-border pt-5 text-base leading-7 text-public-subtle">
+              Такий формат дозволяє нам забезпечувати швидкий сервіс без утримання великого
+              автопарку та пропонувати прозорі тарифи.
             </p>
           </div>
 
@@ -111,10 +123,10 @@ export function LogisticsOverviewSection() {
 
                 return (
                   <li key={useCase.text} className="flex items-start gap-3">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-public-border-accent bg-accent/[0.08] text-accent">
-                      <Icon aria-hidden="true" focusable="false" className="size-5" />
+                    <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-public-border-accent bg-accent/[0.08] text-accent">
+                      <Icon aria-hidden="true" focusable="false" className="size-[22px]" />
                     </span>
-                    <p className="min-w-0 pt-1 text-sm leading-6 text-public-secondary">{useCase.text}</p>
+                    <p className="min-w-0 pt-1 text-base leading-7 text-public-secondary">{useCase.text}</p>
                   </li>
                 );
               })}
@@ -129,14 +141,14 @@ export function LogisticsOverviewSection() {
                 const isLast = index === processSteps.length - 1;
 
                 return (
-                  <li key={step} className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3">
-                    <span aria-hidden="true" className="flex min-h-[4.25rem] flex-col items-center">
-                      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent font-display text-sm font-bold text-primary">
+                  <li key={step} className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3">
+                    <span aria-hidden="true" className="flex min-h-[4.75rem] flex-col items-center">
+                      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent font-display text-base font-bold text-primary">
                         {index + 1}
                       </span>
                       {!isLast ? <span className="my-1 w-px flex-1 bg-accent/40" /> : null}
                     </span>
-                    <p className={`min-w-0 pt-1 text-sm leading-6 text-public-secondary ${isLast ? '' : 'pb-5'}`}>
+                    <p className={`min-w-0 pt-1 text-base leading-7 text-public-secondary ${isLast ? '' : 'pb-5'}`}>
                       {step}
                     </p>
                   </li>
@@ -156,7 +168,7 @@ function OverviewHeading({ icon: Icon, children }: { icon: IconType; children: R
       <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-public-border-accent bg-accent/[0.08] text-accent">
         <Icon aria-hidden="true" focusable="false" className="size-6" />
       </span>
-      <h3 className="min-w-0 pt-1 text-xl font-bold leading-7 text-public-primary">{children}</h3>
+      <h3 className="min-w-0 pt-0.5 text-2xl font-bold leading-8 text-public-primary">{children}</h3>
     </div>
   );
 }
