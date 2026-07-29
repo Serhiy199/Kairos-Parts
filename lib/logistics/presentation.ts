@@ -41,6 +41,14 @@ export const LOGISTICS_DESTINATION_SENTENCE_LABELS: Record<
   FARM: 'Доставка в господарство'
 };
 
+export const LOGISTICS_DESTINATION_DIRECTION_LABELS: Record<
+  LogisticsDestinationType,
+  string
+> = {
+  KAIROS_BASE: 'На базу Kairos',
+  FARM: 'У господарство'
+};
+
 export function isLogisticsRequestStatus(
   value: string
 ): value is LogisticsRequestStatus {

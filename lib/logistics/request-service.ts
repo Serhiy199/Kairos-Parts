@@ -21,6 +21,7 @@ import type { LogisticsCreateInput } from '@/lib/logistics/request-input';
 import { LogisticsRequestError } from '@/lib/logistics/request-errors';
 import { getActiveLogisticsTariff } from '@/lib/logistics/tariff-service';
 import { normalizeUkrainianPhone } from '@/lib/phone/normalize';
+import { notifyNewLogisticsRequest } from '@/lib/staff-telegram/notifications';
 import type { AuditRequestContext } from '@/lib/audit-log/contracts';
 
 function addressRequestError(error: unknown, field: string) {
@@ -159,6 +160,19 @@ export async function createPreparedLogisticsRequest(
   input: PreparedLogisticsRequest
 ) {
   const result = await createLogisticsRequest(input);
+
+  if (result.createdNew) {
+    await notifyNewLogisticsRequest({
+      id: result.id,
+      requestNumber: result.requestNumber,
+      contactName: input.contactName,
+      contactPhone: input.contactPhone,
+      tariffCityName: input.tariff.name,
+      pickupPointCount: input.pickupPoints.length,
+      destinationType: input.destinationType,
+      totalPrice: serializeLogisticsMoney(result.totalPrice)
+    });
+  }
 
   return {
     requestNumber: result.requestNumber,

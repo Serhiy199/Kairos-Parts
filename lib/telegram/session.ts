@@ -6,6 +6,7 @@ import {
 import { getPhoneLookupTail, normalizeUkrainianPhone, phoneNumbersMatch } from '@/lib/phone/normalize';
 import { prisma } from '@/lib/prisma';
 import { generatePublicStatusToken } from '@/lib/requests/identifiers';
+import { notifyNewPartsRequest } from '@/lib/staff-telegram/notifications';
 import { vehicleAccessWhereForClient } from '@/lib/vehicles/ownership';
 import { getActiveEquipmentTypeNames, getActiveManufacturerNamesForType, validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
@@ -1071,6 +1072,18 @@ async function createTelegramRequest(draft: TelegramDraft) {
   await attachTelegramFiles(createdRequest.id, files);
   await prisma.telegramDraftRequest.delete({
     where: { telegramUserId: draft.telegramUserId }
+  });
+
+  await notifyNewPartsRequest({
+    id: createdRequest.id,
+    requestNumber: createdRequest.requestNumber,
+    companyName:
+      draft.companyName ??
+      clientProfile.companyName ??
+      company?.name ??
+      null,
+    contactName: draft.contactName,
+    contactPhone: draft.phone
   });
 
   return createdRequest;

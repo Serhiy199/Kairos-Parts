@@ -48,6 +48,7 @@ export type PreparedLogisticsRequest = {
 type ExistingRequest = Awaited<ReturnType<typeof findExistingRequest>>;
 
 const existingRequestSelect = {
+  id: true,
   requestNumber: true,
   totalPrice: true,
   status: true,
@@ -83,7 +84,7 @@ function pickupIntent(points: Array<{ externalAddressId: string | null; cargoDes
 }
 
 export function logisticsIdempotencyIntentMatches(
-  existing: NonNullable<ExistingRequest>,
+  existing: Omit<NonNullable<ExistingRequest>, 'id'>,
   input: PreparedLogisticsRequest
 ) {
   const identityMatches =
@@ -111,9 +112,11 @@ export function logisticsIdempotencyIntentMatches(
 
 function idempotentResult(existing: NonNullable<ExistingRequest>) {
   return {
+    id: existing.id,
     requestNumber: existing.requestNumber,
     totalPrice: existing.totalPrice,
-    status: existing.status
+    status: existing.status,
+    createdNew: false
   };
 }
 
@@ -214,9 +217,11 @@ export async function createLogisticsRequestInTransaction(
   });
 
   return {
+    id: created.id,
     requestNumber: created.requestNumber,
     totalPrice: created.totalPrice,
-    status: created.status
+    status: created.status,
+    createdNew: true
   };
 }
 

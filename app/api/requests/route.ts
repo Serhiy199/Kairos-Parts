@@ -5,6 +5,7 @@ import { saveRequestFileLocal } from '@/lib/files/local-storage';
 import { prisma } from '@/lib/prisma';
 import { generatePublicStatusToken } from '@/lib/requests/identifiers';
 import { parseRequestFormData } from '@/lib/requests/validation';
+import { notifyNewPartsRequest } from '@/lib/staff-telegram/notifications';
 import { validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
 export function GET() {
@@ -166,6 +167,14 @@ export async function POST(request: Request) {
       });
       savedFiles.push(requestFile);
     }
+
+    await notifyNewPartsRequest({
+      id: createdRequest.id,
+      requestNumber: createdRequest.requestNumber,
+      companyName: parsed.data.companyName || null,
+      contactName: parsed.data.contactName,
+      contactPhone: parsed.data.phone
+    });
 
     return Response.json(
       {
