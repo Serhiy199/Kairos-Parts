@@ -60,7 +60,7 @@ export default function LogisticsPage() {
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,7,10,0.98)_0%,rgba(5,7,10,0.94)_44%,rgba(5,7,10,0.67)_72%,rgba(5,7,10,0.46)_100%)] md:bg-[linear-gradient(90deg,rgba(5,7,10,0.97)_0%,rgba(5,7,10,0.90)_42%,rgba(5,7,10,0.52)_70%,rgba(5,7,10,0.30)_100%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,7,10,0.12)_55%,rgba(5,7,10,0.86)_100%)]" />
 
-        <div className="kp-container relative flex min-h-[620px] items-center py-16 sm:min-h-[660px] sm:py-20 lg:min-h-[700px]">
+        <div className="kp-container relative flex min-h-[500px] items-center py-14 sm:min-h-[540px] sm:py-16 lg:min-h-[580px] lg:py-20">
           <div className="max-w-[760px]">
             <p className="font-brand text-sm font-bold uppercase tracking-[0.2em] text-white sm:text-base">
               KAIROS <span className="text-accent">LOGISTICS</span>
@@ -69,21 +69,22 @@ export default function LogisticsPage() {
               id="logistics-page-title"
               className="mt-5 max-w-[720px] font-display text-4xl font-bold leading-[1.08] sm:text-5xl lg:text-[56px]"
             >
-              Оперативне забезпечення підприємств критично важливими ТМЦ.
+              Професійне перевезення товарів для агропідприємств
             </h1>
             <p className="mt-6 max-w-[700px] text-base leading-7 text-white/80 sm:text-lg sm:leading-8">
-              Забираємо товари у постачальників у межах Київської області та доставляємо до бази
-              Kairos Parts у Кагарлику або безпосередньо в господарство в межах Кагарлицької громади.
+              Організовуємо відвантаження від постачальників Київської області та перевезення товару
+              до логістичного хабу Kairos Parts у Кагарлику. Ви отримаєте необхідні запчастини та
+              матеріали швидко, без простоїв та зайвих турбот.
             </p>
 
             <div className="mt-8 max-w-md">
-              <LogisticsRequestCta helperId="hero-logistics-cta-status" />
+              <LogisticsRequestCta />
             </div>
           </div>
         </div>
-      </section>
 
-      <LogisticsBenefitsBar />
+        <LogisticsBenefitsBar />
+      </section>
 
       <LogisticsRatesSection />
 
@@ -92,7 +93,7 @@ export default function LogisticsPage() {
   );
 }
 
-function LogisticsRequestCta({ helperId }: { helperId: string }) {
+function LogisticsRequestCta() {
   const isAvailable = LOGISTICS_REQUEST_FORM_ENABLED;
 
   return (
@@ -100,7 +101,6 @@ function LogisticsRequestCta({ helperId }: { helperId: string }) {
       {isAvailable ? (
         <Link
           href="/logistics/request"
-          aria-describedby={helperId}
           className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
         >
           <TbTruckDelivery aria-hidden="true" focusable="false" className="size-5" />
@@ -110,18 +110,12 @@ function LogisticsRequestCta({ helperId }: { helperId: string }) {
         <button
           type="button"
           disabled
-          aria-describedby={helperId}
           className="inline-flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-primary opacity-60 shadow-panel sm:w-auto"
         >
           <TbTruckDelivery aria-hidden="true" focusable="false" className="size-5" />
           Створити заявку на перевезення
         </button>
       )}
-      <p id={helperId} className="mt-3 text-sm leading-6 text-white/70">
-        {isAvailable
-          ? 'Форма доступна для попереднього заповнення. Надсилання буде додано на наступному етапі.'
-          : 'Онлайн-заявка готується до запуску.'}
-      </p>
     </div>
   );
 }
