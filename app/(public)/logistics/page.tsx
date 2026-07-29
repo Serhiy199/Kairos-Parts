@@ -48,42 +48,53 @@ export default function LogisticsPage() {
         aria-labelledby="logistics-page-title"
         className="relative isolate min-h-[620px] overflow-hidden bg-primary text-white sm:min-h-[660px] lg:min-h-[700px]"
       >
-        <Image
-          src="/images/benefits/benefits-bg.png"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-[68%_center] sm:object-[64%_center] lg:object-center"
-        />
-        <div className="absolute inset-0 bg-primary/50" />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,7,10,0.98)_0%,rgba(5,7,10,0.94)_44%,rgba(5,7,10,0.67)_72%,rgba(5,7,10,0.46)_100%)] md:bg-[linear-gradient(90deg,rgba(5,7,10,0.97)_0%,rgba(5,7,10,0.90)_42%,rgba(5,7,10,0.52)_70%,rgba(5,7,10,0.30)_100%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,7,10,0.12)_55%,rgba(5,7,10,0.86)_100%)]" />
+        <div className="relative isolate mx-auto w-full max-w-[1440px] overflow-hidden px-4 sm:px-6 lg:px-8">
+          <div className="absolute inset-y-0 left-[28%] right-0 -z-30 hidden md:block">
+            <Image
+              src="/images/logistics/hero-logistic.png"
+              alt=""
+              fill
+              priority
+              sizes="(min-width: 1440px) 1037px, 72vw"
+              className="object-contain object-right"
+            />
+          </div>
 
-        <div className="kp-container relative flex min-h-[500px] items-center py-14 sm:min-h-[540px] sm:py-16 lg:min-h-[580px] lg:py-20">
-          <div className="max-w-[760px]">
-            <p className="font-brand text-sm font-bold uppercase tracking-[0.2em] text-white sm:text-base">
-              KAIROS <span className="text-accent">LOGISTICS</span>
-            </p>
-            <h1
-              id="logistics-page-title"
-              className="mt-5 max-w-[720px] font-display text-4xl font-bold leading-[1.08] sm:text-5xl lg:text-[56px]"
-            >
-              Професійне перевезення товарів для агропідприємств
-            </h1>
-            <p className="mt-6 max-w-[700px] text-base leading-7 text-white/80 sm:text-lg sm:leading-8">
-              Організовуємо відвантаження від постачальників Київської області та перевезення товару
-              до логістичного хабу Kairos Parts у Кагарлику. Ви отримаєте необхідні запчастини та
-              матеріали швидко, без простоїв та зайвих турбот.
-            </p>
+          <div className="relative min-h-[500px] py-14 sm:min-h-[540px] sm:py-16 md:flex md:items-center lg:min-h-[580px] lg:py-20">
+            <div className="max-w-[600px] xl:max-w-[640px]">
+              <p className="font-brand text-sm font-bold uppercase tracking-[0.2em] text-white sm:text-base">
+                KAIROS <span className="text-accent">LOGISTICS</span>
+              </p>
+              <h1
+                id="logistics-page-title"
+                className="mt-5 max-w-[720px] font-display text-4xl font-bold leading-[1.08] sm:text-5xl lg:text-[56px]"
+              >
+                Професійне перевезення товарів для агропідприємств
+              </h1>
+              <p className="mt-6 max-w-[700px] text-base leading-7 text-white/80 sm:text-lg sm:leading-8">
+                Організовуємо відвантаження від постачальників Київської області та перевезення
+                товару до логістичного хабу Kairos Parts у Кагарлику. Ви отримаєте необхідні
+                запчастини та матеріали швидко, без простоїв та зайвих турбот.
+              </p>
 
-            <div className="mt-8 max-w-md">
-              <LogisticsRequestCta />
+              <div className="mt-8 max-w-md">
+                <LogisticsRequestCta />
+              </div>
+            </div>
+
+            <div className="relative mt-10 min-h-[260px] w-full md:hidden">
+              <Image
+                src="/images/logistics/hero-logistic.png"
+                alt=""
+                fill
+                sizes="100vw"
+                className="object-contain object-center"
+              />
             </div>
           </div>
-        </div>
 
-        <LogisticsBenefitsBar />
+          <LogisticsBenefitsBar />
+        </div>
       </section>
 
       <LogisticsRatesSection />

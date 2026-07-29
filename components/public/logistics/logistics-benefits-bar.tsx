@@ -39,7 +39,7 @@ const dividerClasses = [
 
 export function LogisticsBenefitsBar() {
   return (
-    <div className="kp-container relative pb-5 text-white sm:pb-6">
+    <div className="relative pb-5 text-white sm:pb-6">
       <h2 id="logistics-benefits-bar-title" className="sr-only">
         Переваги Kairos Logistics
       </h2>
