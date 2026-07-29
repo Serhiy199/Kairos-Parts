@@ -43,12 +43,13 @@ export default async function ClientLayout({ children }: { children: React.React
   const clientNavItems = [
     { href: '/client', label: 'Панель керування', icon: 'dashboard' as const },
     { href: '/client/requests', label: 'Мої заявки', icon: 'requests' as const, badge: pendingApprovalRequestCount },
+    { href: '/client/logistics', label: 'Мої доставки', icon: 'logistics' as const },
     { href: '/client/vehicles', label: 'Мій парк техніки', icon: 'tractor' as const },
     { href: '/client/documents', label: 'Документи', icon: 'documents' as const },
     { href: '/client/change-requests', label: 'Запити на зміну', icon: 'changes' as const },
     { href: '/client/profile', label: 'Профіль', icon: 'profile' as const }
   ];
-  const wideContent = ['/client/requests', '/client/change-requests', '/client/documents'].some(
+  const wideContent = ['/client/requests', '/client/logistics', '/client/change-requests', '/client/documents'].some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
 
