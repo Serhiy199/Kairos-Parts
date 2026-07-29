@@ -15,7 +15,9 @@ import {
 
 import { KAIROS_LOGISTICS_BASE_ADDRESS } from '@/lib/logistics/constants';
 import {
+  ADDITIONAL_PICKUP_CHARGE_MINOR_UNITS,
   calculateLogisticsPricePreview,
+  FARM_DELIVERY_CHARGE_MINOR_UNITS,
   formatLogisticsPrice,
   type LogisticsDestinationType
 } from '@/lib/logistics/pricing-preview';
@@ -749,10 +751,16 @@ export function LogisticsRequestForm({
             ref={addPointButtonRef}
             type="button"
             onClick={addPickupPoint}
-            className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-accent/50 bg-accent/5 px-4 py-3 text-sm font-bold text-public-primary transition hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
+            className="mt-4 inline-flex min-h-11 w-full flex-col items-start justify-center gap-1 rounded-lg border border-accent/50 bg-accent/5 px-4 py-3 text-left transition hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
           >
-            <TbPlus aria-hidden="true" className="size-5" />
-            Додати ще одну точку
+            <span className="inline-flex items-center gap-2 text-sm font-bold text-public-primary">
+              <TbPlus aria-hidden="true" className="size-5" />
+              Додати ще одну точку відвантаження
+            </span>
+            <span className="text-xs font-medium leading-5 text-public-muted">
+              Кожна додаткова точка відвантаження: +
+              {formatLogisticsPrice(ADDITIONAL_PICKUP_CHARGE_MINOR_UNITS)} з ПДВ
+            </span>
           </button>
           </div>
         </section>
@@ -772,14 +780,18 @@ export function LogisticsRequestForm({
               value="KAIROS_BASE"
               checked={destinationType === 'KAIROS_BASE'}
               title="Доставити на базу Kairos"
-              description="Без додаткової доплати"
+              description="Без додаткової оплати"
+              price={`Вартість: ${formatLogisticsPrice(0)}`}
               onChange={selectDestination}
             />
             <DestinationRadio
               value="FARM"
               checked={destinationType === 'FARM'}
               title="Доставити в господарство"
-              description="+500 грн, ПДВ включено"
+              description="У межах Кагарлицької громади"
+              price={`Додатково: +${formatLogisticsPrice(
+                FARM_DELIVERY_CHARGE_MINOR_UNITS
+              )} з ПДВ`}
               onChange={selectDestination}
             />
           </div>
@@ -970,7 +982,11 @@ export function LogisticsRequestForm({
               value={formatServerMoney(verifiedQuote.baseTariff)}
             />
             <PriceRow
-              label={`Додаткові точки: ${verifiedQuote.additionalPickupCount} × 500`}
+              label={`Додаткові точки: ${
+                verifiedQuote.additionalPickupCount
+              } × ${formatLogisticsPrice(
+                ADDITIONAL_PICKUP_CHARGE_MINOR_UNITS
+              )}`}
               value={formatServerMoney(verifiedQuote.additionalPointsCharge)}
             />
             <PriceRow
@@ -991,7 +1007,11 @@ export function LogisticsRequestForm({
               value={formatLogisticsPrice(preview.baseTariffMinorUnits)}
             />
             <PriceRow
-              label={`Додаткові точки: ${preview.additionalPointCount} × 500`}
+              label={`Додаткові точки: ${
+                preview.additionalPointCount
+              } × ${formatLogisticsPrice(
+                ADDITIONAL_PICKUP_CHARGE_MINOR_UNITS
+              )}`}
               value={formatLogisticsPrice(preview.additionalPointsMinorUnits)}
             />
             <PriceRow
@@ -1088,12 +1108,14 @@ function DestinationRadio({
   checked,
   title,
   description,
+  price,
   onChange
 }: {
   value: LogisticsDestinationType;
   checked: boolean;
   title: string;
   description: string;
+  price: string;
   onChange: (value: LogisticsDestinationType) => void;
 }) {
   return (
@@ -1117,6 +1139,13 @@ function DestinationRadio({
           <span className="block font-bold text-public-primary">{title}</span>
           <span className="mt-1 block text-xs leading-5 text-public-muted">
             {description}
+          </span>
+          <span
+            className={`mt-2 block text-sm font-bold ${
+              checked ? 'text-accent' : 'text-public-secondary'
+            }`}
+          >
+            {price}
           </span>
         </span>
       </span>
