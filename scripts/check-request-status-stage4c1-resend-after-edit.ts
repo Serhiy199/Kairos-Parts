@@ -201,9 +201,10 @@ function main() {
   );
 
   const adminPage = readFileSync('app/admin/requests/[id]/page.tsx', 'utf8');
+  const adminPresentation = readFileSync('lib/request-items/admin-presentation.ts', 'utf8');
   const sendService = readFileSync('lib/request-selection/send-for-approval.ts', 'utf8');
   const clientReadModel = readFileSync('lib/request-selection/client-read-model.ts', 'utf8');
-  assert.match(adminPage, /Змінено після надсилання/);
+  assert.match(adminPresentation, /Змінено після надсилання/);
   assert.match(adminPage, /Усі актуальні позиції вже входять до останньої надісланої версії/);
   assert.match(adminPage, /disabled=\{!eligibility\.canSend\}/);
   assert.match(adminPage, /currentUpdatedAt/);

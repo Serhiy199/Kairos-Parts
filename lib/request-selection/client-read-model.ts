@@ -31,6 +31,26 @@ export type ClientSelectionItemReadModel = {
   } | null;
 };
 
+export type ClientPreviouslyApprovedItemReadModel = {
+  batchItemId: string;
+  revision: number;
+  approvedAt: string | null;
+  itemName: string;
+  catalogNumber: string | null;
+  analogNumber: string | null;
+  quantity: string;
+  unit: string | null;
+  unitPrice: string | null;
+  currency: string | null;
+  vehicle: {
+    displayName: string | null;
+    brand: string | null;
+    model: string | null;
+    year: number | null;
+  } | null;
+  invoiceState: 'AWAITING_INVOICE' | 'IN_INVOICE';
+};
+
 export type ClientLegacyItemReadModel = {
   id: string;
   equipmentType: string | null;
@@ -68,18 +88,21 @@ export type ClientRequestApprovalReadModel =
         previouslyApprovedCount: number;
         items: ClientSelectionItemReadModel[];
       };
+      previouslyApprovedItems: ClientPreviouslyApprovedItemReadModel[];
       legacyItems: [];
     }
   | {
       request: ClientApprovalRequestReadModel;
       mode: 'LEGACY';
       activeBatch: null;
+      previouslyApprovedItems: [];
       legacyItems: ClientLegacyItemReadModel[];
     }
   | {
       request: ClientApprovalRequestReadModel;
       mode: 'EMPTY';
       activeBatch: null;
+      previouslyApprovedItems: [];
       legacyItems: [];
     };
 
@@ -157,6 +180,25 @@ const activeBatchSelect = {
   }
 } satisfies Prisma.RequestSelectionBatchSelect;
 
+const approvedHistoryItemSelect = {
+  id: true,
+  sourceRequestItemId: true,
+  approvedAt: true,
+  itemName: true,
+  catalogNumber: true,
+  analogNumber: true,
+  quantity: true,
+  unit: true,
+  approvedUnitPrice: true,
+  currency: true,
+  vehicleDisplayName: true,
+  vehicleBrand: true,
+  vehicleModel: true,
+  vehicleYear: true,
+  batch: { select: { revision: true } },
+  invoiceItem: { select: { id: true } }
+} satisfies Prisma.RequestSelectionBatchItemSelect;
+
 const legacyItemSelect = {
   id: true,
   equipmentType: true,
@@ -182,6 +224,9 @@ type BatchItemRecord = Prisma.RequestSelectionBatchItemGetPayload<{
 }>;
 type ActiveBatchRecord = Prisma.RequestSelectionBatchGetPayload<{
   select: typeof activeBatchSelect;
+}>;
+type ApprovedHistoryItemRecord = Prisma.RequestSelectionBatchItemGetPayload<{
+  select: typeof approvedHistoryItemSelect;
 }>;
 type LegacyItemRecord = Prisma.RequestItemGetPayload<{ select: typeof legacyItemSelect }>;
 
@@ -288,7 +333,7 @@ function requestReadModel(request: RequestRecord): ClientApprovalRequestReadMode
 function batchReadModel(
   request: RequestRecord,
   batch: ActiveBatchRecord,
-  previouslyApprovedCount = 0
+  previouslyApprovedItems: ClientPreviouslyApprovedItemReadModel[] = []
 ): ClientRequestApprovalReadModel {
   return {
     request: requestReadModel(request),
@@ -303,11 +348,53 @@ function batchReadModel(
         | 'REJECTED',
       sentAt: batch.sentAt?.toISOString() ?? null,
       itemCount: batch.items.length,
-      previouslyApprovedCount,
+      previouslyApprovedCount: previouslyApprovedItems.length,
       items: batch.items.map(mapClientSelectionItem)
     },
+    previouslyApprovedItems,
     legacyItems: []
   };
+}
+
+function approvedHistoryVehicle(item: ApprovedHistoryItemRecord) {
+  return item.vehicleDisplayName
+    || item.vehicleBrand
+    || item.vehicleModel
+    || item.vehicleYear
+    ? {
+        displayName: item.vehicleDisplayName,
+        brand: item.vehicleBrand,
+        model: item.vehicleModel,
+        year: item.vehicleYear
+      }
+    : null;
+}
+
+export function mapClientPreviouslyApprovedItems(
+  records: ApprovedHistoryItemRecord[]
+): ClientPreviouslyApprovedItemReadModel[] {
+  const byIdentity = new Map<string, ApprovedHistoryItemRecord>();
+  for (const item of records) {
+    byIdentity.set(item.sourceRequestItemId ?? `snapshot:${item.id}`, item);
+  }
+  return [...byIdentity.values()]
+    .sort((left, right) =>
+      left.batch.revision - right.batch.revision || left.id.localeCompare(right.id)
+    )
+    .map((item) => ({
+      batchItemId: item.id,
+      revision: item.batch.revision,
+      approvedAt: item.approvedAt?.toISOString() ?? null,
+      itemName: item.itemName,
+      catalogNumber: item.catalogNumber,
+      analogNumber: item.analogNumber,
+      quantity: String(item.quantity),
+      unit: item.unit.trim() || null,
+      unitPrice: item.approvedUnitPrice?.toString() ?? null,
+      currency: item.approvedUnitPrice === null ? null : item.currency,
+      vehicle: approvedHistoryVehicle(item),
+      invoiceState: item.invoiceItem ? 'IN_INVOICE' : 'AWAITING_INVOICE'
+    }));
 }
 
 export function createClientRequestApprovalReadService(database: ReadDatabase) {
@@ -388,25 +475,32 @@ export function createClientRequestApprovalReadService(database: ReadDatabase) {
           requestStatus: request.status
         });
       }
-      let previouslyApprovedCount = 0;
+      let previouslyApprovedItems: ClientPreviouslyApprovedItemReadModel[] = [];
       if (activeBatch.status === 'SENT') {
         try {
-          previouslyApprovedCount =
-            await database.requestSelectionBatchItem.count({
+          const approvedRecords =
+            await database.requestSelectionBatchItem.findMany({
               where: {
                 status: 'APPROVED',
                 batch: {
                   requestId: request.id,
-                  id: { not: activeBatch.id },
                   status: { in: ['APPROVED', 'PARTIALLY_APPROVED'] }
                 }
-              }
+              },
+              orderBy: [
+                { batch: { revision: 'asc' } },
+                { position: 'asc' },
+                { id: 'asc' }
+              ],
+              select: approvedHistoryItemSelect
             });
+          previouslyApprovedItems =
+            mapClientPreviouslyApprovedItems(approvedRecords);
         } catch (error) {
           throw readError('BATCH_READ_FAILED', request.id, error);
         }
       }
-      return batchReadModel(request, activeBatch, previouslyApprovedCount);
+      return batchReadModel(request, activeBatch, previouslyApprovedItems);
     }
 
     let legacyItems: LegacyItemRecord[];
@@ -425,6 +519,7 @@ export function createClientRequestApprovalReadService(database: ReadDatabase) {
         request: requestReadModel(request),
         mode: 'LEGACY',
         activeBatch: null,
+        previouslyApprovedItems: [],
         legacyItems: legacyItems.map(mapClientLegacyItem)
       };
     }
@@ -433,6 +528,7 @@ export function createClientRequestApprovalReadService(database: ReadDatabase) {
       request: requestReadModel(request),
       mode: 'EMPTY',
       activeBatch: null,
+      previouslyApprovedItems: [],
       legacyItems: []
     };
   };

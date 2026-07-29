@@ -24,8 +24,13 @@ import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { RequestSelectionSubmitButton } from '@/components/admin/request-selection-submit-button';
 import { StatusBadge } from '@/components/client/status-badge';
 import { ActionIcon } from '@/components/ui/action-icons';
+import {
+  ReactiveActionForm,
+  ReactiveSubmitButton
+} from '@/components/workflow/reactive-action-form';
 import { ManualEquipmentFields } from '@/components/vehicles/manual-equipment-fields';
 import { requireCrmSession } from '@/lib/admin/access';
+import type { WorkflowActionResult } from '@/lib/actions/workflow-result';
 import { getAdminRequestFeedback } from '@/lib/admin/request-feedback';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
@@ -38,10 +43,10 @@ import { getVehicleDisplay } from '@/lib/vehicles/name';
 import { INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 import { PART_MANUFACTURERS } from '@/lib/parts/part-manufacturers';
 import { prisma } from '@/lib/prisma';
+import { getAdminRequestItemPresentation } from '@/lib/request-items/admin-presentation';
 import {
   getRequestSelectionResendEligibility,
-  type RequestSelectionResendEligibility,
-  type RequestSelectionResendItemState
+  type RequestSelectionResendEligibility
 } from '@/lib/request-selection/resend-eligibility';
 import { REQUEST_SELECTION_BATCH_STATUS_LABELS } from '@/lib/request-selection/presentation';
 import { REQUEST_DOCUMENT_TYPE_LABELS, REQUEST_DOCUMENT_TYPES } from '@/lib/request-documents/validation';
@@ -259,6 +264,13 @@ export default async function AdminRequestDetailPage({
             items={request.items}
             eligibility={selectionEligibility}
             latestSelectionBatch={request.selectionBatches[0] ?? null}
+            invoicedBatchItemIds={new Set(
+              request.invoices.flatMap((invoice) =>
+                invoice.items.flatMap((item) =>
+                  item.selectionBatchItemId ? [item.selectionBatchItemId] : []
+                )
+              )
+            )}
           />
 
           <InvoicesSection
@@ -526,6 +538,7 @@ type RequestItemView = {
 
 type InvoiceItemView = {
   id: string;
+  selectionBatchItemId: string | null;
   name: string;
   brand: string | null;
   catalogNumber: string | null;
@@ -615,44 +628,6 @@ function BillingSnapshotCard({ title, snapshot, buyer = false }: { title: string
   );
 }
 
-const resendStatePresentation: Record<
-  RequestSelectionResendItemState,
-  { label: string; className: string }
-> = {
-  NOT_SENT: {
-    label: 'Чернетка',
-    className: 'bg-surface-muted text-muted'
-  },
-  UNCHANGED: {
-    label: 'Надіслано',
-    className: 'bg-[#E8F1FF] text-info'
-  },
-  CHANGED_AFTER_SEND: {
-    label: 'Змінено після надсилання',
-    className: 'bg-[#FFF7E0] text-[#8A5B24]'
-  },
-  NEW_AFTER_SEND: {
-    label: 'Нова позиція',
-    className: 'bg-accent/20 text-foreground'
-  },
-  LOCKED_APPROVED: {
-    label: 'Погоджено — заблоковано',
-    className: 'bg-[#E7F6EC] text-success'
-  },
-  UNCHANGED_REJECTED: {
-    label: 'Відхилено — можна доопрацювати',
-    className: 'bg-red-50 text-red-700'
-  },
-  CHANGED_REJECTED: {
-    label: 'Змінено після відхилення',
-    className: 'bg-[#FFF7E0] text-[#8A5B24]'
-  },
-  NEW_FOLLOW_UP: {
-    label: 'Нова позиція для повторного погодження',
-    className: 'bg-accent/20 text-foreground'
-  }
-};
-
 function requestSelectionMessage(
   items: RequestItemView[],
   eligibility: RequestSelectionResendEligibility
@@ -702,11 +677,13 @@ function RequestItemsSection({
   requestId,
   items,
   eligibility,
-  latestSelectionBatch
+  latestSelectionBatch,
+  invoicedBatchItemIds
 }: {
   requestId: string;
   items: RequestItemView[];
   eligibility: RequestSelectionResendEligibility;
+  invoicedBatchItemIds: ReadonlySet<string>;
   latestSelectionBatch: {
     id: string;
     revision: number;
@@ -758,7 +735,7 @@ function RequestItemsSection({
         <div className="mt-5 rounded-md border border-border bg-surface-muted p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-bold text-foreground">
-              Рішення клієнта · версія №{latestSelectionBatch.revision}
+              Результат погодження версії №{latestSelectionBatch.revision}
             </p>
             <span className="rounded-full bg-card px-2.5 py-1 text-xs font-bold text-muted">
               {REQUEST_SELECTION_BATCH_STATUS_LABELS[latestSelectionBatch.status]}
@@ -801,8 +778,15 @@ function RequestItemsSection({
         {items.map((item) => {
           const itemTotal = item.salePrice ? calculateInvoiceLineTotal(item.quantity, item.salePrice) : null;
           const resendState = stateByItemId.get(item.id) ?? 'NOT_SENT';
-          const resendPresentation = resendStatePresentation[resendState];
-          const approvedLocked = resendState === 'LOCKED_APPROVED';
+          const eligibilityItem = eligibility.items.find(
+            (candidate) => candidate.requestItemId === item.id
+          );
+          const presentation = getAdminRequestItemPresentation({
+            state: resendState,
+            approvedBatchItemId: eligibilityItem?.approvedBatchItemId ?? null,
+            invoicedBatchItemIds
+          });
+          const approvedLocked = presentation.locked;
 
           return (
           <article key={item.id} className="min-w-0 rounded-md border border-border bg-card p-3 sm:p-4">
@@ -837,26 +821,12 @@ function RequestItemsSection({
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase text-muted">Клієнт</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${resendPresentation.className}`}>
-                    {resendPresentation.label}
+                  <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${presentation.approval.className}`}>
+                    {presentation.approval.label}
                   </span>
-                  {!item.visibleToClient ? (
-                    <span className="inline-flex rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-muted">Не відправлено клієнту</span>
-                  ) : null}
-                  {item.visibleToClient ? (
-                    item.approvedByClient ? (
-                      <span className="inline-flex rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success">Погоджено клієнтом</span>
-                    ) : (
-                      <span className="inline-flex rounded-full bg-[#FFF7E0] px-2.5 py-1 text-xs font-bold text-[#8A5B24]">Очікує погодження</span>
-                    )
-                  ) : null}
-                  {item.visibleToClient ? (
-                    item.includeInInvoice ? (
-                      <span className="inline-flex rounded-full bg-[#E8F1FF] px-2.5 py-1 text-xs font-bold text-info">Включено у рахунок</span>
-                    ) : (
-                      <span className="inline-flex rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-muted">Не включено у рахунок</span>
-                    )
-                  ) : null}
+                  <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${presentation.invoice.className}`}>
+                    {presentation.invoice.label}
+                  </span>
                 </div>
                 {item.approvedAt ? <p className="mt-2 text-xs text-muted">Погоджено: {item.approvedAt.toLocaleString('uk-UA')}</p> : null}
               </div>
@@ -865,22 +835,22 @@ function RequestItemsSection({
             <div className="mt-4 grid min-w-0 gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
               {approvedLocked ? (
                 <p className="text-sm font-semibold text-success">
-                  Позицію вже погоджено клієнтом. Її погоджені дані не можна змінити.
+                  {presentation.helper}
                 </p>
               ) : (
               <details className="group">
                 <summary className="cursor-pointer break-words text-sm font-bold text-foreground transition hover:text-accent">Редагувати позицію</summary>
                 <div className="mt-4 min-w-0 rounded-md border border-border bg-surface-muted p-3 sm:p-4">
-                  <RequestItemForm action={updateAdminRequestItem} requestId={requestId} item={item} submitLabel="Зберегти позицію" />
+                  <RequestItemForm action={updateAdminRequestItem} requestId={requestId} item={item} submitLabel="Зберегти позицію" pendingLabel="Зберігаємо…" />
                 </div>
               </details>
               )}
               {!approvedLocked ? (
-              <form action={deleteAdminRequestItem} className="sm:justify-self-end">
+              <ReactiveActionForm action={deleteAdminRequestItem} className="sm:justify-self-end">
                 <input type="hidden" name="requestId" value={requestId} />
                 <input type="hidden" name="itemId" value={item.id} />
-                <button className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-danger/30 px-4 py-2 text-sm font-bold text-danger transition hover:bg-danger/10 sm:w-auto">Видалити</button>
-              </form>
+                <ReactiveSubmitButton pendingLabel="Видаляємо…" className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-danger/30 px-4 py-2 text-sm font-bold text-danger transition hover:bg-danger/10 disabled:opacity-60 sm:w-auto">Видалити</ReactiveSubmitButton>
+              </ReactiveActionForm>
               ) : null}
             </div>
           </article>
@@ -896,12 +866,12 @@ function RequestItemsSection({
       <details className="mt-5 rounded-md border border-border bg-surface-muted p-4" open={items.length === 0}>
         <summary className="cursor-pointer text-sm font-bold text-foreground">Додати позицію</summary>
         <div className="mt-4">
-          <RequestItemForm action={createAdminRequestItem} requestId={requestId} submitLabel="Додати позицію" />
+          <RequestItemForm action={createAdminRequestItem} requestId={requestId} submitLabel="Додати позицію" pendingLabel="Додаємо…" />
         </div>
       </details>
 
       <div className="mt-5 flex min-w-0 border-t border-border pt-5 sm:justify-end">
-        <form action={sendAdminRequestItemsForApproval} className="w-full sm:w-auto">
+        <ReactiveActionForm action={sendAdminRequestItemsForApproval} className="w-full sm:w-auto">
           <input type="hidden" name="requestId" value={requestId} />
           <input
             type="hidden"
@@ -922,7 +892,7 @@ function RequestItemsSection({
             )}
           />
           <RequestSelectionSubmitButton disabled={!eligibility.canSend} />
-        </form>
+        </ReactiveActionForm>
       </div>
     </section>
   );
@@ -968,16 +938,17 @@ function InvoicesSection({
             незмінної версії підбору.
           </p>
         </div>
-        <form action={createAdminInvoice} className="w-full lg:w-auto">
+        <ReactiveActionForm action={createAdminInvoice} className="w-full lg:w-auto">
           <input type="hidden" name="requestId" value={requestId} />
-          <button
+          <ReactiveSubmitButton
+            pendingLabel="Створюємо рахунок…"
             disabled={!canCreateInvoice}
             className="inline-flex w-full items-center justify-center gap-2 whitespace-normal rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-muted lg:w-auto"
           >
             <ActionIcon name="plus" />
             Створити рахунок
-          </button>
-        </form>
+          </ReactiveSubmitButton>
+        </ReactiveActionForm>
       </div>
 
       {!canCreateInvoice ? (
@@ -1109,14 +1080,14 @@ function InvoicesSection({
                       Друк / PDF
                     </Link>
                     {canSend ? (
-                      <form action={sendAdminInvoice} className="w-full sm:w-auto">
+                      <ReactiveActionForm action={sendAdminInvoice} className="w-full sm:w-auto">
                         <input type="hidden" name="requestId" value={requestId} />
                         <input type="hidden" name="invoiceId" value={invoice.id} />
-                        <button className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent-hover sm:w-auto">
+                        <ReactiveSubmitButton pendingLabel="Надсилаємо…" className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:opacity-60 sm:w-auto">
                           <ActionIcon name="send" />
                           Надіслати клієнту
-                        </button>
-                      </form>
+                        </ReactiveSubmitButton>
+                      </ReactiveActionForm>
                     ) : null}
                     {canMarkPaid ? (
                       <form action={markAdminInvoicePaid} className="w-full sm:w-auto">
@@ -1166,15 +1137,17 @@ function RequestItemForm({
   action,
   requestId,
   item,
-  submitLabel
+  submitLabel,
+  pendingLabel
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  action: (formData: FormData) => Promise<WorkflowActionResult>;
   requestId: string;
   item?: RequestItemView;
   submitLabel: string;
+  pendingLabel: string;
 }) {
   return (
-    <form action={action} className="grid min-w-0 gap-4">
+    <ReactiveActionForm action={action} className="grid min-w-0 gap-4" resetOnSuccess={!item}>
       <input type="hidden" name="requestId" value={requestId} />
       {item ? <input type="hidden" name="itemId" value={item.id} /> : null}
       {item ? (
@@ -1213,10 +1186,10 @@ function RequestItemForm({
           className="min-w-0 w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
         />
       </label>
-      <button className="inline-flex w-full items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover sm:w-fit">
+      <ReactiveSubmitButton pendingLabel={pendingLabel} className="inline-flex w-full items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:opacity-60 sm:w-fit">
         {submitLabel}
-      </button>
-    </form>
+      </ReactiveSubmitButton>
+    </ReactiveActionForm>
   );
 }
 

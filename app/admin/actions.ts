@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { requireCrmSession } from '@/lib/admin/access';
+import { getAdminWorkflowFeedback } from '@/lib/admin/request-feedback';
+import type { WorkflowActionResult } from '@/lib/actions/workflow-result';
 import { buildAuditDiff } from '@/lib/audit-log/payload';
 import { getServerAuditRequestContext } from '@/lib/audit-log/request-context';
 import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
@@ -66,6 +68,10 @@ function readString(formData: FormData, key: string) {
 
 function redirectBack(requestId: string, result: string): never {
   redirect(`/admin/requests/${requestId}?result=${result}`);
+}
+
+function workflowResult(code: string, ok: boolean, refresh = true): WorkflowActionResult {
+  return { ok, feedback: getAdminWorkflowFeedback(code), refresh };
 }
 
 function getCrmRole(session: Awaited<ReturnType<typeof requireCrmSession>>): UserRole {
@@ -366,7 +372,7 @@ export async function createAdminRequestItem(formData: FormData) {
   const parsed = parseRequestItemInput(formData);
 
   if (!hasDatabaseUrl() || !requestId || !parsed.ok) {
-    redirectBack(requestId, 'item-error');
+    return workflowResult('item-error', false, false);
   }
 
   const requestContext = await getServerAuditRequestContext();
@@ -381,13 +387,13 @@ export async function createAdminRequestItem(formData: FormData) {
     });
   } catch (error) {
     if (error instanceof RequestItemDraftCreateError && error.code === 'REQUEST_NOT_FOUND') {
-      redirect('/admin/requests?result=request-not-found');
+      return workflowResult('request-not-found', false);
     }
     if (error instanceof RequestItemDraftCreateError
       && error.code === 'REQUEST_STATUS_DOES_NOT_ALLOW_ITEM_CREATION') {
-      redirectBack(requestId, 'item-status-locked');
+      return workflowResult('item-status-locked', false);
     }
-    redirectBack(requestId, 'item-error');
+    return workflowResult('item-error', false);
   }
 
   revalidatePath('/admin');
@@ -398,7 +404,7 @@ export async function createAdminRequestItem(formData: FormData) {
     revalidatePath(`/client/vehicles/${result.request.vehicleId}`);
   }
 
-  redirectBack(result.request.id, 'item-created');
+  return workflowResult('item-created', true);
 }
 
 export async function updateAdminRequestItem(formData: FormData) {
@@ -409,7 +415,7 @@ export async function updateAdminRequestItem(formData: FormData) {
   const parsed = parseRequestItemUpdateInput(formData);
 
   if (!hasDatabaseUrl() || !requestId || !itemId || !expectedUpdatedAt || !parsed.ok) {
-    redirectBack(requestId, 'item-validation-error');
+    return workflowResult('item-validation-error', false, false);
   }
 
   const requestContext = await getServerAuditRequestContext();
@@ -434,22 +440,22 @@ export async function updateAdminRequestItem(formData: FormData) {
       errorCode: code
     });
     if (code === 'REQUEST_ITEM_NOT_FOUND' || code === 'REQUEST_ITEM_NOT_IN_REQUEST') {
-      redirectBack(requestId, 'item-not-found');
+      return workflowResult('item-not-found', false);
     }
     if (code === 'REQUEST_ITEM_VERSION_CONFLICT') {
-      redirectBack(requestId, 'item-stale');
+      return workflowResult('item-stale', false);
     }
     if (code === 'REQUEST_ITEM_VALIDATION_FAILED') {
-      redirectBack(requestId, 'item-validation-error');
+      return workflowResult('item-validation-error', false, false);
     }
     if (code === 'APPROVED_REQUEST_ITEM_LOCKED') {
-      redirectBack(requestId, 'item-approved-locked');
+      return workflowResult('item-approved-locked', false);
     }
-    redirectBack(requestId, 'item-update-error');
+    return workflowResult('item-update-error', false);
   }
 
   if (result.outcome === 'no_changes') {
-    redirectBack(result.item.requestId, 'item-no-changes');
+    return workflowResult('item-no-changes', true, false);
   }
 
   revalidatePath('/admin');
@@ -460,7 +466,7 @@ export async function updateAdminRequestItem(formData: FormData) {
     revalidatePath(`/client/vehicles/${result.item.vehicleId}`);
   }
 
-  redirectBack(result.item.requestId, 'item-updated');
+  return workflowResult('item-updated', true);
 }
 
 export async function sendAdminRequestItemsForApproval(formData: FormData) {
@@ -473,7 +479,7 @@ export async function sendAdminRequestItemsForApproval(formData: FormData) {
   const rawVersions = readString(formData, 'requestItemVersions');
 
   if (!hasDatabaseUrl() || !requestId || !rawVersions) {
-    redirectBack(requestId, 'items-send-error');
+    return workflowResult('items-send-error', false, false);
   }
 
   let expectedRequestItemVersions: RequestSelectionSourceVersion[];
@@ -494,7 +500,7 @@ export async function sendAdminRequestItemsForApproval(formData: FormData) {
       return { id: entry.id, updatedAt: new Date(entry.updatedAt) };
     });
   } catch {
-    redirectBack(requestId, 'items-send-stale');
+    return workflowResult('items-send-stale', false);
   }
 
   const requestContext = await getServerAuditRequestContext();
@@ -517,49 +523,49 @@ export async function sendAdminRequestItemsForApproval(formData: FormData) {
     }
   } catch (error) {
     if (error instanceof SendRequestSelectionForApprovalError) {
-      if (error.code === 'EMPTY_SELECTION') redirectBack(requestId, 'items-send-empty');
+      if (error.code === 'EMPTY_SELECTION') return workflowResult('items-send-empty', false);
       if (error.code === 'SOURCE_ITEM_VERSION_CONFLICT') {
-        redirectBack(requestId, 'items-send-stale');
+        return workflowResult('items-send-stale', false);
       }
       if (error.code === 'FOLLOW_UP_CANDIDATE_VERSION_CONFLICT') {
-        redirectBack(requestId, 'items-send-stale');
+        return workflowResult('items-send-stale', false);
       }
       if (error.code === 'DUPLICATE_SEND_OPERATION') {
-        redirectBack(requestId, 'items-send-duplicate');
+        return workflowResult('items-send-duplicate', false);
       }
       if (error.code === 'REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND') {
-        redirectBack(requestId, 'items-send-status-locked');
+        return workflowResult('items-send-status-locked', false);
       }
       if (error.code === 'FOLLOW_UP_INVOICE_DRAFT_EXISTS') {
-        redirectBack(requestId, 'follow-up-invoice-draft');
+        return workflowResult('follow-up-invoice-draft', false);
       }
       if (error.code === 'FOLLOW_UP_INVOICE_ALREADY_SENT') {
-        redirectBack(requestId, 'follow-up-invoice-sent');
+        return workflowResult('follow-up-invoice-sent', false);
       }
       if (error.code === 'FOLLOW_UP_ACTIVE_BATCH_EXISTS') {
-        redirectBack(requestId, 'follow-up-active-batch');
+        return workflowResult('follow-up-active-batch', false);
       }
       if (
         error.code === 'NO_FOLLOW_UP_SELECTION_CHANGES'
         || error.code === 'FOLLOW_UP_SELECTION_INVALID'
       ) {
-        redirectBack(requestId, 'follow-up-no-changes');
+        return workflowResult('follow-up-no-changes', false);
       }
       if (error.code === 'FOLLOW_UP_SOURCE_BATCH_NOT_FOUND') {
-        redirectBack(requestId, 'follow-up-source-missing');
+        return workflowResult('follow-up-source-missing', false);
       }
       if (error.code === 'FOLLOW_UP_REQUEST_STATUS_BLOCKED') {
-        redirectBack(requestId, 'items-send-status-locked');
+        return workflowResult('items-send-status-locked', false);
       }
       if (error.code === 'REQUEST_NOT_FOUND') {
-        redirect('/admin/requests?result=request-not-found');
+        return workflowResult('request-not-found', false);
       }
     }
     console.error('Failed to send request selection for approval.', {
       requestId,
       errorCode: error instanceof SendRequestSelectionForApprovalError ? error.code : 'UNEXPECTED'
     });
-    redirectBack(requestId, 'items-send-error');
+    return workflowResult('items-send-error', false);
   }
 
   revalidatePath(`/admin/requests/${requestId}`);
@@ -569,9 +575,9 @@ export async function sendAdminRequestItemsForApproval(formData: FormData) {
   revalidatePath('/client/requests');
   revalidatePath(`/client/requests/${requestId}`);
   if (notificationFailed) {
-    redirectBack(requestId, 'items-sent-for-approval-notification-failed');
+    return workflowResult('items-sent-for-approval-notification-failed', true);
   }
-  redirectBack(requestId, 'items-sent-for-approval');
+  return workflowResult('items-sent-for-approval', true);
 }
 
 export async function deleteAdminRequestItem(formData: FormData) {
@@ -580,7 +586,7 @@ export async function deleteAdminRequestItem(formData: FormData) {
   const itemId = readString(formData, 'itemId');
 
   if (!hasDatabaseUrl() || !requestId || !itemId) {
-    redirectBack(requestId, 'item-error');
+    return workflowResult('item-error', false, false);
   }
 
   const item = await prisma.requestItem.findFirst({
@@ -594,7 +600,7 @@ export async function deleteAdminRequestItem(formData: FormData) {
   });
 
   if (!item) {
-    redirectBack(requestId, 'item-not-found');
+    return workflowResult('item-not-found', false);
   }
 
   const snapshot = requestItemSnapshot(item);
@@ -625,9 +631,10 @@ export async function deleteAdminRequestItem(formData: FormData) {
       error instanceof RequestItemDeleteError
       && error.code === 'APPROVED_REQUEST_ITEM_DELETE_BLOCKED'
     ) {
-      redirectBack(requestId, 'item-approved-delete-blocked');
+      return workflowResult('item-approved-delete-blocked', false);
     }
-    throw error;
+    console.error('Request item delete failed.', { requestId, requestItemId: itemId });
+    return workflowResult('item-error', false);
   }
 
   revalidatePath('/admin');
@@ -638,7 +645,7 @@ export async function deleteAdminRequestItem(formData: FormData) {
     revalidatePath(`/client/vehicles/${item.vehicleId}`);
   }
 
-  redirectBack(item.requestId, 'item-deleted');
+  return workflowResult('item-deleted', true);
 }
 
 export async function createAdminRequestDocument(formData: FormData) {
@@ -927,7 +934,7 @@ export async function createAdminInvoice(formData: FormData) {
   const requestId = readString(formData, 'requestId');
 
   if (!hasDatabaseUrl() || !requestId) {
-    redirectBack(requestId, 'invoice-error');
+    return workflowResult('invoice-error', false, false);
   }
 
   const result = await createInvoiceFromApprovedRequestItems({
@@ -938,11 +945,11 @@ export async function createAdminInvoice(formData: FormData) {
   });
 
   if (!result.ok) {
-    redirectBack(requestId, result.status);
+    return workflowResult(result.status, false);
   }
 
   revalidatePath(`/admin/requests/${requestId}`);
-  redirectBack(requestId, 'invoice-created');
+  return workflowResult('invoice-created', true);
 }
 
 export async function sendAdminInvoice(formData: FormData) {
@@ -951,18 +958,18 @@ export async function sendAdminInvoice(formData: FormData) {
   const invoiceId = readString(formData, 'invoiceId');
 
   if (!hasDatabaseUrl() || !requestId || !invoiceId) {
-    redirectBack(requestId, 'invoice-error');
+    return workflowResult('invoice-error', false, false);
   }
 
   const result = await sendInvoiceToClient(invoiceId, await getInvoiceAuditContext(session));
 
   if (!result.ok) {
-    redirectBack(requestId, result.status);
+    return workflowResult(result.status, false);
   }
 
   revalidatePath(`/admin/requests/${requestId}`);
   revalidatePath(`/client/requests/${requestId}`);
-  redirectBack(requestId, 'invoice-sent');
+  return workflowResult('invoice-sent', true);
 }
 
 export async function cancelAdminInvoice(formData: FormData) {

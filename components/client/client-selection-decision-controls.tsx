@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useFormStatus } from 'react-dom';
 
 import { decideClientSelectionItemAction } from '@/app/client/actions';
+import {
+  ReactiveActionForm,
+  ReactiveSubmitButton
+} from '@/components/workflow/reactive-action-form';
 
 type DecisionTarget = {
   requestId: string;
@@ -11,21 +14,6 @@ type DecisionTarget = {
   batchItemId: string;
   revision: number;
 };
-
-function DecisionSubmitButton({
-  children,
-  className
-}: {
-  children: string;
-  className: string;
-}) {
-  const { pending } = useFormStatus();
-  return (
-    <button type="submit" disabled={pending} className={className}>
-      {pending ? 'Зберігаємо…' : children}
-    </button>
-  );
-}
 
 function DecisionFields({
   target,
@@ -54,12 +42,13 @@ export function ClientSelectionDecisionControls({
 
   if (rejecting) {
     return (
-      <form action={decideClientSelectionItemAction} className="grid gap-3">
+      <ReactiveActionForm action={decideClientSelectionItemAction} className="grid gap-3">
         <DecisionFields target={target} decision="REJECT" />
         <label className="grid gap-2 text-sm font-semibold text-foreground">
           Причина відхилення
           <textarea
             name="clientComment"
+            autoFocus
             required
             minLength={3}
             maxLength={500}
@@ -69,9 +58,9 @@ export function ClientSelectionDecisionControls({
           />
         </label>
         <div className="flex flex-wrap gap-2">
-          <DecisionSubmitButton className="rounded-md bg-red-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-800 disabled:opacity-60">
+          <ReactiveSubmitButton pendingLabel="Відхиляємо…" className="rounded-md bg-red-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-800 disabled:opacity-60">
             Підтвердити відхилення
-          </DecisionSubmitButton>
+          </ReactiveSubmitButton>
           <button
             type="button"
             onClick={() => setRejecting(false)}
@@ -80,18 +69,18 @@ export function ClientSelectionDecisionControls({
             Скасувати
           </button>
         </div>
-      </form>
+      </ReactiveActionForm>
     );
   }
 
   return (
     <div className="flex flex-wrap gap-2">
-      <form action={decideClientSelectionItemAction}>
+      <ReactiveActionForm action={decideClientSelectionItemAction}>
         <DecisionFields target={target} decision="APPROVE" />
-        <DecisionSubmitButton className="rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:opacity-60">
+        <ReactiveSubmitButton pendingLabel="Погоджуємо…" className="rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:opacity-60">
           Погодити
-        </DecisionSubmitButton>
-      </form>
+        </ReactiveSubmitButton>
+      </ReactiveActionForm>
       <button
         type="button"
         onClick={() => setRejecting(true)}

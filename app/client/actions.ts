@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
+import { getClientSelectionFeedback } from '@/lib/client/request-feedback';
 import { getServerAuditRequestContext } from '@/lib/audit-log/request-context';
 import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { createChangeRequest } from '@/lib/change-requests/service';
@@ -63,7 +64,7 @@ export async function decideClientSelectionItemAction(formData: FormData) {
     || (decisionValue !== CLIENT_SELECTION_DECISIONS.APPROVE
       && decisionValue !== CLIENT_SELECTION_DECISIONS.REJECT)
   ) {
-    redirectBack(requestId, 'selection-decision-error');
+    return { ok: false as const, feedback: getClientSelectionFeedback('selection-decision-error'), refresh: false };
   }
 
   let feedback: string;
@@ -94,17 +95,19 @@ export async function decideClientSelectionItemAction(formData: FormData) {
     }
   } catch (error) {
     if (error instanceof ClientSelectionDecisionError) {
-      redirectBack(
-        requestId,
-        selectionDecisionFeedback[error.code] ?? 'selection-decision-error'
-      );
+      const code = selectionDecisionFeedback[error.code] ?? 'selection-decision-error';
+      return {
+        ok: false as const,
+        feedback: getClientSelectionFeedback(code),
+        refresh: code === 'selection-decision-stale'
+      };
     }
     console.error('Client selection decision failed.', {
       requestId,
       batchId,
       batchItemId
     });
-    redirectBack(requestId, 'selection-decision-error');
+    return { ok: false as const, feedback: getClientSelectionFeedback('selection-decision-error') };
   }
 
   revalidatePath('/client/requests');
@@ -112,7 +115,7 @@ export async function decideClientSelectionItemAction(formData: FormData) {
   revalidatePath('/admin');
   revalidatePath('/admin/requests');
   revalidatePath(`/admin/requests/${requestId}`);
-  redirectBack(requestId, feedback);
+  return { ok: true as const, feedback: getClientSelectionFeedback(feedback), refresh: true };
 }
 
 const CLIENT_REQUEST_ITEM_EDIT_FIELDS = new Set(['name', 'catalogNumber', 'quantity', 'comment']);

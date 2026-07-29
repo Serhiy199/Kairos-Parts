@@ -309,7 +309,7 @@ async function main() {
   const deleteService = readFileSync('lib/request-items/delete.ts', 'utf8');
   const api = readFileSync('app/api/admin/request-items/[itemId]/route.ts', 'utf8');
   const actions = readFileSync('app/admin/actions.ts', 'utf8');
-  const adminUi = readFileSync('app/admin/requests/[id]/page.tsx', 'utf8');
+  const adminPresentation = readFileSync('lib/request-items/admin-presentation.ts', 'utf8');
   const clientUi = readFileSync(
     'components/client/client-approval-batch-section.tsx',
     'utf8'
@@ -326,9 +326,9 @@ async function main() {
   assert.match(api, /approved_item_delete_blocked/);
   assert.match(changeApply, /change-request-approved-item-locked/);
   assert.match(actions, /revalidatePath\(`\/admin\/requests\/\$\{result\.item\.requestId\}`\)/);
-  assert.match(actions, /redirectBack\(result\.item\.requestId, 'item-updated'\)/);
-  assert.match(adminUi, /Погоджено — заблоковано/);
-  assert.match(adminUi, /Змінено після відхилення/);
+  assert.match(actions, /return workflowResult\('item-updated', true\)/);
+  assert.match(adminPresentation, /LOCKED_APPROVED: \{ label: 'Погоджено'/);
+  assert.match(adminPresentation, /Змінено після відхилення/);
   assert.match(clientUi, /Раніше погоджено:/);
   assert.match(sendService, /FOLLOW_UP_REJECTED/);
   assert.match(sendService, /FOLLOW_UP_SELECTION_SENT_FOR_APPROVAL/);

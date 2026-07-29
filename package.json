@@ -21,6 +21,7 @@
     "test:request-status-stage5a": "tsx scripts/check-request-status-stage5a-partial-invoice.ts",
     "test:request-status-stage5a1": "tsx scripts/check-request-status-stage5a1-partial-transition-dropdown.ts",
     "test:request-status-stage5a2": "tsx scripts/check-request-status-stage5a2-follow-up.ts",
+    "test:request-status-stage5a3": "tsx scripts/check-request-status-stage5a3-reactive-feedback.ts",
     "db:seed": "prisma db seed"
   },
   "dependencies": {

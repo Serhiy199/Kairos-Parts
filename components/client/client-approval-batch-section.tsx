@@ -37,6 +37,7 @@ export function ClientApprovalBatchSection({
   const rejectedCount = activeBatch.items.filter(
     (item) => item.status === 'REJECTED'
   ).length;
+  const previouslyApprovedItems = model.previouslyApprovedItems;
 
   return (
     <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-6">
@@ -84,6 +85,81 @@ export function ClientApprovalBatchSection({
           Перевірте кожну позицію та погодьте її або вкажіть причину відхилення.
           Версію буде завершено після рішення щодо кожної позиції.
         </div>
+      ) : null}
+      {activeBatch.status === 'SENT' && previouslyApprovedItems.length > 0 ? (
+        <details className="mt-5 min-w-0 rounded-md border border-success/25 bg-[#F5FBF7] p-4">
+          <summary className="cursor-pointer list-none rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            <span className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+              <span className="min-w-0">
+                <span className="block break-words text-sm font-bold text-foreground">
+                  Раніше погоджені позиції
+                </span>
+                <span className="mt-1 block text-xs leading-5 text-muted">
+                  Ці позиції вже погоджені та збережені для майбутнього рахунку.
+                </span>
+              </span>
+              <span className="rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success">
+                {previouslyApprovedItems.length} позицій
+              </span>
+            </span>
+          </summary>
+          <div className="mt-4 grid min-w-0 gap-3">
+            {previouslyApprovedItems.map((item) => (
+              <article
+                key={item.batchItemId}
+                className="min-w-0 rounded-md border border-border bg-card p-3"
+              >
+                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-bold text-foreground">
+                      {item.itemName}
+                    </p>
+                    <p className="mt-1 break-words text-xs text-muted [overflow-wrap:anywhere]">
+                      Каталог: {item.catalogNumber ?? '—'} · Версія №{item.revision}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success">
+                      Погоджено
+                    </span>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                      item.invoiceState === 'IN_INVOICE'
+                        ? 'bg-[#E8F1FF] text-info'
+                        : 'bg-[#FFF7E0] text-[#8A5B24]'
+                    }`}>
+                      {item.invoiceState === 'IN_INVOICE'
+                        ? 'Внесено в рахунок'
+                        : 'Очікує на створення рахунку'}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-3 grid min-w-0 gap-2 text-xs sm:grid-cols-2">
+                  <p className="break-words text-muted [overflow-wrap:anywhere]">
+                    Аналог: <span className="font-semibold text-foreground">{item.analogNumber ?? '—'}</span>
+                  </p>
+                  <p className="break-words text-muted">
+                    Кількість: <span className="font-semibold text-foreground">
+                      {formatClientSelectionQuantity(item.quantity, item.unit)}
+                    </span>
+                  </p>
+                  <p className="break-words text-muted">
+                    Ціна: <span className="font-semibold text-foreground">
+                      {formatClientSelectionPrice(item.unitPrice, item.currency)}
+                    </span>
+                  </p>
+                  <p className="break-words text-muted">
+                    Техніка: <span className="font-semibold text-foreground">
+                      {item.vehicle?.displayName
+                        ?? ([item.vehicle?.brand, item.vehicle?.model, item.vehicle?.year]
+                          .filter(Boolean)
+                          .join(' ') || '—')}
+                    </span>
+                  </p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </details>
       ) : null}
       {activeBatch.status === 'APPROVED' ? (
         <div className="mt-5 rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">

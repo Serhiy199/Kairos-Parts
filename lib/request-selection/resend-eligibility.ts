@@ -122,6 +122,7 @@ export type RequestSelectionResendEligibility = {
   items: Array<{
     requestItemId: string;
     activeBatchItemId: string | null;
+    approvedBatchItemId: string | null;
     state: RequestSelectionResendItemState;
     currentUpdatedAt: string;
     activeBatchSourceUpdatedAt: string | null;
@@ -256,6 +257,7 @@ export function deriveRequestSelectionResendEligibility(input: {
     return {
       requestItemId: item.id,
       activeBatchItemId: activeItem?.id ?? null,
+      approvedBatchItemId: null,
       state,
       currentUpdatedAt: item.updatedAt.toISOString(),
       activeBatchSourceUpdatedAt: activeItem?.sourceUpdatedAt.toISOString() ?? null,
@@ -324,6 +326,16 @@ export function deriveRequestSelectionFollowUpEligibility(input: {
       )
       .map((item) => item.sourceRequestItemId)
   );
+  const approvedBySourceId = new Map<string, ActiveBatchItem>();
+  for (const item of sourceItems) {
+    if (
+      item.status === 'APPROVED'
+      && item.sourceRequestItemId
+      && !approvedBySourceId.has(item.sourceRequestItemId)
+    ) {
+      approvedBySourceId.set(item.sourceRequestItemId, item);
+    }
+  }
   const sourceByRequestItemId = new Map<string, ActiveBatchItem>();
   for (const item of sourceItems) {
     if (
@@ -371,6 +383,7 @@ export function deriveRequestSelectionFollowUpEligibility(input: {
     return {
       requestItemId: item.id,
       activeBatchItemId: sourceItem?.id ?? null,
+      approvedBatchItemId: approvedBySourceId.get(item.id)?.id ?? null,
       state,
       currentUpdatedAt: item.updatedAt.toISOString(),
       activeBatchSourceUpdatedAt: sourceItem?.sourceUpdatedAt.toISOString() ?? null,

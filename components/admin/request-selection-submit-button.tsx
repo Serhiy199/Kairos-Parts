@@ -1,11 +1,10 @@
 'use client';
 
-import { useFormStatus } from 'react-dom';
-
 import { ActionIcon } from '@/components/ui/action-icons';
+import { useReactiveActionPending } from '@/components/workflow/reactive-action-form';
 
 export function RequestSelectionSubmitButton({ disabled }: { disabled: boolean }) {
-  const { pending } = useFormStatus();
+  const pending = useReactiveActionPending();
 
   return (
     <button

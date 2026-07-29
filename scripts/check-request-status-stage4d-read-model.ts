@@ -155,7 +155,7 @@ function makeDatabase(state: State) {
       }
     },
     requestSelectionBatchItem: {
-      count: async () => 0
+      findMany: async () => []
     },
     requestItem: {
       findMany: async () => {

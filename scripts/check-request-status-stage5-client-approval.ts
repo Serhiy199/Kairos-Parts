@@ -170,7 +170,7 @@ assert.ok(
   )
 );
 assert.ok(readModel.includes('clientComment: true'));
-assert.ok(adminUi.includes('Рішення клієнта · версія'));
+assert.ok(adminUi.includes('Результат погодження версії'));
 assert.ok(adminUi.includes('Очікує рішення'));
 assert.ok(adminUi.includes('Погоджено'));
 assert.ok(adminUi.includes('Відхилено'));

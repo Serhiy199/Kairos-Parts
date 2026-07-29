@@ -7,6 +7,10 @@ export type AdminActionFeedback = {
   className: string;
 };
 
+export type AdminWorkflowFeedback = Pick<AdminActionFeedback, 'tone' | 'message'> & {
+  code: string;
+};
+
 const tonePresentation = {
   success: {
     marker: 'Успішно',
@@ -39,6 +43,7 @@ const feedbackByResult = {
   'comment-error': { tone: 'warning', message: 'Коментар не може бути порожнім.' },
   'manager-not-found': { tone: 'warning', message: 'Менеджера не знайдено.' },
   'item-created': { tone: 'success', message: 'Позицію додано.' },
+  'request-not-found': { tone: 'error', message: 'Заявку не знайдено.' },
   'item-updated': { tone: 'success', message: 'Позицію оновлено.' },
   'item-no-changes': { tone: 'warning', message: 'Змін у позиції не виявлено.' },
   'item-validation-error': { tone: 'error', message: 'Перевірте введені дані позиції.' },
@@ -176,5 +181,14 @@ export function getAdminRequestFeedback(result?: string): AdminActionFeedback | 
   return {
     ...feedback,
     ...tonePresentation[feedback.tone]
+  };
+}
+
+export function getAdminWorkflowFeedback(result: string): AdminWorkflowFeedback {
+  const feedback = getAdminRequestFeedback(result);
+  return feedback ? { code: result, tone: feedback.tone, message: feedback.message } : {
+    code: 'unknown-error',
+    tone: 'error',
+    message: 'Не вдалося виконати дію. Спробуйте ще раз.'
   };
 }
