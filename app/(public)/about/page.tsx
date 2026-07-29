@@ -4,24 +4,23 @@ import {
   TbAlertTriangle,
   TbArrowsDiff,
   TbDatabaseCog,
-  TbFileInvoice,
+  TbDeviceDesktop,
   TbFileSpreadsheet,
-  TbGauge,
   TbHeartHandshake,
   TbHistory,
-  TbMessages,
-  TbPackages,
   TbReplace,
+  TbSettings,
   TbSettingsSearch,
-  TbShieldCheck,
   TbTargetArrow,
   TbTractor,
+  TbTruckDelivery,
   TbZoomQuestion
 } from 'react-icons/tb';
 
 import { ActionIcon } from '@/components/ui/action-icons';
 
 const telegramBotUrl = 'https://t.me/kairos_parts_bot';
+const showCompanySection = false;
 const showContactScenarios = false;
 
 const contactScenarios = [
@@ -69,62 +68,48 @@ const contactScenarios = [
 
 const audiences = [
   {
-    title: 'Пошук і перевірка позицій',
-    text: 'Аналізуємо артикул, дані техніки, каталожні номери та сумісність, щоб запропонувати коректні варіанти для конкретної машини.',
-    icon: TbSettingsSearch
+    title: 'Parts',
+    text: 'Професійний підбір та постачання запасних частин, мастильних матеріалів, технічних рідин і комплектуючих для сільськогосподарської та комерційної техніки.',
+    bullets: [
+      'Широка мережа постачальників',
+      'Оптимальне рішення за ціною, якістю та термінами поставки',
+      'Швидкий підбір під конкретну техніку'
+    ],
+    icon: TbSettings,
+    image: '/images/advantages/benefit-2.png'
   },
   {
-    title: 'Комунікація з постачальниками',
-    text: 'Самостійно уточнюємо наявність, характеристики, строки та умови, щоб клієнту не доводилося вести кілька паралельних переписок.',
-    icon: TbMessages
+    title: 'Logistics',
+    text: 'Власний логістичний сервіс доставки товарів від будь-яких постачальників безпосередньо до господарства або до точки видачі Kairos.',
+    bullets: [
+      'Доставка насіння, ЗЗР, добрив, запчастин та інших вантажів',
+      'Економія транспорту та часу підприємства',
+      'Пілотний проєкт у Кагарлицькому районі Київської області'
+    ],
+    icon: TbTruckDelivery,
+    image: '/images/advantages/benefit-5.png'
   },
   {
-    title: 'Порівняння варіантів',
-    text: 'Зіставляємо оригінальні деталі й перевірені аналоги, пояснюємо відмінності та допомагаємо обрати обґрунтоване рішення.',
-    icon: TbArrowsDiff
+    title: 'Електронний парк техніки',
+    text: 'Кожен зареєстрований клієнт отримує власний кабінет, у якому може сформувати електронний парк техніки підприємства.',
+    bullets: [
+      'Історія звернень і замовлень для кожної одиниці техніки',
+      'Збереження підібраних запасних частин',
+      'Майбутній функціонал для швидкого підбору та регулярних закупівель'
+    ],
+    icon: TbDeviceDesktop,
+    image: '/images/advantages/benefit-6.png'
   },
   {
-    title: 'Документи й погодження',
-    text: 'Формуємо зрозумілу пропозицію, погоджуємо склад замовлення та збираємо рахунки й документи в одному процесі.',
-    icon: TbFileInvoice
-  },
-  {
-    title: 'Комплектація і доставка',
-    text: 'Координуємо позиції від різних постачальників, консолідуємо замовлення та організовуємо передачу у погодженому форматі.',
-    icon: TbPackages
-  },
-  {
-    title: 'Збереження історії',
-    text: 'Прив’язуємо запчастини, каталожні номери, рахунки й документи до конкретної техніки, щоб спростити наступні звернення.',
-    icon: TbDatabaseCog
-  }
-];
-
-const principles = [
-  {
-    title: 'Швидкість',
-    text: 'Мінімізуємо час від заявки до отримання комерційної пропозиції.',
-    icon: TbGauge
-  },
-  {
-    title: 'Надійність',
-    text: 'Працюємо лише з перевіреними постачальниками.',
-    icon: TbShieldCheck
-  },
-  {
-    title: 'Професійність',
-    text: 'Підбираємо запчастини з урахуванням каталожних номерів, сумісності та потреб клієнта.',
-    icon: TbSettingsSearch
-  },
-  {
-    title: 'Цифровізація',
-    text: 'Кожне замовлення автоматично формує цифрову історію техніки та компанії.',
-    icon: TbDatabaseCog
-  },
-  {
-    title: 'Довгострокове партнерство',
-    text: 'Будуємо відносини, засновані на сервісі, а не лише на разовому продажі.',
-    icon: TbHeartHandshake
+    title: 'Майданчик Б/В техніки',
+    text: 'Партнерський майданчик для купівлі та продажу сільськогосподарської і комерційної техніки.',
+    bullets: [
+      'Розміщуйте власну техніку',
+      'Знаходьте перевірені пропозиції',
+      'Укладайте угоди в екосистемі Kairos серед клієнтів і партнерів'
+    ],
+    icon: TbHeartHandshake,
+    image: '/images/home/for-whom-bg.png'
   }
 ];
 
@@ -140,33 +125,32 @@ export default function AboutPage() {
           sizes="100vw"
           className="object-cover object-[66%_center] sm:object-[62%_center] lg:object-center"
         />
-        <div className="absolute inset-0 bg-primary/25" />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,7,10,0.95)_0%,rgba(5,7,10,0.88)_62%,rgba(5,7,10,0.68)_100%)] md:bg-[linear-gradient(90deg,rgba(5,7,10,0.94)_0%,rgba(5,7,10,0.82)_44%,rgba(5,7,10,0.42)_72%,rgba(5,7,10,0.18)_100%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,7,10,0.08)_55%,rgba(5,7,10,0.88)_100%)]" />
+        <div className="absolute inset-0 bg-primary/10" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,7,10,0.96)_0%,rgba(5,7,10,0.9)_68%,rgba(5,7,10,0.62)_100%)] md:bg-[linear-gradient(90deg,rgba(5,7,10,0.98)_0%,rgba(5,7,10,0.92)_28%,rgba(5,7,10,0.68)_42%,rgba(5,7,10,0.2)_60%,rgba(5,7,10,0.04)_76%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,7,10,0.04)_48%,rgba(5,7,10,0.52)_100%)]" />
 
         <div className="kp-container relative flex min-h-[620px] items-center py-16 sm:min-h-[640px] sm:py-20 lg:min-h-[680px]">
           <div className="max-w-[760px]">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent sm:text-sm">
+            <p className="max-w-[500px] text-sm font-semibold uppercase leading-6 tracking-[0.2em] text-accent sm:text-base sm:leading-7">
+              Kairos Parts — сервіс для B2B-клієнтів аграрної та транспортної галузі
+            </p>
+            <h1 className="mt-5 text-5xl font-bold leading-[1.04] sm:text-[64px] lg:text-[76px]">
               Про Kairos Parts
-            </p>
-            <h1 className="mt-5 text-4xl font-bold leading-[1.06] sm:text-5xl lg:text-[56px]">
-              Будуємо новий стандарт
-              <span className="mt-1 block">
-                підбору запчастин <span className="text-accent">для бізнесу</span>
-              </span>
             </h1>
-            <p className="mt-6 max-w-2xl text-lg font-semibold leading-8 text-white/90 sm:text-xl">
-              Єдиний сервіс для підбору, погодження та постачання запчастин.
+            <p className="mt-7 max-w-[510px] text-xl font-semibold leading-8 text-white/90 sm:text-[22px] sm:leading-9">
+              Ми створюємо цифрову екосистему сервісів, яка допомагає аграрному бізнесу економити час,
+              зменшувати витрати та працювати ефективніше.
             </p>
-            <p className="mt-3 max-w-2xl text-base leading-7 text-white/75 sm:text-lg sm:leading-8">
-              Kairos Parts об’єднує професійний підбір, роботу з перевіреними постачальниками та цифрову
-              історію техніки в одному B2B-процесі.
+            <p className="mt-5 max-w-[510px] text-lg leading-8 text-white/75 sm:text-xl sm:leading-9">
+              Усі рішення — від підбору запчастин до доставки та управління технікою — в одному цифровому
+              середовищі.
             </p>
           </div>
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-public-page py-16 text-white sm:py-20 lg:py-24">
+      {showCompanySection ? (
+        <section className="relative overflow-hidden bg-public-page py-16 text-white sm:py-20 lg:py-24">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_12%,rgba(200,150,66,0.12),transparent_30%),linear-gradient(135deg,rgba(16,18,22,0.98),rgba(7,9,13,1))]" />
         <div className="pointer-events-none absolute inset-0 opacity-[0.03] [background-image:linear-gradient(rgba(232,232,232,0.55)_1px,transparent_1px),linear-gradient(90deg,rgba(232,232,232,0.55)_1px,transparent_1px)] [background-size:36px_36px]" />
 
@@ -246,7 +230,8 @@ export default function AboutPage() {
             </div>
           </div>
         </div>
-      </section>
+        </section>
+      ) : null}
 
       {showContactScenarios ? (
         <section className="bg-public-page py-16 text-white sm:py-20">
@@ -308,117 +293,133 @@ export default function AboutPage() {
         </section>
       ) : null}
 
-      <section className="bg-public-page py-16">
-        <div className="kp-container grid gap-6 lg:grid-cols-2">
-          <article className="public-card p-6">
-            <p className="text-sm font-bold uppercase text-accent">Чому це працює</p>
-            <h2 className="mt-2 text-3xl font-bold text-public-primary">Кожне замовлення створює цінність на майбутнє</h2>
-            <p className="mt-4 text-sm leading-6 text-public-muted">
-              Платформа автоматично накопичує історію придбаних запчастин для кожної одиниці техніки,
-              зареєстрованої в особистому кабінеті. З кожним новим замовленням підприємство отримує
-              структуровану базу даних свого парку без додаткового введення інформації.
-            </p>
-          </article>
-          <article className="public-card p-6">
-            <p className="text-sm font-bold uppercase text-accent">Наш підхід</p>
-            <h2 className="mt-2 text-3xl font-bold text-public-primary">Сервіс навколо потреб клієнта</h2>
-            <p className="mt-4 text-sm leading-6 text-public-muted">
-              Ми не змушуємо шукати запчастини серед тисяч товарів, самостійно перевіряти сумісність
-              або повторно вводити однакові дані. Ми беремо на себе підбір, комунікацію з постачальниками
-              та організацію поставки, а платформа систематизує інформацію про кожне замовлення.
-            </p>
-          </article>
-        </div>
-      </section>
+      <section className="relative isolate w-full overflow-hidden bg-public-section py-16 text-white sm:py-20 lg:py-24">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(200,150,66,0.1),transparent_32%),linear-gradient(135deg,rgba(11,14,20,1),rgba(5,7,10,1))]" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(rgba(152,157,166,0.4)_1px,transparent_1px),linear-gradient(90deg,rgba(152,157,166,0.4)_1px,transparent_1px)] [background-size:32px_32px]" />
 
-      <section className="relative isolate w-full overflow-hidden bg-[#050505] py-12 text-white sm:py-14 lg:py-16">
-        <Image
-          src="/images/about/for-companies-bg.png"
-          alt=""
-          fill
-          sizes="100vw"
-          className="object-cover object-[64%_center] opacity-80 saturate-[0.88] sm:object-[58%_center] lg:object-center"
-        />
-        <div className="pointer-events-none absolute inset-0 bg-primary/30" />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(5,5,5,0.84)_0%,rgba(5,5,5,0.66)_52%,rgba(5,5,5,0.52)_100%)] sm:bg-[linear-gradient(90deg,rgba(5,5,5,0.78)_0%,rgba(5,5,5,0.58)_58%,rgba(5,5,5,0.4)_100%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.38)_0%,rgba(5,5,5,0.08)_32%,rgba(5,5,5,0.3)_78%,rgba(5,5,5,0.58)_100%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_36%,rgba(200,150,66,0.1),transparent_34%)]" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(232,232,232,0.75)_1px,transparent_1px),linear-gradient(90deg,rgba(232,232,232,0.75)_1px,transparent_1px)] [background-size:42px_42px]" />
-
-        <div className="kp-container relative z-10">
+        <div className="kp-container relative">
           <div className="max-w-[900px]">
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent">
-              Зона відповідальності
+              Наші сервіси
             </p>
-            <h2 className="mt-2 max-w-[820px] text-[28px] font-bold leading-[1.08] text-white sm:text-[34px] lg:text-[38px]">
-              Те, що більше не потрібно координувати самостійно
+            <h2 className="mt-3 max-w-[980px] text-[28px] font-bold leading-[1.12] text-white sm:text-[34px] lg:text-[40px]">
+              Комплексні рішення для щоденних задач вашого бізнесу
             </h2>
-            <p className="mt-3 max-w-[820px] text-sm font-semibold leading-6 text-technical-white sm:text-base sm:leading-7">
-              Kairos Parts бере на себе ключові етапи роботи із запитом — від перевірки позицій і комунікації з
-              постачальниками до документів, комплектації та збереження історії.
-            </p>
             <div className="mt-5 h-px w-20 bg-accent" />
           </div>
 
-          <div className="mt-6 grid items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {audiences.map((audience, index) => {
+          <div className="mt-10 grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {audiences.map((audience) => {
               const Icon = audience.icon;
 
               return (
-                <article key={audience.title} className="benefit-card md:gap-x-2 xl:gap-x-[22px]">
-                  <div className="benefit-card__diagonal" />
-                  <div className="benefit-card__icon-wrap">
-                    <Icon aria-hidden="true" focusable="false" />
+                <article
+                  key={audience.title}
+                  className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-public-border bg-public-card transition duration-200 hover:-translate-y-1 hover:border-public-border-accent-hover"
+                >
+                  <div className="relative aspect-[3/2] overflow-hidden border-b border-public-border">
+                    <Image
+                      src={audience.image}
+                      alt=""
+                      fill
+                      sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw"
+                      className="object-cover transition duration-500 group-hover:scale-[1.03]"
+                    />
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,7,10,0.02)_45%,rgba(5,7,10,0.72)_100%)]" />
                   </div>
-                  <div className="benefit-card__content">
-                    <div className="benefit-card__header md:gap-1.5 xl:gap-[10px]">
-                      <span className="benefit-card__number">{index + 1}</span>
-                      <h3 className="benefit-card__title min-w-0 whitespace-normal break-normal hyphens-none">
-                        {audience.title}
-                      </h3>
-                    </div>
-                    <p className="benefit-card__description">{audience.text}</p>
+
+                  <div className="relative -mt-7 px-6">
+                    <span className="grid size-14 place-items-center rounded-lg border border-accent/60 bg-accent text-primary shadow-panel">
+                      <Icon aria-hidden="true" focusable="false" className="size-8 stroke-[1.65]" />
+                    </span>
+                  </div>
+
+                  <div className="flex flex-1 flex-col px-5 pb-7 pt-5 sm:px-6 sm:pb-8">
+                    <h3 className="text-xl font-bold leading-tight text-public-primary xl:text-[21px]">
+                      {audience.title}
+                    </h3>
+                    <p className="mt-4 text-sm leading-6 text-public-muted xl:text-[15px]">
+                      {audience.text}
+                    </p>
+
+                    <ul className="mt-6 space-y-3">
+                      {audience.bullets.map((bullet) => (
+                        <li
+                          key={bullet}
+                          className="flex items-start gap-3 text-sm leading-6 text-public-secondary"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="mt-[9px] size-1.5 shrink-0 rounded-full bg-accent"
+                          />
+                          <span>{bullet}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </article>
               );
             })}
           </div>
-        </div>
-      </section>
 
-      <section className="relative overflow-hidden bg-public-page py-16">
-        <div className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(rgba(152,157,166,0.45)_1px,transparent_1px),linear-gradient(90deg,rgba(152,157,166,0.45)_1px,transparent_1px)] [background-size:28px_28px]" />
-        <div className="kp-container relative">
-          <div className="max-w-2xl">
-            <p className="text-sm font-bold uppercase text-accent">Наші принципи</p>
-            <h2 className="mt-2 text-3xl font-bold text-public-primary">Працюємо як довгостроковий сервісний партнер</h2>
-          </div>
-          <div className="mt-10 overflow-hidden rounded-xl border border-public-border bg-public-card">
-            <div className="grid divide-y divide-public-border sm:grid-cols-2 lg:grid-cols-5 lg:divide-x lg:divide-y-0">
-              {principles.map((principle) => {
-                const Icon = principle.icon;
+          <div className="relative mt-16 overflow-hidden rounded-2xl border border-public-border bg-[linear-gradient(135deg,rgba(16,21,28,0.99),rgba(7,10,14,0.99))] shadow-[0_24px_70px_rgba(0,0,0,0.3)] lg:min-h-[500px]">
+            <div className="pointer-events-none absolute inset-y-0 left-[23%] hidden w-[43%] lg:block">
+              <Image
+                src="/images/about/vision-mission-platform.png"
+                alt=""
+                fill
+                sizes="43vw"
+                className="scale-[1.5] object-contain object-center opacity-95 [mask-image:radial-gradient(ellipse_82%_76%_at_50%_50%,black_62%,transparent_100%)]"
+              />
+            </div>
 
-                return (
-                  <article
-                    key={principle.title}
-                    className="min-w-0 px-8 py-10 transition-colors duration-200 hover:bg-public-elevated sm:px-10 lg:px-6"
-                  >
-                    <div className="flex items-start gap-3 lg:flex-col">
-                      <div className="shrink-0 text-accent">
-                        <Icon aria-hidden="true" focusable="false" className="size-10 stroke-[1.7] sm:size-12" />
-                      </div>
-                      <h3 className="min-w-0 flex-1 break-normal whitespace-normal hyphens-none text-left text-xl font-bold leading-tight text-public-primary lg:text-base xl:text-xl">
-                        {principle.title}
-                      </h3>
-                    </div>
-                    <p className="mt-5 w-full max-w-56 text-base font-medium leading-7 text-public-muted">
-                      {principle.text}
-                    </p>
-                  </article>
-                );
-              })}
+            <div className="relative grid lg:min-h-[500px] lg:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)]">
+              <article className="relative z-10 flex flex-col justify-center px-6 py-9 sm:px-9 sm:py-11 md:min-h-[520px] lg:min-h-0 lg:px-10 lg:py-14 xl:px-12">
+                <div className="max-w-[390px]">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent sm:text-sm">
+                    Наше бачення
+                  </p>
+                  <h2 className="mt-5 text-2xl font-medium leading-[1.35] text-public-primary sm:text-[28px]">
+                    Єдина екосистема сервісів для аграрного бізнесу
+                  </h2>
+                  <div className="mt-7 h-0.5 w-10 bg-accent" />
+                  <p className="mt-7 max-w-[300px] text-base leading-8 text-public-muted lg:max-w-[280px] xl:max-w-[300px]">
+                    Ми будуємо платформу, яка допомагає підприємствам швидко знаходити запчастини,
+                    організовувати доставку, керувати власним парком техніки та користуватися сучасними
+                    цифровими інструментами для щоденної роботи.
+                  </p>
+                </div>
+              </article>
+
+              <div className="relative min-h-[280px] overflow-hidden border-y border-public-border sm:min-h-[380px] md:absolute md:right-[-4%] md:top-0 md:h-[520px] md:min-h-0 md:w-[72%] md:border-0 lg:hidden">
+                <Image
+                  src="/images/about/vision-mission-platform.png"
+                  alt=""
+                  fill
+                  sizes="100vw"
+                  className="scale-[1.18] object-contain object-center [mask-image:linear-gradient(180deg,transparent_0%,black_10%,black_90%,transparent_100%)] md:scale-[1.45]"
+                />
+              </div>
+
+              <article className="relative z-10 col-span-1 flex flex-col justify-center bg-[#0d1219]/92 px-6 py-9 sm:px-9 sm:py-11 lg:border-l lg:border-public-border lg:px-8 lg:py-14 xl:px-10">
+                <div className="max-w-[390px]">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent sm:text-sm">
+                    Наша місія
+                  </p>
+                  <h2 className="mt-5 text-2xl font-medium leading-[1.35] text-public-primary sm:text-[28px]">
+                    Спростити операційну діяльність аграрних підприємств
+                  </h2>
+                  <div className="mt-7 h-0.5 w-10 bg-accent" />
+                  <p className="mt-7 text-base leading-8 text-public-muted">
+                    Поєднуючи постачання, логістику та цифрові сервіси в одному зручному просторі. Ми
+                    допомагаємо аграріям економити час, ресурси та зосереджуватися на розвитку свого
+                    бізнесу.
+                  </p>
+                </div>
+              </article>
             </div>
           </div>
+
           <div className="relative mt-14 overflow-hidden rounded-2xl border border-accent/25 bg-[linear-gradient(135deg,rgba(28,28,28,0.98),rgba(8,8,8,0.98))] px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.38)] sm:px-8 sm:py-10 lg:mt-16 lg:px-10">
             <div
               aria-hidden="true"
