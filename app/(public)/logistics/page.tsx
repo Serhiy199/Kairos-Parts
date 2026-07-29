@@ -20,6 +20,7 @@ import {
   LOGISTICS_REQUEST_FORM_ENABLED
 } from '@/lib/features/logistics';
 import { buildAbsoluteUrl } from '@/lib/site-url';
+import { LogisticsRatesSection } from '@/components/public/logistics/logistics-rates-section';
 
 const canonicalUrl = buildAbsoluteUrl('/logistics');
 
@@ -205,38 +206,7 @@ export default function LogisticsPage() {
         </div>
       </section>
 
-      <section aria-labelledby="logistics-audience-title" className="relative overflow-hidden bg-public-page py-16 sm:py-20 lg:py-24">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_86%_12%,rgba(200,150,66,0.12),transparent_30%)]" />
-        <div className="kp-container relative grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:items-center">
-          <div>
-            <SectionEyebrow>Сервіс для агробізнесу</SectionEyebrow>
-            <h2 id="logistics-audience-title" className="mt-3 text-3xl font-bold leading-tight text-public-primary sm:text-4xl">
-              Для кого створений сервіс
-            </h2>
-            <p className="mt-5 max-w-3xl text-base leading-7 text-public-muted sm:text-lg sm:leading-8">
-              Kairos Logistics працює для агропідприємств Кагарлицької громади. Ми забираємо товари у
-              постачальників у межах Київської області та доставляємо їх на базу Kairos Parts або
-              безпосередньо в господарство в межах громади.
-            </p>
-            <p className="mt-4 max-w-3xl text-base leading-7 text-public-muted">
-              Підприємству не потрібно відволікати власний транспорт за окремою закупівлею — команда
-              Kairos організовує забір і доставку в межах погодженої географії.
-            </p>
-          </div>
-
-          <aside className="rounded-xl border border-public-border bg-public-card p-6 shadow-card sm:p-7" aria-label="Географія сервісу">
-            <span className="grid size-12 place-items-center rounded-lg border border-accent/35 bg-accent/10 text-accent">
-              <TbBuildingWarehouse aria-hidden="true" focusable="false" className="size-7 stroke-[1.55]" />
-            </span>
-            <p className="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-accent">База Kairos Parts</p>
-            <p className="mt-2 text-xl font-bold text-public-primary">м. Кагарлик, вул. Миронівська, 33д</p>
-            <div className="mt-5 border-t border-public-border pt-5 text-sm leading-6 text-public-muted">
-              Забір товарів — у постачальників Київської області. Доставка в господарство — у межах
-              Кагарлицької громади.
-            </div>
-          </aside>
-        </div>
-      </section>
+      <LogisticsRatesSection />
 
       <section aria-labelledby="logistics-use-cases-title" className="bg-public-section py-16 sm:py-20 lg:py-24">
         <div className="kp-container">
