@@ -3,11 +3,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
-  TbBuildingWarehouse,
   TbClock,
-  TbGauge,
   TbPackage,
-  TbReportMoney,
   TbShieldCheck,
   TbTruckDelivery
 } from 'react-icons/tb';
@@ -59,29 +56,6 @@ const trustSignals = [
     title: 'Просто',
     text: 'Прозорі тарифи без прихованих умов',
     icon: TbPackage
-  }
-];
-
-const benefits = [
-  {
-    title: 'Економія часу',
-    text: 'Власний транспорт підприємства продовжує виконувати свою основну роботу.',
-    icon: TbClock
-  },
-  {
-    title: 'Без простоїв',
-    text: 'Допомагаємо оперативно отримати критично важливі товари для роботи підприємства.',
-    icon: TbGauge
-  },
-  {
-    title: 'Один сервіс',
-    text: 'Організовуємо забір товарів у постачальників у межах погодженої географії.',
-    icon: TbBuildingWarehouse
-  },
-  {
-    title: 'Прозорі тарифи',
-    text: 'Фіксована вартість за тарифним містом і зрозумілі доплати без прихованих умов.',
-    icon: TbReportMoney
   }
 ];
 
@@ -166,33 +140,6 @@ export default function LogisticsPage() {
 
       <LogisticsOverviewSection />
 
-      <section aria-labelledby="logistics-benefits-title" className="bg-public-page py-16 sm:py-20 lg:py-24">
-        <div className="kp-container">
-          <SectionHeading
-            eyebrow="Переваги"
-            id="logistics-benefits-title"
-            title="Чому підприємства обирають Kairos Logistics"
-            copy="Операційний сервіс із чіткою географією, зрозумілими умовами та фокусом на потребах агропідприємства."
-          />
-
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            {benefits.map((benefit) => {
-              const Icon = benefit.icon;
-
-              return (
-                <article key={benefit.title} className="rounded-xl border border-public-border bg-public-card p-5 shadow-card sm:p-6">
-                  <span className="grid size-11 place-items-center rounded-full border border-accent/35 bg-accent/10 text-accent">
-                    <Icon aria-hidden="true" focusable="false" className="size-6 stroke-[1.6]" />
-                  </span>
-                  <h3 className="mt-5 text-xl font-bold text-public-primary">{benefit.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-public-muted">{benefit.text}</p>
-                </article>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
       <section aria-labelledby="logistics-final-cta-title" className="relative overflow-hidden bg-primary py-14 text-white sm:py-16 lg:py-20">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(200,150,66,0.18),transparent_32%),linear-gradient(120deg,rgba(5,5,5,1),rgba(15,18,22,1))]" />
         <div className="kp-container relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
@@ -240,36 +187,6 @@ function LogisticsRequestCta({ helperId }: { helperId: string }) {
         {isAvailable
           ? 'Форма доступна для попереднього заповнення. Надсилання буде додано на наступному етапі.'
           : 'Онлайн-заявка готується до запуску.'}
-      </p>
-    </div>
-  );
-}
-
-function SectionEyebrow({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">{children}</p>;
-}
-
-function SectionHeading({
-  id,
-  eyebrow,
-  title,
-  copy,
-  dark = false
-}: {
-  id: string;
-  eyebrow: string;
-  title: string;
-  copy: string;
-  dark?: boolean;
-}) {
-  return (
-    <div className="max-w-3xl">
-      <SectionEyebrow>{eyebrow}</SectionEyebrow>
-      <h2 id={id} className={`mt-3 text-3xl font-bold leading-tight sm:text-4xl ${dark ? 'text-white' : 'text-public-primary'}`}>
-        {title}
-      </h2>
-      <p className={`mt-4 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 ${dark ? 'text-white/70' : 'text-public-muted'}`}>
-        {copy}
       </p>
     </div>
   );
