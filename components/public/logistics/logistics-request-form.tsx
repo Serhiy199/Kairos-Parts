@@ -842,7 +842,7 @@ export function LogisticsRequestForm({
                       required
                       minLength={LOGISTICS_MANUAL_ADDRESS_MIN_LENGTH}
                       maxLength={LOGISTICS_MANUAL_ADDRESS_MAX_LENGTH}
-                      placeholder="м. Біла Церква, вул. Київська, 25, склад №3"
+                      placeholder="вул. Київська, 25, склад №3"
                       aria-invalid={Boolean(addressError)}
                       aria-describedby={
                         addressError ? `${addressField}-error` : undefined
