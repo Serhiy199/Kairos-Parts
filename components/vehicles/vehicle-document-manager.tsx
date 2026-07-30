@@ -15,6 +15,8 @@ import {
   type VehicleDocumentActionState,
   vehicleDocumentTypeLabel
 } from '@/lib/vehicles/documents';
+import { vehicleDocumentSourceLabel } from '@/lib/vehicles/document-presentation';
+import type { DocumentSource } from '@prisma/client';
 
 export type VehicleDocumentListItem = {
   id: string;
@@ -22,11 +24,12 @@ export type VehicleDocumentListItem = {
   mimeType: string;
   size: number;
   visibleToClient: boolean;
-  createdAt: Date;
+  source: DocumentSource;
+  createdAt: string;
   uploadedBy: { name: string | null; email: string | null } | null;
 };
 
-export function VehicleDocumentManager({ vehicleId, documents }: { vehicleId: string; documents: VehicleDocumentListItem[] }) {
+export function VehicleDocumentManager({ vehicleId, documents, showUpload = true }: { vehicleId: string; documents: VehicleDocumentListItem[]; showUpload?: boolean }) {
   const uploadAction = uploadAdminVehicleDocuments.bind(null, vehicleId);
   const [uploadState, formAction, isUploading] = useActionState(uploadAction, EMPTY_VEHICLE_DOCUMENT_ACTION_STATE);
   const [actionState, setActionState] = useState(EMPTY_VEHICLE_DOCUMENT_ACTION_STATE);
@@ -53,7 +56,7 @@ export function VehicleDocumentManager({ vehicleId, documents }: { vehicleId: st
         <span className="w-fit rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{documents.length}/{MAX_VEHICLE_DOCUMENTS}</span>
       </div>
 
-      <form action={formAction} className="grid gap-3 rounded-md border border-dashed border-border bg-surface-muted p-4">
+      {showUpload ? <form action={formAction} className="grid gap-3 rounded-md border border-dashed border-border bg-surface-muted p-4">
         <label htmlFor="vehicle-documents" className="text-sm font-bold text-foreground">Додати документи</label>
         <input
           ref={inputRef}
@@ -74,7 +77,7 @@ export function VehicleDocumentManager({ vehicleId, documents }: { vehicleId: st
           {isUploading ? 'Завантаження...' : 'Завантажити документи'}
         </button>
         {uploadState.message ? <ActionMessage state={uploadState} /> : null}
-      </form>
+      </form> : null}
 
       {documents.length === 0 ? (
         <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">Документи ще не додані.</p>
@@ -85,21 +88,24 @@ export function VehicleDocumentManager({ vehicleId, documents }: { vehicleId: st
               <div className="min-w-0">
                 <p className="break-words font-bold text-foreground">{document.fileName}</p>
                 <p className="mt-1 text-xs leading-5 text-muted">
-                  {vehicleDocumentTypeLabel(document.mimeType)} · {formatVehicleDocumentSize(document.size)} · {document.createdAt.toLocaleDateString('uk-UA')}
+                  {vehicleDocumentTypeLabel(document.mimeType)} · {formatVehicleDocumentSize(document.size)} · {new Date(document.createdAt).toLocaleDateString('uk-UA')}
                 </p>
                 <p className="mt-1 text-xs text-muted">Завантажив: {document.uploadedBy?.name ?? document.uploadedBy?.email ?? 'Не визначено'}</p>
+                <p className="mt-1 text-xs font-semibold text-muted">{vehicleDocumentSourceLabel(document.source, 'CRM')}</p>
                 <span className={document.visibleToClient ? 'mt-2 inline-flex rounded-full bg-success/10 px-3 py-1 text-xs font-bold text-success' : 'mt-2 inline-flex rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted'}>
-                  {document.visibleToClient ? 'Видимо клієнту' : 'Внутрішній документ'}
+                  {document.source === 'CLIENT'
+                    ? 'Доступний власнику'
+                    : document.visibleToClient ? 'Видимий клієнту' : 'Прихований від клієнта'}
                 </span>
               </div>
               <div className="flex flex-wrap gap-2 lg:justify-end">
                 <a href={`/api/admin/vehicle-documents/${document.id}/download`} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-bold text-foreground transition hover:border-accent">
                   <LuDownload aria-hidden="true" /> Завантажити
                 </a>
-                <button type="button" disabled={isActionPending} onClick={() => runAction(setVehicleDocumentVisibility(vehicleId, document.id, !document.visibleToClient))} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-bold text-foreground transition hover:border-accent disabled:opacity-50">
+                {document.source !== 'CLIENT' ? <button type="button" disabled={isActionPending} onClick={() => runAction(setVehicleDocumentVisibility(vehicleId, document.id, !document.visibleToClient))} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-bold text-foreground transition hover:border-accent disabled:opacity-50">
                   {document.visibleToClient ? <LuEyeOff aria-hidden="true" /> : <LuEye aria-hidden="true" />}
                   {document.visibleToClient ? 'Приховати' : 'Показати клієнту'}
-                </button>
+                </button> : null}
                 <details className="relative">
                   <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-md border border-danger/30 px-3 py-2 text-sm font-bold text-danger transition hover:bg-danger/10">
                     <LuTrash2 aria-hidden="true" /> Видалити

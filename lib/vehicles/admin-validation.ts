@@ -5,7 +5,6 @@ import {
 } from '@/lib/features/equipment-taxonomy';
 
 export type AdminVehicleFormField =
-  | 'name'
   | 'equipmentType'
   | 'manufacturerId'
   | 'manufacturer'
@@ -15,7 +14,6 @@ export type AdminVehicleFormField =
   | 'comment';
 
 export type AdminVehicleFormValues = {
-  name: string;
   equipmentType: string;
   manufacturerId: string;
   manufacturer: string;
@@ -34,7 +32,6 @@ export type AdminVehicleFormState = {
 };
 
 export type ValidAdminVehicleInput = {
-  name: string;
   equipmentType: string;
   manufacturerId: string;
   manufacturer: string;
@@ -49,7 +46,6 @@ export const EMPTY_ADMIN_VEHICLE_FORM_STATE: AdminVehicleFormState = {
 };
 
 export const EMPTY_ADMIN_VEHICLE_FORM_VALUES: AdminVehicleFormValues = {
-  name: '',
   equipmentType: '',
   manufacturerId: '',
   manufacturer: '',
@@ -61,7 +57,6 @@ export const EMPTY_ADMIN_VEHICLE_FORM_VALUES: AdminVehicleFormValues = {
 
 export function getAdminVehicleFormValues(formData: FormData): AdminVehicleFormValues {
   return {
-    name: String(formData.get('name') ?? ''),
     equipmentType: String(formData.get('equipmentType') ?? ''),
     manufacturerId: String(formData.get('manufacturerId') ?? ''),
     manufacturer: String(formData.get('manufacturer') ?? ''),
@@ -132,9 +127,6 @@ export function validateAdminVehicleForm(values: AdminVehicleFormValues) {
   return {
     ok: true as const,
     data: {
-      // Kept only for the temporary Stage 2 UI contract. Write paths replace it
-      // with buildVehicleDisplayName(manufacturer, model).
-      name: '',
       equipmentType,
       manufacturerId,
       manufacturer,

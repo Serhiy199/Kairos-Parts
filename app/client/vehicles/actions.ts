@@ -6,8 +6,8 @@ import { redirect } from 'next/navigation';
 
 import { getClientAccessContext, requireClientSession, vehicleAccessWhere } from '@/lib/client/access';
 import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
+import { getServerAuditRequestContext } from '@/lib/audit-log/request-context';
 import { hasDatabaseUrl } from '@/lib/env/database';
-import { hasCloudinaryConfig } from '@/lib/cloudinary/server';
 import {
   EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED,
   EQUIPMENT_TEXT_FIELD_MAX_LENGTH
@@ -16,8 +16,10 @@ import { prisma } from '@/lib/prisma';
 import { findVehicleVinDuplicate } from '@/lib/vehicles/duplicates';
 import { vehicleOwnershipForClient } from '@/lib/vehicles/ownership';
 import { diffVehicleFields, pickEditableVehicleFields } from '@/lib/vehicles/change-snapshot';
-import { uploadVehicleImagesForActor } from '@/lib/vehicles/image-mutations';
-import { getVehicleImageFiles, validateVehicleImageFiles } from '@/lib/vehicles/images';
+import {
+  attachVehicleAssets,
+  validateVehicleAssetSelection
+} from '@/lib/vehicles/asset-workflow';
 import {
   getAdminVehicleFormValues,
   type AdminVehicleFormState
@@ -145,16 +147,13 @@ export async function createVehicle(
     return validation.state;
   }
 
-  const imageFiles = getVehicleImageFiles(formData);
-  if (imageFiles.length > 0) {
-    const imageValidation = validateVehicleImageFiles(imageFiles, 0);
-    if (!imageValidation.ok) {
-      return errorState(validation.values, imageValidation.message);
-    }
-    if (!hasCloudinaryConfig()) {
-      return errorState(validation.values, 'Сховище фотографій тимчасово недоступне. Спробуйте пізніше або створіть техніку без фото.');
-    }
-  }
+  const assetValidation = await validateVehicleAssetSelection({
+    formData,
+    existingImageCount: 0,
+    existingDocumentCount: 0,
+    existingDocumentBytes: 0
+  });
+  if (!assetValidation.ok) return errorState(validation.values, assetValidation.message);
 
   const owner = vehicleOwnershipForClient(access);
   const result = await prisma.$transaction(async (tx) => {
@@ -207,20 +206,16 @@ export async function createVehicle(
     return errorState(validation.values, 'Не вдалося створити техніку. Спробуйте ще раз.');
   }
 
-  if (imageFiles.length > 0) {
-    const uploadResult = await uploadVehicleImagesForActor(
-      result.created,
-      { userId: access.userId, role: 'CLIENT' },
-      formData
-    );
-
-    if (uploadResult.status === 'error') {
-      redirect(`/client/vehicles/${result.created.id}/photos?created=1&upload=failed`);
-    }
-  }
+  const assetResult = await attachVehicleAssets({
+    vehicle: result.created,
+    actor: { userId: access.userId, role: 'CLIENT', access },
+    formData,
+    selection: assetValidation.selection,
+    requestContext: await getServerAuditRequestContext()
+  });
 
   revalidatePath('/client/vehicles');
-  redirect('/client/vehicles?created=1');
+  redirect(`/client/vehicles/${result.created.id}?created=1${assetResult.ok ? '' : `&assets=partial${assetResult.cleanupFailed ? '&cleanup=failed' : ''}`}`);
 }
 
 export async function updateClientVehicle(
@@ -242,7 +237,12 @@ export async function updateClientVehicle(
       model: true,
       year: true,
       vinOrSerial: true,
-      comment: true
+      comment: true,
+      images: {
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true, publicId: true, sortOrder: true, isPrimary: true }
+      },
+      documents: { select: { size: true } }
     }
   });
 
@@ -254,6 +254,14 @@ export async function updateClientVehicle(
   if (!validation.ok) {
     return validation.state;
   }
+
+  const assetValidation = await validateVehicleAssetSelection({
+    formData,
+    existingImageCount: vehicle.images.length,
+    existingDocumentCount: vehicle.documents.length,
+    existingDocumentBytes: vehicle.documents.reduce((total, document) => total + document.size, 0)
+  });
+  if (!assetValidation.ok) return errorState(validation.values, assetValidation.message);
 
   const owner = vehicleOwnershipForClient(access);
   const duplicate = await prisma.$transaction(async (tx) => {
@@ -300,6 +308,14 @@ export async function updateClientVehicle(
     });
   }
 
+  const assetResult = await attachVehicleAssets({
+    vehicle,
+    actor: { userId: access.userId, role: 'CLIENT', access },
+    formData,
+    selection: assetValidation.selection,
+    requestContext: await getServerAuditRequestContext()
+  });
+
   const affectedRequestItems = await prisma.requestItem.findMany({
     where: { vehicleId: vehicle.id },
     select: { requestId: true },
@@ -312,5 +328,5 @@ export async function updateClientVehicle(
   });
   revalidatePath('/client/vehicles');
   revalidatePath(`/client/vehicles/${vehicle.id}`);
-  redirect(`/client/vehicles/${vehicle.id}?updated=1`);
+  redirect(`/client/vehicles/${vehicle.id}?updated=1${assetResult.ok ? '' : `&assets=partial${assetResult.cleanupFailed ? '&cleanup=failed' : ''}`}`);
 }

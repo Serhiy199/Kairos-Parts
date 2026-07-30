@@ -44,8 +44,8 @@ async function main() {
   assert.doesNotMatch(migration, /vinOrSerial|clientId|companyId/);
 
   const requiredSources = [
-    ['client form', 'app/client/vehicles/vehicle-form.tsx', /name="name"/],
-    ['admin form', 'components/vehicles/admin-vehicle-form.tsx', /name="name"/],
+    ['client form', 'app/client/vehicles/vehicle-form.tsx', /VehicleCoreFields/],
+    ['admin form', 'components/vehicles/admin-vehicle-form.tsx', /VehicleCoreFields/],
     ['client create', 'app/client/vehicles/actions.ts', /buildVehicleDisplayName/],
     ['admin create', 'app/admin/vehicles/actions.ts', /buildVehicleDisplayName/],
     ['change request', 'lib/change-requests/apply.ts', /name: 'name'/],
@@ -59,6 +59,8 @@ async function main() {
   for (const [label, file, pattern] of requiredSources) {
     assert.match(await readFile(file, 'utf8'), pattern, label);
   }
+  assert.doesNotMatch(await readFile('app/client/vehicles/vehicle-form.tsx', 'utf8'), /name="name"/);
+  assert.doesNotMatch(await readFile('components/vehicles/admin-vehicle-form.tsx', 'utf8'), /name="name"/);
 
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not configured.');
   const client = new PgClient({ connectionString: process.env.DATABASE_URL });

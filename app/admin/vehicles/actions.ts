@@ -5,10 +5,15 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { requireCrmSession } from '@/lib/admin/access';
+import { getServerAuditRequestContext } from '@/lib/audit-log/request-context';
 import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { prisma } from '@/lib/prisma';
+import {
+  attachVehicleAssets,
+  validateVehicleAssetSelection
+} from '@/lib/vehicles/asset-workflow';
 import {
   getAdminVehicleFormValues,
   type AdminVehicleFormState,
@@ -31,6 +36,11 @@ import { validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 const GENERIC_ERROR = 'Не вдалося зберегти техніку. Спробуйте ще раз.';
 const VEHICLE_AUDIT_VALUE_FIELDS = ['name', 'type', 'manufacturer', 'model', 'year', 'vinOrSerial', 'comment'] as const;
 const VEHICLE_AUDIT_METADATA_FIELDS = ['event', 'actorRole', 'changedFields', 'ownerType', 'ownerId'] as const;
+
+function crmActorRole(role: string): 'ADMIN' | 'MANAGER' {
+  if (role === 'ADMIN' || role === 'MANAGER') return role;
+  throw new Error('CRM_ROLE_REQUIRED');
+}
 
 function errorState(
   values: ReturnType<typeof getAdminVehicleFormValues>,
@@ -145,8 +155,15 @@ export async function createAdminVehicleForCompany(
   if (!validation.ok) {
     return validation.state;
   }
+  const assetValidation = await validateVehicleAssetSelection({
+    formData,
+    existingImageCount: 0,
+    existingDocumentCount: 0,
+    existingDocumentBytes: 0
+  });
+  if (!assetValidation.ok) return errorState(validation.values, assetValidation.message);
 
-  let createdVehicleId = '';
+  let createdVehicle: { id: string; clientId: string | null; companyId: string | null; images: [] } | null = null;
   try {
     const owner = vehicleOwnershipForCompany(company.id);
     const result = await prisma.$transaction(async (tx) => {
@@ -157,7 +174,7 @@ export async function createAdminVehicleForCompany(
       });
 
       if (found) {
-        return { duplicate: found, createdId: null };
+        return { duplicate: found, created: null };
       }
 
       const created = await tx.vehicle.create({ data: { ...owner, ...validation.data } });
@@ -172,20 +189,32 @@ export async function createAdminVehicleForCompany(
         metadata: { event: 'VEHICLE_CREATED', actorRole: session.user.role, ownerType: 'company', ownerId: company.id },
         allowedFields: { newValue: VEHICLE_AUDIT_VALUE_FIELDS, metadata: VEHICLE_AUDIT_METADATA_FIELDS }
       });
-      return { duplicate: null, createdId: created.id };
+      return {
+        duplicate: null,
+        created: { id: created.id, clientId: created.clientId, companyId: created.companyId, images: [] as [] }
+      };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     if (result.duplicate) {
       return duplicateState(validation.values, result.duplicate.id);
     }
-    createdVehicleId = result.createdId;
+    createdVehicle = result.created;
   } catch {
     return errorState(validation.values);
   }
 
+  if (!createdVehicle) return errorState(validation.values);
+  const assetResult = await attachVehicleAssets({
+    vehicle: createdVehicle,
+    actor: { userId: session.user.id, role: crmActorRole(session.user.role) },
+    formData,
+    selection: assetValidation.selection,
+    visibleToClient: formData.get('visibleToClient') === 'on',
+    requestContext: await getServerAuditRequestContext()
+  });
   revalidatePath(`/admin/companies/${company.id}`);
   revalidatePath('/client/vehicles');
-  redirect(`/admin/vehicles/${createdVehicleId}/edit?created=1#photos`);
+  redirect(`/admin/vehicles/${createdVehicle.id}/edit?created=1${assetResult.ok ? '' : `&assets=partial${assetResult.cleanupFailed ? '&cleanup=failed' : ''}`}`);
 }
 
 export async function createAdminVehicleForClient(
@@ -216,8 +245,15 @@ export async function createAdminVehicleForClient(
   if (!validation.ok) {
     return validation.state;
   }
+  const assetValidation = await validateVehicleAssetSelection({
+    formData,
+    existingImageCount: 0,
+    existingDocumentCount: 0,
+    existingDocumentBytes: 0
+  });
+  if (!assetValidation.ok) return errorState(validation.values, assetValidation.message);
 
-  let createdVehicleId = '';
+  let createdVehicle: { id: string; clientId: string | null; companyId: string | null; images: [] } | null = null;
   try {
     const owner = vehicleOwnershipForPersonalClient(client.id);
     const result = await prisma.$transaction(async (tx) => {
@@ -228,7 +264,7 @@ export async function createAdminVehicleForClient(
       });
 
       if (found) {
-        return { duplicate: found, createdId: null };
+        return { duplicate: found, created: null };
       }
 
       const created = await tx.vehicle.create({ data: { ...owner, ...validation.data } });
@@ -242,20 +278,32 @@ export async function createAdminVehicleForClient(
         metadata: { event: 'VEHICLE_CREATED', actorRole: session.user.role, ownerType: 'client', ownerId: client.id },
         allowedFields: { newValue: VEHICLE_AUDIT_VALUE_FIELDS, metadata: VEHICLE_AUDIT_METADATA_FIELDS }
       });
-      return { duplicate: null, createdId: created.id };
+      return {
+        duplicate: null,
+        created: { id: created.id, clientId: created.clientId, companyId: created.companyId, images: [] as [] }
+      };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     if (result.duplicate) {
       return duplicateState(validation.values, result.duplicate.id);
     }
-    createdVehicleId = result.createdId;
+    createdVehicle = result.created;
   } catch {
     return errorState(validation.values);
   }
 
+  if (!createdVehicle) return errorState(validation.values);
+  const assetResult = await attachVehicleAssets({
+    vehicle: createdVehicle,
+    actor: { userId: session.user.id, role: crmActorRole(session.user.role) },
+    formData,
+    selection: assetValidation.selection,
+    visibleToClient: formData.get('visibleToClient') === 'on',
+    requestContext: await getServerAuditRequestContext()
+  });
   revalidatePath(`/admin/clients/${client.id}`);
   revalidatePath('/client/vehicles');
-  redirect(`/admin/vehicles/${createdVehicleId}/edit?created=1#photos`);
+  redirect(`/admin/vehicles/${createdVehicle.id}/edit?created=1${assetResult.ok ? '' : `&assets=partial${assetResult.cleanupFailed ? '&cleanup=failed' : ''}`}`);
 }
 
 export async function updateAdminVehicle(
@@ -289,7 +337,12 @@ export async function updateAdminVehicle(
       model: true,
       year: true,
       vinOrSerial: true,
-      comment: true
+      comment: true,
+      images: {
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true, publicId: true, sortOrder: true, isPrimary: true }
+      },
+      documents: { select: { size: true } }
     }
   });
 
@@ -306,6 +359,13 @@ export async function updateAdminVehicle(
   if (!validation.ok) {
     return validation.state;
   }
+  const assetValidation = await validateVehicleAssetSelection({
+    formData,
+    existingImageCount: vehicle.images.length,
+    existingDocumentCount: vehicle.documents.length,
+    existingDocumentBytes: vehicle.documents.reduce((total, document) => total + document.size, 0)
+  });
+  if (!assetValidation.ok) return errorState(validation.values, assetValidation.message);
 
   try {
     const owner: VehicleOwnership = vehicle.companyId
@@ -357,6 +417,15 @@ export async function updateAdminVehicle(
     return errorState(validation.values);
   }
 
+  const assetResult = await attachVehicleAssets({
+    vehicle,
+    actor: { userId: session.user.id, role: crmActorRole(session.user.role) },
+    formData,
+    selection: assetValidation.selection,
+    visibleToClient: formData.get('visibleToClient') === 'on',
+    requestContext: await getServerAuditRequestContext()
+  });
+
   const ownerProfilePath = vehicle.companyId
     ? `/admin/companies/${vehicle.companyId}`
     : `/admin/clients/${vehicle.clientId}`;
@@ -375,5 +444,5 @@ export async function updateAdminVehicle(
   revalidatePath(`/admin/vehicles/${vehicle.id}/edit`);
   revalidatePath('/client/vehicles');
   revalidatePath(`/client/vehicles/${vehicle.id}`);
-  redirect(`${ownerProfilePath}#fleet`);
+  redirect(`/admin/vehicles/${vehicle.id}/edit?updated=1${assetResult.ok ? '' : `&assets=partial${assetResult.cleanupFailed ? '&cleanup=failed' : ''}`}`);
 }

@@ -99,7 +99,14 @@ export async function getClientVehicleDetail(vehicleId: string, access: ClientAc
       },
       images: {
         orderBy: vehicleImageOrder,
-        select: { id: true, secureUrl: true, isPrimary: true }
+        select: {
+          id: true,
+          secureUrl: true,
+          width: true,
+          height: true,
+          sortOrder: true,
+          isPrimary: true
+        }
       },
       documents: {
         where: {
@@ -118,6 +125,7 @@ export async function getClientVehicleDetail(vehicleId: string, access: ClientAc
           mimeType: true,
           size: true,
           source: true,
+          uploadedById: true,
           createdAt: true
         }
       }
