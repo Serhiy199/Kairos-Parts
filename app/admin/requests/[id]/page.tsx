@@ -44,7 +44,6 @@ import { INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 import { PART_MANUFACTURERS } from '@/lib/parts/part-manufacturers';
 import { prisma } from '@/lib/prisma';
 import { getAdminRequestItemPresentation } from '@/lib/request-items/admin-presentation';
-import { buildFinalizedSelectionSummary } from '@/lib/request-selection/finalized-summary';
 import {
   getRequestSelectionResendEligibility,
   type RequestSelectionResendEligibility
@@ -113,6 +112,7 @@ export default async function AdminRequestDetailPage({
               orderBy: [{ position: 'asc' }, { id: 'asc' }],
               select: {
                 id: true,
+                sourceRequestItemId: true,
                 position: true,
                 itemName: true,
                 status: true,
@@ -265,13 +265,6 @@ export default async function AdminRequestDetailPage({
             items={request.items}
             eligibility={selectionEligibility}
             latestSelectionBatch={request.selectionBatches[0] ?? null}
-            invoicedBatchItemIds={new Set(
-              request.invoices.flatMap((invoice) =>
-                invoice.items.flatMap((item) =>
-                  item.selectionBatchItemId ? [item.selectionBatchItemId] : []
-                )
-              )
-            )}
           />
 
           <InvoicesSection
@@ -688,21 +681,18 @@ function RequestItemsSection({
   requestId,
   items,
   eligibility,
-  latestSelectionBatch,
-  invoicedBatchItemIds
+  latestSelectionBatch
 }: {
   requestId: string;
   items: RequestItemView[];
   eligibility: RequestSelectionResendEligibility;
-  invoicedBatchItemIds: ReadonlySet<string>;
   latestSelectionBatch: {
     id: string;
     revision: number;
     status: RequestSelectionBatchStatus;
-    approvedAt: Date | null;
-    rejectedAt: Date | null;
     items: Array<{
       id: string;
+      sourceRequestItemId: string | null;
       position: number;
       itemName: string;
       status: 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -715,6 +705,21 @@ function RequestItemsSection({
   );
   const versionByItemId = new Map(
     eligibility.items.map((item) => [item.requestItemId, item.currentUpdatedAt])
+  );
+  const selectionBySourceItemId = new Map(
+    (latestSelectionBatch?.items ?? [])
+      .filter(
+        (item): item is typeof item & { sourceRequestItemId: string } =>
+          Boolean(item.sourceRequestItemId)
+      )
+      .map((item) => [
+        item.sourceRequestItemId,
+        {
+          batchStatus: latestSelectionBatch!.status,
+          itemStatus: item.status,
+          clientComment: item.clientComment
+        }
+      ])
   );
   const eligibleIds = new Set(eligibility.eligibleItemIds);
   const selectedItems = items.filter((item) => eligibleIds.has(item.id));
@@ -741,19 +746,10 @@ function RequestItemsSection({
   const latestPendingCount = latestSelectionBatch?.items.filter(
     (item) => item.status === 'PENDING'
   ).length ?? 0;
-  const finalizedSummary =
-    latestSelectionBatch
-    && latestSelectionBatch.status !== 'DRAFT'
-    && latestSelectionBatch.status !== 'SENT'
-    && latestSelectionBatch.status !== 'SUPERSEDED'
-      ? buildFinalizedSelectionSummary({
-          status: latestSelectionBatch.status,
-          revision: latestSelectionBatch.revision,
-          approvedAt: latestSelectionBatch.approvedAt,
-          rejectedAt: latestSelectionBatch.rejectedAt,
-          items: latestSelectionBatch.items
-        })
-      : null;
+  const finalizedSelection =
+    latestSelectionBatch?.status === 'APPROVED'
+    || latestSelectionBatch?.status === 'PARTIALLY_APPROVED'
+    || latestSelectionBatch?.status === 'REJECTED';
 
   return (
     <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
@@ -771,54 +767,7 @@ function RequestItemsSection({
         </div>
       </div>
 
-      {finalizedSummary ? (
-        <div
-          data-finalized-selection-summary
-          className="mt-5 rounded-md border border-border bg-surface-muted p-4"
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-bold text-foreground">
-                {finalizedSummary.headline}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-muted">
-                {finalizedSummary.detail}
-              </p>
-            </div>
-            <span className="rounded-full bg-card px-2.5 py-1 text-xs font-bold text-muted">
-              {REQUEST_SELECTION_BATCH_STATUS_LABELS[finalizedSummary.status]}
-            </span>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-muted">
-            <span>Погоджено: {finalizedSummary.approvedCount} із {finalizedSummary.totalCount}</span>
-            <span>Не погоджено: {finalizedSummary.rejectedCount} із {finalizedSummary.totalCount}</span>
-            <span>Версія підбору: {finalizedSummary.revision}</span>
-            <span>
-              Дата погодження:{' '}
-              {finalizedSummary.completedAt
-                ? new Date(finalizedSummary.completedAt).toLocaleString('uk-UA')
-                : 'не зафіксована'}
-            </span>
-          </div>
-          {latestRejectedItems.some((item) => item.clientComment) ? (
-            <div className="mt-3 grid gap-2">
-              {latestRejectedItems.filter((item) => item.clientComment).map((batchItem) => (
-                <div
-                  key={batchItem.id}
-                  className="min-w-0 rounded-md border border-red-100 bg-card p-3"
-                >
-                  <p className="break-words text-xs font-semibold text-foreground">
-                    {batchItem.position}. {batchItem.itemName}
-                  </p>
-                  <p className="mt-1 whitespace-pre-wrap break-words text-xs text-red-700">
-                    {batchItem.clientComment}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : latestSelectionBatch ? (
+      {!finalizedSelection && latestSelectionBatch ? (
         <div className="mt-5 rounded-md border border-border bg-surface-muted p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-bold text-foreground">
@@ -865,19 +814,16 @@ function RequestItemsSection({
         {items.map((item) => {
           const itemTotal = item.salePrice ? calculateInvoiceLineTotal(item.quantity, item.salePrice) : null;
           const resendState = stateByItemId.get(item.id) ?? 'NOT_SENT';
-          const eligibilityItem = eligibility.items.find(
-            (candidate) => candidate.requestItemId === item.id
-          );
+          const selection = selectionBySourceItemId.get(item.id) ?? null;
           const presentation = getAdminRequestItemPresentation({
             state: resendState,
-            approvedBatchItemId: eligibilityItem?.approvedBatchItemId ?? null,
-            invoicedBatchItemIds
+            selection
           });
           const approvedLocked = presentation.locked;
 
           return (
           <article key={item.id} className="min-w-0 rounded-md border border-border bg-card p-3 sm:p-4">
-            <div className="grid min-w-0 gap-4 min-[1800px]:grid-cols-[minmax(180px,1.4fr)_minmax(140px,1fr)_minmax(80px,0.5fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(140px,1fr)]">
+            <div className="grid min-w-0 gap-4 min-[1800px]:grid-cols-[minmax(180px,1.4fr)_minmax(140px,1fr)_minmax(80px,0.5fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(180px,1fr)]">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
                 <p className="mt-2 break-words font-bold text-foreground">{item.name}</p>
@@ -907,41 +853,35 @@ function RequestItemsSection({
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase text-muted">Клієнт</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${presentation.approval.className}`}>
-                    {presentation.approval.label}
-                  </span>
-                  <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${presentation.invoice.className}`}>
-                    {presentation.invoice.label}
-                  </span>
-                </div>
-                {item.approvedAt ? <p className="mt-2 text-xs text-muted">Погоджено: {item.approvedAt.toLocaleString('uk-UA')}</p> : null}
+                <span
+                  aria-label={`Статус клієнта: ${presentation.clientStatus.label}`}
+                  className={`mt-2 inline-flex max-w-full items-center justify-center rounded-full px-2.5 py-1 text-center text-xs font-bold leading-4 sm:whitespace-nowrap ${presentation.clientStatus.className}`}
+                >
+                  {presentation.clientStatus.label}
+                </span>
+                {selection?.clientComment ? (
+                  <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-red-700">
+                    {selection.clientComment}
+                  </p>
+                ) : null}
               </div>
             </div>
 
+            {managerMutationsAllowed && !approvedLocked ? (
             <div className="mt-4 grid min-w-0 gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-              {!managerMutationsAllowed || approvedLocked ? (
-                <p className="text-sm font-semibold text-success">
-                  {managerMutationsAllowed
-                    ? presentation.helper
-                    : 'Клієнт завершив погодження. Позиція доступна лише для перегляду.'}
-                </p>
-              ) : (
               <details className="group">
                 <summary className="cursor-pointer break-words text-sm font-bold text-foreground transition hover:text-accent">Редагувати позицію</summary>
                 <div className="mt-4 min-w-0 rounded-md border border-border bg-surface-muted p-3 sm:p-4">
                   <RequestItemForm action={updateAdminRequestItem} requestId={requestId} item={item} submitLabel="Зберегти позицію" pendingLabel="Зберігаємо…" />
                 </div>
               </details>
-              )}
-              {managerMutationsAllowed && !approvedLocked ? (
               <ReactiveActionForm action={deleteAdminRequestItem} className="sm:justify-self-end">
                 <input type="hidden" name="requestId" value={requestId} />
                 <input type="hidden" name="itemId" value={item.id} />
                 <ReactiveSubmitButton pendingLabel="Видаляємо…" className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-danger/30 px-4 py-2 text-sm font-bold text-danger transition hover:bg-danger/10 disabled:opacity-60 sm:w-auto">Видалити</ReactiveSubmitButton>
               </ReactiveActionForm>
-              ) : null}
             </div>
+            ) : null}
           </article>
           );
         })}

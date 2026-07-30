@@ -1,15 +1,13 @@
 import type { RequestSelectionResendItemState } from '@/lib/request-selection/resend-eligibility';
 
 export type AdminRequestItemPresentation = {
-  approval: { label: string; className: string };
-  invoice: { label: string; className: string };
+  clientStatus: { label: string; className: string };
   locked: boolean;
-  helper: string | null;
 };
 
-const approvalByState: Record<
+const clientStatusByState: Record<
   RequestSelectionResendItemState,
-  AdminRequestItemPresentation['approval']
+  AdminRequestItemPresentation['clientStatus']
 > = {
   NOT_SENT: { label: 'Чернетка', className: 'bg-surface-muted text-muted' },
   UNCHANGED: {
@@ -17,60 +15,62 @@ const approvalByState: Record<
     className: 'bg-[#FFF7E0] text-[#8A5B24]'
   },
   CHANGED_AFTER_SEND: {
-    label: 'Змінено після надсилання',
+    label: 'Очікує рішення клієнта',
     className: 'bg-[#FFF7E0] text-[#8A5B24]'
   },
-  NEW_AFTER_SEND: { label: 'Нова позиція', className: 'bg-accent/20 text-foreground' },
+  NEW_AFTER_SEND: { label: 'Чернетка', className: 'bg-surface-muted text-muted' },
   LOCKED_APPROVED: { label: 'Погоджено', className: 'bg-[#E7F6EC] text-success' },
   UNCHANGED_REJECTED: {
-    label: 'Відхилено — можна доопрацювати',
+    label: 'Не погоджено',
     className: 'bg-red-50 text-red-700'
   },
   CHANGED_REJECTED: {
-    label: 'Змінено після відхилення',
-    className: 'bg-[#FFF7E0] text-[#8A5B24]'
+    label: 'Не погоджено',
+    className: 'bg-red-50 text-red-700'
   },
-  NEW_FOLLOW_UP: { label: 'Нова позиція', className: 'bg-accent/20 text-foreground' }
+  NEW_FOLLOW_UP: { label: 'Чернетка', className: 'bg-surface-muted text-muted' }
 };
 
 export function getAdminRequestItemPresentation(input: {
   state: RequestSelectionResendItemState;
-  approvedBatchItemId: string | null;
-  invoicedBatchItemIds: ReadonlySet<string>;
+  selection?: {
+    batchStatus: 'DRAFT' | 'SENT' | 'APPROVED' | 'PARTIALLY_APPROVED' | 'REJECTED' | 'SUPERSEDED';
+    itemStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+  } | null;
 }): AdminRequestItemPresentation {
-  const locked = input.state === 'LOCKED_APPROVED';
-  const requiresApproval =
-    input.state === 'CHANGED_AFTER_SEND'
-    || input.state === 'CHANGED_REJECTED'
-    || input.state === 'NEW_AFTER_SEND'
-    || input.state === 'NEW_FOLLOW_UP';
+  const finalized =
+    input.selection?.batchStatus === 'APPROVED'
+    || input.selection?.batchStatus === 'PARTIALLY_APPROVED'
+    || input.selection?.batchStatus === 'REJECTED';
 
-  let invoice: AdminRequestItemPresentation['invoice'];
-  if (locked && input.approvedBatchItemId) {
-    invoice = input.invoicedBatchItemIds.has(input.approvedBatchItemId)
-      ? { label: 'Внесено в рахунок', className: 'bg-[#E8F1FF] text-info' }
-      : {
-          label: 'Очікує на створення рахунку',
-          className: 'bg-[#FFF7E0] text-[#8A5B24]'
-        };
-  } else if (requiresApproval) {
-    invoice = {
-      label: input.state === 'CHANGED_AFTER_SEND' || input.state === 'CHANGED_REJECTED'
-        ? 'Потребує повторного погодження'
-        : 'Потребує погодження',
+  let clientStatus = clientStatusByState[input.state];
+  if (
+    input.selection?.batchStatus === 'SENT'
+    && input.selection.itemStatus === 'PENDING'
+  ) {
+    clientStatus = {
+      label: 'Очікує рішення клієнта',
       className: 'bg-[#FFF7E0] text-[#8A5B24]'
     };
-  } else {
-    invoice = {
-      label: input.state === 'NOT_SENT' ? 'Не надіслано клієнту' : 'Не включено у рахунок',
-      className: 'bg-surface-muted text-muted'
+  } else if (finalized && input.selection?.itemStatus === 'APPROVED') {
+    clientStatus = {
+      label: 'Погоджено',
+      className: 'bg-[#E7F6EC] text-success'
+    };
+  } else if (finalized && input.selection?.itemStatus === 'REJECTED') {
+    clientStatus = {
+      label: 'Не погоджено',
+      className: 'bg-red-50 text-red-700'
+    };
+  } else if (finalized && input.selection?.itemStatus === 'PENDING') {
+    clientStatus = {
+      label: 'Очікує рішення клієнта',
+      className: 'bg-[#FFF7E0] text-[#8A5B24]'
     };
   }
 
   return {
-    approval: approvalByState[input.state],
-    invoice,
-    locked,
-    helper: locked ? 'Погоджені дані позиції не можна змінити.' : null
+    clientStatus,
+    locked: finalized || input.state === 'LOCKED_APPROVED'
   };
 }

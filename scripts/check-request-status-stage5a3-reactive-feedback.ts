@@ -12,13 +12,11 @@ function source(path: string) {
 
 function presentation(
   state: Parameters<typeof getAdminRequestItemPresentation>[0]['state'],
-  approvedBatchItemId: string | null,
-  invoiced: string[] = []
+  selection: Parameters<typeof getAdminRequestItemPresentation>[0]['selection'] = null
 ) {
   return getAdminRequestItemPresentation({
     state,
-    approvedBatchItemId,
-    invoicedBatchItemIds: new Set(invoiced)
+    selection
   });
 }
 
@@ -89,34 +87,30 @@ async function main() {
   assert.equal('snapshotHash' in approvedHistory[1]!, false);
   assert.equal('managerComment' in approvedHistory[1]!, false);
 
-  assert.deepEqual(
-    [presentation('NOT_SENT', null).approval.label, presentation('NOT_SENT', null).invoice.label],
-    ['Чернетка', 'Не надіслано клієнту']
-  );
-  assert.deepEqual(
-    [presentation('UNCHANGED', null).approval.label, presentation('UNCHANGED', null).invoice.label],
-    ['Очікує рішення клієнта', 'Не включено у рахунок']
-  );
-  assert.deepEqual(
-    [presentation('LOCKED_APPROVED', 'approved-r2').approval.label, presentation('LOCKED_APPROVED', 'approved-r2').invoice.label],
-    ['Погоджено', 'Очікує на створення рахунку']
+  assert.equal(presentation('NOT_SENT').clientStatus.label, 'Чернетка');
+  assert.equal(
+    presentation('UNCHANGED', {
+      batchStatus: 'SENT',
+      itemStatus: 'PENDING'
+    }).clientStatus.label,
+    'Очікує рішення клієнта'
   );
   assert.equal(
-    presentation('LOCKED_APPROVED', 'approved-r2', ['approved-r2']).invoice.label,
-    'Внесено в рахунок'
+    presentation('NOT_SENT', {
+      batchStatus: 'PARTIALLY_APPROVED',
+      itemStatus: 'APPROVED'
+    }).clientStatus.label,
+    'Погоджено'
   );
   assert.equal(
-    presentation('LOCKED_APPROVED', 'another-snapshot', ['approved-r2']).invoice.label,
-    'Очікує на створення рахунку',
-    'another revision of the same source must not be marked invoiced'
+    presentation('NOT_SENT', {
+      batchStatus: 'PARTIALLY_APPROVED',
+      itemStatus: 'REJECTED'
+    }).clientStatus.label,
+    'Не погоджено'
   );
-  assert.deepEqual(
-    [presentation('UNCHANGED_REJECTED', null).approval.label, presentation('UNCHANGED_REJECTED', null).invoice.label],
-    ['Відхилено — можна доопрацювати', 'Не включено у рахунок']
-  );
-  assert.equal(presentation('CHANGED_REJECTED', null).invoice.label, 'Потребує повторного погодження');
-  assert.equal(presentation('NEW_FOLLOW_UP', null).invoice.label, 'Потребує погодження');
-  assert.equal(presentation('LOCKED_APPROVED', 'approved-r2').helper, 'Погоджені дані позиції не можна змінити.');
+  assert.equal(presentation('UNCHANGED_REJECTED').clientStatus.label, 'Не погоджено');
+  assert.equal(presentation('NEW_FOLLOW_UP').clientStatus.label, 'Чернетка');
 
   const clientReadModel = source('lib/request-selection/client-read-model.ts');
   const clientUi = source('components/client/client-approval-batch-section.tsx');

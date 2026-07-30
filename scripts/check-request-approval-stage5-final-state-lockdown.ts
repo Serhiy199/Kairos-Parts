@@ -85,7 +85,9 @@ async function main() {
     assert.match(adminPage, /managerMutationsAllowed \?/);
     assert.match(mutationPolicy, /FINAL_CLIENT_SELECTION_LOCKED/);
   });
-  scenario('APPROVED batch hides edit', () => assert.match(adminPage, /!managerMutationsAllowed/));
+  scenario('APPROVED batch hides edit', () => {
+    assert.match(adminPage, /managerMutationsAllowed && !approvedLocked/);
+  });
   scenario('APPROVED batch hides delete', () => assert.match(adminPage, /managerMutationsAllowed && !approvedLocked/));
   scenario('APPROVED batch hides update selection', () => assert.match(adminPage, /finalizedSelectionLocked/));
 
@@ -97,8 +99,9 @@ async function main() {
   scenario('REJECTED uses the same mutation lock', () => {
     assert.match(mutationPolicy, /'REJECTED'/);
   });
-  scenario('AWAITING_INVOICE renders final summary', () => {
-    assert.match(adminPage, /data-finalized-selection-summary/);
+  scenario('AWAITING_INVOICE renders finalized item decisions', () => {
+    assert.match(adminPage, /selectionBySourceItemId/);
+    assert.match(adminPage, /presentation\.clientStatus/);
   });
   scenario('AWAITING_INVOICE invoice CTA remains eligibility-driven', () => {
     assert.match(adminPage, /const canCreateInvoice = eligibility\.eligible/);
