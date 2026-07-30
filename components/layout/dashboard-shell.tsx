@@ -32,6 +32,7 @@ export type DashboardNavItem = {
   href: string;
   label: string;
   badge?: number;
+  badgeTone?: 'default' | 'success';
   icon?: NavIcon;
   activePrefix?: string;
 };
@@ -293,7 +294,9 @@ function SidebarContent({ navItems, pathname, homeHref, logoutAction, onNavigate
                     <span
                       aria-label={`${item.badge} нових`}
                       className={`inline-flex min-w-6 shrink-0 items-center justify-center rounded-full px-2 py-0.5 text-xs font-bold ${
-                        isActive ? 'bg-foreground text-accent' : 'bg-[#E7F6EC] text-success'
+                        item.badgeTone === 'success'
+                          ? 'bg-[#E7F6EC] text-success'
+                          : isActive ? 'bg-foreground text-accent' : 'bg-[#E7F6EC] text-success'
                       }`}
                     >
                       {item.badge > 99 ? '99+' : item.badge}

@@ -135,12 +135,19 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
         {requests.length > 0 ? (
           <div className="grid gap-3 p-4 sm:p-5 xl:hidden">
             {requests.map((request) => (
-              <article key={request.id} className="rounded-md border border-border bg-card p-4">
+              <article
+                key={request.id}
+                className={`rounded-md border p-4 ${
+                  request.status === 'NEW'
+                    ? 'border-success/40 bg-[#F5FBF7] shadow-[inset_4px_0_0_#2E7D4F]'
+                    : 'border-border bg-card'
+                }`}
+              >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <Link href={`/admin/requests/${request.id}`} className="break-words font-bold text-foreground transition hover:text-accent">
                     {request.requestNumber}
                   </Link>
-                  <StatusBadge status={request.status} />
+                  <StatusBadge status={request.status} highlightNew />
                 </div>
                 <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
                   <RequestCardField label="Клієнт" value={request.client?.companyName ?? request.client?.contactName ?? request.companyName ?? request.guestName ?? 'Гість'} />
@@ -174,14 +181,21 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
             </thead>
             <tbody>
               {requests.map((request) => (
-                <tr key={request.id} className="border-b border-border last:border-0">
+                <tr
+                  key={request.id}
+                  className={`border-b border-border last:border-0 ${
+                    request.status === 'NEW'
+                      ? 'bg-[#F5FBF7] shadow-[inset_4px_0_0_#2E7D4F]'
+                      : 'transition-colors hover:bg-surface-muted/50'
+                  }`}
+                >
                   <td className="px-4 py-3"><Link href={`/admin/requests/${request.id}`} className="font-bold text-foreground transition hover:text-accent">{request.requestNumber}</Link></td>
                   <td className="px-4 py-3 text-muted">{request.createdAt.toLocaleDateString('uk-UA')}</td>
                   <td className="px-4 py-3 text-muted">{request.client?.companyName ?? request.client?.contactName ?? request.companyName ?? request.guestName ?? 'Гість'}</td>
                   <td className="px-4 py-3 text-muted">{request.client?.phone ?? request.guestPhone ?? '—'}</td>
                   <td className="px-4 py-3 text-muted">{REQUEST_SOURCE_LABELS[request.source]}</td>
                   <td className="px-4 py-3 text-muted">{request.equipmentType ?? '—'}</td>
-                  <td className="px-4 py-3"><StatusBadge status={request.status} /></td>
+                  <td className="px-4 py-3"><StatusBadge status={request.status} highlightNew /></td>
                   <td className="px-4 py-3 text-muted">{request.assignedManager?.name ?? request.assignedManager?.email ?? 'Не призначено'}</td>
                   <td className="px-4 py-3 text-muted">{request.updatedAt.toLocaleDateString('uk-UA')}</td>
                 </tr>
