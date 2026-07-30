@@ -8,7 +8,6 @@ import {
   TbBuildingWarehouse,
   TbCheck,
   TbCircleCheck,
-  TbClockHour3,
   TbInfoCircle,
   TbMapPin,
   TbPlus,
@@ -1343,34 +1342,6 @@ export function LogisticsRequestForm({
 function DeliveryGuidance() {
   return (
     <div className="grid gap-4">
-      <section
-        aria-labelledby="logistics-estimated-delivery-title"
-        className="rounded-xl border border-accent/30 bg-accent/5 p-4 sm:p-5"
-      >
-        <div className="flex items-start gap-3">
-          <TbClockHour3
-            aria-hidden="true"
-            className="mt-0.5 size-7 shrink-0 text-accent"
-          />
-          <div className="min-w-0">
-            <h2
-              id="logistics-estimated-delivery-title"
-              className="font-bold text-public-primary"
-            >
-              Орієнтовний термін виконання
-            </h2>
-            <p className="mt-3 text-sm font-semibold leading-6 text-public-secondary">
-              Планова доставка: наступний робочий день
-              <br />
-              (забір до 14:00 — доставка до 18:00).
-            </p>
-            <p className="mt-2 text-sm leading-6 text-public-muted">
-              Точний час узгоджується з менеджером.
-            </p>
-          </div>
-        </div>
-      </section>
-
       <section
         aria-labelledby="logistics-restrictions-title"
         className="rounded-xl border border-public-danger/30 bg-public-elevated/60 p-4 sm:p-5"
