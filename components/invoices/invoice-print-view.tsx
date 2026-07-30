@@ -86,13 +86,14 @@ export function InvoicePrintView({ invoice, backHref, backLabel }: InvoicePrintV
       <style>{`
         @page {
           size: A4 landscape;
-          margin: 9mm;
+          margin: 0;
         }
 
         @media print {
           html,
           body {
             background: #ffffff !important;
+            margin: 0 !important;
           }
 
           .no-print {
@@ -103,7 +104,9 @@ export function InvoicePrintView({ invoice, backHref, backLabel }: InvoicePrintV
             box-shadow: none !important;
             border: 0 !important;
             max-width: none !important;
-            padding: 0 !important;
+            min-height: 210mm !important;
+            padding: 9mm !important;
+            box-sizing: border-box !important;
           }
 
           .print-break-inside-avoid {
@@ -153,7 +156,7 @@ export function InvoicePrintView({ invoice, backHref, backLabel }: InvoicePrintV
               {INVOICE_VALIDITY_NOTICE}
             </p>
           </div>
-          <div className="rounded-md border border-[#d7d9dd] p-4 text-sm print:p-3 print:text-[8.5pt] print:leading-snug">
+          <div className="rounded-md border border-[#d7d9dd] p-4 text-sm print:hidden">
             <p className="font-bold text-[#050505]">{statusLabel}</p>
             <p className="mt-2 text-[#4C4F54] print:mt-1">Створення заявки: {formatDate(invoice.request.createdAt)}</p>
             {invoice.sentAt ? <p className="mt-1 text-[#4C4F54]">Надіслано: {formatDate(invoice.sentAt)}</p> : null}

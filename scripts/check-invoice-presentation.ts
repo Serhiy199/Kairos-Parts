@@ -88,6 +88,12 @@ function main() {
   assert.equal(pdfTemplate.includes("'Замовник'"), false);
   assert.equal(printView.includes('INVOICE_VALIDITY_NOTICE'), true);
   assert.equal(pdfTemplate.includes('INVOICE_VALIDITY_NOTICE'), true);
+  assert.equal(printView.includes('size: A4 landscape;\n          margin: 0;'), true);
+  assert.equal(printView.includes('padding: 9mm !important;'), true);
+  assert.equal(
+    printView.includes('rounded-md border border-[#d7d9dd] p-4 text-sm print:hidden'),
+    true
+  );
   assert.equal(INVOICE_VALIDITY_NOTICE, 'Рахунок є дійсним протягом 2-х банківських днів');
 
   console.log('Invoice presentation checks passed.');
