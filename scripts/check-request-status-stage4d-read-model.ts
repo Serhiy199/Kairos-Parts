@@ -342,7 +342,8 @@ test('batch UI remains snapshot-based and legacy action stays isolated', () => {
   const legacy = readFileSync('components/client/client-legacy-selection-section.tsx', 'utf8');
   assert.doesNotMatch(batch, /approveClientRequestItemsAction|approvedByClient|includeInInvoice/);
   assert.doesNotMatch(batch, /<form|type="checkbox"|sourceRequestItemId|snapshotHash|vehicleVin/);
-  assert.match(batch, /ClientSelectionDecisionControls/);
+  assert.match(batch, /ClientSelectionCheckboxList/);
+  assert.match(batch, /submitAction=\{submitClientSelectionAction\}/);
   assert.match(legacy, /approveClientRequestItemsAction/);
 });
 

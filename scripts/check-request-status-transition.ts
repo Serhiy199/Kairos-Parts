@@ -35,6 +35,14 @@ expectDecision('WAITING_APPROVAL', REQUEST_STATUS_EVENTS.CLIENT_SELECTION_APPROV
   outcome: 'allowed',
   nextStatus: 'AWAITING_INVOICE'
 });
+expectDecision('WAITING_APPROVAL', REQUEST_STATUS_EVENTS.CLIENT_SELECTION_REJECTED_ALL, {
+  outcome: 'allowed',
+  nextStatus: 'CANCELLED'
+});
+expectDecision('AWAITING_INVOICE', REQUEST_STATUS_EVENTS.CLIENT_SELECTION_REJECTED_ALL, {
+  outcome: 'allowed',
+  nextStatus: 'CANCELLED'
+});
 expectDecision('AWAITING_INVOICE', REQUEST_STATUS_EVENTS.INVOICE_SENT, {
   outcome: 'allowed',
   nextStatus: 'INVOICE_SENT'
@@ -306,6 +314,19 @@ async function main() {
     'ROLE_NOT_ALLOWED'
   );
   assert.equal(clientManualState.requestStatus, 'IN_PROGRESS');
+
+  const clientRejectedAllState = initialState('WAITING_APPROVAL');
+  const clientRejectedAll = await createRequestStatusTransitionService(
+    makeDatabase(clientRejectedAllState).database
+  )({
+    requestId: 'request-1',
+    event: REQUEST_STATUS_EVENTS.CLIENT_SELECTION_REJECTED_ALL,
+    actor: { id: 'client' }
+  });
+  assert.equal(clientRejectedAll.outcome, 'changed');
+  assert.equal(clientRejectedAllState.requestStatus, 'CANCELLED');
+  assert.equal(clientRejectedAllState.histories.length, 1);
+  assert.equal(clientRejectedAllState.audits.length, 1);
 
   const managerClientEventState = initialState('WAITING_APPROVAL');
   await expectDomainError(

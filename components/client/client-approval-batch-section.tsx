@@ -1,3 +1,4 @@
+import { submitClientSelectionAction } from '@/app/client/actions';
 import type { ClientRequestApprovalReadModel } from '@/lib/request-selection/client-read-model';
 import { ClientSelectionCheckboxList } from '@/components/client/client-selection-checkbox-list';
 import {
@@ -170,7 +171,10 @@ export function ClientApprovalBatchSection({
         </div>
       ) : null}
 
-      <ClientSelectionCheckboxList model={model} />
+      <ClientSelectionCheckboxList
+        model={model}
+        submitAction={submitClientSelectionAction}
+      />
     </section>
   );
 }

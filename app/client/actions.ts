@@ -17,6 +17,10 @@ import {
   ClientSelectionDecisionError,
   decideClientSelectionItem
 } from '@/lib/request-selection/client-decision';
+import {
+  SubmitClientSelectionError,
+  submitClientSelection
+} from '@/lib/request-selection/client-submission';
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -45,6 +49,104 @@ const selectionDecisionFeedback: Partial<
   REQUEST_APPROVAL_FINALIZATION_INVARIANT_FAILED:
     'selection-finalization-invariant-failed'
 };
+
+const aggregateSubmissionFeedback: Partial<
+  Record<SubmitClientSelectionError['code'], string>
+> = {
+  REQUEST_ACCESS_DENIED: 'selection-submit-forbidden',
+  ACTOR_NOT_ALLOWED: 'selection-submit-forbidden',
+  ACTOR_NOT_FOUND: 'selection-submit-forbidden',
+  BATCH_NOT_FOUND: 'selection-submit-stale',
+  BATCH_NOT_ACTIVE: 'selection-submit-stale',
+  STALE_SELECTION_REVISION: 'selection-submit-stale',
+  REQUEST_STATUS_DOES_NOT_ALLOW_SUBMISSION: 'selection-submit-stale',
+  CONCURRENT_SUBMISSION: 'selection-submit-stale',
+  DUPLICATE_BATCH_ITEM_ID: 'selection-submit-validation',
+  UNKNOWN_BATCH_ITEM_ID: 'selection-submit-validation',
+  EMPTY_BATCH: 'selection-submit-validation',
+  SUBMISSION_CONFLICT: 'selection-submit-conflict',
+  BATCH_TRANSITION_FAILED: 'selection-submit-error',
+  REQUEST_STATUS_TRANSITION_FAILED: 'selection-submit-error',
+  FINALIZATION_INVARIANT_FAILED: 'selection-submit-error',
+  AUDIT_WRITE_FAILED: 'selection-submit-error',
+  DATABASE_TRANSACTION_FAILED: 'selection-submit-error'
+};
+
+export async function submitClientSelectionAction(formData: FormData) {
+  const session = await requireClientSession();
+  const requestId = readString(formData, 'requestId');
+  const batchId = readString(formData, 'batchId');
+  const revision = Number(readString(formData, 'revision'));
+  const approvedBatchItemIds = formData
+    .getAll('approvedBatchItemIds')
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.trim());
+
+  if (
+    !hasDatabaseUrl()
+    || !requestId
+    || !batchId
+    || !Number.isSafeInteger(revision)
+    || revision < 1
+  ) {
+    return {
+      ok: false as const,
+      feedback: getClientSelectionFeedback('selection-submit-validation'),
+      refresh: false
+    };
+  }
+
+  try {
+    const result = await submitClientSelection({
+      requestId,
+      batchId,
+      expectedRevision: revision,
+      approvedBatchItemIds,
+      actor: { id: session.user.id },
+      source: 'CLIENT_CABINET',
+      requestContext: await getServerAuditRequestContext()
+    });
+    const feedback = result.outcome === 'noop'
+      ? 'selection-submit-noop'
+      : result.batchStatus === 'APPROVED'
+        ? 'selection-submit-approved'
+        : result.batchStatus === 'PARTIALLY_APPROVED'
+          ? 'selection-submit-partial'
+          : 'selection-submit-rejected';
+
+    revalidatePath('/client/requests');
+    revalidatePath(`/client/requests/${requestId}`);
+    revalidatePath('/admin');
+    revalidatePath('/admin/requests');
+    revalidatePath(`/admin/requests/${requestId}`);
+
+    return {
+      ok: true as const,
+      feedback: getClientSelectionFeedback(feedback),
+      refresh: true
+    };
+  } catch (error) {
+    if (error instanceof SubmitClientSelectionError) {
+      const code =
+        aggregateSubmissionFeedback[error.code] ?? 'selection-submit-error';
+      return {
+        ok: false as const,
+        feedback: getClientSelectionFeedback(code),
+        refresh: code === 'selection-submit-stale'
+      };
+    }
+    console.error('Aggregate client selection submission failed.', {
+      requestId,
+      batchId,
+      revision
+    });
+    return {
+      ok: false as const,
+      feedback: getClientSelectionFeedback('selection-submit-error'),
+      refresh: false
+    };
+  }
+}
 
 export async function decideClientSelectionItemAction(formData: FormData) {
   const session = await requireClientSession();

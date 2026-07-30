@@ -9,6 +9,7 @@ export const REQUEST_STATUS_EVENTS = {
   SELECTION_SENT_FOR_APPROVAL: 'SELECTION_SENT_FOR_APPROVAL',
   FOLLOW_UP_SELECTION_SENT_FOR_APPROVAL: 'FOLLOW_UP_SELECTION_SENT_FOR_APPROVAL',
   CLIENT_SELECTION_APPROVED: 'CLIENT_SELECTION_APPROVED',
+  CLIENT_SELECTION_REJECTED_ALL: 'CLIENT_SELECTION_REJECTED_ALL',
   INVOICE_SENT: 'INVOICE_SENT',
   MANUAL_SET_AWAITING_SHIPMENT: 'MANUAL_SET_AWAITING_SHIPMENT',
   MANUAL_SET_COMPLETED: 'MANUAL_SET_COMPLETED',
@@ -22,6 +23,7 @@ export const AUTOMATIC_REQUEST_STATUS_EVENTS = [
   REQUEST_STATUS_EVENTS.SELECTION_SENT_FOR_APPROVAL,
   REQUEST_STATUS_EVENTS.FOLLOW_UP_SELECTION_SENT_FOR_APPROVAL,
   REQUEST_STATUS_EVENTS.CLIENT_SELECTION_APPROVED,
+  REQUEST_STATUS_EVENTS.CLIENT_SELECTION_REJECTED_ALL,
   REQUEST_STATUS_EVENTS.INVOICE_SENT
 ] as const satisfies readonly RequestStatusEvent[];
 
@@ -201,6 +203,12 @@ export function resolveRequestStatusTransition(
     if (currentStatus === 'AWAITING_INVOICE') return noop(currentStatus);
   }
 
+  if (event === REQUEST_STATUS_EVENTS.CLIENT_SELECTION_REJECTED_ALL) {
+    if (currentStatus === 'WAITING_APPROVAL' || currentStatus === 'AWAITING_INVOICE') {
+      return allowed('CANCELLED');
+    }
+  }
+
   if (event === REQUEST_STATUS_EVENTS.INVOICE_SENT) {
     if (currentStatus === 'AWAITING_INVOICE') return allowed('INVOICE_SENT');
     if (currentStatus === 'INVOICE_SENT') return noop(currentStatus);
@@ -210,7 +218,10 @@ export function resolveRequestStatusTransition(
 }
 
 function roleAllowedForEvent(role: UserRole, event: RequestStatusEvent) {
-  if (event === REQUEST_STATUS_EVENTS.CLIENT_SELECTION_APPROVED) {
+  if (
+    event === REQUEST_STATUS_EVENTS.CLIENT_SELECTION_APPROVED
+    || event === REQUEST_STATUS_EVENTS.CLIENT_SELECTION_REJECTED_ALL
+  ) {
     return role === 'CLIENT';
   }
   return staffRoles.has(role);

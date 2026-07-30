@@ -1,7 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 
+import { useToast } from '@/components/ui/toast-provider';
+import type { WorkflowActionResult } from '@/lib/actions/workflow-result';
 import {
   formatClientSelectionPrice,
   formatClientSelectionQuantity
@@ -54,11 +57,119 @@ function positionLabel(count: number) {
   return 'позицій';
 }
 
-function ClientSelectionCheckboxListState({ model }: { model: BatchReadModel }) {
+function SelectionConfirmationDialog({
+  approvedCount,
+  totalCount,
+  pending,
+  onCancel,
+  onConfirm
+}: {
+  approvedCount: number;
+  totalCount: number;
+  pending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const zeroSelection = approvedCount === 0;
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const firstButton = dialog.querySelector<HTMLButtonElement>('button');
+    firstButton?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !pending) onCancel();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onCancel, pending]);
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4">
+      <section
+        ref={dialogRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="selection-confirm-title"
+        aria-describedby="selection-confirm-description"
+        className="w-full max-w-lg rounded-lg border border-border bg-card p-5 shadow-xl"
+      >
+        <h2 id="selection-confirm-title" className="text-xl font-bold text-foreground">
+          {zeroSelection ? 'Підтвердити відмову від усіх позицій?' : 'Надіслати погодження?'}
+        </h2>
+        <div
+          id="selection-confirm-description"
+          className="mt-3 grid gap-3 text-sm leading-6 text-muted"
+        >
+          {zeroSelection ? (
+            <>
+              <p>Ви не погодили жодної позиції.</p>
+              <p>
+                Після підтвердження заявка буде скасована, а рахунок не
+                формуватиметься. Для нового підбору потрібно створити нову заявку.
+              </p>
+            </>
+          ) : (
+            <>
+              <p>
+                Ви погодили {approvedCount} із {totalCount}{' '}
+                {positionLabel(totalCount)}.
+              </p>
+              <p>Позиції без галочки будуть позначені як непогоджені.</p>
+              <p>
+                Після надсилання змінити вибір у цій заявці буде неможливо.
+                Для додаткового підбору потрібно створити нову заявку.
+              </p>
+            </>
+          )}
+        </div>
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={onCancel}
+            className="min-h-11 rounded-md border border-border px-4 text-sm font-bold text-foreground transition hover:border-accent disabled:opacity-60"
+          >
+            Повернутися до перегляду
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={onConfirm}
+            className={`min-h-11 rounded-md px-4 text-sm font-bold transition disabled:opacity-60 ${
+              zeroSelection
+                ? 'bg-red-700 text-white hover:bg-red-800'
+                : 'bg-accent text-foreground hover:bg-accent-hover'
+            }`}
+          >
+            {pending
+              ? 'Надсилаємо погодження…'
+              : zeroSelection
+                ? 'Підтвердити відмову'
+                : 'Підтвердити та надіслати'}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ClientSelectionCheckboxListState({
+  model,
+  submitAction
+}: {
+  model: BatchReadModel;
+  submitAction: (formData: FormData) => Promise<WorkflowActionResult>;
+}) {
   const { activeBatch } = model;
+  const router = useRouter();
+  const { showToast } = useToast();
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(
     () => new Set<string>()
   );
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
   const eligibleItems = activeBatch.status === 'SENT'
     ? activeBatch.items.filter((item) => item.status === 'PENDING')
     : [];
@@ -67,6 +178,34 @@ function ClientSelectionCheckboxListState({ model }: { model: BatchReadModel }) 
     selectedIds,
     eligibleIds
   );
+
+  function submitSelection() {
+    if (pending) return;
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set('requestId', model.request.id);
+      formData.set('batchId', activeBatch.id);
+      formData.set('revision', String(activeBatch.revision));
+      for (const id of selectedIds) {
+        if (eligibleIds.includes(id)) {
+          formData.append('approvedBatchItemIds', id);
+        }
+      }
+      try {
+        const result = await submitAction(formData);
+        showToast(result.feedback);
+        if (result.ok || result.refresh) setConfirmationOpen(false);
+        if (result.refresh !== false) router.refresh();
+      } catch {
+        setConfirmationOpen(false);
+        showToast({
+          code: 'selection-submit-network-error',
+          tone: 'error',
+          message: 'Не вдалося надіслати погодження. Ваш локальний вибір збережено — перевірте з’єднання та спробуйте ще раз.'
+        });
+      }
+    });
+  }
 
   return (
     <>
@@ -102,13 +241,14 @@ function ClientSelectionCheckboxListState({ model }: { model: BatchReadModel }) 
                       <input
                         id={checkboxId}
                         type="checkbox"
+                        disabled={pending}
                         checked={selectedIds.has(item.id)}
                         onChange={(event) => {
                           setSelectedIds((current) =>
                             toggleClientSelection(current, item.id, event.target.checked)
                           );
                         }}
-                        className="size-4 shrink-0 accent-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                        className="size-4 shrink-0 accent-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed"
                       />
                       <label
                         htmlFor={checkboxId}
@@ -235,20 +375,44 @@ function ClientSelectionCheckboxListState({ model }: { model: BatchReadModel }) 
             </p>
           </div>
           <p className="mt-3 text-xs leading-5 text-muted">
-            Це попередній локальний вибір. Фінальне надсилання буде підключене
-            на наступному етапі.
+            Після надсилання змінити вибір буде неможливо. Позиції без галочки
+            будуть позначені як непогоджені.
           </p>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => setConfirmationOpen(true)}
+            className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-accent px-5 text-sm font-bold text-foreground transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+          >
+            {pending ? 'Надсилаємо погодження…' : 'Надіслати погодження'}
+          </button>
         </section>
+      ) : null}
+      {confirmationOpen ? (
+        <SelectionConfirmationDialog
+          approvedCount={selectedCount}
+          totalCount={eligibleItems.length}
+          pending={pending}
+          onCancel={() => setConfirmationOpen(false)}
+          onConfirm={submitSelection}
+        />
       ) : null}
     </>
   );
 }
 
-export function ClientSelectionCheckboxList({ model }: { model: BatchReadModel }) {
+export function ClientSelectionCheckboxList({
+  model,
+  submitAction
+}: {
+  model: BatchReadModel;
+  submitAction: (formData: FormData) => Promise<WorkflowActionResult>;
+}) {
   return (
     <ClientSelectionCheckboxListState
       key={clientSelectionStateKey(model.activeBatch.id, model.activeBatch.revision)}
       model={model}
+      submitAction={submitAction}
     />
   );
 }
