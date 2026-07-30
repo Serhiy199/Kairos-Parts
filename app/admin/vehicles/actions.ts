@@ -25,6 +25,7 @@ import {
   vehicleOwnershipForPersonalClient
 } from '@/lib/vehicles/ownership';
 import { diffVehicleFields, pickEditableVehicleFields } from '@/lib/vehicles/change-snapshot';
+import { buildVehicleDisplayName, VehicleNameBuildError } from '@/lib/vehicles/name';
 import { validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
 const GENERIC_ERROR = 'Не вдалося зберегти техніку. Спробуйте ще раз.';
@@ -82,14 +83,36 @@ async function validateForm(formData: FormData) {
     };
   }
 
+  const type = manufacturerResult?.ok ? manufacturerResult.equipmentType.name : validation.data.equipmentType;
+  const manufacturer = manufacturerResult?.ok ? manufacturerResult.manufacturer.name : validation.data.manufacturer;
+  let canonicalName;
+  try {
+    canonicalName = buildVehicleDisplayName({
+      manufacturer,
+      model: validation.data.model
+    });
+  } catch (error) {
+    const field = error instanceof VehicleNameBuildError && error.code === 'VEHICLE_MANUFACTURER_REQUIRED'
+      ? (EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED ? 'manufacturerId' : 'manufacturer')
+      : 'model';
+    return {
+      ok: false as const,
+      state: errorState(values, 'Перевірте поля форми.', {
+        [field]: error instanceof VehicleNameBuildError && error.code === 'VEHICLE_NAME_BUILD_FAILED'
+          ? 'Виробник і модель разом не можуть перевищувати 120 символів.'
+          : 'Вкажіть виробника та модель.'
+      })
+    };
+  }
+
   return {
     ok: true as const,
     values,
     data: {
-      name: validation.data.name,
-      type: manufacturerResult?.ok ? manufacturerResult.equipmentType.name : validation.data.equipmentType,
-      manufacturer: manufacturerResult?.ok ? manufacturerResult.manufacturer.name : validation.data.manufacturer,
-      model: validation.data.model,
+      name: canonicalName.name,
+      type,
+      manufacturer: canonicalName.manufacturer,
+      model: canonicalName.model,
       year: validation.data.year,
       vinOrSerial: validation.data.vinOrSerial,
       comment: validation.data.comment

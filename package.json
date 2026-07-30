@@ -28,6 +28,7 @@
     "test:request-approval-stage3": "tsx scripts/check-request-approval-stage3-manager-edit-before-final.ts",
     "test:request-approval-stage4": "tsx scripts/check-request-approval-stage4-simplified-invoice-selection.ts",
     "test:request-approval-stage6": "tsx scripts/check-request-approval-stage6-simplified-crm-statuses.ts",
+    "test:client-vehicle-documents-stage2": "tsx scripts/check-client-vehicle-documents-stage2-backend-foundation.ts",
     "test:logistics-address-combobox": "tsx scripts/check-logistics-request-form.ts",
     "db:seed": "prisma db seed"
   },

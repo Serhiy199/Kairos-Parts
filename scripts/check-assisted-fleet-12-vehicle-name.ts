@@ -46,15 +46,15 @@ async function main() {
   const requiredSources = [
     ['client form', 'app/client/vehicles/vehicle-form.tsx', /name="name"/],
     ['admin form', 'components/vehicles/admin-vehicle-form.tsx', /name="name"/],
-    ['client create', 'app/client/vehicles/actions.ts', /name: nameResult/],
-    ['admin create', 'app/admin/vehicles/actions.ts', /name: validation\.data\.name/],
+    ['client create', 'app/client/vehicles/actions.ts', /buildVehicleDisplayName/],
+    ['admin create', 'app/admin/vehicles/actions.ts', /buildVehicleDisplayName/],
     ['change request', 'lib/change-requests/apply.ts', /name: 'name'/],
     ['change request apply', 'lib/change-requests/apply.ts', /tx\.vehicle\.update/],
-    ['change request audit', 'lib/change-requests/service.ts', /createAuditLog/],
+    ['change request audit', 'lib/change-requests/service.ts', /createChangeRequestAuditLog/],
     ['audit label', 'lib/audit-log/presentation.ts', /name: 'Назва техніки'/],
     ['telegram select', 'lib/telegram/session.ts', /name: true/],
     ['telegram label', 'lib/telegram/messages.ts', /vehicle\.name/],
-    ['client card', 'app/client/vehicles/page.tsx', /display\.title/]
+    ['client card', 'app/client/vehicles/page.tsx', /vehicle\.name/]
   ] as const;
   for (const [label, file, pattern] of requiredSources) {
     assert.match(await readFile(file, 'utf8'), pattern, label);

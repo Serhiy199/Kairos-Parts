@@ -103,10 +103,13 @@ export async function getClientVehicleDetail(vehicleId: string, access: ClientAc
       },
       documents: {
         where: {
-          visibleToClient: true,
           clientId: null,
           companyId: null,
-          requestId: null
+          requestId: null,
+          OR: [
+            { source: 'CLIENT' },
+            { visibleToClient: true }
+          ]
         },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         select: {
@@ -114,6 +117,7 @@ export async function getClientVehicleDetail(vehicleId: string, access: ClientAc
           fileName: true,
           mimeType: true,
           size: true,
+          source: true,
           createdAt: true
         }
       }

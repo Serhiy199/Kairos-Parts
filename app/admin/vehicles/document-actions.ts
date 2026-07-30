@@ -1,30 +1,32 @@
 'use server';
 
+import type { UserRole } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 
 import { requireCrmSession } from '@/lib/admin/access';
 import { getServerAuditRequestContext } from '@/lib/audit-log/request-context';
 import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { hasCloudinaryConfig } from '@/lib/cloudinary/server';
-import {
-  cleanupVehicleDocumentAssets,
-  deleteVehicleDocumentAsset,
-  uploadVehicleDocument,
-  type CloudinaryVehicleDocumentUpload
-} from '@/lib/files/cloudinary-vehicle-documents';
 import { prisma } from '@/lib/prisma';
 import {
+  createVehicleDocument,
+  deleteVehicleDocument,
+  vehicleDocumentServiceState
+} from '@/lib/vehicles/document-service';
+import {
   getVehicleDocumentFiles,
-  sanitizeVehicleDocumentName,
-  type VehicleDocumentActionState,
-  validateVehicleDocumentFiles
+  type VehicleDocumentActionState
 } from '@/lib/vehicles/documents';
 
-const GENERIC_UPLOAD_ERROR = 'Не вдалося завантажити документи.';
 const VEHICLE_DOCUMENT_AUDIT_METADATA_FIELDS = [
-  'event', 'actorRole', 'documents', 'documentId', 'originalName',
+  'event', 'actorRole', 'source', 'documents', 'documentId', 'originalName',
   'visibleToClient', 'mimeType', 'size'
 ] as const;
+
+function crmDocumentActorRole(role: UserRole): 'MANAGER' | 'ADMIN' {
+  if (role === 'MANAGER' || role === 'ADMIN') return role;
+  throw new Error('CRM document action requires a staff actor.');
+}
 
 async function getVehicleDocumentContext(vehicleId: string) {
   return prisma.vehicle.findUnique({
@@ -32,8 +34,7 @@ async function getVehicleDocumentContext(vehicleId: string) {
     select: {
       id: true,
       clientId: true,
-      companyId: true,
-      _count: { select: { documents: true } }
+      companyId: true
     }
   });
 }
@@ -63,47 +64,23 @@ export async function uploadAdminVehicleDocuments(
   if (!vehicle) return { status: 'error', message: 'Техніку не знайдено.' };
 
   const files = getVehicleDocumentFiles(formData);
-  const validation = await validateVehicleDocumentFiles(files, vehicle._count.documents);
-  if (!validation.ok) return { status: 'error', message: validation.message };
 
   if (!hasCloudinaryConfig()) {
     return { status: 'error', message: 'Сховище документів тимчасово недоступне.' };
   }
 
   const visibleToClient = formData.get('visibleToClient') === 'on';
-  const uploads: Array<{ file: File; upload: CloudinaryVehicleDocumentUpload }> = [];
-
-  try {
-    for (const file of files) {
-      uploads.push({ file, upload: await uploadVehicleDocument(vehicle.id, file) });
-    }
-
-    await prisma.$transaction(async (tx) => {
-      const created = await Promise.all(uploads.map(({ file, upload }) => tx.document.create({ data: {
-        vehicleId: vehicle.id,
-        fileName: sanitizeVehicleDocumentName(file.name),
-        storageKey: upload.storageKey,
-        fileUrl: null,
-        mimeType: file.type,
-        size: upload.bytes,
-        visibleToClient,
-        uploadedById: session.user.id
-      } })));
-      await writeAuditLog(tx, {
-        actor: auditUserActor(session.user.id), companyId: vehicle.companyId, entityType: 'VEHICLE', entityId: vehicle.id,
-        action: 'DOCUMENT_UPLOADED', category: 'STANDARD',
-        metadata: {
-          event: 'VEHICLE_DOCUMENT_UPLOADED', actorRole: session.user.role,
-          documents: created.map((document) => ({ id: document.id, originalName: document.fileName, mimeType: document.mimeType, size: document.size, visibleToClient: document.visibleToClient }))
-        },
-        allowedFields: { metadata: VEHICLE_DOCUMENT_AUDIT_METADATA_FIELDS },
-        requestContext
-      });
-    });
-  } catch {
-    await cleanupVehicleDocumentAssets(uploads.map(({ upload }) => upload.storageKey));
-    return { status: 'error', message: GENERIC_UPLOAD_ERROR };
-  }
+  const result = await createVehicleDocument({
+    vehicleId: vehicle.id,
+    actor: {
+      userId: session.user.id,
+      role: crmDocumentActorRole(session.user.role)
+    },
+    files,
+    visibleToClient,
+    requestContext
+  });
+  if (!result.ok) return vehicleDocumentServiceState(result, 'Документи завантажено.');
 
   revalidateVehicleDocumentPaths(vehicle);
   return { status: 'success', message: 'Документи завантажено.' };
@@ -114,7 +91,10 @@ export async function setVehicleDocumentVisibility(vehicleId: string, documentId
   const requestContext = await getServerAuditRequestContext();
   const vehicle = await getVehicleDocumentContext(vehicleId);
   const document = vehicle
-    ? await prisma.document.findFirst({ where: { id: documentId, vehicleId: vehicle.id }, select: { id: true, visibleToClient: true } })
+    ? await prisma.document.findFirst({
+        where: { id: documentId, vehicleId: vehicle.id },
+        select: { id: true, visibleToClient: true, source: true }
+      })
     : null;
 
   if (!vehicle || !document) {
@@ -130,7 +110,12 @@ export async function setVehicleDocumentVisibility(vehicleId: string, documentId
       await writeAuditLog(tx, {
         actor: auditUserActor(session.user.id), companyId: vehicle.companyId, entityType: 'VEHICLE', entityId: vehicle.id,
         action: 'DOCUMENT_VISIBILITY_CHANGED', category: 'STANDARD', oldValue: { visibleToClient: document.visibleToClient }, newValue: { visibleToClient },
-        metadata: { event: 'VEHICLE_DOCUMENT_VISIBILITY_CHANGED', actorRole: session.user.role, documentId: document.id },
+        metadata: {
+          event: 'VEHICLE_DOCUMENT_VISIBILITY_CHANGED',
+          actorRole: session.user.role,
+          source: document.source,
+          documentId: document.id
+        },
         allowedFields: { oldValue: ['visibleToClient'], newValue: ['visibleToClient'], metadata: VEHICLE_DOCUMENT_AUDIT_METADATA_FIELDS },
         requestContext
       });
@@ -150,14 +135,7 @@ export async function deleteAdminVehicleDocument(vehicleId: string, documentId: 
   const session = await requireCrmSession();
   const requestContext = await getServerAuditRequestContext();
   const vehicle = await getVehicleDocumentContext(vehicleId);
-  const document = vehicle
-    ? await prisma.document.findFirst({
-        where: { id: documentId, vehicleId: vehicle.id },
-        select: { id: true, storageKey: true, fileName: true, visibleToClient: true, mimeType: true, size: true }
-      })
-    : null;
-
-  if (!vehicle || !document) {
+  if (!vehicle) {
     return { status: 'error', message: 'Документ не знайдено.' } satisfies VehicleDocumentActionState;
   }
 
@@ -165,29 +143,16 @@ export async function deleteAdminVehicleDocument(vehicleId: string, documentId: 
     return { status: 'error', message: 'Сховище документів тимчасово недоступне.' } satisfies VehicleDocumentActionState;
   }
 
-  try {
-    await deleteVehicleDocumentAsset(document.storageKey);
-  } catch {
-    return { status: 'error', message: 'Не вдалося видалити документ зі сховища.' } satisfies VehicleDocumentActionState;
-  }
-
-  try {
-    await prisma.$transaction(async (tx) => {
-      await tx.document.deleteMany({ where: { id: document.id, vehicleId: vehicle.id } });
-      await writeAuditLog(tx, {
-        actor: auditUserActor(session.user.id), companyId: vehicle.companyId, entityType: 'VEHICLE', entityId: vehicle.id,
-        action: 'DOCUMENT_DELETED', category: 'STANDARD',
-        metadata: {
-          event: 'VEHICLE_DOCUMENT_DELETED', actorRole: session.user.role, documentId: document.id,
-          originalName: document.fileName, visibleToClient: document.visibleToClient, mimeType: document.mimeType, size: document.size
-        },
-        allowedFields: { metadata: VEHICLE_DOCUMENT_AUDIT_METADATA_FIELDS },
-        requestContext
-      });
-    });
-  } catch {
-    return { status: 'error', message: 'Файл видалено зі сховища, але запис документа не вдалося видалити.' } satisfies VehicleDocumentActionState;
-  }
+  const result = await deleteVehicleDocument({
+    vehicleId: vehicle.id,
+    documentId,
+    actor: {
+      userId: session.user.id,
+      role: crmDocumentActorRole(session.user.role)
+    },
+    requestContext
+  });
+  if (!result.ok) return vehicleDocumentServiceState(result, 'Документ видалено.');
 
   revalidateVehicleDocumentPaths(vehicle);
   return { status: 'success', message: 'Документ видалено.' } satisfies VehicleDocumentActionState;
