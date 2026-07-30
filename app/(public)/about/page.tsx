@@ -68,7 +68,7 @@ const contactScenarios = [
 
 const audiences = [
   {
-    title: 'Parts',
+    title: 'Запчастини',
     text: 'Професійний підбір та постачання запасних частин, мастильних матеріалів, технічних рідин і комплектуючих для сільськогосподарської та комерційної техніки.',
     bullets: [
       'Широка мережа постачальників',
@@ -76,10 +76,11 @@ const audiences = [
       'Швидкий підбір під конкретну техніку'
     ],
     icon: TbSettings,
-    image: '/images/advantages/benefit-2.png'
+    image: '/images/advantages/benefit-2.png',
+    href: undefined
   },
   {
-    title: 'Logistics',
+    title: 'Логістика',
     text: 'Власний логістичний сервіс доставки товарів від будь-яких постачальників безпосередньо до господарства або до точки видачі Kairos.',
     bullets: [
       'Доставка насіння, ЗЗР, добрив, запчастин та інших вантажів',
@@ -87,7 +88,8 @@ const audiences = [
       'Пілотний проєкт у Кагарлицькому районі Київської області'
     ],
     icon: TbTruckDelivery,
-    image: '/images/logistics/logistics-delivery.jpg'
+    image: '/images/logistics/logistics-delivery.jpg',
+    href: '/logistics'
   },
   {
     title: 'Електронний парк техніки',
@@ -98,7 +100,8 @@ const audiences = [
       'Майбутній функціонал для швидкого підбору та регулярних закупівель'
     ],
     icon: TbDeviceDesktop,
-    image: '/images/about/service-equipment-fleet.jpg'
+    image: '/images/about/service-equipment-fleet.jpg',
+    href: undefined
   },
   {
     title: 'Майданчик Б/В техніки',
@@ -109,7 +112,8 @@ const audiences = [
       'Укладайте угоди в екосистемі Kairos серед клієнтів і партнерів'
     ],
     icon: TbHeartHandshake,
-    image: '/images/about/service-used-equipment.jpg'
+    image: '/images/about/service-used-equipment.jpg',
+    href: '/used-equipment'
   }
 ];
 
@@ -311,12 +315,8 @@ export default function AboutPage() {
           <div className="mt-10 grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-4">
             {audiences.map((audience) => {
               const Icon = audience.icon;
-
-              return (
-                <article
-                  key={audience.title}
-                  className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-public-border bg-public-card transition duration-200 hover:-translate-y-1 hover:border-public-border-accent-hover"
-                >
+              const cardContent = (
+                <>
                   <div className="relative aspect-[3/2] overflow-hidden border-b border-public-border">
                     <Image
                       src={audience.image}
@@ -357,6 +357,24 @@ export default function AboutPage() {
                       ))}
                     </ul>
                   </div>
+                </>
+              );
+
+              const cardClassName =
+                'group flex min-w-0 flex-col overflow-hidden rounded-xl border border-public-border bg-public-card transition duration-200 hover:-translate-y-1 hover:border-public-border-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent';
+
+              return audience.href ? (
+                <Link
+                  key={audience.title}
+                  href={audience.href}
+                  aria-label={`Перейти до сервісу «${audience.title}»`}
+                  className={`${cardClassName} cursor-pointer`}
+                >
+                  {cardContent}
+                </Link>
+              ) : (
+                <article key={audience.title} className={cardClassName}>
+                  {cardContent}
                 </article>
               );
             })}
