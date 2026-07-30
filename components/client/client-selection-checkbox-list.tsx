@@ -230,7 +230,7 @@ function ClientSelectionCheckboxListState({
                     {item.equipmentType ? ` · ${item.equipmentType}` : ''}
                   </p>
                 </div>
-                <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2 sm:max-w-[48%] sm:justify-end">
+                <div className="flex min-w-0 shrink-0 flex-col items-start gap-2 sm:max-w-[48%] sm:items-end">
                   <span
                     className={`w-fit rounded-full px-2.5 py-1 text-xs font-bold ${itemStatusClasses[item.status]}`}
                   >
