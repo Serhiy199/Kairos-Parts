@@ -1,10 +1,30 @@
 import { stat } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { config } from 'dotenv';
 
 import { isSafeStorageKey, resolveUploadPath } from '../lib/files/secure-local-file';
-import { prisma } from '../lib/prisma';
 
 config({ path: '.env.local', quiet: true });
+
+type RequestFileRow = {
+  id: string;
+  storageProvider: 'CLOUDINARY' | 'LEGACY_LOCAL';
+  storageStatus: 'AVAILABLE' | 'MISSING' | 'MIGRATION_PENDING' | 'MIGRATION_FAILED';
+  storageKey: string;
+  storagePublicId: string | null;
+  storageResourceType: string | null;
+  storageDeliveryType: string | null;
+};
+
+type PgClient = {
+  connect(): Promise<void>;
+  query<T>(sql: string): Promise<{ rows: T[] }>;
+  end(): Promise<void>;
+};
+
+const { Client } = createRequire(import.meta.url)('pg') as {
+  Client: new (options: { connectionString: string }) => PgClient;
+};
 
 type Classification =
   | 'CLOUDINARY_AVAILABLE'
@@ -44,36 +64,47 @@ async function main() {
     throw new Error('Inventory is dry-run only and does not accept --execute.');
   }
 
-  const files = await prisma.requestFile.findMany({
-    orderBy: { id: 'asc' },
-    select: {
-      id: true,
-      storageProvider: true,
-      storageStatus: true,
-      storageKey: true,
-      storagePublicId: true,
-      storageResourceType: true,
-      storageDeliveryType: true
-    }
-  });
-  const ids: Record<Classification, string[]> = {
-    CLOUDINARY_AVAILABLE: [],
-    LEGACY_LOCAL_AVAILABLE: [],
-    LEGACY_LOCAL_MISSING: [],
-    INVALID_METADATA: []
-  };
-  for (const file of files) {
-    ids[await classify(file)].push(file.id);
+  const connectionString = process.env.DATABASE_URL_UNPOOLED;
+  if (!connectionString) {
+    throw new Error('DATABASE_URL_UNPOOLED is not configured.');
   }
+  const client = new Client({ connectionString });
 
-  console.log(JSON.stringify({
-    mode: 'DRY_RUN',
-    total: files.length,
-    counts: Object.fromEntries(
-      Object.entries(ids).map(([key, values]) => [key, values.length])
-    ),
-    ids
-  }, null, 2));
+  try {
+    await client.connect();
+    const result = await client.query<RequestFileRow>(`
+      SELECT
+        "id",
+        "storageProvider",
+        "storageStatus",
+        "storageKey",
+        "storagePublicId",
+        "storageResourceType",
+        "storageDeliveryType"
+      FROM "RequestFile"
+      ORDER BY "id" ASC
+    `);
+    const ids: Record<Classification, string[]> = {
+      CLOUDINARY_AVAILABLE: [],
+      LEGACY_LOCAL_AVAILABLE: [],
+      LEGACY_LOCAL_MISSING: [],
+      INVALID_METADATA: []
+    };
+    for (const file of result.rows) {
+      ids[await classify(file)].push(file.id);
+    }
+
+    console.log(JSON.stringify({
+      mode: 'DRY_RUN',
+      total: result.rows.length,
+      counts: Object.fromEntries(
+        Object.entries(ids).map(([key, values]) => [key, values.length])
+      ),
+      ids
+    }, null, 2));
+  } finally {
+    await client.end();
+  }
 }
 
 main()
@@ -82,7 +113,4 @@ main()
       reason: error instanceof Error ? error.message : 'unknown'
     });
     process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
   });
