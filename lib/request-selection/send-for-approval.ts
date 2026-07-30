@@ -41,6 +41,8 @@ export type SendRequestSelectionForApprovalInput = {
   requestId: string;
   requestItemIds: string[];
   expectedRequestItemVersions: RequestSelectionSourceVersion[];
+  expectedActiveBatchId?: string;
+  expectedActiveRevision?: number;
   actor: { id: string };
   mode?: 'INITIAL' | 'RESEND_ACTIVE' | 'FOLLOW_UP_REJECTED';
   requestContext?: AuditRequestContext;
@@ -58,6 +60,8 @@ export type SendRequestSelectionForApprovalErrorCode =
   | 'SOURCE_ITEM_INVALID'
   | 'REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND'
   | 'ACTIVE_SENT_BATCH_CONFLICT'
+  | 'ACTIVE_SELECTION_VERSION_CONFLICT'
+  | 'NO_SELECTION_CHANGES'
   | 'DUPLICATE_SEND_OPERATION'
   | 'BATCH_CREATE_FAILED'
   | 'BATCH_SUPERSEDE_FAILED'
@@ -124,13 +128,18 @@ export type SendRequestSelectionCommitResult = Omit<
 
 export const REQUEST_SELECTION_SEND_TRANSACTION_OPTIONS = {
   maxWait: 5_000,
-  timeout: 15_000
+  timeout: 15_000,
+  isolationLevel: 'Serializable' as const
 } as const;
 
 type TransactionRunner = {
   $transaction<T>(
     callback: (tx: Prisma.TransactionClient) => Promise<T>,
-    options?: { maxWait?: number; timeout?: number }
+    options?: {
+      maxWait?: number;
+      timeout?: number;
+      isolationLevel?: Prisma.TransactionIsolationLevel;
+    }
   ): Promise<T>;
 };
 
@@ -140,7 +149,10 @@ type SendDependencies = {
     input: TransitionRequestSelectionBatchInput
   ): Promise<RequestSelectionBatchTransitionResult>;
   transitionRequest(input: TransitionRequestStatusInput): Promise<RequestStatusTransitionResult>;
-  notify(input: { requestId: string }): ReturnType<typeof sendTelegramRequestItemsApprovalNotification>;
+  notify(input: {
+    requestId: string;
+    updatedSelection?: boolean;
+  }): ReturnType<typeof sendTelegramRequestItemsApprovalNotification>;
   getResendEligibility?(input: {
     requestId: string;
     tx: Prisma.TransactionClient;
@@ -291,10 +303,10 @@ export function createSendRequestSelectionForApprovalService(
       }
       const requestedMode = input.mode;
       const followUpRequested = requestedMode === 'FOLLOW_UP_REJECTED';
-      if (
-        !allowedRequestStatuses.has(request.status)
-        && !(followUpRequested && request.status === 'AWAITING_INVOICE')
-      ) {
+      if (followUpRequested) {
+        fail('FOLLOW_UP_REQUEST_STATUS_BLOCKED', request.id);
+      }
+      if (!allowedRequestStatuses.has(request.status)) {
         fail('REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND', request.id);
       }
 
@@ -337,6 +349,11 @@ export function createSendRequestSelectionForApprovalService(
             request.id
           );
         }
+        if (resendEligibility.reason === 'NOTHING_TO_SEND') {
+          fail('NO_SELECTION_CHANGES', request.id, {
+            batchId: resendEligibility.activeBatchId ?? undefined
+          });
+        }
         fail('DUPLICATE_SEND_OPERATION', request.id, {
           batchId: resendEligibility.activeBatchId ?? undefined
         });
@@ -348,16 +365,37 @@ export function createSendRequestSelectionForApprovalService(
         fail('FOLLOW_UP_SELECTION_INVALID', request.id);
       }
 
-      const activeBatch = await tx.requestSelectionBatch.findFirst({
+      const activeBatches = await tx.requestSelectionBatch.findMany({
         where: { requestId: request.id, status: 'SENT' },
+        orderBy: [{ revision: 'desc' }, { id: 'asc' }],
+        take: 2,
         select: {
           id: true,
+          revision: true,
           items: {
             orderBy: { position: 'asc' },
             select: { sourceRequestItemId: true, sourceUpdatedAt: true }
           }
         }
       });
+      if (activeBatches.length > 1) {
+        fail('ACTIVE_SENT_BATCH_CONFLICT', request.id);
+      }
+      const activeBatch = activeBatches[0] ?? null;
+      if (
+        mode === 'RESEND_ACTIVE'
+        && (
+          !activeBatch
+          || !input.expectedActiveBatchId
+          || !Number.isSafeInteger(input.expectedActiveRevision)
+          || activeBatch.id !== input.expectedActiveBatchId
+          || activeBatch.revision !== input.expectedActiveRevision
+        )
+      ) {
+        fail('ACTIVE_SELECTION_VERSION_CONFLICT', request.id, {
+          batchId: activeBatch?.id
+        });
+      }
       if (activeBatch && mode === 'FOLLOW_UP_REJECTED') {
         fail('FOLLOW_UP_ACTIVE_BATCH_EXISTS', request.id, {
           batchId: activeBatch.id
@@ -547,7 +585,11 @@ export function createSendRequestSelectionForApprovalService(
             followUpFromRevision: resendEligibility.sourceBatch?.revision,
             candidateCount: canonicalItemIds.length,
             changedRejectedCount: resendEligibility.changedRejectedItemIds?.length ?? 0,
-            newReplacementCount: resendEligibility.newItemIds.length
+            newReplacementCount: resendEligibility.newItemIds.length,
+            updateReason:
+              mode === 'RESEND_ACTIVE'
+                ? 'MANAGER_UPDATED_BEFORE_CLIENT_FINAL_DECISION'
+                : 'INITIAL_SELECTION_SENT'
           },
           allowedFields: {
             metadata: [
@@ -567,7 +609,8 @@ export function createSendRequestSelectionForApprovalService(
               'followUpFromRevision',
               'candidateCount',
               'changedRejectedCount',
-              'newReplacementCount'
+              'newReplacementCount',
+              'updateReason'
             ]
           },
           requestContext: input.requestContext
@@ -599,12 +642,23 @@ export function createSendRequestSelectionForApprovalService(
         fail('TRANSACTION_CLIENT_EXPIRED', input.requestId, {}, error);
       }
       if (error instanceof SendRequestSelectionForApprovalError) throw error;
+      if (
+        error
+        && typeof error === 'object'
+        && 'code' in error
+        && error.code === 'P2034'
+      ) {
+        fail('ACTIVE_SENT_BATCH_CONFLICT', input.requestId, {}, error);
+      }
       fail('DATABASE_TRANSACTION_FAILED', input.requestId, {}, error);
     }
 
     let notification: NotificationResult;
     try {
-      const result = await dependencies.notify({ requestId: committed.requestId });
+      const result = await dependencies.notify({
+        requestId: committed.requestId,
+        updatedSelection: committed.mode === 'RESEND_ACTIVE'
+      });
       notification = result.status === 'sent'
         ? { ...result, retryable: false }
         : result.status === 'failed'

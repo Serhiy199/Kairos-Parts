@@ -67,19 +67,22 @@ const users = {
     id: 'admin',
     name: 'Admin User',
     email: 'ADMIN@EXAMPLE.COM',
-    role: 'ADMIN' as UserRole
+    role: 'ADMIN' as UserRole,
+    status: 'ACTIVE'
   },
   manager: {
     id: 'manager',
     name: 'Manager User',
     email: 'manager@example.com',
-    role: 'MANAGER' as UserRole
+    role: 'MANAGER' as UserRole,
+    status: 'ACTIVE'
   },
   client: {
     id: 'client',
     name: 'Client User',
     email: 'client@example.com',
-    role: 'CLIENT' as UserRole
+    role: 'CLIENT' as UserRole,
+    status: 'ACTIVE'
   }
 };
 
@@ -180,6 +183,12 @@ function makeWriter(state: TestState, options: WriterOptions = {}) {
       findUnique: async ({ where }: { where: { id: string } }) =>
         users[where.id as keyof typeof users] ?? null
     },
+    requestSelectionBatch: {
+      findMany: async () => state.requestStatus === 'WAITING_APPROVAL'
+        ? [{ id: 'batch-sent', revision: 1, status: 'SENT' }]
+        : [],
+      findFirst: async () => null
+    },
     auditLog: {
       create: async ({ data }: { data: StoredAudit }) => {
         auditCalls += 1;
@@ -270,17 +279,21 @@ async function main() {
     'NEW',
     'IN_PROGRESS',
     'OFFER_PREPARING',
-    'WAITING_APPROVAL',
+    'WAITING_APPROVAL'
+  ] as const) {
+    assert.equal(requestStatusAllowsDraftItemCreation(status), true);
+  }
+  for (const status of [
     'AWAITING_INVOICE',
     'INVOICE_SENT',
     'AWAITING_SHIPMENT',
     'ORDERED',
-    'IN_DELIVERY'
+    'IN_DELIVERY',
+    'COMPLETED',
+    'CANCELLED'
   ] as const) {
-    assert.equal(requestStatusAllowsDraftItemCreation(status), true);
+    assert.equal(requestStatusAllowsDraftItemCreation(status), false);
   }
-  assert.equal(requestStatusAllowsDraftItemCreation('COMPLETED'), false);
-  assert.equal(requestStatusAllowsDraftItemCreation('CANCELLED'), false);
 
   const firstState = initialState();
   const firstDb = makeDatabase(firstState);
@@ -334,6 +347,20 @@ async function main() {
   assert.equal(firstState.histories.length, 1);
   assert.equal(statusAuditCount(firstState), 1);
   assert.equal(itemAuditCount(firstState), 2);
+
+  const waitingState = initialState('WAITING_APPROVAL');
+  const waitingResult = await createRequestItemDraftService(
+    makeDatabase(waitingState).database
+  )({
+    requestId: 'request-1',
+    data: validItem,
+    actor: { id: 'manager' }
+  });
+  assert.equal(waitingResult.transition.outcome, 'noop');
+  assert.equal(waitingState.requestStatus, 'WAITING_APPROVAL');
+  assert.equal(waitingState.items.length, 1);
+  assert.equal(waitingState.histories.length, 0);
+  assert.equal(itemAuditCount(waitingState), 1);
 
   const concurrentState = initialState();
   const concurrentDb = makeDatabase(concurrentState, { concurrentStatus: 'IN_PROGRESS' });
@@ -404,7 +431,15 @@ async function main() {
   assert.equal(auditFailureState.histories.length, 0);
   assert.equal(auditFailureState.audits.length, 0);
 
-  for (const status of ['COMPLETED', 'CANCELLED'] as const) {
+  for (const status of [
+    'AWAITING_INVOICE',
+    'INVOICE_SENT',
+    'AWAITING_SHIPMENT',
+    'ORDERED',
+    'IN_DELIVERY',
+    'COMPLETED',
+    'CANCELLED'
+  ] as const) {
     const terminalState = initialState(status);
     await expectErrorCode(
       createRequestItemDraftService(makeDatabase(terminalState).database)({
@@ -441,8 +476,8 @@ async function main() {
       data: validItem,
       actor: { id: 'client' }
     }),
-    RequestStatusTransitionError,
-    'ROLE_NOT_ALLOWED'
+    RequestItemDraftCreateError,
+    'ACTOR_NOT_ALLOWED'
   );
   assert.equal(clientState.items.length, 0);
   assert.equal(clientState.requestStatus, 'NEW');

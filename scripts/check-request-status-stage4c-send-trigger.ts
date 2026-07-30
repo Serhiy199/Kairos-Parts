@@ -99,7 +99,9 @@ function createHarness(initial: FakeState, failure?: FailurePoint, actorRole = '
           }
         },
         requestSelectionBatch: {
-          findFirst: async () => candidate.activeBatch
+          findMany: async () => candidate.activeBatch
+            ? [candidate.activeBatch]
+            : []
         },
         requestItem: {
           findMany: async ({ where }: { where: { id: { in: string[] } } }) =>
@@ -466,6 +468,8 @@ async function main() {
         { id: 'item-old', updatedAt: oldVersion },
         { id: 'item-new', updatedAt: state.items[1].updatedAt }
       ],
+      expectedActiveBatchId: 'batch-1',
+      expectedActiveRevision: 1,
       actor: { id: 'actor-1' }
     });
     const after = harness.getState();
@@ -508,7 +512,7 @@ async function main() {
       }]
     };
     const harness = createHarness(state);
-    await expectCode(harness.service(input()), 'DUPLICATE_SEND_OPERATION');
+    await expectCode(harness.service(input()), 'NO_SELECTION_CHANGES');
     assert.equal(harness.getState().nextRevision, 1);
   }
 
@@ -600,7 +604,11 @@ async function main() {
       }]
     };
     const harness = createHarness(state, 'supersede');
-    await expectCode(harness.service(input()), 'BATCH_SUPERSEDE_FAILED');
+    await expectCode(harness.service({
+      ...input(),
+      expectedActiveBatchId: 'batch-1',
+      expectedActiveRevision: 1
+    }), 'BATCH_SUPERSEDE_FAILED');
     assert.equal(harness.getState().activeBatch?.id, 'batch-1');
   }
 

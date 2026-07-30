@@ -1,9 +1,13 @@
-import { Prisma, type UserRole } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 import type { AuditRequestContext } from '@/lib/audit-log/contracts';
 import { buildAuditDiff } from '@/lib/audit-log/payload';
 import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { prisma } from '@/lib/prisma';
+import {
+  assertManagerSelectionMutationAllowed,
+  ManagerSelectionMutationError
+} from '@/lib/request-items/mutation-policy';
 import type { RequestItemUpdateValues } from '@/lib/request-items/validation';
 
 const REQUEST_ITEM_UPDATE_FIELDS = [
@@ -26,6 +30,7 @@ export type RequestItemUpdateErrorCode =
   | 'REQUEST_ITEM_VALIDATION_FAILED'
   | 'REQUEST_ITEM_VERSION_CONFLICT'
   | 'APPROVED_REQUEST_ITEM_LOCKED'
+  | 'REQUEST_SELECTION_MUTATION_LOCKED'
   | 'REQUEST_ITEM_UPDATE_FAILED'
   | 'REQUEST_ITEM_UPDATE_NOT_PERSISTED';
 
@@ -86,6 +91,7 @@ const itemSelect = {
   updatedAt: true,
   request: {
     select: {
+      status: true,
       requestNumber: true,
       companyId: true
     }
@@ -127,16 +133,11 @@ function itemLabel(item: Pick<PersistedItem, 'name' | 'catalogNumber'>) {
   return item.catalogNumber ? `${item.name} · ${item.catalogNumber}` : item.name;
 }
 
-function actorAllowed(actor: { role: UserRole; status: string } | null) {
-  return Boolean(
-    actor
-    && actor.status === 'ACTIVE'
-    && (actor.role === 'ADMIN' || actor.role === 'MANAGER')
-  );
-}
-
 type TransactionRunner = {
-  $transaction<T>(callback: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T>;
+  $transaction<T>(
+    callback: (tx: Prisma.TransactionClient) => Promise<T>,
+    options?: { isolationLevel?: Prisma.TransactionIsolationLevel }
+  ): Promise<T>;
 };
 
 type UpdateDependencies = {
@@ -166,17 +167,6 @@ export function createUpdateRequestItemService(
 
     try {
       return await database.$transaction(async (tx) => {
-        const actor = await tx.user.findUnique({
-          where: { id: input.actor.id },
-          select: { role: true, status: true }
-        });
-        if (!actorAllowed(actor)) {
-          throw new RequestItemUpdateError('ACTOR_NOT_ALLOWED', {
-            requestItemId: input.requestItemId,
-            requestId: input.requestId
-          });
-        }
-
         const existing = await tx.requestItem.findUnique({
           where: { id: input.requestItemId },
           select: itemSelect
@@ -199,6 +189,29 @@ export function createUpdateRequestItemService(
             requestId: input.requestId,
             expectedUpdatedAt: input.expectedUpdatedAt
           });
+        }
+
+        try {
+          await assertManagerSelectionMutationAllowed(tx, {
+            requestId: existing.requestId,
+            requestStatus: existing.request.status,
+            actorId: input.actor.id
+          });
+        } catch (error) {
+          if (error instanceof ManagerSelectionMutationError) {
+            throw new RequestItemUpdateError(
+              error.code === 'ACTOR_NOT_ALLOWED'
+                ? 'ACTOR_NOT_ALLOWED'
+                : 'REQUEST_SELECTION_MUTATION_LOCKED',
+              {
+                requestItemId: input.requestItemId,
+                requestId: input.requestId,
+                expectedUpdatedAt: input.expectedUpdatedAt
+              },
+              { cause: error }
+            );
+          }
+          throw error;
         }
 
         const before = comparableSnapshot(existing);
@@ -303,7 +316,7 @@ export function createUpdateRequestItemService(
           item: itemResult(persisted),
           changedFields
         };
-      });
+      }, { isolationLevel: 'Serializable' });
     } catch (error) {
       if (error instanceof RequestItemUpdateError) throw error;
       throw new RequestItemUpdateError(

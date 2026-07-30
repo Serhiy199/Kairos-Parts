@@ -135,6 +135,8 @@ export type RequestSelectionResendEligibility = {
   newItemIds: string[];
   unchangedItemIds: string[];
   removedBatchItemIds: string[];
+  hasUnpublishedSelectionChanges: boolean;
+  finalizedSelectionLocked: boolean;
   mode?: 'INITIAL' | 'RESEND_ACTIVE' | 'FOLLOW_UP_REJECTED';
   sourceBatch?: {
     id: string;
@@ -303,6 +305,8 @@ export function deriveRequestSelectionResendEligibility(input: {
     newItemIds,
     unchangedItemIds,
     removedBatchItemIds,
+    hasUnpublishedSelectionChanges: hasDirtySelection && Boolean(input.activeBatch),
+    finalizedSelectionLocked: false,
     canSend,
     reason
   };
@@ -440,6 +444,8 @@ export function deriveRequestSelectionFollowUpEligibility(input: {
     newItemIds,
     unchangedItemIds,
     removedBatchItemIds: removedRejectedSourceIds,
+    hasUnpublishedSelectionChanges: false,
+    finalizedSelectionLocked: true,
     mode: 'FOLLOW_UP_REJECTED',
     sourceBatch: input.sourceBatch
       ? {
@@ -471,7 +477,7 @@ export function createRequestSelectionResendEligibilityService(
     tx?: Prisma.TransactionClient;
   }): Promise<RequestSelectionResendEligibility> {
     const db = input.tx ?? database;
-    const [request, activeBatches, finalizedBatches, currentInvoice] = await Promise.all([
+    const [request, activeBatches, finalizedBatch] = await Promise.all([
       db.request.findUnique({
         where: { id: input.requestId },
         select: {
@@ -496,7 +502,7 @@ export function createRequestSelectionResendEligibilityService(
           }
         }
       }),
-      db.requestSelectionBatch.findMany({
+      db.requestSelectionBatch.findFirst({
         where: {
           requestId: input.requestId,
           status: { in: ['APPROVED', 'PARTIALLY_APPROVED', 'REJECTED'] }
@@ -505,21 +511,7 @@ export function createRequestSelectionResendEligibilityService(
         select: {
           id: true,
           revision: true,
-          status: true,
-          items: {
-            orderBy: { position: 'asc' },
-            select: activeBatchItemSelect
-          }
-        }
-      }),
-      db.request.findUnique({
-        where: { id: input.requestId },
-        select: {
-          invoices: {
-            orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
-            take: 1,
-            select: { id: true, status: true }
-          }
+          status: true
         }
       })
     ]);
@@ -537,15 +529,18 @@ export function createRequestSelectionResendEligibilityService(
       );
     }
 
-    const finalizedBatch = finalizedBatches[0] ?? null;
     if (finalizedBatch) {
-      return deriveRequestSelectionFollowUpEligibility({
+      const locked = deriveRequestSelectionResendEligibility({
         request,
-        activeBatch: activeBatches[0] ?? null,
-        sourceBatch: finalizedBatch as FinalizedBatch,
-        finalizedBatches: finalizedBatches as FinalizedBatch[],
-        currentInvoice: currentInvoice?.invoices[0] ?? null
+        activeBatch: activeBatches[0] ?? null
       });
+      return {
+        ...locked,
+        eligibleItemIds: [],
+        canSend: false,
+        reason: 'REQUEST_STATUS_BLOCKED',
+        finalizedSelectionLocked: true
+      };
     }
 
     return deriveRequestSelectionResendEligibility({

@@ -67,6 +67,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       if (error.code === 'REQUEST_NOT_FOUND') {
         return Response.json({ status: 'not_found' }, { status: 404 });
       }
+      if (error.code === 'ACTOR_NOT_ALLOWED') {
+        return Response.json({ status: 'forbidden' }, { status: 403 });
+      }
+      if (error.code === 'FINAL_CLIENT_SELECTION_LOCKED') {
+        return Response.json(
+          { status: 'selection_mutation_locked' },
+          { status: 409 }
+        );
+      }
       if (error.code === 'REQUEST_STATUS_DOES_NOT_ALLOW_ITEM_CREATION') {
         return Response.json({ status: 'request_status_locked' }, { status: 409 });
       }

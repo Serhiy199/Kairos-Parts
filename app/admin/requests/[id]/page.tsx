@@ -632,6 +632,21 @@ function requestSelectionMessage(
   items: RequestItemView[],
   eligibility: RequestSelectionResendEligibility
 ) {
+  if (eligibility.finalizedSelectionLocked) {
+    return 'Клієнт завершив погодження. Підбір доступний лише для перегляду.';
+  }
+  if (
+    eligibility.requestStatus === 'WAITING_APPROVAL'
+    && eligibility.hasUnpublishedSelectionChanges
+  ) {
+    return 'Є ненадіслані зміни. Клієнт поки бачить попередню версію підбору. Після завершення редагування оновіть підбір для клієнта.';
+  }
+  if (
+    eligibility.requestStatus === 'WAITING_APPROVAL'
+    && !eligibility.hasUnpublishedSelectionChanges
+  ) {
+    return 'Очікуємо фінальне погодження клієнта. Клієнт бачить актуальну версію підбору.';
+  }
   if (eligibility.reason === 'REQUEST_STATUS_BLOCKED') {
     return 'Поточний статус заявки не дозволяє надсилати нову версію добірки.';
   }
@@ -705,6 +720,20 @@ function RequestItemsSection({
   );
   const eligibleIds = new Set(eligibility.eligibleItemIds);
   const selectedItems = items.filter((item) => eligibleIds.has(item.id));
+  const normalizedMutationStatus =
+    eligibility.requestStatus === 'OFFER_PREPARING'
+      ? 'IN_PROGRESS'
+      : eligibility.requestStatus;
+  const managerMutationsAllowed =
+    !eligibility.finalizedSelectionLocked
+    && (
+      normalizedMutationStatus === 'NEW'
+      || normalizedMutationStatus === 'IN_PROGRESS'
+      || (
+        normalizedMutationStatus === 'WAITING_APPROVAL'
+        && Boolean(eligibility.activeBatchId)
+      )
+    );
   const latestApprovedCount = latestSelectionBatch?.items.filter(
     (item) => item.status === 'APPROVED'
   ).length ?? 0;
@@ -833,9 +862,11 @@ function RequestItemsSection({
             </div>
 
             <div className="mt-4 grid min-w-0 gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-              {approvedLocked ? (
+              {!managerMutationsAllowed || approvedLocked ? (
                 <p className="text-sm font-semibold text-success">
-                  {presentation.helper}
+                  {managerMutationsAllowed
+                    ? presentation.helper
+                    : 'Клієнт завершив погодження. Позиція доступна лише для перегляду.'}
                 </p>
               ) : (
               <details className="group">
@@ -845,7 +876,7 @@ function RequestItemsSection({
                 </div>
               </details>
               )}
-              {!approvedLocked ? (
+              {managerMutationsAllowed && !approvedLocked ? (
               <ReactiveActionForm action={deleteAdminRequestItem} className="sm:justify-self-end">
                 <input type="hidden" name="requestId" value={requestId} />
                 <input type="hidden" name="itemId" value={item.id} />
@@ -863,13 +894,16 @@ function RequestItemsSection({
         ) : null}
       </div>
 
+      {managerMutationsAllowed ? (
       <details className="mt-5 rounded-md border border-border bg-surface-muted p-4" open={items.length === 0}>
         <summary className="cursor-pointer text-sm font-bold text-foreground">Додати позицію</summary>
         <div className="mt-4">
           <RequestItemForm action={createAdminRequestItem} requestId={requestId} submitLabel="Додати позицію" pendingLabel="Додаємо…" />
         </div>
       </details>
+      ) : null}
 
+      {managerMutationsAllowed ? (
       <div className="mt-5 flex min-w-0 border-t border-border pt-5 sm:justify-end">
         <ReactiveActionForm action={sendAdminRequestItemsForApproval} className="w-full sm:w-auto">
           <input type="hidden" name="requestId" value={requestId} />
@@ -878,6 +912,20 @@ function RequestItemsSection({
             name="mode"
             value={eligibility.mode ?? (eligibility.activeBatchId ? 'RESEND_ACTIVE' : 'INITIAL')}
           />
+          {eligibility.activeBatchId ? (
+            <>
+              <input
+                type="hidden"
+                name="expectedActiveBatchId"
+                value={eligibility.activeBatchId}
+              />
+              <input
+                type="hidden"
+                name="expectedActiveRevision"
+                value={eligibility.activeRevision ?? ''}
+              />
+            </>
+          ) : null}
           {selectedItems.map((item) => (
             <input key={item.id} type="hidden" name="requestItemId" value={item.id} />
           ))}
@@ -891,9 +939,17 @@ function RequestItemsSection({
               }))
             )}
           />
-          <RequestSelectionSubmitButton disabled={!eligibility.canSend} />
+          <RequestSelectionSubmitButton
+            disabled={!eligibility.canSend}
+            label={
+              eligibility.activeBatchId
+                ? 'Оновити підбір для клієнта'
+                : 'Надіслати підбір клієнту'
+            }
+          />
         </ReactiveActionForm>
       </div>
+      ) : null}
     </section>
   );
 }

@@ -3,12 +3,17 @@ import type { Prisma, RequestStatus } from '@prisma/client';
 import type { AuditRequestContext } from '@/lib/audit-log/contracts';
 import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { prisma } from '@/lib/prisma';
+import {
+  assertManagerSelectionMutationAllowed,
+  ManagerSelectionMutationError
+} from '@/lib/request-items/mutation-policy';
 import type { RequestItemInput } from '@/lib/request-items/validation';
 import {
   REQUEST_STATUS_EVENTS,
   transitionRequestStatus,
   type RequestStatusTransitionResult
 } from '@/lib/requests/status-transition';
+import { normalizeRequestStatusForSelection } from '@/lib/requests/statuses';
 
 const REQUEST_ITEM_AUDIT_FIELDS = [
   'name',
@@ -33,6 +38,8 @@ export type CreateRequestItemDraftInput = {
 
 export type RequestItemDraftCreateErrorCode =
   | 'REQUEST_NOT_FOUND'
+  | 'ACTOR_NOT_ALLOWED'
+  | 'FINAL_CLIENT_SELECTION_LOCKED'
   | 'REQUEST_STATUS_DOES_NOT_ALLOW_ITEM_CREATION'
   | 'REQUEST_ITEM_CREATE_FAILED';
 
@@ -51,7 +58,10 @@ export class RequestItemDraftCreateError extends Error {
 }
 
 export function requestStatusAllowsDraftItemCreation(status: RequestStatus) {
-  return status !== 'COMPLETED' && status !== 'CANCELLED';
+  const normalized = normalizeRequestStatusForSelection(status);
+  return normalized === 'NEW'
+    || normalized === 'IN_PROGRESS'
+    || normalized === 'WAITING_APPROVAL';
 }
 
 function requestItemSnapshot(item: {
@@ -95,7 +105,10 @@ function terminalTransitionWasBlocked(
 }
 
 type TransactionRunner = {
-  $transaction<T>(callback: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T>;
+  $transaction<T>(
+    callback: (tx: Prisma.TransactionClient) => Promise<T>,
+    options?: { isolationLevel?: Prisma.TransactionIsolationLevel }
+  ): Promise<T>;
 };
 
 export function createRequestItemDraftService(database: TransactionRunner) {
@@ -126,6 +139,27 @@ export function createRequestItemDraftService(database: TransactionRunner) {
           `Request ${request.id} does not allow draft item creation in ${request.status}.`,
           { requestId: request.id, currentStatus: request.status }
         );
+      }
+
+      try {
+        await assertManagerSelectionMutationAllowed(tx, {
+          requestId: request.id,
+          requestStatus: request.status,
+          actorId: input.actor.id
+        });
+      } catch (error) {
+        if (error instanceof ManagerSelectionMutationError) {
+          throw new RequestItemDraftCreateError(
+            error.code === 'ACTOR_NOT_ALLOWED'
+              ? 'ACTOR_NOT_ALLOWED'
+              : error.code === 'FINAL_CLIENT_SELECTION_LOCKED'
+                ? 'FINAL_CLIENT_SELECTION_LOCKED'
+              : 'REQUEST_STATUS_DOES_NOT_ALLOW_ITEM_CREATION',
+            error.message,
+            { requestId: request.id, currentStatus: request.status }
+          );
+        }
+        throw error;
       }
 
       const { visibleToClient: _ignoredVisibility, ...itemData } = input.data;
@@ -167,19 +201,27 @@ export function createRequestItemDraftService(database: TransactionRunner) {
         requestContext: input.requestContext
       });
 
-      const transition = await transitionRequestStatus({
-        requestId: request.id,
-        event: REQUEST_STATUS_EVENTS.SELECTION_DRAFT_CREATED,
-        actor: input.actor,
-        reason: 'Підібрану позицію створено як чернетку',
-        metadata: {
-          source: 'ADMIN_CRM',
-          eventKey: `request-item:${item.id}`,
-          triggerEntityType: 'REQUEST_ITEM',
-          triggerEntityId: item.id
-        },
-        tx
-      });
+      const normalizedStatus = normalizeRequestStatusForSelection(request.status);
+      const transition: RequestStatusTransitionResult =
+        normalizedStatus === 'WAITING_APPROVAL' || request.status === 'OFFER_PREPARING'
+          ? {
+              outcome: 'noop',
+              currentStatus: request.status,
+              reason: 'idempotent_event'
+            }
+          : await transitionRequestStatus({
+              requestId: request.id,
+              event: REQUEST_STATUS_EVENTS.SELECTION_DRAFT_CREATED,
+              actor: input.actor,
+              reason: 'Підібрану позицію створено як чернетку',
+              metadata: {
+                source: 'ADMIN_CRM',
+                eventKey: `request-item:${item.id}`,
+                triggerEntityType: 'REQUEST_ITEM',
+                triggerEntityId: item.id
+              },
+              tx
+            });
 
       if (terminalTransitionWasBlocked(transition)) {
         throw new RequestItemDraftCreateError(
@@ -200,7 +242,7 @@ export function createRequestItemDraftService(database: TransactionRunner) {
           vehicleId: request.vehicleId
         }
       };
-    });
+    }, { isolationLevel: 'Serializable' });
   };
 }
 

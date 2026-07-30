@@ -63,10 +63,23 @@ const feedbackByResult = {
     tone: 'warning',
     message: 'Погоджену позицію не можна видалити.'
   },
+  'item-mutation-locked': {
+    tone: 'warning',
+    message:
+      'Клієнт уже завершив погодження. Підбір зафіксований і більше не може бути змінений. Для додаткових деталей потрібно створити нову заявку.'
+  },
   'item-deleted': { tone: 'success', message: 'Позицію видалено.' },
   'items-sent-for-approval': {
     tone: 'success',
     message: 'Позиції надіслано клієнту на погодження.'
+  },
+  'selection-updated-for-client': {
+    tone: 'success',
+    message: 'Оновлену версію підбору надіслано клієнту.'
+  },
+  'selection-update-no-changes': {
+    tone: 'warning',
+    message: 'Після останнього надсилання підбір не змінювався.'
   },
   'items-sent-for-approval-notification-failed': {
     tone: 'warning',
@@ -115,7 +128,7 @@ const feedbackByResult = {
   'item-error': { tone: 'warning', message: 'Перевірте дані позиції.' },
   'item-status-locked': {
     tone: 'warning',
-    message: 'Не можна додавати позиції до виконаної або скасованої заявки.'
+    message: 'Поточний статус заявки не дозволяє змінювати підбір.'
   },
   'item-not-found': { tone: 'warning', message: 'Позицію не знайдено.' },
   'document-created': { tone: 'success', message: 'Документ додано.' },

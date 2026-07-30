@@ -142,7 +142,7 @@ async function main() {
   assert.match(toastProvider, /aria-label="Закрити повідомлення"/);
   assert.match(rootLayout, /<ToastProvider>/);
   assert.match(adminActions, /return workflowResult\('item-created', true\)/);
-  assert.match(adminActions, /return workflowResult\('items-sent-for-approval', true\)/);
+  assert.match(adminActions, /mode === 'RESEND_ACTIVE'[\s\S]*'selection-updated-for-client'[\s\S]*'items-sent-for-approval'/);
   assert.match(adminActions, /return workflowResult\('invoice-created', true\)/);
   assert.match(adminActions, /return workflowResult\('invoice-sent', true\)/);
   assert.match(clientActions, /getClientSelectionFeedback\(feedback\)/);

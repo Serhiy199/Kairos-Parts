@@ -40,7 +40,7 @@ import {
   updateRequestItem
 } from '@/lib/request-items/update';
 import {
-  assertRequestItemDeleteAllowed,
+  deleteRequestItem,
   RequestItemDeleteError
 } from '@/lib/request-items/delete';
 import {
@@ -94,11 +94,6 @@ async function getInvoiceAuditContext(session: Awaited<ReturnType<typeof require
   };
 }
 
-const REQUEST_ITEM_AUDIT_FIELDS = [
-  'name', 'brand', 'catalogNumber', 'analogNumber', 'quantity', 'availability',
-  'salePrice', 'visibleToClient', 'includeInInvoice'
-] as const;
-
 const REQUEST_DOCUMENT_AUDIT_FIELDS = [
   'documentId', 'fileName', 'documentType', 'title', 'visibility',
   'requestId', 'size', 'mimeType'
@@ -106,38 +101,6 @@ const REQUEST_DOCUMENT_AUDIT_FIELDS = [
 
 function requestLabel(requestNumber: string) {
   return `Заявка ${requestNumber}`;
-}
-
-function requestItemLabel(name: string, catalogNumber: string | null) {
-  return catalogNumber ? `${name} · ${catalogNumber}` : name;
-}
-
-function requestItemSnapshot(item: {
-  name: string;
-  brand: string | null;
-  catalogNumber: string | null;
-  analogNumber: string | null;
-  quantity: number;
-  availability: string | null;
-  salePrice: { toString(): string } | null;
-  visibleToClient: boolean;
-  includeInInvoice: boolean;
-}) {
-  return {
-    name: item.name,
-    brand: item.brand,
-    catalogNumber: item.catalogNumber,
-    analogNumber: item.analogNumber,
-    quantity: item.quantity,
-    availability: item.availability,
-    salePrice: item.salePrice?.toString() ?? null,
-    visibleToClient: item.visibleToClient,
-    includeInInvoice: item.includeInInvoice
-  };
-}
-
-function requestItemAuditCategory(snapshot: { salePrice: string | null; quantity: number }) {
-  return snapshot.salePrice !== null || snapshot.quantity !== 1 ? 'FINANCIAL_CRITICAL' as const : 'STANDARD' as const;
 }
 
 function isFinancialRequestDocument(type: string) {
@@ -389,6 +352,15 @@ export async function createAdminRequestItem(formData: FormData) {
     if (error instanceof RequestItemDraftCreateError && error.code === 'REQUEST_NOT_FOUND') {
       return workflowResult('request-not-found', false);
     }
+    if (
+      error instanceof RequestItemDraftCreateError
+      && (
+        error.code === 'ACTOR_NOT_ALLOWED'
+        || error.code === 'FINAL_CLIENT_SELECTION_LOCKED'
+      )
+    ) {
+      return workflowResult('item-mutation-locked', false);
+    }
     if (error instanceof RequestItemDraftCreateError
       && error.code === 'REQUEST_STATUS_DOES_NOT_ALLOW_ITEM_CREATION') {
       return workflowResult('item-status-locked', false);
@@ -451,6 +423,9 @@ export async function updateAdminRequestItem(formData: FormData) {
     if (code === 'APPROVED_REQUEST_ITEM_LOCKED') {
       return workflowResult('item-approved-locked', false);
     }
+    if (code === 'REQUEST_SELECTION_MUTATION_LOCKED') {
+      return workflowResult('item-mutation-locked', false);
+    }
     return workflowResult('item-update-error', false);
   }
 
@@ -477,8 +452,31 @@ export async function sendAdminRequestItemsForApproval(formData: FormData) {
     .map((value) => value.trim())
     .filter(Boolean);
   const rawVersions = readString(formData, 'requestItemVersions');
+  const mode = readString(formData, 'mode') as
+    | 'INITIAL'
+    | 'RESEND_ACTIVE'
+    | 'FOLLOW_UP_REJECTED';
+  const expectedActiveBatchId = readString(formData, 'expectedActiveBatchId');
+  const expectedActiveRevisionRaw = readString(
+    formData,
+    'expectedActiveRevision'
+  );
+  const expectedActiveRevision = expectedActiveRevisionRaw
+    ? Number(expectedActiveRevisionRaw)
+    : undefined;
 
-  if (!hasDatabaseUrl() || !requestId || !rawVersions) {
+  if (
+    !hasDatabaseUrl()
+    || !requestId
+    || !rawVersions
+    || (
+      mode === 'RESEND_ACTIVE'
+      && (
+        !expectedActiveBatchId
+        || !Number.isSafeInteger(expectedActiveRevision)
+      )
+    )
+  ) {
     return workflowResult('items-send-error', false, false);
   }
 
@@ -510,11 +508,10 @@ export async function sendAdminRequestItemsForApproval(formData: FormData) {
       requestId,
       requestItemIds,
       expectedRequestItemVersions,
+      expectedActiveBatchId: expectedActiveBatchId || undefined,
+      expectedActiveRevision,
       actor: { id: session.user.id },
-      mode: readString(formData, 'mode') as
-        | 'INITIAL'
-        | 'RESEND_ACTIVE'
-        | 'FOLLOW_UP_REJECTED',
+      mode,
       requestContext
     });
     notificationFailed = result.notification.status === 'failed';
@@ -526,6 +523,16 @@ export async function sendAdminRequestItemsForApproval(formData: FormData) {
       if (error.code === 'EMPTY_SELECTION') return workflowResult('items-send-empty', false);
       if (error.code === 'SOURCE_ITEM_VERSION_CONFLICT') {
         return workflowResult('items-send-stale', false);
+      }
+      if (
+        error.code === 'ACTIVE_SELECTION_VERSION_CONFLICT'
+        || error.code === 'ACTIVE_SENT_BATCH_CONFLICT'
+        || error.code === 'BATCH_SUPERSEDE_FAILED'
+      ) {
+        return workflowResult('items-send-stale', false);
+      }
+      if (error.code === 'NO_SELECTION_CHANGES') {
+        return workflowResult('selection-update-no-changes', false);
       }
       if (error.code === 'FOLLOW_UP_CANDIDATE_VERSION_CONFLICT') {
         return workflowResult('items-send-stale', false);
@@ -577,7 +584,12 @@ export async function sendAdminRequestItemsForApproval(formData: FormData) {
   if (notificationFailed) {
     return workflowResult('items-sent-for-approval-notification-failed', true);
   }
-  return workflowResult('items-sent-for-approval', true);
+  return workflowResult(
+    mode === 'RESEND_ACTIVE'
+      ? 'selection-updated-for-client'
+      : 'items-sent-for-approval',
+    true
+  );
 }
 
 export async function deleteAdminRequestItem(formData: FormData) {
@@ -589,49 +601,29 @@ export async function deleteAdminRequestItem(formData: FormData) {
     return workflowResult('item-error', false, false);
   }
 
-  const item = await prisma.requestItem.findFirst({
-    where: { id: itemId, requestId },
-    select: {
-      id: true, requestId: true, vehicleId: true, name: true, brand: true,
-      catalogNumber: true, analogNumber: true, quantity: true, availability: true,
-      salePrice: true, visibleToClient: true, includeInInvoice: true,
-      request: { select: { companyId: true } }
-    }
-  });
-
-  if (!item) {
-    return workflowResult('item-not-found', false);
-  }
-
-  const snapshot = requestItemSnapshot(item);
   const requestContext = await getServerAuditRequestContext();
+  let result: Awaited<ReturnType<typeof deleteRequestItem>>;
   try {
-    await prisma.$transaction(async (tx) => {
-      await assertRequestItemDeleteAllowed(tx, {
-        requestItemId: item.id,
-        requestId
-      });
-      await tx.requestItem.delete({ where: { id: item.id } });
-      await writeAuditLog(tx, {
-      actor: auditUserActor(session.user.id),
-      companyId: item.request.companyId,
-      entityType: 'REQUEST_ITEM',
-      entityId: item.id,
-      entityLabel: requestItemLabel(item.name, item.catalogNumber),
-      action: 'REQUEST_ITEM_DELETED',
-      category: requestItemAuditCategory(snapshot),
-      oldValue: snapshot,
-      metadata: { source: 'ADMIN_CRM' },
-      allowedFields: { oldValue: REQUEST_ITEM_AUDIT_FIELDS, metadata: ['source'] },
+    result = await deleteRequestItem({
+      requestItemId: itemId,
+      requestId,
+      actor: { id: session.user.id },
       requestContext
-      });
     });
   } catch (error) {
-    if (
-      error instanceof RequestItemDeleteError
-      && error.code === 'APPROVED_REQUEST_ITEM_DELETE_BLOCKED'
-    ) {
-      return workflowResult('item-approved-delete-blocked', false);
+    if (error instanceof RequestItemDeleteError) {
+      if (error.code === 'REQUEST_ITEM_NOT_FOUND') {
+        return workflowResult('item-not-found', false);
+      }
+      if (error.code === 'APPROVED_REQUEST_ITEM_DELETE_BLOCKED') {
+        return workflowResult('item-approved-delete-blocked', false);
+      }
+      if (
+        error.code === 'REQUEST_SELECTION_MUTATION_LOCKED'
+        || error.code === 'ACTOR_NOT_ALLOWED'
+      ) {
+        return workflowResult('item-mutation-locked', false);
+      }
     }
     console.error('Request item delete failed.', { requestId, requestItemId: itemId });
     return workflowResult('item-error', false);
@@ -639,10 +631,10 @@ export async function deleteAdminRequestItem(formData: FormData) {
 
   revalidatePath('/admin');
   revalidatePath('/admin/requests');
-  revalidatePath(`/admin/requests/${item.requestId}`);
+  revalidatePath(`/admin/requests/${result.item.requestId}`);
 
-  if (item.vehicleId) {
-    revalidatePath(`/client/vehicles/${item.vehicleId}`);
+  if (result.item.vehicleId) {
+    revalidatePath(`/client/vehicles/${result.item.vehicleId}`);
   }
 
   return workflowResult('item-deleted', true);

@@ -2,42 +2,17 @@ import { revalidatePath } from 'next/cache';
 
 import { crmAccessError, getCrmApiSession } from '@/lib/admin/access';
 import { auditRequestContextFromHeaders } from '@/lib/audit-log/request-context';
-import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
-import { prisma } from '@/lib/prisma';
 import {
   RequestItemUpdateError,
   updateRequestItem
 } from '@/lib/request-items/update';
 import {
-  assertRequestItemDeleteAllowed,
+  deleteRequestItem,
   RequestItemDeleteError
 } from '@/lib/request-items/delete';
 import { parseRequestItemUpdateInput } from '@/lib/request-items/validation';
 
 export const runtime = 'nodejs';
-
-const ITEM_FIELDS = [
-  'name', 'brand', 'catalogNumber', 'analogNumber', 'quantity', 'availability',
-  'salePrice', 'visibleToClient', 'includeInInvoice'
-] as const;
-
-function itemSnapshot(item: {
-  name: string; brand: string | null; catalogNumber: string | null; analogNumber: string | null;
-  quantity: number; availability: string | null; salePrice: { toString(): string } | null;
-  visibleToClient: boolean; includeInInvoice: boolean;
-}) {
-  return {
-    name: item.name,
-    brand: item.brand,
-    catalogNumber: item.catalogNumber,
-    analogNumber: item.analogNumber,
-    quantity: item.quantity,
-    availability: item.availability,
-    salePrice: item.salePrice?.toString() ?? null,
-    visibleToClient: item.visibleToClient,
-    includeInInvoice: item.includeInInvoice
-  };
-}
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ itemId: string }> }) {
   const access = await getCrmApiSession();
@@ -102,6 +77,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ it
     if (code === 'APPROVED_REQUEST_ITEM_LOCKED') {
       return Response.json({ status: 'approved_item_locked' }, { status: 409 });
     }
+    if (code === 'REQUEST_SELECTION_MUTATION_LOCKED') {
+      return Response.json({ status: 'selection_mutation_locked' }, { status: 409 });
+    }
     if (code === 'REQUEST_ITEM_VALIDATION_FAILED') {
       return Response.json({ status: 'validation_error' }, { status: 400 });
     }
@@ -137,54 +115,38 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   }
 
   const { itemId } = await params;
-  const existing = await prisma.requestItem.findUnique({
-    where: { id: itemId },
-    include: { request: { select: { requestNumber: true, companyId: true } } }
-  });
-
-  if (!existing) {
-    return Response.json({ status: 'not_found' }, { status: 404 });
-  }
-
-  const snapshot = itemSnapshot(existing);
   const requestContext = auditRequestContextFromHeaders(request.headers);
+  let result: Awaited<ReturnType<typeof deleteRequestItem>>;
   try {
-    await prisma.$transaction(async (tx) => {
-      await assertRequestItemDeleteAllowed(tx, {
-        requestItemId: itemId,
-        requestId: existing.requestId
-      });
-      await tx.requestItem.delete({ where: { id: itemId } });
-      await writeAuditLog(tx, {
-      actor: auditUserActor(access.session.user.id),
-      companyId: existing.request.companyId,
-      entityType: 'REQUEST_ITEM',
-      entityId: existing.id,
-      entityLabel: existing.catalogNumber ? `${existing.name} · ${existing.catalogNumber}` : existing.name,
-      action: 'REQUEST_ITEM_DELETED',
-      category: snapshot.salePrice !== null || snapshot.quantity !== 1 ? 'FINANCIAL_CRITICAL' : 'STANDARD',
-      oldValue: snapshot,
-      metadata: { source: 'ADMIN_CRM', requestNumber: existing.request.requestNumber },
-      allowedFields: { oldValue: ITEM_FIELDS, metadata: ['source', 'requestNumber'] },
+    result = await deleteRequestItem({
+      requestItemId: itemId,
+      actor: { id: access.session.user.id },
       requestContext
-      });
     });
   } catch (error) {
-    if (
-      error instanceof RequestItemDeleteError
-      && error.code === 'APPROVED_REQUEST_ITEM_DELETE_BLOCKED'
-    ) {
-      return Response.json(
-        { status: 'approved_item_delete_blocked' },
-        { status: 409 }
-      );
+    if (error instanceof RequestItemDeleteError) {
+      if (error.code === 'REQUEST_ITEM_NOT_FOUND') {
+        return Response.json({ status: 'not_found' }, { status: 404 });
+      }
+      if (error.code === 'ACTOR_NOT_ALLOWED') {
+        return Response.json({ status: 'forbidden' }, { status: 403 });
+      }
+      if (error.code === 'REQUEST_SELECTION_MUTATION_LOCKED') {
+        return Response.json({ status: 'selection_mutation_locked' }, { status: 409 });
+      }
+      if (error.code === 'APPROVED_REQUEST_ITEM_DELETE_BLOCKED') {
+        return Response.json(
+          { status: 'approved_item_delete_blocked' },
+          { status: 409 }
+        );
+      }
     }
     throw error;
   }
 
   revalidatePath('/admin');
   revalidatePath('/admin/requests');
-  revalidatePath(`/admin/requests/${existing.requestId}`);
+  revalidatePath(`/admin/requests/${result.item.requestId}`);
 
   return Response.json({ status: 'deleted' });
 }

@@ -41,7 +41,11 @@ function createHarness() {
   let active = false;
   let committed = false;
   let failStatusTransition = true;
-  let transactionOptions: { maxWait?: number; timeout?: number } | undefined;
+  let transactionOptions: {
+    maxWait?: number;
+    timeout?: number;
+    isolationLevel?: string;
+  } | undefined;
   let notificationInput: unknown;
   let transactionCount = 0;
   let working: State | null = null;
@@ -56,7 +60,7 @@ function createHarness() {
   const database = {
     async $transaction<T>(
       callback: (tx: never) => Promise<T>,
-      options?: { maxWait?: number; timeout?: number }
+      options?: { maxWait?: number; timeout?: number; isolationLevel?: string }
     ) {
       transactionCount += 1;
       transactionOptions = options;
@@ -90,14 +94,15 @@ function createHarness() {
           }
         },
         requestSelectionBatch: {
-          findFirst: async () => {
+          findMany: async () => {
             const current = requireActiveTransaction();
             return current.oldBatchStatus === 'SENT'
-              ? {
+              ? [{
                   id: 'batch-1',
+                  revision: 1,
                   items: [{ sourceRequestItemId: 'item-1', sourceUpdatedAt: itemVersion }]
-                }
-              : null;
+                }]
+              : [];
           }
         },
         requestItem: {
@@ -222,7 +227,7 @@ function createHarness() {
     async notify(input: { requestId: string }) {
       assert.equal(active, false, 'Telegram must run after transaction resolve');
       assert.equal(committed, true, 'Telegram must run only after commit');
-      assert.deepEqual(Object.keys(input), ['requestId']);
+      assert.deepEqual(Object.keys(input), ['requestId', 'updatedSelection']);
       notificationInput = structuredClone(input);
       return { status: 'sent', notificationId: 'notification-1' };
     }
@@ -282,6 +287,8 @@ async function main() {
     requestId: 'request-1',
     requestItemIds: ['item-1'],
     expectedRequestItemVersions: [{ id: 'item-1', updatedAt: itemVersion }],
+    expectedActiveBatchId: 'batch-1',
+    expectedActiveRevision: 1,
     actor: { id: 'actor-1' }
   };
 
@@ -314,7 +321,10 @@ async function main() {
     auditCount: 1
   });
   assert.deepEqual(harness.getTransactionOptions(), REQUEST_SELECTION_SEND_TRANSACTION_OPTIONS);
-  assert.deepEqual(harness.getNotificationInput(), { requestId: 'request-1' });
+  assert.deepEqual(harness.getNotificationInput(), {
+    requestId: 'request-1',
+    updatedSelection: true
+  });
   assert.equal(harness.getTransactionCount(), 2, 'each attempt owns exactly one transaction');
 
   const success = getAdminRequestFeedback('items-sent-for-approval');

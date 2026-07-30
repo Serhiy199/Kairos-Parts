@@ -95,7 +95,11 @@ type FakeItem = {
   visibleToClient: boolean;
   includeInInvoice: boolean;
   updatedAt: Date;
-  request: { requestNumber: string; companyId: string | null };
+  request: {
+    status: 'IN_PROGRESS' | 'WAITING_APPROVAL';
+    requestNumber: string;
+    companyId: string | null;
+  };
 };
 
 type FakeState = {
@@ -130,7 +134,11 @@ function initialItem(): FakeItem {
     visibleToClient: true,
     includeInInvoice: false,
     updatedAt: new Date('2026-07-28T08:00:00.000Z'),
-    request: { requestNumber: 'KP-TEST-4C3', companyId: 'company-test' }
+    request: {
+      status: 'IN_PROGRESS',
+      requestNumber: 'KP-TEST-4C3',
+      companyId: 'company-test'
+    }
   };
 }
 
@@ -200,6 +208,12 @@ function createFakeHarness(options?: Partial<FakeState>) {
     },
     requestSelectionBatchItem: {
       findFirst: async () => state.approvedSnapshot ? { id: 'approved-snapshot' } : null
+    },
+    requestSelectionBatch: {
+      findMany: async () => state.item?.request.status === 'WAITING_APPROVAL'
+        ? [{ id: 'batch-sent', revision: 1, status: 'SENT' }]
+        : [],
+      findFirst: async () => null
     }
   };
 
@@ -259,6 +273,21 @@ check(
   JSON.stringify(successHarness.state.audits[0]?.oldValue) === JSON.stringify({ quantity: 2 })
   && JSON.stringify(successHarness.state.audits[0]?.newValue) === JSON.stringify({ quantity: 4 }),
   'Audit must contain only allowlisted quantity 2 -> 4 diff.'
+);
+
+const waitingHarness = createFakeHarness({
+  item: {
+    ...initialItem(),
+    request: {
+      ...initialItem().request,
+      status: 'WAITING_APPROVAL'
+    }
+  }
+});
+const waitingResult = await waitingHarness.service(serviceInput());
+check(
+  waitingResult.outcome === 'changed' && waitingHarness.state.item?.quantity === 4,
+  'WAITING_APPROVAL with one active SENT batch must allow editing the live item.'
 );
 
 const noOpHarness = createFakeHarness({ item: { ...initialItem(), quantity: 4 } });
