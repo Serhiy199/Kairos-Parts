@@ -37,9 +37,11 @@ function errorState(
   return { status: 'error', message, values, fieldErrors };
 }
 
-async function validateClientVehicleForm(formData: FormData) {
+async function validateClientVehicleForm(
+  formData: FormData,
+  options: { deriveNameFromManufacturerAndModel?: boolean } = {}
+) {
   const values = getAdminVehicleFormValues(formData);
-  const nameResult = validateVehicleName(values.name);
   const equipmentType = values.equipmentType.trim();
   const manufacturerId = values.manufacturerId.trim();
   const manufacturer = values.manufacturer.trim();
@@ -47,7 +49,10 @@ async function validateClientVehicleForm(formData: FormData) {
   const vinSource = values.vinOrSerial.trim();
   const fieldErrors: AdminVehicleFormState['fieldErrors'] = {};
 
-  if (!nameResult.ok) fieldErrors.name = nameResult.message;
+  if (!options.deriveNameFromManufacturerAndModel) {
+    const nameResult = validateVehicleName(values.name);
+    if (!nameResult.ok) fieldErrors.name = nameResult.message;
+  }
 
   if (!equipmentType) fieldErrors.equipmentType = 'Вкажіть тип техніки.';
   else if (equipmentType.length > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
@@ -89,13 +94,32 @@ async function validateClientVehicleForm(formData: FormData) {
     };
   }
 
+  const resolvedManufacturer = taxonomy?.ok ? taxonomy.manufacturer.name : manufacturer;
+  const nameResult = validateVehicleName(
+    options.deriveNameFromManufacturerAndModel
+      ? `${resolvedManufacturer} ${model}`
+      : values.name
+  );
+
+  if (!nameResult.ok) {
+    return {
+      ok: false as const,
+      state: errorState(values, 'Перевірте поля форми.', {
+        [options.deriveNameFromManufacturerAndModel ? 'model' : 'name']:
+          options.deriveNameFromManufacturerAndModel
+            ? 'Виробник і модель разом не можуть перевищувати 120 символів.'
+            : nameResult.message
+      })
+    };
+  }
+
   return {
     ok: true as const,
     values,
     data: {
       name: nameResult.ok ? nameResult.name : '',
       type: taxonomy?.ok ? taxonomy.equipmentType.name : equipmentType,
-      manufacturer: taxonomy?.ok ? taxonomy.manufacturer.name : manufacturer,
+      manufacturer: resolvedManufacturer,
       model,
       year,
       vinOrSerial: normalizeVehicleVin(vinSource),
@@ -125,7 +149,9 @@ export async function createVehicle(
   formData: FormData
 ): Promise<AdminVehicleFormState> {
   const access = await getClientAccess();
-  const validation = await validateClientVehicleForm(formData);
+  const validation = await validateClientVehicleForm(formData, {
+    deriveNameFromManufacturerAndModel: true
+  });
   if (!validation.ok) {
     return validation.state;
   }
