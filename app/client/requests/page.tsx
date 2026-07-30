@@ -36,7 +36,9 @@ export default async function ClientRequestsPage() {
     }
   });
 
-  const pendingApprovalCount = requests.filter((request) => request.items.length > 0).length;
+  const pendingApprovalCount = requests.filter(
+    (request) => request.status === 'WAITING_APPROVAL' && request.items.length > 0
+  ).length;
 
   return (
     <div className="cabinet-card">
@@ -57,7 +59,8 @@ export default async function ClientRequestsPage() {
       </div>
       <div className="mt-5 grid gap-3 xl:hidden">
         {requests.map((request) => {
-          const needsApproval = request.items.length > 0;
+          const needsApproval =
+            request.status === 'WAITING_APPROVAL' && request.items.length > 0;
 
           return (
             <article key={request.id} className={`rounded-md border p-4 ${needsApproval ? 'border-success/35 bg-[#E7F6EC]/45' : 'border-border'}`}>
@@ -94,7 +97,8 @@ export default async function ClientRequestsPage() {
           </thead>
           <tbody>
             {requests.map((request) => {
-              const needsApproval = request.items.length > 0;
+              const needsApproval =
+                request.status === 'WAITING_APPROVAL' && request.items.length > 0;
 
               return (
               <tr key={request.id} className={`border-b border-border last:border-0 ${needsApproval ? 'bg-[#E7F6EC]/55' : ''}`}>

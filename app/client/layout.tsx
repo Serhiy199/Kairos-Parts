@@ -27,6 +27,7 @@ export default async function ClientLayout({ children }: { children: React.React
           AND: [
             requestAccessWhere(access),
             {
+              status: 'WAITING_APPROVAL',
               items: {
                 some: {
                   visibleToClient: true,
