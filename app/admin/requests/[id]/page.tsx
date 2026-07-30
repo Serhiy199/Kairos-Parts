@@ -168,7 +168,6 @@ export default async function AdminRequestDetailPage({
   });
   const invoiceEligibility = await getRequestInvoiceEligibility(request.id);
   const feedback = getAdminRequestFeedback(query.result);
-  const publicStatusUrl = `/request/status/${request.publicStatusToken}`;
   const contactName = request.client?.contactName ?? request.guestName ?? 'Гість';
   const companyName = request.company?.name ?? request.client?.companyName ?? request.companyName ?? '—';
   const phone = request.client?.phone ?? request.guestPhone ?? '—';
@@ -470,13 +469,6 @@ export default async function AdminRequestDetailPage({
                 <p className="text-xs leading-5 text-muted">MANAGER бачить відповідального, але призначення на Day 9 доступне тільки ADMIN.</p>
               )}
             </form>
-          </section>
-
-          <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
-            <p className="text-sm font-bold uppercase text-accent">Public status</p>
-            <Link href={publicStatusUrl} className="mt-3 block min-w-0 break-words text-sm font-semibold text-foreground [overflow-wrap:anywhere] transition hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-              {publicStatusUrl}
-            </Link>
           </section>
 
           <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
@@ -962,9 +954,26 @@ function InvoicesSection({
   eligibility: RequestInvoiceEligibility;
 }) {
   const canCreateInvoice = eligibility.eligible;
-  const showCreateInvoiceControl = eligibility.requestStatus !== 'CANCELLED';
+  const hasExistingInvoice = invoices.length > 0;
+  const showCreateInvoiceControl =
+    eligibility.requestStatus !== 'CANCELLED' && !hasExistingInvoice;
+  const allItemsRejected =
+    eligibility.approvedCount === 0 &&
+    eligibility.rejectedCount > 0 &&
+    eligibility.pendingCount === 0 &&
+    eligibility.batchStatus === 'REJECTED';
+  const suppressCompletedSelectionNotice =
+    eligibility.approvedCount > 0 &&
+    !eligibility.eligible &&
+    [
+      'REQUEST_NOT_AWAITING_INVOICE',
+      'APPROVED_ITEMS_ALREADY_INVOICED',
+      'INVOICE_ALREADY_EXISTS_FOR_SELECTION'
+    ].includes(eligibility.reason);
   const blockedReason = !eligibility.eligible
-    ? {
+    ? allItemsRejected
+      ? 'На жаль, сформувати рахунок неможливо, оскільки клієнт відхилив усі запропоновані позиції.'
+      : {
         REQUEST_NOT_FOUND: 'Заявку не знайдено.',
         REQUEST_NOT_AWAITING_INVOICE:
           'Рахунок стане доступним після завершення погодження з хоча б однією погодженою позицією.',
@@ -986,7 +995,7 @@ function InvoicesSection({
           'Для цієї заявки рахунок уже створено.',
         LEGACY_SELECTION_AMBIGUOUS:
           'Заявка містить історичний багатоверсійний підбір. Перед формуванням рахунку потрібна перевірка даних.'
-      }[eligibility.reason]
+        }[eligibility.reason]
     : null;
 
   return (
@@ -1015,25 +1024,18 @@ function InvoicesSection({
         ) : null}
       </div>
 
-      {!showCreateInvoiceControl ? null : !canCreateInvoice ? (
-        <div className="mt-4 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm text-[#8A5B24]">
+      {!showCreateInvoiceControl ||
+      canCreateInvoice ||
+      suppressCompletedSelectionNotice ? null : (
+        <div
+          className={`mt-4 rounded-md border p-4 text-sm ${
+            allItemsRejected
+              ? 'border-danger/30 bg-[#FEF3F2] text-danger'
+              : 'border-warning/30 bg-[#FFF7E0] text-[#8A5B24]'
+          }`}
+        >
           <p className="font-semibold">{blockedReason}</p>
-          <p className="mt-2 text-xs leading-5">
-            Request: {eligibility.requestStatus ?? 'не знайдено'} ·
-            Batch: {eligibility.batchStatus ?? 'не знайдено'} ·
-            погоджено {eligibility.approvedCount} · відхилено{' '}
-            {eligibility.rejectedCount} · очікує рішення{' '}
-            {eligibility.pendingCount}
-          </p>
         </div>
-      ) : (
-        <p className="mt-4 rounded-md border border-info/20 bg-[#E8F1FF] p-4 text-sm font-semibold text-info">
-          Версія №{eligibility.revision}: до рахунку готово{' '}
-          {eligibility.approvedCount} позицій
-          {eligibility.rejectedCount > 0
-            ? `, відхилено ${eligibility.rejectedCount}.`
-            : '.'}
-        </p>
       )}
 
       <div className="mt-5 grid gap-4">
