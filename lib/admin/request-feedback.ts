@@ -165,6 +165,16 @@ const feedbackByResult = {
     tone: 'warning',
     message: 'Версія підбору неактуальна або ще очікує рішення клієнта.'
   },
+  'invoice-selection-active-review': {
+    tone: 'warning',
+    message:
+      'Клієнт ще не завершив погодження актуального підбору. Рахунок можна сформувати після фінального рішення.'
+  },
+  'invoice-selection-legacy-ambiguous': {
+    tone: 'warning',
+    message:
+      'Заявка містить історичний багатоверсійний підбір. Перед формуванням рахунку потрібна перевірка даних.'
+  },
   'invoice-approved-price-missing': {
     tone: 'warning',
     message: 'Для погодженої позиції не вказано ціну.'

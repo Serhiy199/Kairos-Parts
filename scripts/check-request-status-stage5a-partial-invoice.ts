@@ -66,7 +66,7 @@ for (const token of [
 assert.ok(!decisionService.includes("if (itemStatus === 'REJECTED') {"));
 
 for (const token of [
-  'resolveInvoiceSelection(tx, requestId)',
+  'resolveSelection: resolveInvoiceSelection',
   'selectionBatchId: selection.batchId',
   'selectionBatchItemId: item.id',
   'item.approvedUnitPrice',
@@ -145,7 +145,7 @@ function database(input: {
     },
     requestSelectionBatch: {
       findMany: async ({ where }: {
-        where?: { status?: { in?: string[] } };
+        where?: { status?: string | { in?: string[] } };
       }) => [{
         id: 'batch-1',
         revision: 7,
@@ -156,7 +156,12 @@ function database(input: {
           item('2', 'REJECTED')
         ]
       }].filter((batch) =>
-        !where?.status?.in || where.status.in.includes(batch.status)
+        !where?.status
+        || (
+          typeof where.status === 'string'
+            ? where.status === batch.status
+            : !where.status.in || where.status.in.includes(batch.status)
+        )
       ),
       findFirst: async () => ({
         id: 'batch-1',
@@ -185,6 +190,7 @@ async function expectCode(
 async function main() {
   const partial = await resolveInvoiceSelection(database({}), 'request-1');
   assert.equal(partial.status, 'PARTIALLY_APPROVED');
+  assert.equal(partial.sourceMode, 'SIMPLIFIED_FINAL_BATCH');
   assert.equal(partial.approvedCount, 1);
   assert.equal(partial.rejectedCount, 1);
   assert.deepEqual(partial.items.map((entry) => entry.id), ['1']);
@@ -211,7 +217,7 @@ async function main() {
       database({ batchStatus: 'SENT', items: [item('1', 'PENDING')] }),
       'request-1'
     ),
-    'NO_FINALIZED_APPROVED_BATCH'
+    'ACTIVE_SELECTION_REVIEW'
   );
   await expectCode(
     () => resolveInvoiceSelection(

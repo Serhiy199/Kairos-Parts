@@ -227,7 +227,9 @@ async function main() {
       })
     },
     requestSelectionBatch: {
-      findMany: async () => [
+      findMany: async ({ where }: {
+        where?: { status?: string | { in?: string[] } };
+      }) => [
         {
           id: 'revision-1',
           revision: 1,
@@ -248,7 +250,14 @@ async function main() {
             invoiceItem('item-4', null, 'APPROVED', '300')
           ]
         }
-      ]
+      ].filter((batch) =>
+        !where?.status
+        || (
+          typeof where.status === 'string'
+            ? where.status === batch.status
+            : !where.status.in || where.status.in.includes(batch.status)
+        )
+      )
     }
   } as never;
   const cumulative = await resolveInvoiceSelection(invoiceDb, 'request-1');
@@ -257,6 +266,7 @@ async function main() {
     ['item-1', 'item-3', 'item-4']
   );
   assert.equal(cumulative.approvedCount, 3);
+  assert.equal(cumulative.sourceMode, 'LEGACY_CUMULATIVE');
   assert.equal(
     cumulative.items.reduce(
       (sum, item) => sum.plus(item.approvedUnitPrice.mul(item.quantity)),
@@ -274,7 +284,9 @@ async function main() {
         })
       },
       requestSelectionBatch: {
-        findMany: async () => [
+        findMany: async ({ where }: {
+          where?: { status?: string | { in?: string[] } };
+        }) => [
           {
             id: 'revision-1',
             revision: 1,
@@ -282,7 +294,14 @@ async function main() {
             invoice: null,
             items: [invoiceItem('item-1', 'source-a', 'APPROVED')]
           }
-        ]
+        ].filter((batch) =>
+          !where?.status
+          || (
+            typeof where.status === 'string'
+              ? where.status === batch.status
+              : !where.status.in || where.status.in.includes(batch.status)
+          )
+        )
       }
     } as never, 'request-1'),
     (error) =>

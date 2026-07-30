@@ -23,7 +23,7 @@ import { hasDatabaseUrl } from '@/lib/env/database';
 import { saveRequestDocumentLocal } from '@/lib/files/local-storage';
 import {
   cancelInvoice,
-  createInvoiceFromApprovedRequestItems,
+  createInvoiceFromApprovedSelection,
   markInvoicePaid,
   sendInvoiceToClient
 } from '@/lib/invoices/service';
@@ -929,7 +929,7 @@ export async function createAdminInvoice(formData: FormData) {
     return workflowResult('invoice-error', false, false);
   }
 
-  const result = await createInvoiceFromApprovedRequestItems({
+  const result = await createInvoiceFromApprovedSelection({
     requestId,
     createdById: session.user.id,
     createdByRole: getCrmRole(session),
