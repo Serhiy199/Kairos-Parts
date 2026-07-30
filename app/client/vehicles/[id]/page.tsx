@@ -18,6 +18,8 @@ import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
 export const dynamic = 'force-dynamic';
 
+const SHOW_DIRECT_CLIENT_VEHICLE_EDITING = false;
+
 const CHANGE_RESULT_MESSAGES: Record<string, { tone: 'success' | 'error'; text: string }> = {
   created: { tone: 'success', text: 'Уточнення відправлено менеджеру.' },
   database: { tone: 'error', text: 'Сервіс тимчасово недоступний. Спробуйте пізніше.' },
@@ -50,7 +52,7 @@ export default async function ClientVehicleDetailPage({
 
   const vehicle = await getClientVehicleDetail(id, access);
   if (!vehicle) notFound();
-  const taxonomy = EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED
+  const taxonomy = SHOW_DIRECT_CLIENT_VEHICLE_EDITING && EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED
     ? await getActiveEquipmentTaxonomy({ equipmentType: vehicle.type, manufacturer: vehicle.manufacturer })
     : [];
 
@@ -143,18 +145,20 @@ export default async function ClientVehicleDetailPage({
 
       <VehicleDocumentsSection documents={vehicle.documents} />
 
-      <section aria-labelledby="vehicle-edit-heading" className="grid gap-4">
-        <div>
-          <h2 id="vehicle-edit-heading" className="text-xl font-bold text-foreground">Редагувати техніку</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">Оновіть характеристики власної техніки. Власник і зв’язки із заявками не змінюються.</p>
-        </div>
-        <VehicleForm
-          action={updateClientVehicle.bind(null, vehicle.id)}
-          submitLabel="Зберегти зміни"
-          taxonomy={taxonomy}
-          vehicle={vehicle}
-        />
-      </section>
+      {SHOW_DIRECT_CLIENT_VEHICLE_EDITING ? (
+        <section aria-labelledby="vehicle-edit-heading" className="grid gap-4">
+          <div>
+            <h2 id="vehicle-edit-heading" className="text-xl font-bold text-foreground">Редагувати техніку</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">Оновіть характеристики власної техніки. Власник і зв’язки із заявками не змінюються.</p>
+          </div>
+          <VehicleForm
+            action={updateClientVehicle.bind(null, vehicle.id)}
+            submitLabel="Зберегти зміни"
+            taxonomy={taxonomy}
+            vehicle={vehicle}
+          />
+        </section>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ContextualChangeRequestForm
