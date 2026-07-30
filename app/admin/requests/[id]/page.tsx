@@ -32,6 +32,7 @@ import { requireCrmSession } from '@/lib/admin/access';
 import type { WorkflowActionResult } from '@/lib/actions/workflow-result';
 import { getAdminRequestFeedback } from '@/lib/admin/request-feedback';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { buildInvoicePartyRows } from '@/lib/invoices/party-details';
 import { calculateInvoiceLineTotal, calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
 import {
   getRequestInvoiceEligibility,
@@ -583,19 +584,7 @@ function BillingSnapshotCard({ title, snapshot, buyer = false }: { title: string
     );
   }
 
-  const rows = [
-    ['Назва', snapshot.legalName],
-    ['ЄДРПОУ', snapshot.edrpou],
-    ['ІПН', snapshot.ipn],
-    ['IBAN', snapshot.iban],
-    ['Банк', snapshot.bankName],
-    ['МФО', snapshot.mfo],
-    ['Юридична адреса', snapshot.legalAddress],
-    ['Контактна особа', snapshot.contactPerson],
-    ['Телефон', snapshot.phone],
-    ['Email', snapshot.email],
-    ...(buyer ? [['Платник ПДВ', snapshot.vatPayer ? 'Так' : 'Ні']] : [])
-  ].filter(([, value]) => value !== undefined);
+  const rows = buildInvoicePartyRows(snapshot, { buyer }) ?? [];
 
   return (
     <div className="min-w-0 rounded-md border border-border bg-card p-4">
