@@ -94,6 +94,24 @@ enum OCRProvider {
   OTHER
 }
 
+enum RequestFileStorageProvider {
+  CLOUDINARY
+  LEGACY_LOCAL
+}
+
+enum RequestFileStorageStatus {
+  AVAILABLE
+  MISSING
+  MIGRATION_PENDING
+  MIGRATION_FAILED
+}
+
+enum RequestFileSource {
+  CLIENT_FORM
+  TELEGRAM
+  LEGACY
+}
+
 enum RequestDocumentType {
   COMMERCIAL_OFFER
   INVOICE
@@ -163,6 +181,7 @@ enum AuditEntityType {
   AUTH_ATTEMPT
   INVITATION
   TELEGRAM_REQUEST
+  REQUEST_FILE
   LOGISTICS_REQUEST
   LOGISTICS_TARIFF_CITY
   SYSTEM
@@ -225,6 +244,15 @@ enum AuditAction {
   DOCUMENT_VISIBILITY_CHANGED
   DOCUMENT_DELETED
   DOCUMENT_DOWNLOADED
+  REQUEST_FILE_UPLOADED
+  REQUEST_FILE_DOWNLOADED
+  REQUEST_FILE_DELETED
+  REQUEST_FILE_STORAGE_MIGRATED
+  REQUEST_FILE_STORAGE_MISSING
+  OCR_STARTED
+  OCR_COMPLETED
+  OCR_FAILED
+  OCR_CORRECTED
   COMPANY_UPDATED
   COMPANY_BILLING_UPDATED
   COMPANY_PRIMARY_CONTACT_CHANGED
@@ -640,18 +668,31 @@ model Request {
 }
 
 model RequestFile {
-  id         String      @id @default(cuid())
-  requestId  String
-  request    Request     @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  fileName   String
-  storageKey String
-  fileUrl    String?
-  mimeType   String
-  size       Int
-  ocrResults OCRResult[]
-  createdAt  DateTime    @default(now())
+  id                    String                     @id @default(cuid())
+  requestId             String
+  request               Request                    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  fileName              String
+  storageKey            String
+  fileUrl               String?
+  mimeType              String
+  size                  Int
+  storageProvider       RequestFileStorageProvider @default(LEGACY_LOCAL)
+  storageStatus         RequestFileStorageStatus   @default(MIGRATION_PENDING)
+  storagePublicId       String?
+  storageResourceType   String?
+  storageDeliveryType   String?
+  storageVersion        String?
+  storageFormat         String?
+  storageChecksumSha256 String?
+  source                RequestFileSource          @default(LEGACY)
+  migratedAt            DateTime?
+  ocrResults            OCRResult[]
+  createdAt             DateTime                   @default(now())
 
   @@index([requestId])
+  @@index([storageProvider, storageStatus])
+  @@index([requestId, storageProvider])
+  @@index([storagePublicId])
 }
 
 model RequestItem {

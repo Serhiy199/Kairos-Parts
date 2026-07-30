@@ -359,9 +359,15 @@ export default async function ClientRequestDetailPage({
         <div className="mt-4 grid gap-2">
           {request.files.length > 0 ? (
             request.files.map((file) => (
-              <div key={file.id} className="rounded-md border border-border bg-surface-muted px-3 py-2 text-sm text-muted">
+              <a
+                key={file.id}
+                href={`/api/client/files/${file.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-md border border-border bg-surface-muted px-3 py-2 text-sm text-muted transition hover:border-accent hover:text-foreground"
+              >
                 {file.fileName} · {(file.size / 1024 / 1024).toFixed(2)} MB
-              </div>
+              </a>
             ))
           ) : (
             <p className="text-sm text-muted">Файлів немає.</p>

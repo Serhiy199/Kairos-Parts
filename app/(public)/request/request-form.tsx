@@ -449,7 +449,7 @@ export function RequestForm({
           Можна прикріпити фото деталі, список позицій, PDF, Excel або документ із артикулами.
         </p>
         <p className="mt-1 text-xs leading-5 text-public-muted">
-          Дозволені формати: JPG, PNG, PDF, XLS, XLSX, CSV, DOC, DOCX. Максимальний розмір одного файлу: {maxSizeMb} MB.
+          Дозволені формати: JPG, PNG, WebP, PDF, XLS, XLSX, CSV, DOC, DOCX. Максимальний розмір одного файлу: {maxSizeMb} MB.
         </p>
         {selectedFiles.length > 0 ? (
           <div className="mt-4 grid gap-2">

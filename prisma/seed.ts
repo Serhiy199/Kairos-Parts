@@ -119,7 +119,10 @@ async function ensureRequestFile(requestId: string) {
       storageKey: 'dev-metadata/request-files/test-defect-list.xlsx',
       fileUrl: null,
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      size: 24832
+      size: 24832,
+      storageProvider: 'LEGACY_LOCAL',
+      storageStatus: 'MIGRATION_PENDING',
+      source: 'LEGACY'
     }
   });
 }

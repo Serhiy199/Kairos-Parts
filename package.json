@@ -31,6 +31,9 @@
     "test:invoice-presentation": "tsx scripts/check-invoice-presentation.ts",
     "test:client-vehicle-documents-stage2": "tsx scripts/check-client-vehicle-documents-stage2-backend-foundation.ts",
     "test:client-vehicle-documents-stage3": "tsx scripts/check-client-vehicle-documents-stage3-unified-forms.ts",
+    "test:ocr-storage-stage2": "tsx scripts/check-ocr-storage-stage2-cloudinary-request-files.ts",
+    "audit:request-file-storage": "tsx scripts/audit-request-file-storage.ts",
+    "migrate:request-files-cloudinary": "tsx scripts/migrate-request-files-to-cloudinary.ts",
     "test:logistics-address-combobox": "tsx scripts/check-logistics-request-form.ts",
     "db:seed": "prisma db seed"
   },

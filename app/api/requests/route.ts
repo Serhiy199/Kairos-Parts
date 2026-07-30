@@ -1,7 +1,11 @@
 import { getClientApiSession, vehicleAccessWhere } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { EQUIPMENT_TAXONOMY_REQUEST_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
-import { saveRequestFileLocal } from '@/lib/files/local-storage';
+import {
+  RequestFileUploadError,
+  requestFileInputFromFile,
+  uploadRequestFilesForActor
+} from '@/lib/files/request-file-upload-service';
 import { prisma } from '@/lib/prisma';
 import { generatePublicStatusToken } from '@/lib/requests/identifiers';
 import { parseRequestFormData } from '@/lib/requests/validation';
@@ -151,21 +155,38 @@ export async function POST(request: Request) {
       }
     });
 
-    const savedFiles = [];
-
-    for (const file of parsed.data.files) {
-      const savedFile = await saveRequestFileLocal(createdRequest.id, file);
-      const requestFile = await prisma.requestFile.create({
-        data: {
-          requestId: createdRequest.id,
-          fileName: savedFile.fileName,
-          storageKey: savedFile.storageKey,
-          fileUrl: savedFile.fileUrl,
-          mimeType: savedFile.mimeType,
-          size: savedFile.size
-        }
+    let savedFiles;
+    try {
+      const fileInputs = await Promise.all(
+        parsed.data.files.map((file) => requestFileInputFromFile(file))
+      );
+      savedFiles = await uploadRequestFilesForActor({
+        actor: {
+          type: 'CLIENT',
+          userId: authResult.session.user.id,
+          clientProfileId: clientAccess.clientProfileId,
+          companyId: clientAccess.companyId
+        },
+        requestId: createdRequest.id,
+        files: fileInputs
       });
-      savedFiles.push(requestFile);
+    } catch (error) {
+      await prisma.request.delete({ where: { id: createdRequest.id } }).catch((cleanupError) => {
+        console.error('Request cleanup failed after file upload failure', {
+          requestId: createdRequest.id,
+          reason: cleanupError instanceof Error ? cleanupError.name : 'unknown'
+        });
+      });
+      if (error instanceof RequestFileUploadError) {
+        return Response.json(
+          {
+            status: error.code.toLowerCase(),
+            message: error.message
+          },
+          { status: error.code === 'REQUEST_FILE_VALIDATION_FAILED' ? 400 : 503 }
+        );
+      }
+      throw error;
     }
 
     await notifyNewPartsRequest({

@@ -1,6 +1,6 @@
-import { getCrmApiSession, crmAccessError } from '@/lib/admin/access';
 import { auditRequestContextFromHeaders } from '@/lib/audit-log/request-context';
 import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
+import { getClientApiSession, clientAccessError, requestAccessWhere } from '@/lib/client/access';
 import {
   loadRequestFileBytes,
   requestFileContentDisposition,
@@ -9,17 +9,23 @@ import {
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-export async function GET(request: Request, { params }: { params: Promise<{ fileId: string }> }) {
-  const session = await getCrmApiSession();
-
-  if (!session.ok) {
-    return crmAccessError(session);
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ fileId: string }> }
+) {
+  const authResult = await getClientApiSession();
+  if (!authResult.ok) {
+    return clientAccessError(authResult);
   }
 
   const { fileId } = await params;
-  const file = await prisma.requestFile.findUnique({
-    where: { id: fileId },
+  const file = await prisma.requestFile.findFirst({
+    where: {
+      id: fileId,
+      request: requestAccessWhere(authResult.access)
+    },
     select: {
       id: true,
       requestId: true,
@@ -38,9 +44,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ file
       request: { select: { requestNumber: true, companyId: true } }
     }
   });
-
   if (!file) {
-    return Response.json({ status: 'file_not_found' }, { status: 404 });
+    return Response.json({ status: 'request_file_not_found' }, { status: 404 });
   }
 
   let buffer: Buffer;
@@ -60,7 +65,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ file
   }
 
   await writeAuditLog(prisma, {
-    actor: auditUserActor(session.session.user.id),
+    actor: auditUserActor(authResult.session.user.id),
     companyId: file.request.companyId,
     entityType: 'REQUEST_FILE',
     entityId: file.id,
@@ -68,7 +73,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ file
     action: 'REQUEST_FILE_DOWNLOADED',
     category: 'CRITICAL_READ',
     metadata: {
-      source: 'ADMIN_CRM',
+      source: 'CLIENT_CABINET',
       requestId: file.requestId,
       requestNumber: file.request.requestNumber,
       storageProvider: file.storageProvider,

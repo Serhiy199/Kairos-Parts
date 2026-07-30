@@ -171,7 +171,9 @@ export default async function AdminRequestDetailPage({
   const companyName = request.company?.name ?? request.client?.companyName ?? request.companyName ?? '—';
   const phone = request.client?.phone ?? request.guestPhone ?? '—';
   const email = request.client?.email ?? request.guestEmail ?? '—';
-  const ocrImageFiles = request.files.filter((file) => file.mimeType.startsWith('image/'));
+  const ocrImageFiles = request.files.filter((file) =>
+    ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimeType)
+  );
 
   return (
     <div className="grid w-full min-w-0 max-w-full gap-4 sm:gap-5 xl:gap-6">

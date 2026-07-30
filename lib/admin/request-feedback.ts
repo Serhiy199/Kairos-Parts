@@ -38,6 +38,18 @@ const feedbackByResult = {
   'ocr-created': { tone: 'success', message: 'OCR виконано. Перевірте результат нижче.' },
   'ocr-corrected': { tone: 'success', message: 'OCR-текст оновлено.' },
   'ocr-error': { tone: 'error', message: 'Не вдалося запустити OCR.' },
+  'ocr-pdf-not-supported': {
+    tone: 'warning',
+    message: 'OCR для PDF поки не підтримується. Завантажте зображення сторінки у форматі JPG, PNG або WebP.'
+  },
+  'ocr-file-missing': {
+    tone: 'error',
+    message: 'Файл недоступний. Ймовірно, він був завантажений у старе локальне сховище та не зберігся. Завантажте файл повторно.'
+  },
+  'ocr-file-too-large': {
+    tone: 'warning',
+    message: 'Файл перевищує максимальний розмір для OCR.'
+  },
   'ocr-correction-error': { tone: 'error', message: 'Не вдалося зберегти OCR-корекцію.' },
   'assign-error': { tone: 'error', message: 'Не вдалося призначити менеджера.' },
   'comment-error': { tone: 'warning', message: 'Коментар не може бути порожнім.' },

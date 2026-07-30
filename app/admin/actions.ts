@@ -21,6 +21,7 @@ import {
 import { parseCommercialOfferItemInput, parseCommercialOfferMetadata } from '@/lib/commercial-offers/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { saveRequestDocumentLocal } from '@/lib/files/local-storage';
+import { RequestFileStorageError } from '@/lib/files/request-file-storage';
 import {
   cancelInvoice,
   createInvoiceFromApprovedSelection,
@@ -295,7 +296,7 @@ export async function addAdminRequestComment(formData: FormData) {
 }
 
 export async function runAdminRequestOcr(formData: FormData) {
-  await requireCrmSession();
+  const session = await requireCrmSession();
   const requestId = readString(formData, 'requestId');
   const fileId = readString(formData, 'fileId');
 
@@ -304,8 +305,23 @@ export async function runAdminRequestOcr(formData: FormData) {
   }
 
   try {
-    await runOcrForRequestFile({ requestId, fileId });
-  } catch {
+    await runOcrForRequestFile({
+      actor: { type: 'CRM', userId: session.user.id },
+      requestId,
+      fileId
+    });
+  } catch (error) {
+    if (error instanceof RequestFileStorageError) {
+      if (error.code === 'PDF_OCR_NOT_SUPPORTED') {
+        redirectBack(requestId, 'ocr-pdf-not-supported');
+      }
+      if (error.code === 'REQUEST_FILE_LEGACY_MISSING') {
+        redirectBack(requestId, 'ocr-file-missing');
+      }
+      if (error.code === 'REQUEST_FILE_TOO_LARGE') {
+        redirectBack(requestId, 'ocr-file-too-large');
+      }
+    }
     redirectBack(requestId, 'ocr-error');
   }
 
@@ -314,7 +330,7 @@ export async function runAdminRequestOcr(formData: FormData) {
 }
 
 export async function updateAdminOcrCorrection(formData: FormData) {
-  await requireCrmSession();
+  const session = await requireCrmSession();
   const requestId = readString(formData, 'requestId');
   const ocrResultId = readString(formData, 'ocrResultId');
   const correctedText = readString(formData, 'correctedText');
@@ -323,7 +339,12 @@ export async function updateAdminOcrCorrection(formData: FormData) {
     redirectBack(requestId, 'ocr-correction-error');
   }
 
-  await updateOcrCorrection({ ocrResultId, correctedText });
+  await updateOcrCorrection({
+    actor: { type: 'CRM', userId: session.user.id },
+    requestId,
+    ocrResultId,
+    correctedText
+  });
 
   revalidatePath(`/admin/requests/${requestId}`);
   redirectBack(requestId, 'ocr-corrected');
