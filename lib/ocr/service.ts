@@ -6,20 +6,13 @@ import {
   RequestFileStorageError,
   type RequestFileActor
 } from '@/lib/files/request-file-storage';
+import {
+  OcrRuntimeError,
+  recognizeImageBuffer
+} from '@/lib/ocr/tesseract-runtime';
 import { prisma } from '@/lib/prisma';
 
-const OCR_TIMEOUT_MS = 60_000;
 let ocrQueue: Promise<void> = Promise.resolve();
-
-export class OcrServiceError extends Error {
-  constructor(
-    public readonly code: 'OCR_ENGINE_FAILED' | 'OCR_TIMEOUT',
-    message: string
-  ) {
-    super(message);
-    this.name = 'OcrServiceError';
-  }
-}
 
 function extractPartLikeToken(text: string) {
   const match = text.match(/\b[A-Z0-9][A-Z0-9._/-]{4,}\b/i);
@@ -33,22 +26,7 @@ function withProcessOcrQueue<T>(task: () => Promise<T>) {
 }
 
 async function recognizeImage(buffer: Buffer) {
-  return withProcessOcrQueue(async () => {
-    const { createWorker } = await import('tesseract.js');
-    const worker = await createWorker('eng+ukr');
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    try {
-      const timedOut = new Promise<never>((_, reject) => {
-        timeout = setTimeout(() => {
-          reject(new OcrServiceError('OCR_TIMEOUT', 'OCR перевищив дозволений час виконання.'));
-        }, OCR_TIMEOUT_MS);
-      });
-      return await Promise.race([worker.recognize(buffer), timedOut]);
-    } finally {
-      if (timeout) clearTimeout(timeout);
-      await worker.terminate().catch(() => undefined);
-    }
-  });
+  return withProcessOcrQueue(() => recognizeImageBuffer(buffer));
 }
 
 async function auditOcr(input: {
@@ -137,9 +115,9 @@ export async function runOcrForRequestFile(input: {
       return ocrResult;
     });
   } catch (error) {
-    const serviceError = error instanceof OcrServiceError
+    const serviceError = error instanceof OcrRuntimeError
       ? error
-      : new OcrServiceError('OCR_ENGINE_FAILED', 'Не вдалося розпізнати текст у файлі.');
+      : new OcrRuntimeError('OCR_ENGINE_FAILED', { cause: error });
     await auditOcr({
       ...input,
       action: 'OCR_FAILED',

@@ -35,6 +35,7 @@ function main() {
   const requestRoute = source('app/api/requests/route.ts');
   const telegram = source('lib/telegram/session.ts');
   const ocr = source('lib/ocr/service.ts');
+  const ocrRuntime = source('lib/ocr/tesseract-runtime.ts');
   const adminDownload = source('app/api/admin/files/[fileId]/route.ts');
   const clientDownload = source('app/api/client/files/[fileId]/route.ts');
   const inventory = source('scripts/audit-request-file-storage.ts');
@@ -130,9 +131,10 @@ function main() {
   assert.doesNotMatch(storage, /Cloudinary failed[\s\S]*readLocalUpload/i);
 
   assert.match(ocr, /loadRequestFileForProcessing/);
-  assert.match(ocr, /createWorker\('eng\+ukr'\)/);
-  assert.match(ocr, /worker\.recognize\(buffer\)/);
-  assert.match(ocr, /OCR_TIMEOUT/);
+  assert.match(ocr, /recognizeImageBuffer\(buffer\)/);
+  assert.match(ocrRuntime, /SERVER_OCR_LANGUAGES = 'eng\+ukr'/);
+  assert.match(ocrRuntime, /worker\.recognize\(buffer\)/);
+  assert.match(ocrRuntime, /OCR_TIMEOUT/);
   assert.doesNotMatch(ocr, /pathExists|storageKeyToLocalPath|process\.cwd\(\).*uploads/);
   assert.doesNotMatch(ocr, /storage failure|локальному сховищі.*rawText/i);
 
