@@ -63,6 +63,16 @@ async function main() {
 const parsedForm = parseRequestItemUpdateInput(validFormData());
 check(parsedForm.ok && parsedForm.data.quantity === 4, 'FormData quantity=4 must parse to Int 4.');
 check(parsedForm.ok && parsedForm.data.salePrice === '100.00', 'Localized price comma must normalize.');
+const withoutEquipmentType = validFormData();
+withoutEquipmentType.delete('equipmentType');
+const parsedWithoutEquipmentType = parseRequestItemUpdateInput(withoutEquipmentType);
+check(
+  parsedWithoutEquipmentType.ok && parsedWithoutEquipmentType.data.equipmentType === null,
+  'CRM item form must allow an omitted equipment type.'
+);
+const withoutBrand = validFormData();
+withoutBrand.delete('brand');
+check(!parseRequestItemUpdateInput(withoutBrand).ok, 'Manufacturer remains required.');
 check(!parseRequestItemUpdateInput(validFormData('')).ok, 'Empty quantity must be rejected.');
 check(!parseRequestItemUpdateInput(validFormData('0')).ok, 'Zero quantity policy must be explicit: rejected.');
 check(!parseRequestItemUpdateInput(validFormData('-1')).ok, 'Negative quantity must be rejected.');
@@ -448,6 +458,10 @@ const pageSource = fs.readFileSync(
   path.join(root, 'app/admin/requests/[id]/page.tsx'),
   'utf8'
 );
+const requestItemFormSource = pageSource.slice(
+  pageSource.indexOf('function RequestItemForm'),
+  pageSource.indexOf('function PartManufacturerField')
+);
 const actionSource = fs.readFileSync(path.join(root, 'app/admin/actions.ts'), 'utf8');
 const apiSource = fs.readFileSync(
   path.join(root, 'app/api/admin/request-items/[itemId]/route.ts'),
@@ -458,6 +472,17 @@ check(
   pageSource.includes('name="quantity"')
   && pageSource.includes('name="expectedUpdatedAt"'),
   'Edit form must submit quantity and expectedUpdatedAt.'
+);
+check(
+  !requestItemFormSource.includes('typeName="equipmentType"')
+  && !requestItemFormSource.includes('label="Валюта"')
+  && requestItemFormSource.includes('type="hidden" name="currency"'),
+  'CRM item form must hide equipment type and currency while preserving server currency data.'
+);
+check(
+  requestItemFormSource.indexOf('label="Назва запчастини"')
+    < requestItemFormSource.indexOf('<PartManufacturerField'),
+  'Part name must be rendered before manufacturer.'
 );
 check(
   actionSource.includes('await updateRequestItem({')

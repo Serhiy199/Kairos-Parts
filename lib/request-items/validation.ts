@@ -1,7 +1,4 @@
-import {
-  EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED,
-  EQUIPMENT_TEXT_FIELD_MAX_LENGTH
-} from '@/lib/features/equipment-taxonomy';
+import { EQUIPMENT_TEXT_FIELD_MAX_LENGTH } from '@/lib/features/equipment-taxonomy';
 
 export type RequestItemInput = {
   equipmentType: string | null;
@@ -93,14 +90,8 @@ export function parseRequestItemInput(source: InputSource): RequestItemValidatio
   const brand = optionalText(source, 'brand');
   const name = requiredText(source, 'name');
 
-  if (!EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED) {
-    if (!equipmentType) {
-      return { ok: false, error: 'Тип техніки є обов’язковим.' };
-    }
-
-    if (!brand) {
-      return { ok: false, error: 'Виробник або марка є обов’язковими.' };
-    }
+  if (!brand) {
+    return { ok: false, error: 'Виробник є обов’язковим.' };
   }
 
   if ((equipmentType?.length ?? 0) > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
@@ -108,7 +99,7 @@ export function parseRequestItemInput(source: InputSource): RequestItemValidatio
   }
 
   if ((brand?.length ?? 0) > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
-    return { ok: false, error: `Виробник або марка має бути не довшим за ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.` };
+    return { ok: false, error: `Виробник має бути не довшим за ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.` };
   }
 
   if (!name) {
@@ -177,20 +168,15 @@ export function parseRequestItemUpdateInput(
   const brand = optionalText(source, 'brand');
   const name = requiredText(source, 'name');
 
-  if (!EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED) {
-    if (!equipmentType) {
-      return { ok: false, error: 'Тип техніки є обов’язковим.' };
-    }
-    if (!brand) {
-      return { ok: false, error: 'Виробник або марка є обов’язковими.' };
-    }
+  if (!brand) {
+    return { ok: false, error: 'Виробник є обов’язковим.' };
   }
 
   if ((equipmentType?.length ?? 0) > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
     return { ok: false, error: `Тип техніки має бути не довшим за ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.` };
   }
   if ((brand?.length ?? 0) > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
-    return { ok: false, error: `Виробник або марка має бути не довшим за ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.` };
+    return { ok: false, error: `Виробник має бути не довшим за ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.` };
   }
   if (!name) {
     return { ok: false, error: 'Назва запчастини є обовʼязковою.' };

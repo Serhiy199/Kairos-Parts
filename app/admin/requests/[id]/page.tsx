@@ -28,12 +28,10 @@ import {
   ReactiveActionForm,
   ReactiveSubmitButton
 } from '@/components/workflow/reactive-action-form';
-import { ManualEquipmentFields } from '@/components/vehicles/manual-equipment-fields';
 import { requireCrmSession } from '@/lib/admin/access';
 import type { WorkflowActionResult } from '@/lib/actions/workflow-result';
 import { getAdminRequestFeedback } from '@/lib/admin/request-feedback';
 import { hasDatabaseUrl } from '@/lib/env/database';
-import { EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { calculateInvoiceLineTotal, calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
 import {
   getRequestInvoiceEligibility,
@@ -1224,25 +1222,15 @@ function RequestItemForm({
         />
       ) : null}
       <div className="grid min-w-0 gap-3 md:grid-cols-2 min-[1800px]:grid-cols-3">
-        {EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED ? null : (
-          <ManualEquipmentFields
-            typeName="equipmentType"
-            manufacturerName="brand"
-            typeDefaultValue={item?.equipmentType ?? ''}
-            manufacturerDefaultValue={item?.brand ?? ''}
-          />
-        )}
         <TextField name="name" label="Назва запчастини" required defaultValue={item?.name} />
-        {EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED ? (
-          <PartManufacturerField defaultValue={item?.brand} listId={`part-manufacturer-${item?.id ?? 'new'}`} />
-        ) : null}
+        <PartManufacturerField defaultValue={item?.brand} listId={`part-manufacturer-${item?.id ?? 'new'}`} />
         <TextField name="catalogNumber" label="Каталожний номер" defaultValue={item?.catalogNumber} />
         <TextField name="quantity" label="Кількість" type="number" min="1" defaultValue={String(item?.quantity ?? 1)} />
         <TextField name="unit" label="Одиниця" defaultValue={item?.unit ?? 'шт'} />
         <TextField name="availability" label="Наявність" defaultValue={item?.availability} />
         <TextField name="salePrice" label="Ціна без ПДВ" type="number" min="0" step="0.01" defaultValue={item?.salePrice?.toString()} />
-        <TextField name="currency" label="Валюта" defaultValue={item?.currency ?? 'UAH'} />
       </div>
+      <input type="hidden" name="currency" value={item?.currency ?? 'UAH'} />
       <label className="grid min-w-0 gap-2 text-sm font-semibold text-foreground">
         Коментар
         <textarea
@@ -1262,11 +1250,12 @@ function RequestItemForm({
 function PartManufacturerField({ defaultValue, listId }: { defaultValue?: string | null; listId: string }) {
   return (
     <label className="grid min-w-0 gap-2 text-sm font-semibold text-foreground">
-      Виробник
+      <span>Виробник <span aria-hidden="true">*</span></span>
       <input
         name="brand"
         list={listId}
         defaultValue={defaultValue ?? ''}
+        required
         className="h-11 w-full min-w-0 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
       />
       <datalist id={listId}>
