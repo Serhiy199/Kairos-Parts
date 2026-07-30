@@ -150,7 +150,7 @@ async function main() {
     [
       adminUi,
       reactiveForm,
-      source('components/client/client-selection-decision-controls.tsx')
+      source('components/client/client-selection-checkbox-list.tsx')
     ].join('\n'),
     /window\.location\.reload|location\.href/
   );

@@ -101,25 +101,9 @@ const feedbackByResult = {
     tone: 'warning',
     message: 'Поточний статус заявки не дозволяє відправити добірку на погодження.'
   },
-  'follow-up-invoice-draft': {
+  'selection-finalized-locked': {
     tone: 'warning',
-    message: 'Перед повторним погодженням видаліть або скасуйте чернетку рахунку.'
-  },
-  'follow-up-invoice-sent': {
-    tone: 'warning',
-    message: 'Рахунок уже надіслано. Для додаткових позицій потрібен окремий цикл.'
-  },
-  'follow-up-active-batch': {
-    tone: 'warning',
-    message: 'Нова версія вже очікує рішення клієнта.'
-  },
-  'follow-up-no-changes': {
-    tone: 'warning',
-    message: 'Змініть відхилену позицію або додайте заміну.'
-  },
-  'follow-up-source-missing': {
-    tone: 'error',
-    message: 'Не знайдено завершену версію погодження, від якої можна створити повторний цикл.'
+    message: 'Клієнт уже завершив погодження. Підбір зафіксований і більше не може бути змінений. Для додаткових деталей потрібно створити нову заявку.'
   },
   'items-send-error': {
     tone: 'error',
@@ -128,7 +112,7 @@ const feedbackByResult = {
   'item-error': { tone: 'warning', message: 'Перевірте дані позиції.' },
   'item-status-locked': {
     tone: 'warning',
-    message: 'Поточний статус заявки не дозволяє змінювати підбір.'
+    message: 'Підбір уже фіналізований клієнтом і не може бути змінений.'
   },
   'item-not-found': { tone: 'warning', message: 'Позицію не знайдено.' },
   'document-created': { tone: 'success', message: 'Документ додано.' },

@@ -1,10 +1,12 @@
 import { submitClientSelectionAction } from '@/app/client/actions';
+import { ClientSelectionItemCard } from '@/components/client/client-selection-item-card';
 import type { ClientRequestApprovalReadModel } from '@/lib/request-selection/client-read-model';
 import { ClientSelectionCheckboxList } from '@/components/client/client-selection-checkbox-list';
 import {
   formatClientSelectionPrice,
   formatClientSelectionQuantity
 } from '@/lib/request-selection/client-presentation';
+import { buildFinalizedSelectionSummary } from '@/lib/request-selection/finalized-summary';
 import { REQUEST_SELECTION_BATCH_STATUS_LABELS } from '@/lib/request-selection/presentation';
 
 type BatchReadModel = Extract<ClientRequestApprovalReadModel, { mode: 'BATCH' }>;
@@ -14,6 +16,14 @@ function formatSentAt(value: string | null) {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? 'Дата надсилання не зафіксована'
+    : date.toLocaleString('uk-UA');
+}
+
+function formatCompletedAt(value: Date | string | null) {
+  if (!value) return 'Дата не зафіксована';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? 'Дата не зафіксована'
     : date.toLocaleString('uk-UA');
 }
 
@@ -30,6 +40,15 @@ export function ClientApprovalBatchSection({
     (item) => item.status === 'REJECTED'
   ).length;
   const previouslyApprovedItems = model.previouslyApprovedItems;
+  const finalizedSummary = activeBatch.status === 'SENT'
+    ? null
+    : buildFinalizedSelectionSummary({
+        status: activeBatch.status,
+        revision: activeBatch.revision,
+        approvedAt: activeBatch.approvedAt,
+        rejectedAt: activeBatch.rejectedAt,
+        items: activeBatch.items
+      });
 
   return (
     <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-6">
@@ -154,27 +173,59 @@ export function ClientApprovalBatchSection({
           </div>
         </details>
       ) : null}
-      {activeBatch.status === 'APPROVED' ? (
-        <div className="mt-5 rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">
-          Усі позиції погоджено. Заявка очікує формування рахунку.
-        </div>
-      ) : null}
-      {activeBatch.status === 'PARTIALLY_APPROVED' ? (
-        <div className="mt-5 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm leading-6 text-[#8A5B24]">
-          Погодження завершено частково: погоджено {approvedCount}, відхилено{' '}
-          {rejectedCount}. Рахунок формуватиметься лише за погодженими позиціями.
-        </div>
-      ) : null}
-      {activeBatch.status === 'REJECTED' ? (
-        <div className="mt-5 rounded-md border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700">
-          Усі позиції відхилено. Рахунок за цією версією сформувати не можна.
-        </div>
-      ) : null}
-
-      <ClientSelectionCheckboxList
-        model={model}
-        submitAction={submitClientSelectionAction}
-      />
+      {finalizedSummary ? (
+        <>
+          <div
+            data-finalized-selection-summary
+            className={`mt-5 rounded-md border p-4 ${
+              finalizedSummary.status === 'REJECTED'
+                ? 'border-red-200 bg-red-50'
+                : finalizedSummary.status === 'PARTIALLY_APPROVED'
+                  ? 'border-warning/30 bg-[#FFF7E0]'
+                  : 'border-success/30 bg-[#E7F6EC]'
+            }`}
+          >
+            <h4 className="font-bold text-foreground">
+              {finalizedSummary.headline}
+            </h4>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              {finalizedSummary.detail}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-muted">
+              <span>Погоджено: {finalizedSummary.approvedCount} із {finalizedSummary.totalCount}</span>
+              <span>Не погоджено: {finalizedSummary.rejectedCount} із {finalizedSummary.totalCount}</span>
+              <span>Версія підбору: {finalizedSummary.revision}</span>
+              <span>Дата погодження: {formatCompletedAt(finalizedSummary.completedAt)}</span>
+            </div>
+          </div>
+          <div className="mt-5 grid min-w-0 gap-3">
+            {activeBatch.items.map((item) => (
+              <ClientSelectionItemCard
+                key={item.id}
+                item={item}
+                decisionMessage={item.status === 'APPROVED' ? (
+                  <p className="text-sm font-semibold text-success">
+                    Ви погодили цю позицію.
+                  </p>
+                ) : item.status === 'REJECTED' ? (
+                  <p className="text-sm font-semibold text-red-700">
+                    Позицію не погоджено.
+                  </p>
+                ) : (
+                  <p className="text-sm font-semibold text-muted">
+                    Рішення для цієї історичної версії не зафіксовано.
+                  </p>
+                )}
+              />
+            ))}
+          </div>
+        </>
+      ) : (
+        <ClientSelectionCheckboxList
+          model={model}
+          submitAction={submitClientSelectionAction}
+        />
+      )}
     </section>
   );
 }

@@ -44,7 +44,7 @@ export type SendRequestSelectionForApprovalInput = {
   expectedActiveBatchId?: string;
   expectedActiveRevision?: number;
   actor: { id: string };
-  mode?: 'INITIAL' | 'RESEND_ACTIVE' | 'FOLLOW_UP_REJECTED';
+  mode?: 'INITIAL' | 'RESEND_ACTIVE';
   requestContext?: AuditRequestContext;
 };
 
@@ -69,14 +69,7 @@ export type SendRequestSelectionForApprovalErrorCode =
   | 'VISIBILITY_UPDATE_FAILED'
   | 'AUDIT_WRITE_FAILED'
   | 'REQUEST_STATUS_TRANSITION_FAILED'
-  | 'NO_FOLLOW_UP_SELECTION_CHANGES'
-  | 'FOLLOW_UP_ACTIVE_BATCH_EXISTS'
-  | 'FOLLOW_UP_INVOICE_DRAFT_EXISTS'
-  | 'FOLLOW_UP_INVOICE_ALREADY_SENT'
-  | 'FOLLOW_UP_REQUEST_STATUS_BLOCKED'
-  | 'FOLLOW_UP_SOURCE_BATCH_NOT_FOUND'
-  | 'FOLLOW_UP_SELECTION_INVALID'
-  | 'FOLLOW_UP_CANDIDATE_VERSION_CONFLICT'
+  | 'FINALIZED_SELECTION_LOCKED'
   | 'TRANSACTION_CLIENT_EXPIRED'
   | 'DATABASE_TRANSACTION_FAILED'
   | 'TELEGRAM_NOTIFICATION_FAILED';
@@ -118,7 +111,7 @@ export type SendRequestSelectionForApprovalResult = {
   hiddenPreviousItemCount: number;
   requestStatusTransition: RequestStatusTransitionResult['outcome'];
   notification: NotificationResult;
-  mode: 'INITIAL' | 'RESEND_ACTIVE' | 'FOLLOW_UP_REJECTED';
+  mode: 'INITIAL' | 'RESEND_ACTIVE';
 };
 
 export type SendRequestSelectionCommitResult = Omit<
@@ -203,6 +196,13 @@ export function isExpiredPrismaTransactionError(error: unknown) {
 }
 
 function assertInput(input: SendRequestSelectionForApprovalInput) {
+  if (
+    input.mode !== undefined
+    && input.mode !== 'INITIAL'
+    && input.mode !== 'RESEND_ACTIVE'
+  ) {
+    fail('FINALIZED_SELECTION_LOCKED', input.requestId);
+  }
   if (input.requestItemIds.length === 0) {
     fail('EMPTY_SELECTION', input.requestId);
   }
@@ -230,8 +230,7 @@ function assertInput(input: SendRequestSelectionForApprovalInput) {
 function mapBatchError(
   error: RequestSelectionBatchError,
   phase: 'create' | 'supersede' | 'send',
-  requestId: string,
-  followUp = false
+  requestId: string
 ): never {
   const context = {
     requestItemId: error.context.requestItemId,
@@ -251,14 +250,7 @@ function mapBatchError(
     fail('REQUEST_ITEM_NOT_IN_REQUEST', requestId, context, error);
   }
   if (error.code === 'SOURCE_ITEM_CHANGED') {
-    fail(
-      followUp
-        ? 'FOLLOW_UP_CANDIDATE_VERSION_CONFLICT'
-        : 'SOURCE_ITEM_VERSION_CONFLICT',
-      requestId,
-      context,
-      error
-    );
+    fail('SOURCE_ITEM_VERSION_CONFLICT', requestId, context, error);
   }
   if (error.code === 'SOURCE_ITEM_INVALID' || error.code === 'SNAPSHOT_BUILD_FAILED') {
     fail('SOURCE_ITEM_INVALID', requestId, context, error);
@@ -302,10 +294,6 @@ export function createSendRequestSelectionForApprovalService(
         fail('ACTOR_NOT_ALLOWED', request.id);
       }
       const requestedMode = input.mode;
-      const followUpRequested = requestedMode === 'FOLLOW_UP_REJECTED';
-      if (followUpRequested) {
-        fail('FOLLOW_UP_REQUEST_STATUS_BLOCKED', request.id);
-      }
       if (!allowedRequestStatuses.has(request.status)) {
         fail('REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND', request.id);
       }
@@ -326,28 +314,11 @@ export function createSendRequestSelectionForApprovalService(
         fail('SOURCE_ITEM_INVALID', request.id, {}, error);
       }
       if (!resendEligibility.canSend) {
-        if (resendEligibility.reason === 'ACTIVE_SENT_BATCH_EXISTS') {
-          fail('FOLLOW_UP_ACTIVE_BATCH_EXISTS', request.id);
-        }
-        if (resendEligibility.reason === 'INVOICE_DRAFT_EXISTS') {
-          fail('FOLLOW_UP_INVOICE_DRAFT_EXISTS', request.id);
-        }
-        if (resendEligibility.reason === 'INVOICE_ALREADY_SENT') {
-          fail('FOLLOW_UP_INVOICE_ALREADY_SENT', request.id);
-        }
-        if (resendEligibility.reason === 'NO_FINALIZED_SELECTION') {
-          fail('FOLLOW_UP_SOURCE_BATCH_NOT_FOUND', request.id);
-        }
-        if (resendEligibility.reason === 'NO_FOLLOW_UP_CHANGES') {
-          fail('NO_FOLLOW_UP_SELECTION_CHANGES', request.id);
+        if (resendEligibility.finalizedSelectionLocked) {
+          fail('FINALIZED_SELECTION_LOCKED', request.id);
         }
         if (resendEligibility.reason === 'REQUEST_STATUS_BLOCKED') {
-          fail(
-            followUpRequested
-              ? 'FOLLOW_UP_REQUEST_STATUS_BLOCKED'
-              : 'REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND',
-            request.id
-          );
+          fail('REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND', request.id);
         }
         if (resendEligibility.reason === 'NOTHING_TO_SEND') {
           fail('NO_SELECTION_CHANGES', request.id, {
@@ -359,10 +330,14 @@ export function createSendRequestSelectionForApprovalService(
         });
       }
       const canonicalItemIds = resendEligibility.eligibleItemIds;
-      const mode = resendEligibility.mode
+      const resolvedMode = resendEligibility.mode
         ?? (resendEligibility.activeBatchId ? 'RESEND_ACTIVE' : 'INITIAL');
+      if (resolvedMode === 'FOLLOW_UP_REJECTED') {
+        fail('FINALIZED_SELECTION_LOCKED', request.id);
+      }
+      const mode: 'INITIAL' | 'RESEND_ACTIVE' = resolvedMode;
       if (requestedMode && requestedMode !== mode) {
-        fail('FOLLOW_UP_SELECTION_INVALID', request.id);
+        fail('SOURCE_ITEM_INVALID', request.id);
       }
 
       const activeBatches = await tx.requestSelectionBatch.findMany({
@@ -396,12 +371,6 @@ export function createSendRequestSelectionForApprovalService(
           batchId: activeBatch?.id
         });
       }
-      if (activeBatch && mode === 'FOLLOW_UP_REJECTED') {
-        fail('FOLLOW_UP_ACTIVE_BATCH_EXISTS', request.id, {
-          batchId: activeBatch.id
-        });
-      }
-
       const sourceItems = await tx.requestItem.findMany({
         where: { id: { in: input.requestItemIds } },
         select: { id: true, requestId: true, updatedAt: true, visibleToClient: true }
@@ -419,13 +388,7 @@ export function createSendRequestSelectionForApprovalService(
         if (
           sourceItem.updatedAt.getTime() !== expectedById.get(requestItemId)?.getTime()
         ) {
-          fail(
-            mode === 'FOLLOW_UP_REJECTED'
-              ? 'FOLLOW_UP_CANDIDATE_VERSION_CONFLICT'
-              : 'SOURCE_ITEM_VERSION_CONFLICT',
-            request.id,
-            { requestItemId }
-          );
+          fail('SOURCE_ITEM_VERSION_CONFLICT', request.id, { requestItemId });
         }
       }
       const submittedIds = new Set(input.requestItemIds);
@@ -436,7 +399,7 @@ export function createSendRequestSelectionForApprovalService(
         fail('SOURCE_ITEM_INVALID', request.id);
       }
 
-      if (activeBatch && mode !== 'FOLLOW_UP_REJECTED') {
+      if (activeBatch) {
         try {
           const superseded = await dependencies.transitionBatch({
             batchId: activeBatch.id,
@@ -471,12 +434,7 @@ export function createSendRequestSelectionForApprovalService(
         });
       } catch (error) {
         if (error instanceof RequestSelectionBatchError) {
-          mapBatchError(
-            error,
-            'create',
-            request.id,
-            mode === 'FOLLOW_UP_REJECTED'
-          );
+          mapBatchError(error, 'create', request.id);
         }
         fail('BATCH_CREATE_FAILED', request.id, {}, error);
       }
@@ -505,18 +463,16 @@ export function createSendRequestSelectionForApprovalService(
       try {
         requestStatusTransition = await dependencies.transitionRequest({
           requestId: request.id,
-          event: mode === 'FOLLOW_UP_REJECTED'
-            ? REQUEST_STATUS_EVENTS.FOLLOW_UP_SELECTION_SENT_FOR_APPROVAL
-            : REQUEST_STATUS_EVENTS.SELECTION_SENT_FOR_APPROVAL,
+          event: REQUEST_STATUS_EVENTS.SELECTION_SENT_FOR_APPROVAL,
           actor: input.actor,
           metadata: {
             source: 'ADMIN_CRM',
             eventKey: `selection-batch:${batch.batchId}:sent`,
             triggerEntityType: 'REQUEST',
             triggerEntityId: request.id,
-            followUp: mode === 'FOLLOW_UP_REJECTED',
-            followUpFromBatchId: resendEligibility.sourceBatch?.id,
-            followUpFromRevision: resendEligibility.sourceBatch?.revision,
+            followUp: false,
+            followUpFromBatchId: undefined,
+            followUpFromRevision: undefined,
             candidateCount: canonicalItemIds.length
           },
           tx
@@ -580,9 +536,9 @@ export function createSendRequestSelectionForApprovalService(
             newItemCount: resendEligibility.newItemIds.length,
             removedItemCount: resendEligibility.removedBatchItemIds.length,
             previousRevision: resendEligibility.activeRevision,
-            followUp: mode === 'FOLLOW_UP_REJECTED',
-            followUpFromBatchId: resendEligibility.sourceBatch?.id,
-            followUpFromRevision: resendEligibility.sourceBatch?.revision,
+            followUp: false,
+            followUpFromBatchId: undefined,
+            followUpFromRevision: undefined,
             candidateCount: canonicalItemIds.length,
             changedRejectedCount: resendEligibility.changedRejectedItemIds?.length ?? 0,
             newReplacementCount: resendEligibility.newItemIds.length,

@@ -1,4 +1,3 @@
-import { approveClientRequestItemsAction } from '@/app/client/actions';
 import { calculateInvoiceLineTotal, formatInvoiceMoney } from '@/lib/invoices/totals';
 import type { ClientLegacyItemReadModel } from '@/lib/request-selection/client-read-model';
 
@@ -7,42 +6,24 @@ function formatMoney(value: { toString: () => string } | string | null, currency
 }
 
 export function ClientLegacySelectionSection({
-  requestId,
   items
 }: {
-  requestId: string;
   items: ClientLegacyItemReadModel[];
 }) {
-  const pendingItems = items.filter((item) => !item.approvedByClient);
-
   return (
-    <>
-      {pendingItems.length > 0 ? (
-        <div className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">
-          У цій заявці є {pendingItems.length} {pendingItems.length === 1 ? 'позиція' : 'позиції'} на погодження.
-          Оберіть потрібні позиції та натисніть «Погодити вибрані позиції».
-        </div>
-      ) : null}
-
-      <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-6">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-6">
         <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <h3 className="text-lg font-bold text-foreground">Підібрані позиції</h3>
+            <p className="text-sm font-bold uppercase text-accent">Архівна версія</p>
+            <h3 className="mt-2 text-lg font-bold text-foreground">Історичні позиції підбору</h3>
             <p className="mt-2 text-sm text-muted">
-              Оберіть позиції, які потрібно включити у рахунок.
+              Ця заявка використовує попередній формат погодження. Дані збережені
+              для перегляду; змінити рішення або склад рахунку тут неможливо.
             </p>
           </div>
-          {pendingItems.length > 0 ? (
-            <span className="w-fit rounded-full bg-[#E7F6EC] px-3 py-1 text-xs font-bold text-success">
-              {pendingItems.length} на погодження
-            </span>
-          ) : null}
-          <form id="approve-request-items" action={approveClientRequestItemsAction}>
-            <input type="hidden" name="requestId" value={requestId} />
-            <button className="inline-flex items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
-              Погодити вибрані позиції
-            </button>
-          </form>
+          <span className="w-fit rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">
+            Лише перегляд
+          </span>
         </div>
 
         <div className="mt-4 grid min-w-0 gap-3">
@@ -95,17 +76,6 @@ export function ClientLegacySelectionSection({
                     </p>
                   </div>
                   <div className="grid min-w-0 gap-2">
-                    <label className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">
-                      <input
-                        form="approve-request-items"
-                        type="checkbox"
-                        name="itemIds"
-                        value={item.id}
-                        defaultChecked={item.includeInInvoice}
-                        className="h-4 w-4 accent-[var(--accent)]"
-                      />
-                      Включити у рахунок
-                    </label>
                     <div className="flex flex-wrap gap-2">
                       {item.approvedByClient ? (
                         <span className="rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success">
@@ -128,7 +98,6 @@ export function ClientLegacySelectionSection({
             );
           })}
         </div>
-      </section>
-    </>
+    </section>
   );
 }

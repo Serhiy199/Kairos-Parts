@@ -16,6 +16,10 @@ function main() {
     'components/client/client-approval-batch-section.tsx',
     'utf8'
   );
+  const itemCardSource = readFileSync(
+    'components/client/client-selection-item-card.tsx',
+    'utf8'
+  );
   assert.match(source, /type="checkbox"/);
   assert.match(source, /checked=\{selectedIds\.has\(item\.id\)\}/);
   assert.match(source, /Погоджую позицію/);
@@ -77,7 +81,7 @@ function main() {
   assert.match(source, /activeBatch\.status === 'SENT' && item\.status === 'PENDING'/);
   assert.match(source, /Ви погодили цю позицію/);
   assert.match(source, /Позицію відхилено/);
-  assert.match(source, /\{item\.clientComment \? \(/);
+  assert.match(itemCardSource, /\{item\.clientComment \? \(/);
   assert.doesNotMatch(source, /<form/);
   assert.match(source, /Надіслати погодження/);
 

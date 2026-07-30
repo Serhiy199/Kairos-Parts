@@ -84,6 +84,8 @@ export type ClientRequestApprovalReadModel =
         revision: number;
         status: 'SENT' | 'APPROVED' | 'PARTIALLY_APPROVED' | 'REJECTED';
         sentAt: string | null;
+        approvedAt: string | null;
+        rejectedAt: string | null;
         itemCount: number;
         previouslyApprovedCount: number;
         items: ClientSelectionItemReadModel[];
@@ -174,6 +176,8 @@ const activeBatchSelect = {
   revision: true,
   status: true,
   sentAt: true,
+  approvedAt: true,
+  rejectedAt: true,
   items: {
     orderBy: [{ position: 'asc' }, { id: 'asc' }],
     select: batchItemSelect
@@ -347,6 +351,8 @@ function batchReadModel(
         | 'PARTIALLY_APPROVED'
         | 'REJECTED',
       sentAt: batch.sentAt?.toISOString() ?? null,
+      approvedAt: batch.approvedAt?.toISOString() ?? null,
+      rejectedAt: batch.rejectedAt?.toISOString() ?? null,
       itemCount: batch.items.length,
       previouslyApprovedCount: previouslyApprovedItems.length,
       items: batch.items.map(mapClientSelectionItem)

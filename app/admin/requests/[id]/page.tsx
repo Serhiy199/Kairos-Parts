@@ -44,6 +44,7 @@ import { INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 import { PART_MANUFACTURERS } from '@/lib/parts/part-manufacturers';
 import { prisma } from '@/lib/prisma';
 import { getAdminRequestItemPresentation } from '@/lib/request-items/admin-presentation';
+import { buildFinalizedSelectionSummary } from '@/lib/request-selection/finalized-summary';
 import {
   getRequestSelectionResendEligibility,
   type RequestSelectionResendEligibility
@@ -660,18 +661,13 @@ function requestSelectionMessage(
     return 'Поточна версія вже очікує рішення клієнта.';
   }
   if (eligibility.reason === 'HAS_REJECTED_CHANGES') {
-    return 'Відхилену позицію доопрацьовано. Надішліть нову версію клієнту.';
+    return 'Підбір уже фіналізований клієнтом і не може бути змінений.';
   }
   if (
     eligibility.reason === 'HAS_NEW_REPLACEMENT_ITEMS'
     || eligibility.reason === 'HAS_REJECTED_AND_NEW_ITEMS'
   ) {
-    return 'Додано нову позицію для повторного погодження.';
-  }
-  if (eligibility.reason === 'NO_FOLLOW_UP_CHANGES') {
-    return eligibility.removedRejectedSourceIds?.length
-      ? 'Відхилену позицію видалено. Додайте заміну, щоб створити нову версію.'
-      : 'Щоб створити нову версію, змініть відхилену позицію або додайте заміну.';
+    return 'Для додаткового підбору клієнту потрібно створити нову заявку.';
   }
   if (items.length === 0) {
     return 'Позицій ще немає.';
@@ -703,6 +699,8 @@ function RequestItemsSection({
     id: string;
     revision: number;
     status: RequestSelectionBatchStatus;
+    approvedAt: Date | null;
+    rejectedAt: Date | null;
     items: Array<{
       id: string;
       position: number;
@@ -743,6 +741,19 @@ function RequestItemsSection({
   const latestPendingCount = latestSelectionBatch?.items.filter(
     (item) => item.status === 'PENDING'
   ).length ?? 0;
+  const finalizedSummary =
+    latestSelectionBatch
+    && latestSelectionBatch.status !== 'DRAFT'
+    && latestSelectionBatch.status !== 'SENT'
+    && latestSelectionBatch.status !== 'SUPERSEDED'
+      ? buildFinalizedSelectionSummary({
+          status: latestSelectionBatch.status,
+          revision: latestSelectionBatch.revision,
+          approvedAt: latestSelectionBatch.approvedAt,
+          rejectedAt: latestSelectionBatch.rejectedAt,
+          items: latestSelectionBatch.items
+        })
+      : null;
 
   return (
     <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
@@ -760,7 +771,54 @@ function RequestItemsSection({
         </div>
       </div>
 
-      {latestSelectionBatch ? (
+      {finalizedSummary ? (
+        <div
+          data-finalized-selection-summary
+          className="mt-5 rounded-md border border-border bg-surface-muted p-4"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold text-foreground">
+                {finalizedSummary.headline}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-muted">
+                {finalizedSummary.detail}
+              </p>
+            </div>
+            <span className="rounded-full bg-card px-2.5 py-1 text-xs font-bold text-muted">
+              {REQUEST_SELECTION_BATCH_STATUS_LABELS[finalizedSummary.status]}
+            </span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-muted">
+            <span>Погоджено: {finalizedSummary.approvedCount} із {finalizedSummary.totalCount}</span>
+            <span>Не погоджено: {finalizedSummary.rejectedCount} із {finalizedSummary.totalCount}</span>
+            <span>Версія підбору: {finalizedSummary.revision}</span>
+            <span>
+              Дата погодження:{' '}
+              {finalizedSummary.completedAt
+                ? new Date(finalizedSummary.completedAt).toLocaleString('uk-UA')
+                : 'не зафіксована'}
+            </span>
+          </div>
+          {latestRejectedItems.some((item) => item.clientComment) ? (
+            <div className="mt-3 grid gap-2">
+              {latestRejectedItems.filter((item) => item.clientComment).map((batchItem) => (
+                <div
+                  key={batchItem.id}
+                  className="min-w-0 rounded-md border border-red-100 bg-card p-3"
+                >
+                  <p className="break-words text-xs font-semibold text-foreground">
+                    {batchItem.position}. {batchItem.itemName}
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap break-words text-xs text-red-700">
+                    {batchItem.clientComment}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : latestSelectionBatch ? (
         <div className="mt-5 rounded-md border border-border bg-surface-muted p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-bold text-foreground">
@@ -964,6 +1022,7 @@ function InvoicesSection({
   eligibility: RequestInvoiceEligibility;
 }) {
   const canCreateInvoice = eligibility.eligible;
+  const showCreateInvoiceControl = eligibility.requestStatus !== 'CANCELLED';
   const blockedReason = !eligibility.eligible
     ? {
         REQUEST_NOT_FOUND: 'Заявку не знайдено.',
@@ -1001,20 +1060,22 @@ function InvoicesSection({
             незмінної версії підбору.
           </p>
         </div>
-        <ReactiveActionForm action={createAdminInvoice} className="w-full lg:w-auto">
-          <input type="hidden" name="requestId" value={requestId} />
-          <ReactiveSubmitButton
-            pendingLabel="Створюємо рахунок…"
-            disabled={!canCreateInvoice}
-            className="inline-flex w-full items-center justify-center gap-2 whitespace-normal rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-muted lg:w-auto"
-          >
-            <ActionIcon name="plus" />
-            Створити рахунок
-          </ReactiveSubmitButton>
-        </ReactiveActionForm>
+        {showCreateInvoiceControl ? (
+          <ReactiveActionForm action={createAdminInvoice} className="w-full lg:w-auto">
+            <input type="hidden" name="requestId" value={requestId} />
+            <ReactiveSubmitButton
+              pendingLabel="Створюємо рахунок…"
+              disabled={!canCreateInvoice}
+              className="inline-flex w-full items-center justify-center gap-2 whitespace-normal rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-muted lg:w-auto"
+            >
+              <ActionIcon name="plus" />
+              Створити рахунок
+            </ReactiveSubmitButton>
+          </ReactiveActionForm>
+        ) : null}
       </div>
 
-      {!canCreateInvoice ? (
+      {!showCreateInvoiceControl ? null : !canCreateInvoice ? (
         <div className="mt-4 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm text-[#8A5B24]">
           <p className="font-semibold">{blockedReason}</p>
           <p className="mt-2 text-xs leading-5">

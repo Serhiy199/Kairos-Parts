@@ -19,7 +19,7 @@ const statusMigration = read(
 const provenanceMigration = read(
   'prisma/migrations/20260728151000_add_invoice_selection_provenance/migration.sql'
 );
-const decisionService = read('lib/request-selection/client-decision.ts');
+const aggregateSubmissionService = read('lib/request-selection/client-submission.ts');
 const invoiceService = read('lib/invoices/service.ts');
 const invoiceSelection = read('lib/invoices/selection.ts');
 const adminUi = read('app/admin/requests/[id]/page.tsx');
@@ -54,16 +54,18 @@ assert.ok(!provenanceMigration.includes('NOT NULL'));
 assert.ok(!provenanceMigration.includes('TRUNCATE'));
 
 for (const token of [
-  "batchEvent === 'PARTIALLY_APPROVE'",
-  "batchOutcome: 'unchanged' | 'approved' | 'partially_approved' | 'rejected'",
-  'pendingCount > 0',
-  'approvedCount > 0 && rejectedCount > 0',
-  'totalCount: total',
+  "batchStatus === 'PARTIALLY_APPROVED'",
+  "batchStatus === 'REJECTED'",
+  "event: batchEvent",
+  'approvedCount',
+  'rejectedCount',
   'partial'
 ]) {
-  assert.ok(decisionService.includes(token), `Partial approval guard missing: ${token}`);
+  assert.ok(
+    aggregateSubmissionService.includes(token),
+    `Aggregate partial approval guard missing: ${token}`
+  );
 }
-assert.ok(!decisionService.includes("if (itemStatus === 'REJECTED') {"));
 
 for (const token of [
   'resolveSelection: resolveInvoiceSelection',
@@ -86,7 +88,8 @@ assert.ok(invoiceSelection.includes('approvedByIdentity'));
 assert.ok(invoiceSelection.includes("status: { in: ['APPROVED', 'PARTIALLY_APPROVED', 'REJECTED'] }"));
 assert.ok(adminUi.includes('getRequestInvoiceEligibility'));
 assert.ok(adminUi.includes('eligibility.eligible'));
-assert.ok(clientUi.includes("activeBatch.status === 'PARTIALLY_APPROVED'"));
+assert.ok(clientUi.includes('buildFinalizedSelectionSummary'));
+assert.ok(clientUi.includes("finalizedSummary.status === 'PARTIALLY_APPROVED'"));
 
 type Item = {
   id: string;

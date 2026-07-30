@@ -452,10 +452,10 @@ export async function sendAdminRequestItemsForApproval(formData: FormData) {
     .map((value) => value.trim())
     .filter(Boolean);
   const rawVersions = readString(formData, 'requestItemVersions');
-  const mode = readString(formData, 'mode') as
-    | 'INITIAL'
-    | 'RESEND_ACTIVE'
-    | 'FOLLOW_UP_REJECTED';
+  const modeValue = readString(formData, 'mode');
+  const mode = modeValue === 'INITIAL' || modeValue === 'RESEND_ACTIVE'
+    ? modeValue
+    : null;
   const expectedActiveBatchId = readString(formData, 'expectedActiveBatchId');
   const expectedActiveRevisionRaw = readString(
     formData,
@@ -465,10 +465,15 @@ export async function sendAdminRequestItemsForApproval(formData: FormData) {
     ? Number(expectedActiveRevisionRaw)
     : undefined;
 
+  if (modeValue === 'FOLLOW_UP_REJECTED') {
+    return workflowResult('selection-finalized-locked', false, false);
+  }
+
   if (
     !hasDatabaseUrl()
     || !requestId
     || !rawVersions
+    || !mode
     || (
       mode === 'RESEND_ACTIVE'
       && (
@@ -534,35 +539,14 @@ export async function sendAdminRequestItemsForApproval(formData: FormData) {
       if (error.code === 'NO_SELECTION_CHANGES') {
         return workflowResult('selection-update-no-changes', false);
       }
-      if (error.code === 'FOLLOW_UP_CANDIDATE_VERSION_CONFLICT') {
-        return workflowResult('items-send-stale', false);
-      }
       if (error.code === 'DUPLICATE_SEND_OPERATION') {
         return workflowResult('items-send-duplicate', false);
       }
       if (error.code === 'REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND') {
         return workflowResult('items-send-status-locked', false);
       }
-      if (error.code === 'FOLLOW_UP_INVOICE_DRAFT_EXISTS') {
-        return workflowResult('follow-up-invoice-draft', false);
-      }
-      if (error.code === 'FOLLOW_UP_INVOICE_ALREADY_SENT') {
-        return workflowResult('follow-up-invoice-sent', false);
-      }
-      if (error.code === 'FOLLOW_UP_ACTIVE_BATCH_EXISTS') {
-        return workflowResult('follow-up-active-batch', false);
-      }
-      if (
-        error.code === 'NO_FOLLOW_UP_SELECTION_CHANGES'
-        || error.code === 'FOLLOW_UP_SELECTION_INVALID'
-      ) {
-        return workflowResult('follow-up-no-changes', false);
-      }
-      if (error.code === 'FOLLOW_UP_SOURCE_BATCH_NOT_FOUND') {
-        return workflowResult('follow-up-source-missing', false);
-      }
-      if (error.code === 'FOLLOW_UP_REQUEST_STATUS_BLOCKED') {
-        return workflowResult('items-send-status-locked', false);
+      if (error.code === 'FINALIZED_SELECTION_LOCKED') {
+        return workflowResult('selection-finalized-locked', false);
       }
       if (error.code === 'REQUEST_NOT_FOUND') {
         return workflowResult('request-not-found', false);

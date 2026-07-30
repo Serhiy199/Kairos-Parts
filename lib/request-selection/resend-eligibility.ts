@@ -312,6 +312,11 @@ export function deriveRequestSelectionResendEligibility(input: {
   };
 }
 
+/**
+ * Historical compatibility model for legacy follow-up records and regression
+ * fixtures. Production eligibility never calls this helper; creating a new
+ * post-final follow-up is locked by the send contract.
+ */
 export function deriveRequestSelectionFollowUpEligibility(input: {
   request: EligibilitySource;
   activeBatch: ActiveBatch | null;

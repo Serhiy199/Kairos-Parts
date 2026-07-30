@@ -344,7 +344,8 @@ test('batch UI remains snapshot-based and legacy action stays isolated', () => {
   assert.doesNotMatch(batch, /<form|type="checkbox"|sourceRequestItemId|snapshotHash|vehicleVin/);
   assert.match(batch, /ClientSelectionCheckboxList/);
   assert.match(batch, /submitAction=\{submitClientSelectionAction\}/);
-  assert.match(legacy, /approveClientRequestItemsAction/);
+  assert.doesNotMatch(legacy, /approveClientRequestItemsAction|type="checkbox"|<form/);
+  assert.match(legacy, /Архівна версія/);
 });
 
 test('page explicitly renders BATCH, LEGACY, and EMPTY states', () => {

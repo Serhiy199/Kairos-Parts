@@ -1,360 +1,69 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-
-import { Prisma } from '@prisma/client';
+import { resolve } from 'node:path';
 
 import {
-  deriveRequestSelectionFollowUpEligibility
-} from '../lib/request-selection/resend-eligibility';
-import {
-  buildRequestSelectionSnapshot
-} from '../lib/request-selection/snapshot';
-import {
-  assertRequestItemDeleteAllowed,
-  RequestItemDeleteError
-} from '../lib/request-items/delete';
-import {
-  InvoiceSelectionError,
-  resolveInvoiceSelection
-} from '../lib/invoices/selection';
-import {
-  REQUEST_STATUS_EVENTS,
-  resolveRequestStatusTransition
-} from '../lib/requests/status-transition';
+  createSendRequestSelectionForApprovalService,
+  SendRequestSelectionForApprovalError
+} from '../lib/request-selection/send-for-approval';
 
-const at = new Date('2026-07-28T12:00:00.000Z');
+const root = process.cwd();
+const read = (path: string) => readFileSync(resolve(root, path), 'utf8');
+const eligibility = read('lib/request-selection/resend-eligibility.ts');
+const sendService = read('lib/request-selection/send-for-approval.ts');
+const adminAction = read('app/admin/actions.ts');
+const feedback = read('lib/admin/request-feedback.ts');
+const statusTransition = read('lib/requests/status-transition.ts');
 
-function liveItem(
-  id: string,
-  overrides: Partial<Record<string, unknown>> = {}
-) {
-  return {
-    id,
-    requestId: 'request-1',
-    createdAt: at,
-    updatedAt: at,
-    equipmentType: 'Трактор',
-    name: `Позиція ${id}`,
-    brand: 'MAN',
-    catalogNumber: `CAT-${id}`,
-    analogNumber: null,
-    quantity: 1,
-    unit: 'шт',
-    availability: 'На складі',
-    deliveryTime: null,
-    salePrice: new Prisma.Decimal('100.00'),
-    currency: 'UAH',
-    comment: null,
-    vehicleId: null,
-    vehicle: null,
-    ...overrides
-  };
-}
+const productionEligibility = eligibility.slice(
+  eligibility.indexOf('export function createRequestSelectionResendEligibilityService')
+);
 
-function snapshotItem(
-  id: string,
-  source: ReturnType<typeof liveItem>,
-  status: 'APPROVED' | 'REJECTED',
-  overrides: Partial<Record<string, unknown>> = {}
-) {
-  const snapshot = buildRequestSelectionSnapshot(source as never);
-  return {
-    id,
-    status,
-    ...snapshot,
-    ...overrides
-  };
-}
-
-function followUp(input: {
-  items: ReturnType<typeof liveItem>[];
-  sourceStatus?: 'APPROVED' | 'PARTIALLY_APPROVED' | 'REJECTED';
-  sourceItems: ReturnType<typeof snapshotItem>[];
-  historicalBatches?: Array<Record<string, unknown>>;
-  invoice?: { id: string; status: 'DRAFT' | 'SENT' } | null;
-  active?: boolean;
-  requestStatus?: 'WAITING_APPROVAL' | 'AWAITING_INVOICE';
-}) {
-  const sourceBatch = {
-    id: 'batch-1',
-    revision: 1,
-    status: input.sourceStatus ?? 'PARTIALLY_APPROVED',
-    items: input.sourceItems
-  };
-  return deriveRequestSelectionFollowUpEligibility({
-    request: {
-      id: 'request-1',
-      status: input.requestStatus ?? 'AWAITING_INVOICE',
-      items: input.items
-    } as never,
-    activeBatch: input.active
-      ? { id: 'batch-active', revision: 2, items: [] }
-      : null,
-    sourceBatch: sourceBatch as never,
-    finalizedBatches: (input.historicalBatches
-      ? [sourceBatch, ...input.historicalBatches]
-      : [sourceBatch]) as never,
-    currentInvoice: input.invoice ?? null
-  });
-}
-
-function invoiceItem(
-  id: string,
-  sourceRequestItemId: string | null,
-  status: 'APPROVED' | 'REJECTED',
-  price = '100.00'
-) {
-  return {
-    id,
-    sourceRequestItemId,
-    position: Number(id.replace(/\D/g, '')) || 1,
-    status,
-    itemName: `Snapshot ${id}`,
-    brand: null,
-    catalogNumber: null,
-    analogNumber: null,
-    quantity: 1,
-    unit: 'шт',
-    approvedUnitPrice: new Prisma.Decimal(price),
-    currency: 'UAH',
-    managerComment: null,
-    invoiceItem: null
-  };
-}
+assert.match(eligibility, /deriveRequestSelectionFollowUpEligibility/);
+assert.doesNotMatch(
+  productionEligibility,
+  /deriveRequestSelectionFollowUpEligibility/
+);
+assert.doesNotMatch(
+  sendService,
+  /mode\?:[^;]*FOLLOW_UP_REJECTED|event:\s*mode === 'FOLLOW_UP_REJECTED'/
+);
+assert.match(sendService, /FINALIZED_SELECTION_LOCKED/);
+assert.match(sendService, /resendEligibility\.finalizedSelectionLocked/);
+assert.match(adminAction, /modeValue === 'FOLLOW_UP_REJECTED'/);
+assert.match(adminAction, /selection-finalized-locked/);
+assert.doesNotMatch(feedback, /'follow-up-/);
+assert.match(
+  feedback,
+  /Клієнт уже завершив погодження[\s\S]*потрібно створити нову заявку/
+);
+assert.match(statusTransition, /FOLLOW_UP_SELECTION_SENT_FOR_APPROVAL/);
 
 async function main() {
-  const approved = liveItem('approved');
-  const rejected = liveItem('rejected');
-  const replacement = liveItem('replacement');
-  const changedRejected = liveItem('rejected', { quantity: 2 });
-  const sourceItems = [
-    snapshotItem('snapshot-approved', approved, 'APPROVED'),
-    snapshotItem('snapshot-rejected', rejected, 'REJECTED')
-  ];
-
-  const eligibility = followUp({
-    items: [approved, changedRejected, replacement],
-    sourceItems
-  });
-  assert.equal(eligibility.mode, 'FOLLOW_UP_REJECTED');
-  assert.equal(eligibility.reason, 'HAS_REJECTED_AND_NEW_ITEMS');
-  assert.equal(eligibility.canSend, true);
-  assert.deepEqual(eligibility.approvedLockedItemIds, ['approved']);
-  assert.deepEqual(eligibility.changedRejectedItemIds, ['rejected']);
-  assert.deepEqual(eligibility.newItemIds, ['replacement']);
-  assert.deepEqual(
-    eligibility.eligibleItemIds,
-    ['rejected', 'replacement'],
-    'delta batch must exclude previously approved items'
-  );
-
-  const unchanged = followUp({
-    items: [approved, rejected],
-    sourceItems
-  });
-  assert.equal(unchanged.canSend, false);
-  assert.equal(unchanged.reason, 'NO_FOLLOW_UP_CHANGES');
-  assert.deepEqual(unchanged.rejectedEditableItemIds, ['rejected']);
-
-  const removed = followUp({
-    items: [approved],
-    sourceItems
-  });
-  assert.equal(removed.canSend, false);
-  assert.deepEqual(removed.removedRejectedSourceIds, ['rejected']);
-
-  const removedWithReplacement = followUp({
-    items: [approved, replacement],
-    sourceItems
-  });
-  assert.equal(removedWithReplacement.canSend, true);
-  assert.deepEqual(removedWithReplacement.eligibleItemIds, ['replacement']);
-
-  for (const [invoice, reason] of [
-    [{ id: 'invoice-draft', status: 'DRAFT' }, 'INVOICE_DRAFT_EXISTS'],
-    [{ id: 'invoice-sent', status: 'SENT' }, 'INVOICE_ALREADY_SENT']
-  ] as const) {
-    const guarded = followUp({
-      items: [approved, changedRejected],
-      sourceItems,
-      invoice
-    });
-    assert.equal(guarded.canSend, false);
-    assert.equal(guarded.reason, reason);
-  }
-  assert.equal(followUp({
-    items: [approved, changedRejected],
-    sourceItems,
-    active: true
-  }).reason, 'ACTIVE_SENT_BATCH_EXISTS');
-
-  const latestRejectedWithOlderApproved = followUp({
-    items: [approved, changedRejected],
-    sourceStatus: 'REJECTED',
-    sourceItems: [snapshotItem('new-rejected', rejected, 'REJECTED')],
-    historicalBatches: [{
-      id: 'older-partial',
-      revision: 1,
-      status: 'PARTIALLY_APPROVED',
-      items: [snapshotItem('older-approved', approved, 'APPROVED')]
-    }]
-  });
-  assert.deepEqual(latestRejectedWithOlderApproved.approvedLockedItemIds, ['approved']);
-  assert.deepEqual(latestRejectedWithOlderApproved.eligibleItemIds, ['rejected']);
-
-  await assert.rejects(
-    () => assertRequestItemDeleteAllowed({
-      requestItem: { findFirst: async () => ({ id: 'approved' }) },
-      requestSelectionBatchItem: { findFirst: async () => ({ id: 'snapshot' }) },
-      invoiceItem: { findFirst: async () => null }
-    } as never, { requestItemId: 'approved', requestId: 'request-1' }),
-    (error) =>
-      error instanceof RequestItemDeleteError
-      && error.code === 'APPROVED_REQUEST_ITEM_DELETE_BLOCKED'
-  );
-  await assert.doesNotReject(() => assertRequestItemDeleteAllowed({
-    requestItem: { findFirst: async () => ({ id: 'rejected' }) },
-    requestSelectionBatchItem: { findFirst: async () => null },
-    invoiceItem: { findFirst: async () => null }
-  } as never, { requestItemId: 'rejected', requestId: 'request-1' }));
-
-  const invoiceDb = {
-    request: {
-      findUnique: async () => ({
-        id: 'request-1',
-        status: 'AWAITING_INVOICE',
-        invoices: []
-      })
-    },
-    requestSelectionBatch: {
-      findMany: async ({ where }: {
-        where?: { status?: string | { in?: string[] } };
-      }) => [
-        {
-          id: 'revision-1',
-          revision: 1,
-          status: 'PARTIALLY_APPROVED',
-          invoice: null,
-          items: [
-            invoiceItem('item-1', 'source-a', 'APPROVED', '100'),
-            invoiceItem('item-2', 'source-b', 'REJECTED')
-          ]
-        },
-        {
-          id: 'revision-2',
-          revision: 2,
-          status: 'APPROVED',
-          invoice: null,
-          items: [
-            invoiceItem('item-3', 'source-b', 'APPROVED', '200'),
-            invoiceItem('item-4', null, 'APPROVED', '300')
-          ]
-        }
-      ].filter((batch) =>
-        !where?.status
-        || (
-          typeof where.status === 'string'
-            ? where.status === batch.status
-            : !where.status.in || where.status.in.includes(batch.status)
-        )
-      )
+  let transactionCalls = 0;
+  const service = createSendRequestSelectionForApprovalService({
+    $transaction: async () => {
+      transactionCalls += 1;
+      throw new Error('Legacy follow-up must be blocked before transaction.');
     }
-  } as never;
-  const cumulative = await resolveInvoiceSelection(invoiceDb, 'request-1');
-  assert.deepEqual(
-    cumulative.items.map((item) => item.id),
-    ['item-1', 'item-3', 'item-4']
-  );
-  assert.equal(cumulative.approvedCount, 3);
-  assert.equal(cumulative.sourceMode, 'LEGACY_CUMULATIVE');
-  assert.equal(
-    cumulative.items.reduce(
-      (sum, item) => sum.plus(item.approvedUnitPrice.mul(item.quantity)),
-      new Prisma.Decimal(0)
-    ).toString(),
-    '600'
-  );
+  } as never);
+
   await assert.rejects(
-    () => resolveInvoiceSelection({
-      request: {
-        findUnique: async () => ({
-          id: 'request-1',
-          status: 'AWAITING_INVOICE',
-          invoices: [{ id: 'invoice-existing' }]
-        })
-      },
-      requestSelectionBatch: {
-        findMany: async ({ where }: {
-          where?: { status?: string | { in?: string[] } };
-        }) => [
-          {
-            id: 'revision-1',
-            revision: 1,
-            status: 'APPROVED',
-            invoice: null,
-            items: [invoiceItem('item-1', 'source-a', 'APPROVED')]
-          }
-        ].filter((batch) =>
-          !where?.status
-          || (
-            typeof where.status === 'string'
-              ? where.status === batch.status
-              : !where.status.in || where.status.in.includes(batch.status)
-          )
-        )
-      }
-    } as never, 'request-1'),
-    (error) =>
-      error instanceof InvoiceSelectionError
-      && error.code === 'INVOICE_ALREADY_EXISTS_FOR_SELECTION'
+    service({
+      requestId: 'request-1',
+      requestItemIds: ['item-1'],
+      expectedRequestItemVersions: [{ id: 'item-1', updatedAt: new Date() }],
+      actor: { id: 'manager-1' },
+      mode: 'FOLLOW_UP_REJECTED'
+    } as never),
+    (error: unknown) =>
+      error instanceof SendRequestSelectionForApprovalError
+      && error.code === 'FINALIZED_SELECTION_LOCKED'
   );
-
-  assert.deepEqual(
-    resolveRequestStatusTransition(
-      'AWAITING_INVOICE',
-      REQUEST_STATUS_EVENTS.FOLLOW_UP_SELECTION_SENT_FOR_APPROVAL
-    ),
-    { outcome: 'noop', currentStatus: 'AWAITING_INVOICE', reason: 'idempotent_event' }
-  );
-  assert.deepEqual(
-    resolveRequestStatusTransition(
-      'WAITING_APPROVAL',
-      REQUEST_STATUS_EVENTS.FOLLOW_UP_SELECTION_SENT_FOR_APPROVAL
-    ),
-    { outcome: 'noop', currentStatus: 'WAITING_APPROVAL', reason: 'idempotent_event' }
-  );
-
-  const updateService = readFileSync('lib/request-items/update.ts', 'utf8');
-  const deleteService = readFileSync('lib/request-items/delete.ts', 'utf8');
-  const api = readFileSync('app/api/admin/request-items/[itemId]/route.ts', 'utf8');
-  const actions = readFileSync('app/admin/actions.ts', 'utf8');
-  const adminPresentation = readFileSync('lib/request-items/admin-presentation.ts', 'utf8');
-  const clientUi = readFileSync(
-    'components/client/client-approval-batch-section.tsx',
-    'utf8'
-  );
-  const changeApply = readFileSync('lib/change-requests/apply.ts', 'utf8');
-  const sendService = readFileSync(
-    'lib/request-selection/send-for-approval.ts',
-    'utf8'
-  );
-
-  assert.match(updateService, /APPROVED_REQUEST_ITEM_LOCKED/);
-  assert.match(deleteService, /APPROVED_REQUEST_ITEM_DELETE_BLOCKED/);
-  assert.match(api, /approved_item_locked/);
-  assert.match(api, /approved_item_delete_blocked/);
-  assert.match(changeApply, /change-request-approved-item-locked/);
-  assert.match(actions, /revalidatePath\(`\/admin\/requests\/\$\{result\.item\.requestId\}`\)/);
-  assert.match(actions, /return workflowResult\('item-updated', true\)/);
-  assert.match(adminPresentation, /LOCKED_APPROVED: \{ label: 'Погоджено'/);
-  assert.match(adminPresentation, /Змінено після відхилення/);
-  assert.match(clientUi, /Раніше погоджено:/);
-  assert.match(sendService, /FOLLOW_UP_REJECTED/);
-  assert.match(sendService, /FOLLOW_UP_SELECTION_SENT_FOR_APPROVAL/);
-  assert.match(sendService, /mode !== 'FOLLOW_UP_REJECTED'/);
+  assert.equal(transactionCalls, 0);
 
   console.log(
-    'Stage Request Status Automation 5A2 follow-up checks passed.'
+    'Stage 5A2 regression passed: historical follow-up semantics remain readable, production follow-up is locked.'
   );
 }
 

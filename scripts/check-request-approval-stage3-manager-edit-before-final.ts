@@ -367,8 +367,9 @@ async function main() {
     productionEligibility,
     /deriveRequestSelectionFollowUpEligibility/
   );
-  assert.match(sendSource, /if \(followUpRequested\)/);
-  assert.match(sendSource, /FOLLOW_UP_REQUEST_STATUS_BLOCKED/);
+  assert.match(sendSource, /FINALIZED_SELECTION_LOCKED/);
+  assert.match(sendSource, /resendEligibility\.finalizedSelectionLocked/);
+  assert.doesNotMatch(sendSource, /mode\?:[^;]*FOLLOW_UP_REJECTED/);
   assert.match(sendSource, /ACTIVE_SELECTION_VERSION_CONFLICT/);
   assert.match(sendSource, /MANAGER_UPDATED_BEFORE_CLIENT_FINAL_DECISION/);
   assert.match(sendSource, /isolationLevel:\s*'Serializable'/);

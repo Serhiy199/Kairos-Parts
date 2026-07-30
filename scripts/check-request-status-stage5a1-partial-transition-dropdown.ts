@@ -3,9 +3,6 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import {
-  requestApprovalTransitionReachedTarget
-} from '../lib/request-selection/client-decision';
-import {
   isManualRequestStatus,
   MANUAL_REQUEST_STATUSES,
   normalizeRequestStatusForSelection
@@ -13,7 +10,7 @@ import {
 
 const root = process.cwd();
 const read = (path: string) => readFileSync(resolve(root, path), 'utf8');
-const decisionService = read('lib/request-selection/client-decision.ts');
+const aggregateSubmissionService = read('lib/request-selection/client-submission.ts');
 const adminAction = read('app/admin/actions.ts');
 const adminApi = read('app/api/admin/requests/[id]/status/route.ts');
 const adminUi = read('app/admin/requests/[id]/page.tsx');
@@ -30,59 +27,15 @@ assert.equal(isManualRequestStatus('NEW'), false);
 assert.equal(isManualRequestStatus('AWAITING_INVOICE'), false);
 assert.equal(isManualRequestStatus('AWAITING_SHIPMENT'), true);
 
-assert.equal(
-  requestApprovalTransitionReachedTarget(
-    {
-      outcome: 'changed',
-      previousStatus: 'WAITING_APPROVAL',
-      nextStatus: 'AWAITING_INVOICE',
-      historyId: 'history-1',
-      auditLogId: 'audit-1'
-    },
-    'AWAITING_INVOICE'
-  ),
-  true
-);
-assert.equal(
-  requestApprovalTransitionReachedTarget(
-    {
-      outcome: 'noop',
-      currentStatus: 'AWAITING_INVOICE',
-      reason: 'already_in_target_status'
-    },
-    'AWAITING_INVOICE'
-  ),
-  true
-);
-assert.equal(
-  requestApprovalTransitionReachedTarget(
-    {
-      outcome: 'blocked',
-      currentStatus: 'WAITING_APPROVAL',
-      reason: 'invalid_transition'
-    },
-    'WAITING_APPROVAL'
-  ),
-  false
-);
-assert.equal(
-  requestApprovalTransitionReachedTarget(
-    {
-      outcome: 'noop',
-      currentStatus: 'WAITING_APPROVAL',
-      reason: 'idempotent_event'
-    },
-    'WAITING_APPROVAL'
-  ),
-  false
-);
-
 for (const token of [
-  'REQUEST_APPROVAL_FINALIZATION_INVARIANT_FAILED',
-  'requestApprovalTransitionReachedTarget',
+  'FINALIZATION_INVARIANT_FAILED',
+  'requestReachedTarget',
   'persistedRequest.status'
 ]) {
-  assert.ok(decisionService.includes(token), `Finalization invariant is missing: ${token}`);
+  assert.ok(
+    aggregateSubmissionService.includes(token),
+    `Aggregate finalization invariant is missing: ${token}`
+  );
 }
 
 for (const source of [adminAction, adminApi]) {

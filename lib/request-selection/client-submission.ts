@@ -173,6 +173,19 @@ function expectedBatchStatus(approvedCount: number, totalCount: number) {
   return 'REJECTED' as const;
 }
 
+export function resolveAggregateSelectionDecision(
+  eligibleItemIds: readonly string[],
+  approvedItemIds: readonly string[]
+) {
+  const approvedIdSet = new Set(approvedItemIds);
+  const rejectedItemIds = eligibleItemIds.filter((id) => !approvedIdSet.has(id));
+  return {
+    batchStatus: expectedBatchStatus(approvedItemIds.length, eligibleItemIds.length),
+    approvedItemIds: [...approvedItemIds],
+    rejectedItemIds
+  };
+}
+
 function sameIds(left: readonly string[], right: readonly string[]) {
   return left.length === right.length
     && left.every((id, index) => id === right[index]);
@@ -328,10 +341,11 @@ async function executeClientSelectionSubmission(
     throw submissionError('CONCURRENT_SUBMISSION', input);
   }
 
-  const approvedIdSet = new Set(approvedIds);
-  const rejectedIds = batch.items
-    .map((item) => item.id)
-    .filter((id) => !approvedIdSet.has(id));
+  const aggregateDecision = resolveAggregateSelectionDecision(
+    batch.items.map((item) => item.id),
+    approvedIds
+  );
+  const rejectedIds = aggregateDecision.rejectedItemIds;
   const now = new Date();
   const approvedUpdate = approvedIds.length === 0
     ? { count: 0 }
@@ -376,7 +390,7 @@ async function executeClientSelectionSubmission(
   const totalCount = batch.items.length;
   const approvedCount = approvedIds.length;
   const rejectedCount = rejectedIds.length;
-  const batchStatus = expectedBatchStatus(approvedCount, totalCount);
+  const batchStatus = aggregateDecision.batchStatus;
   const batchEvent =
     batchStatus === 'APPROVED'
       ? 'APPROVE'

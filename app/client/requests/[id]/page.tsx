@@ -234,7 +234,6 @@ export default async function ClientRequestDetailPage({
         <ClientApprovalBatchSection model={approvalReadModel} />
       ) : approvalReadModel?.mode === 'LEGACY' ? (
         <ClientLegacySelectionSection
-          requestId={request.id}
           items={approvalReadModel.legacyItems}
         />
       ) : (
