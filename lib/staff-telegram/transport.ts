@@ -7,6 +7,7 @@ const MAX_TELEGRAM_RESPONSE_BYTES = 4_096;
 export type StaffTelegramSendResult =
   | { code: 'SENT'; durationMs: number; httpStatus: number }
   | { code: 'SKIPPED_DISABLED'; durationMs: number }
+  | { code: 'FAILED_INPUT'; durationMs: number }
   | { code: 'FAILED_CONFIGURATION'; durationMs: number }
   | { code: 'FAILED_TIMEOUT'; durationMs: number }
   | { code: 'FAILED_NETWORK'; durationMs: number }
@@ -15,6 +16,43 @@ export type StaffTelegramSendResult =
       durationMs: number;
       httpStatus: number;
     };
+
+export type StaffTelegramSendInput = {
+  text: string;
+  button?: {
+    text: string;
+    url: string;
+  };
+};
+
+function isValidButton(input: NonNullable<StaffTelegramSendInput['button']>) {
+  if (
+    !input.text ||
+    input.text !== input.text.trim() ||
+    input.url !== input.url.trim() ||
+    /[\u0000-\u001f\u007f]/.test(input.text) ||
+    /[\u0000-\u001f\u007f]/.test(input.url)
+  ) {
+    return false;
+  }
+
+  try {
+    const url = new URL(input.url);
+    const isLocalDevelopmentUrl =
+      url.protocol === 'http:' &&
+      ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+
+    return (
+      (url.protocol === 'https:' || isLocalDevelopmentUrl) &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash
+    );
+  } catch {
+    return false;
+  }
+}
 
 async function telegramResponseIsOk(response: Response) {
   if (!response.body) return false;
@@ -50,7 +88,7 @@ async function telegramResponseIsOk(response: Response) {
 }
 
 export async function sendStaffTelegramMessage(
-  text: string
+  input: StaffTelegramSendInput
 ): Promise<StaffTelegramSendResult> {
   const startedAt = Date.now();
   const config = getStaffTelegramConfig();
@@ -60,6 +98,9 @@ export async function sendStaffTelegramMessage(
   }
   if ('configurationError' in config) {
     return { code: 'FAILED_CONFIGURATION', durationMs: Date.now() - startedAt };
+  }
+  if (input.button && !isValidButton(input.button)) {
+    return { code: 'FAILED_INPUT', durationMs: Date.now() - startedAt };
   }
 
   const controller = new AbortController();
@@ -73,8 +114,15 @@ export async function sendStaffTelegramMessage(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: config.chatId,
-          text,
-          disable_web_page_preview: true
+          text: input.text,
+          disable_web_page_preview: true,
+          ...(input.button
+            ? {
+                reply_markup: {
+                  inline_keyboard: [[input.button]]
+                }
+              }
+            : {})
         }),
         signal: controller.signal,
         cache: 'no-store'

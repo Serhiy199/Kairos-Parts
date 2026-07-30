@@ -9,7 +9,6 @@ import {
   formatLogisticsUahCompact,
   LOGISTICS_DESTINATION_DIRECTION_LABELS
 } from '@/lib/logistics/presentation';
-import { buildAbsoluteUrl } from '@/lib/site-url';
 
 function plainText(value: string, maxLength: number) {
   const normalized = value
@@ -23,7 +22,6 @@ function plainText(value: string, maxLength: number) {
 }
 
 type NewLogisticsRequestMessageCommon = {
-  id: string;
   requestNumber: string;
   contactName: string;
   contactPhone: string;
@@ -74,21 +72,21 @@ export function buildNewLogisticsRequestMessage(
     `Бажана дата: ${
       formatDateOnlyShort(input.preferredDeliveryDate) || 'не вказана'
     }`,
-    pricingLines[pricingLines.length - 1],
-    '',
-    'Відкрити в CRM:',
-    buildAbsoluteUrl(`/admin/logistics/${encodeURIComponent(input.id)}`)
+    pricingLines[pricingLines.length - 1]
   ].join('\n');
 }
 
-export function buildNewPartsRequestMessage(input: {
-  id: string;
+export type NewPartsRequestMessageInput = {
   requestNumber: string;
   companyName: string | null;
   contactName: string;
   contactPhone: string;
   itemCount?: number;
-}) {
+};
+
+export function buildNewPartsRequestMessage(
+  input: NewPartsRequestMessageInput
+) {
   const identityLines = input.companyName
     ? [
         `Компанія: ${plainText(input.companyName, 160)}`,
@@ -106,9 +104,6 @@ export function buildNewPartsRequestMessage(input: {
     `Заявка: ${plainText(input.requestNumber, 40)}`,
     ...identityLines,
     `Телефон: ${plainText(input.contactPhone, 32)}`,
-    ...itemCountLine,
-    '',
-    'Відкрити в CRM:',
-    buildAbsoluteUrl(`/admin/requests/${encodeURIComponent(input.id)}`)
+    ...itemCountLine
   ].join('\n');
 }
