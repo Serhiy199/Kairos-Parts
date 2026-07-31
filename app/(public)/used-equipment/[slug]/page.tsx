@@ -8,7 +8,7 @@ import { PublicUsedEquipmentGallery } from '@/components/used-equipment/public-u
 import { UsedEquipmentInquiryDialog } from '@/components/used-equipment/used-equipment-inquiry-dialog';
 import { SafeRichText } from '@/components/ui/safe-rich-text';
 import { hasDatabaseUrl } from '@/lib/env/database';
-import { buildAbsoluteUrl } from '@/lib/site-url';
+import { createPublicMetadata, NOINDEX_METADATA } from '@/lib/seo';
 import { getUsedEquipmentDescriptionExcerpt } from '@/lib/used-equipment/description';
 import { getPublicUsedEquipmentBySlug } from '@/lib/used-equipment/queries';
 import { getEquipmentTypeLabel } from '@/lib/vehicles/equipment-types';
@@ -38,24 +38,24 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!item) {
     return {
-      title: 'БВ техніка | Kairos Parts'
+      title: 'БВ техніка | Kairos Parts',
+      ...NOINDEX_METADATA
     };
   }
 
   const description = getUsedEquipmentDescriptionExcerpt(item.description, 170);
-  const url = buildAbsoluteUrl(`/used-equipment/${item.slug}`);
   const primaryImage = item.images.find((image) => image.isPrimary) ?? item.images[0];
+  const title = `${item.title} | БВ техніка | Kairos Parts`;
+  const baseMetadata = createPublicMetadata({
+    path: `/used-equipment/${item.slug}`,
+    title,
+    description
+  });
 
   return {
-    title: `${item.title} | БВ техніка | Kairos Parts`,
-    description,
-    alternates: {
-      canonical: url
-    },
+    ...baseMetadata,
     openGraph: {
-      title: `${item.title} | БВ техніка | Kairos Parts`,
-      description,
-      url,
+      ...baseMetadata.openGraph,
       type: 'article',
       images: primaryImage
         ? [
@@ -67,6 +67,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
             }
           ]
         : undefined
+    },
+    twitter: {
+      ...baseMetadata.twitter,
+      images: primaryImage ? [primaryImage.url] : undefined
     }
   };
 }

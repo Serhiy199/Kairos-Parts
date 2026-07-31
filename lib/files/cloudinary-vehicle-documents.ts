@@ -5,7 +5,10 @@ import type { UploadApiResponse } from 'cloudinary';
 
 import { getCloudinaryServerClient } from '@/lib/cloudinary/server';
 import { documentOwnerId, type DocumentOwnerContext } from '@/lib/documents/ownership';
-import { sanitizeVehicleDocumentName } from '@/lib/vehicles/documents';
+import {
+  sanitizeVehicleDocumentName,
+  vehicleDocumentExtensionForMime
+} from '@/lib/vehicles/documents';
 
 const STORAGE_KEY_PREFIX = 'cloudinary-raw-authenticated:';
 
@@ -19,17 +22,11 @@ export type CloudinaryDocumentUpload = {
 export type CloudinaryVehicleDocumentUpload = CloudinaryDocumentUpload;
 
 function extensionFor(file: File) {
-  const fromName = file.name.split('.').pop()?.toLowerCase();
-  if (fromName && /^[a-z0-9]{2,5}$/.test(fromName)) return fromName;
-
-  const byType: Record<string, string> = {
-    'application/pdf': 'pdf',
-    'image/jpeg': 'jpg',
-    'image/png': 'png',
-    'image/webp': 'webp'
-  };
-
-  return byType[file.type] ?? 'bin';
+  const format = vehicleDocumentExtensionForMime(
+    file.type.trim().toLowerCase().split(';', 1)[0] ?? ''
+  );
+  if (!format) throw new Error('Unsupported vehicle document MIME type.');
+  return format;
 }
 
 function encodeStorageKey(publicId: string, format: string) {
@@ -119,7 +116,13 @@ export async function deleteVehicleDocumentAsset(storageKey: string) {
 export const deleteDocumentAsset = deleteVehicleDocumentAsset;
 
 export async function cleanupVehicleDocumentAssets(storageKeys: string[]) {
-  await Promise.allSettled(storageKeys.map((storageKey) => deleteVehicleDocumentAsset(storageKey)));
+  const results = await Promise.allSettled(
+    storageKeys.map((storageKey) => deleteVehicleDocumentAsset(storageKey))
+  );
+  return {
+    attempted: storageKeys.length,
+    failed: results.filter((result) => result.status === 'rejected').length
+  };
 }
 
 export const cleanupDocumentAssets = cleanupVehicleDocumentAssets;

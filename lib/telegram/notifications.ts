@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { generateInvoicePdfBuffer } from '@/lib/invoices/pdf';
 import { calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
 import { sendTelegramDocument, sendTelegramMessage, TelegramApiError } from '@/lib/telegram/bot';
+import { buildAbsoluteUrl } from '@/lib/site-url';
 
 type TelegramRecipient = {
   chatId: string;
@@ -20,21 +21,25 @@ type InvoiceSentNotificationResult =
   | { status: 'skipped-no-recipient' }
   | { status: 'skipped-invoice-not-found' };
 
-function getClientBaseUrl() {
-  const baseUrl = process.env.APP_BASE_URL || process.env.NEXTAUTH_URL || 'https://kairos-parts.vercel.app';
-
-  return baseUrl.replace(/\/$/, '');
-}
-
 function buildClientDirectUrl(path: string) {
-  return `${getClientBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`;
+  return buildAbsoluteUrl(path);
 }
 
 export function buildRequestItemsApprovalUrl(requestId: string) {
   return buildClientDirectUrl(`/client/requests/${requestId}`);
 }
 
-export function buildRequestItemsApprovalMessage(requestNumber: string) {
+export function buildRequestItemsApprovalMessage(
+  requestNumber: string,
+  updatedSelection = false
+) {
+  if (updatedSelection) {
+    return [
+      `Менеджер оновив підбір за вашою заявкою ${requestNumber}.`,
+      '',
+      'Перевірте актуальний список позицій перед погодженням.'
+    ].join('\n');
+  }
   return [
     `По вашій заявці ${requestNumber} менеджер підібрав позиції.`,
     '',
@@ -145,9 +150,11 @@ export function resolveRequestItemsApprovalRecipient(request: {
 }
 
 export async function sendTelegramRequestItemsApprovalNotification({
-  requestId
+  requestId,
+  updatedSelection = false
 }: {
   requestId: string;
+  updatedSelection?: boolean;
 }): Promise<RequestItemsApprovalNotificationResult> {
   const request = await prisma.request.findUnique({
     where: { id: requestId },
@@ -191,7 +198,10 @@ export async function sendTelegramRequestItemsApprovalNotification({
     return { status: 'skipped-no-recipient' };
   }
 
-  const message = buildRequestItemsApprovalMessage(request.requestNumber);
+  const message = buildRequestItemsApprovalMessage(
+    request.requestNumber,
+    updatedSelection
+  );
   const requestUrl = buildRequestItemsApprovalUrl(request.id);
   const notification = await prisma.notification.create({
     data: {

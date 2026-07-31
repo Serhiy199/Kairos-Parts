@@ -4,13 +4,17 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
+import { getClientSelectionFeedback } from '@/lib/client/request-feedback';
 import { getServerAuditRequestContext } from '@/lib/audit-log/request-context';
-import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { createChangeRequest } from '@/lib/change-requests/service';
 import { approveClientCommercialOffer, rejectClientCommercialOffer } from '@/lib/commercial-offers/service';
 import { parseClientOfferComment } from '@/lib/commercial-offers/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import {
+  SubmitClientSelectionError,
+  submitClientSelection
+} from '@/lib/request-selection/client-submission';
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -21,15 +25,105 @@ function redirectBack(requestId: string, result: string): never {
   redirect(`/client/requests/${requestId}?result=${result}`);
 }
 
-const CLIENT_REQUEST_ITEM_EDIT_FIELDS = new Set(['name', 'catalogNumber', 'quantity', 'comment']);
+const aggregateSubmissionFeedback: Partial<
+  Record<SubmitClientSelectionError['code'], string>
+> = {
+  REQUEST_ACCESS_DENIED: 'selection-submit-forbidden',
+  ACTOR_NOT_ALLOWED: 'selection-submit-forbidden',
+  ACTOR_NOT_FOUND: 'selection-submit-forbidden',
+  BATCH_NOT_FOUND: 'selection-submit-stale',
+  BATCH_NOT_ACTIVE: 'selection-submit-stale',
+  STALE_SELECTION_REVISION: 'selection-submit-stale',
+  REQUEST_STATUS_DOES_NOT_ALLOW_SUBMISSION: 'selection-submit-stale',
+  CONCURRENT_SUBMISSION: 'selection-submit-stale',
+  DUPLICATE_BATCH_ITEM_ID: 'selection-submit-validation',
+  UNKNOWN_BATCH_ITEM_ID: 'selection-submit-validation',
+  EMPTY_BATCH: 'selection-submit-validation',
+  SUBMISSION_CONFLICT: 'selection-submit-conflict',
+  BATCH_TRANSITION_FAILED: 'selection-submit-error',
+  REQUEST_STATUS_TRANSITION_FAILED: 'selection-submit-error',
+  FINALIZATION_INVARIANT_FAILED: 'selection-submit-error',
+  AUDIT_WRITE_FAILED: 'selection-submit-error',
+  DATABASE_TRANSACTION_FAILED: 'selection-submit-error'
+};
 
-function readItemIds(formData: FormData) {
-  return formData
-    .getAll('itemIds')
+export async function submitClientSelectionAction(formData: FormData) {
+  const session = await requireClientSession();
+  const requestId = readString(formData, 'requestId');
+  const batchId = readString(formData, 'batchId');
+  const revision = Number(readString(formData, 'revision'));
+  const approvedBatchItemIds = formData
+    .getAll('approvedBatchItemIds')
     .filter((value): value is string => typeof value === 'string')
-    .map((value) => value.trim())
-    .filter(Boolean);
+    .map((value) => value.trim());
+
+  if (
+    !hasDatabaseUrl()
+    || !requestId
+    || !batchId
+    || !Number.isSafeInteger(revision)
+    || revision < 1
+  ) {
+    return {
+      ok: false as const,
+      feedback: getClientSelectionFeedback('selection-submit-validation'),
+      refresh: false
+    };
+  }
+
+  try {
+    const result = await submitClientSelection({
+      requestId,
+      batchId,
+      expectedRevision: revision,
+      approvedBatchItemIds,
+      actor: { id: session.user.id },
+      source: 'CLIENT_CABINET',
+      requestContext: await getServerAuditRequestContext()
+    });
+    const feedback = result.outcome === 'noop'
+      ? 'selection-submit-noop'
+      : result.batchStatus === 'APPROVED'
+        ? 'selection-submit-approved'
+        : result.batchStatus === 'PARTIALLY_APPROVED'
+          ? 'selection-submit-partial'
+          : 'selection-submit-rejected';
+
+    revalidatePath('/client/requests');
+    revalidatePath(`/client/requests/${requestId}`);
+    revalidatePath('/admin');
+    revalidatePath('/admin/requests');
+    revalidatePath(`/admin/requests/${requestId}`);
+
+    return {
+      ok: true as const,
+      feedback: getClientSelectionFeedback(feedback),
+      refresh: true
+    };
+  } catch (error) {
+    if (error instanceof SubmitClientSelectionError) {
+      const code =
+        aggregateSubmissionFeedback[error.code] ?? 'selection-submit-error';
+      return {
+        ok: false as const,
+        feedback: getClientSelectionFeedback(code),
+        refresh: code === 'selection-submit-stale'
+      };
+    }
+    console.error('Aggregate client selection submission failed.', {
+      requestId,
+      batchId,
+      revision
+    });
+    return {
+      ok: false as const,
+      feedback: getClientSelectionFeedback('selection-submit-error'),
+      refresh: false
+    };
+  }
 }
+
+const CLIENT_REQUEST_ITEM_EDIT_FIELDS = new Set(['name', 'catalogNumber', 'quantity', 'comment']);
 
 export async function approveClientCommercialOfferAction(formData: FormData) {
   const session = await requireClientSession();
@@ -86,95 +180,6 @@ export async function rejectClientCommercialOfferAction(formData: FormData) {
   revalidatePath(`/client/requests/${requestId}`);
   revalidatePath(`/admin/requests/${requestId}`);
   redirectBack(requestId, 'offer-rejected');
-}
-
-export async function approveClientRequestItemsAction(formData: FormData) {
-  const session = await requireClientSession();
-  const requestId = readString(formData, 'requestId');
-  const selectedItemIds = readItemIds(formData);
-
-  if (!hasDatabaseUrl() || !requestId) {
-    redirectBack(requestId, 'items-approval-error');
-  }
-
-  if (selectedItemIds.length === 0) {
-    redirectBack(requestId, 'item-selection-required');
-  }
-
-  const access = await getClientAccessContext(session.user.id);
-
-  if (!access) {
-    redirect('/login');
-  }
-
-  const request = await prisma.request.findFirst({
-    where: { id: requestId, AND: [requestAccessWhere(access)] },
-    select: {
-      id: true,
-      requestNumber: true,
-      companyId: true,
-      items: {
-        where: { visibleToClient: true },
-        select: { id: true, approvedByClient: true }
-      }
-    }
-  });
-
-  if (!request) {
-    redirectBack(requestId, 'items-approval-forbidden');
-  }
-
-  const visibleItemIds = new Set(request.items.map((item) => item.id));
-  const selectedVisibleIds = selectedItemIds.filter((itemId) => visibleItemIds.has(itemId));
-
-  if (selectedVisibleIds.length !== selectedItemIds.length) {
-    redirectBack(requestId, 'items-approval-forbidden');
-  }
-
-  const now = new Date();
-  const previouslyApprovedIds = request.items.filter((item) => item.approvedByClient).map((item) => item.id);
-  const rejectedIds = request.items.map((item) => item.id).filter((itemId) => !selectedVisibleIds.includes(itemId));
-  const requestContext = await getServerAuditRequestContext();
-
-  await prisma.$transaction(async (tx) => {
-    await tx.requestItem.updateMany({
-      where: { requestId: request.id, visibleToClient: true, id: { in: selectedVisibleIds } },
-      data: { includeInInvoice: true, approvedByClient: true, approvedAt: now }
-    });
-    await tx.requestItem.updateMany({
-      where: { requestId: request.id, visibleToClient: true, id: { notIn: selectedVisibleIds } },
-      data: { includeInInvoice: false, approvedByClient: false, approvedAt: null }
-    });
-    await writeAuditLog(tx, {
-      actor: auditUserActor(session.user.id),
-      companyId: request.companyId,
-      entityType: 'REQUEST',
-      entityId: request.id,
-      entityLabel: `Заявка ${request.requestNumber}`,
-      action: 'REQUEST_ITEMS_CLIENT_APPROVAL_CHANGED',
-      category: 'STANDARD',
-      oldValue: { approvedItemIds: previouslyApprovedIds.slice(0, 50) },
-      newValue: { approvedItemIds: selectedVisibleIds.slice(0, 50) },
-      metadata: {
-        source: 'CLIENT_CABINET',
-        approvedItemCount: selectedVisibleIds.length,
-        rejectedItemCount: rejectedIds.length,
-        rejectedItemIds: rejectedIds.slice(0, 50)
-      },
-      allowedFields: {
-        oldValue: ['approvedItemIds'],
-        newValue: ['approvedItemIds'],
-        metadata: ['source', 'approvedItemCount', 'rejectedItemCount', 'rejectedItemIds']
-      },
-      requestContext
-    });
-  });
-
-  revalidatePath(`/client/requests/${request.id}`);
-  revalidatePath('/client');
-  revalidatePath('/client/requests');
-  revalidatePath(`/admin/requests/${request.id}`);
-  redirectBack(request.id, 'items-approved');
 }
 
 export async function createClientRequestItemEditAction(formData: FormData) {

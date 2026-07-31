@@ -1,8 +1,14 @@
+import { revalidatePath } from 'next/cache';
+
 import { crmAccessError, getCrmApiSession } from '@/lib/admin/access';
 import { auditRequestContextFromHeaders } from '@/lib/audit-log/request-context';
-import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
-import { prisma } from '@/lib/prisma';
+import {
+  createRequestItemDraft,
+  RequestItemDraftCreateError
+} from '@/lib/request-items/create-draft';
 import { parseRequestItemInput } from '@/lib/request-items/validation';
+import { prisma } from '@/lib/prisma';
+import { RequestStatusTransitionError } from '@/lib/requests/status-transition';
 
 export const runtime = 'nodejs';
 
@@ -42,53 +48,43 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return Response.json({ status: 'validation_error', message: parsed.error }, { status: 400 });
   }
 
-  const requestRecord = await prisma.request.findUnique({
-    where: { id },
-    select: { id: true, requestNumber: true, vehicleId: true, companyId: true }
-  });
-
-  if (!requestRecord) {
-    return Response.json({ status: 'not_found' }, { status: 404 });
-  }
-
   const requestContext = auditRequestContextFromHeaders(request.headers);
-  const item = await prisma.$transaction(async (tx) => {
-    const created = await tx.requestItem.create({
-      data: {
-        requestId: requestRecord.id,
-        vehicleId: requestRecord.vehicleId,
-        ...parsed.data,
-        visibleToClient: false
-      }
-    });
-    await writeAuditLog(tx, {
-      actor: auditUserActor(access.session.user.id),
-      companyId: requestRecord.companyId,
-      entityType: 'REQUEST_ITEM',
-      entityId: created.id,
-      entityLabel: created.catalogNumber ? `${created.name} · ${created.catalogNumber}` : created.name,
-      action: 'REQUEST_ITEM_CREATED',
-      category: created.salePrice !== null || created.quantity !== 1 ? 'FINANCIAL_CRITICAL' : 'STANDARD',
-      newValue: {
-        name: created.name,
-        brand: created.brand,
-        catalogNumber: created.catalogNumber,
-        analogNumber: created.analogNumber,
-        quantity: created.quantity,
-        availability: created.availability,
-        salePrice: created.salePrice?.toString() ?? null,
-        visibleToClient: created.visibleToClient,
-        includeInInvoice: created.includeInInvoice
-      },
-      metadata: { source: 'ADMIN_CRM', requestNumber: requestRecord.requestNumber },
-      allowedFields: {
-        newValue: ['name', 'brand', 'catalogNumber', 'analogNumber', 'quantity', 'availability', 'salePrice', 'visibleToClient', 'includeInInvoice'],
-        metadata: ['source', 'requestNumber']
-      },
+  try {
+    const result = await createRequestItemDraft({
+      requestId: id,
+      data: parsed.data,
+      actor: { id: access.session.user.id },
       requestContext
     });
-    return created;
-  });
 
-  return Response.json({ item }, { status: 201 });
+    revalidatePath('/admin');
+    revalidatePath('/admin/requests');
+    revalidatePath(`/admin/requests/${result.request.id}`);
+
+    return Response.json({ item: result.item, transition: result.transition }, { status: 201 });
+  } catch (error) {
+    if (error instanceof RequestItemDraftCreateError) {
+      if (error.code === 'REQUEST_NOT_FOUND') {
+        return Response.json({ status: 'not_found' }, { status: 404 });
+      }
+      if (error.code === 'ACTOR_NOT_ALLOWED') {
+        return Response.json({ status: 'forbidden' }, { status: 403 });
+      }
+      if (error.code === 'FINAL_CLIENT_SELECTION_LOCKED') {
+        return Response.json(
+          { status: 'selection_mutation_locked' },
+          { status: 409 }
+        );
+      }
+      if (error.code === 'REQUEST_STATUS_DOES_NOT_ALLOW_ITEM_CREATION') {
+        return Response.json({ status: 'request_status_locked' }, { status: 409 });
+      }
+      return Response.json({ status: 'request_item_create_failed' }, { status: 500 });
+    }
+    if (error instanceof RequestStatusTransitionError) {
+      const statusCode = error.code === 'ROLE_NOT_ALLOWED' ? 403 : 409;
+      return Response.json({ status: error.code.toLowerCase() }, { status: statusCode });
+    }
+    return Response.json({ status: 'create_failed' }, { status: 500 });
+  }
 }

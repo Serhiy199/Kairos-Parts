@@ -1,12 +1,37 @@
 ﻿import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import type { Metadata } from 'next';
+
 import { catalogCategories, getCategoryBySlug } from '@/lib/catalog/catalog-data';
+import { createPublicMetadata, NOINDEX_METADATA } from '@/lib/seo';
 
 export function generateStaticParams() {
   return catalogCategories.map((category) => ({
     slug: category.slug
   }));
+}
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const category = getCategoryBySlug(slug);
+
+  if (!category) {
+    return {
+      title: 'Категорію не знайдено — Kairos Parts',
+      ...NOINDEX_METADATA
+    };
+  }
+
+  return createPublicMetadata({
+    path: `/categories/${category.slug}`,
+    title: `${category.name} — Kairos Parts`,
+    description: category.description
+  });
 }
 
 export default async function CategoryDetailPage({ params }: { params: Promise<{ slug: string }> }) {

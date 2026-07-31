@@ -1,4 +1,5 @@
 import { ContactMessageStatus } from '@prisma/client';
+import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 
 import { DashboardShell } from '@/components/layout/dashboard-shell';
@@ -6,13 +7,17 @@ import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { EQUIPMENT_TAXONOMY_ADMIN_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { prisma } from '@/lib/prisma';
+import { NOINDEX_METADATA } from '@/lib/seo';
 import { getNewUsedEquipmentInquiryCount } from '@/lib/used-equipment/queries';
 
 const ADMIN_INVOICE_PRINT_ROUTE = /^\/admin\/invoices\/[^/]+\/print$/;
 
+export const metadata: Metadata = NOINDEX_METADATA;
+
 const adminNavItems = [
   { href: '/admin', label: 'Панель', icon: 'dashboard' as const },
-  { href: '/admin/requests', label: 'Заявки', icon: 'requests' as const },
+  { href: '/admin/requests', label: 'Заявки', icon: 'requests' as const, badgeTone: 'success' as const },
+  { href: '/admin/logistics', label: 'Логістика', icon: 'logistics' as const },
   { href: '/admin/contact-messages', label: 'Звернення', icon: 'messages' as const },
   { href: '/admin/used-equipment/items', label: 'БВ техніка', icon: 'tractor' as const, activePrefix: '/admin/used-equipment' },
   { href: '/admin/clients', label: 'Клієнти', icon: 'clients' as const },
@@ -44,6 +49,22 @@ async function getNewContactMessagesCount() {
   }
 }
 
+async function getNewLogisticsRequestsCount() {
+  try {
+    return await prisma.logisticsRequest.count({
+      where: {
+        status: 'NEW'
+      }
+    });
+  } catch (error) {
+    console.error('Logistics requests navigation count failed.', {
+      errorType: error instanceof Error ? error.name : 'UnknownError'
+    });
+
+    return 0;
+  }
+}
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireCrmSession();
   const requestHeaders = await headers();
@@ -53,13 +74,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     return <>{children}</>;
   }
 
-  const [newRequestsCount, newContactMessagesCount, newUsedEquipmentInquiryCount] = hasDatabaseUrl()
+  const [
+    newRequestsCount,
+    newLogisticsRequestsCount,
+    newContactMessagesCount,
+    newUsedEquipmentInquiryCount
+  ] = hasDatabaseUrl()
     ? await Promise.all([
         prisma.request.count({
           where: {
             status: 'NEW'
           }
         }),
+        getNewLogisticsRequestsCount(),
         getNewContactMessagesCount(),
         getNewUsedEquipmentInquiryCount().catch((error) => {
           console.error('Used equipment inquiries navigation count failed.', {
@@ -69,7 +96,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           return 0;
         })
       ])
-    : [0, 0, 0];
+    : [0, 0, 0, 0];
 
   const navItems = session.user.role === 'ADMIN'
     ? adminNavItems
@@ -83,6 +110,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       return { ...item, badge: newContactMessagesCount };
     }
 
+    if (item.href === '/admin/logistics') {
+      return { ...item, badge: newLogisticsRequestsCount };
+    }
+
     if (item.href === '/admin/used-equipment/items') {
       return { ...item, badge: newUsedEquipmentInquiryCount };
     }
@@ -91,6 +122,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   });
   const wideContent = [
     '/admin/requests',
+    '/admin/logistics',
     '/admin/clients',
     '/admin/companies',
     '/admin/change-requests',
@@ -99,9 +131,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     '/admin/used-equipment',
     '/admin/team'
   ].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  const isAdmin = session.user.role === 'ADMIN';
 
   return (
-    <DashboardShell title="CRM менеджера" subtitle={session.user.role === 'ADMIN' ? 'Admin / CRM' : 'Manager / CRM'} navItems={navItemsWithBadges} homeHref="/admin" logoutTarget="staff" contentWidth={wideContent ? 'wide' : 'default'}>
+    <DashboardShell
+      title={isAdmin ? 'CRM адміністратора' : 'CRM менеджера'}
+      subtitle={isAdmin ? 'Адміністратор / CRM' : 'Менеджер / CRM'}
+      navItems={navItemsWithBadges}
+      homeHref="/admin"
+      logoutTarget="staff"
+      contentWidth={wideContent ? 'wide' : 'default'}
+    >
       {children}
     </DashboardShell>
   );

@@ -2,6 +2,10 @@ import Link from 'next/link';
 
 import { PrintButton } from '@/components/invoices/print-button';
 import { buildInvoicePartyDetails } from '@/lib/invoices/party-details';
+import {
+  buildInvoiceHeading,
+  INVOICE_VALIDITY_NOTICE
+} from '@/lib/invoices/presentation';
 import { calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
 import { INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 
@@ -59,7 +63,7 @@ function formatDate(value: Date | null) {
 }
 
 function SnapshotBlock({ title, snapshot, buyer = false }: { title: string; snapshot: unknown; buyer?: boolean }) {
-  const details = buildInvoicePartyDetails(snapshot, { includeVatPayer: buyer });
+  const details = buildInvoicePartyDetails(snapshot, { buyer });
 
   return (
     <section className="print-compact-party rounded-md border border-[#d7d9dd] p-4 print-break-inside-avoid">
@@ -82,13 +86,14 @@ export function InvoicePrintView({ invoice, backHref, backLabel }: InvoicePrintV
       <style>{`
         @page {
           size: A4 landscape;
-          margin: 9mm;
+          margin: 0;
         }
 
         @media print {
           html,
           body {
             background: #ffffff !important;
+            margin: 0 !important;
           }
 
           .no-print {
@@ -99,7 +104,9 @@ export function InvoicePrintView({ invoice, backHref, backLabel }: InvoicePrintV
             box-shadow: none !important;
             border: 0 !important;
             max-width: none !important;
-            padding: 0 !important;
+            min-height: 210mm !important;
+            padding: 9mm !important;
+            box-sizing: border-box !important;
           }
 
           .print-break-inside-avoid {
@@ -141,10 +148,15 @@ export function InvoicePrintView({ invoice, backHref, backLabel }: InvoicePrintV
         <header className="flex flex-col gap-5 border-b border-[#d7d9dd] pb-5 sm:flex-row sm:items-start sm:justify-between print:gap-3 print:pb-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#C89642] print:text-[8pt]">Kairos Parts</p>
-            <h1 className="mt-3 text-3xl font-bold text-[#050505] print:mt-2 print:text-[19pt] print:leading-tight">Рахунок {invoice.invoiceNumber}</h1>
+            <h1 className="mt-3 text-3xl font-bold text-[#050505] print:mt-2 print:text-[19pt] print:leading-tight">
+              {buildInvoiceHeading(invoice.invoiceNumber, invoice.sentAt)}
+            </h1>
             <p className="mt-2 text-sm text-[#4C4F54] print:mt-1 print:text-[8.5pt]">Заявка: {invoice.request.requestNumber}</p>
+            <p className="mt-1 text-sm font-medium text-[#30343a] print:text-[8.5pt]">
+              {INVOICE_VALIDITY_NOTICE}
+            </p>
           </div>
-          <div className="rounded-md border border-[#d7d9dd] p-4 text-sm print:p-3 print:text-[8.5pt] print:leading-snug">
+          <div className="rounded-md border border-[#d7d9dd] p-4 text-sm print:hidden">
             <p className="font-bold text-[#050505]">{statusLabel}</p>
             <p className="mt-2 text-[#4C4F54] print:mt-1">Створення заявки: {formatDate(invoice.request.createdAt)}</p>
             {invoice.sentAt ? <p className="mt-1 text-[#4C4F54]">Надіслано: {formatDate(invoice.sentAt)}</p> : null}
@@ -224,13 +236,9 @@ export function InvoicePrintView({ invoice, backHref, backLabel }: InvoicePrintV
           </section>
         ) : null}
 
-        <section className="mt-6 grid gap-10 border-t border-[#d7d9dd] pt-5 sm:grid-cols-2 print:mt-4 print:pt-3">
-          <div>
+        <section className="mt-6 border-t border-[#d7d9dd] pt-5 print:mt-4 print:pt-3">
+          <div className="w-full sm:max-w-[48%]">
             <p className="text-sm font-bold text-[#050505] print:text-[8.5pt]">Виконавець</p>
-            <div className="mt-6 border-b border-[#101010] print:mt-[14pt]" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-[#050505] print:text-[8.5pt]">Замовник</p>
             <div className="mt-6 border-b border-[#101010] print:mt-[14pt]" />
           </div>
         </section>

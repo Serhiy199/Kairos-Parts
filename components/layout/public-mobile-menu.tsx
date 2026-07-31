@@ -5,13 +5,20 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
 import { ActionIcon } from '@/components/ui/action-icons';
+import type { PublicHeaderCta } from '@/lib/public/header-auth';
 
 type NavItem = {
   href: string;
   label: string;
 };
 
-export function PublicMobileMenu({ navItems }: { navItems: NavItem[] }) {
+export function PublicMobileMenu({
+  navItems,
+  headerCta
+}: {
+  navItems: NavItem[];
+  headerCta: PublicHeaderCta;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
@@ -51,12 +58,12 @@ export function PublicMobileMenu({ navItems }: { navItems: NavItem[] }) {
               );
             })}
             <Link
-              href="/login"
+              href={headerCta.href}
               onClick={() => setIsOpen(false)}
               className="inline-flex items-center gap-2 rounded-md px-3 py-2 font-semibold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
-              <ActionIcon name="login" />
-              Увійти
+              <ActionIcon name={headerCta.icon} />
+              {headerCta.label}
             </Link>
             <Link
               href="/request"

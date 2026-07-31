@@ -1,7 +1,11 @@
 import { getCrmApiSession, crmAccessError } from '@/lib/admin/access';
 import { auditRequestContextFromHeaders } from '@/lib/audit-log/request-context';
 import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
-import { contentDispositionFileName, isSafeStorageKey, readLocalUpload } from '@/lib/files/secure-local-file';
+import {
+  loadRequestFileBytes,
+  requestFileContentDisposition,
+  RequestFileStorageError
+} from '@/lib/files/request-file-storage';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
@@ -23,51 +27,75 @@ export async function GET(request: Request, { params }: { params: Promise<{ file
       storageKey: true,
       mimeType: true,
       size: true,
+      storageProvider: true,
+      storageStatus: true,
+      storagePublicId: true,
+      storageResourceType: true,
+      storageDeliveryType: true,
+      storageVersion: true,
+      storageFormat: true,
+      storageChecksumSha256: true,
       request: { select: { requestNumber: true, companyId: true } }
     }
   });
 
-  if (!file || !isSafeStorageKey(file.storageKey)) {
+  if (!file) {
     return Response.json({ status: 'file_not_found' }, { status: 404 });
   }
 
-  const localFile = await readLocalUpload(file.storageKey);
-
-  if (!localFile.ok && localFile.status === 'invalid_storage_key') {
-    return Response.json({ status: 'invalid_storage_key' }, { status: 400 });
-  }
-
-  if (!localFile.ok) {
+  let buffer: Buffer;
+  try {
+    buffer = await loadRequestFileBytes(file);
+  } catch (error) {
+    if (error instanceof RequestFileStorageError) {
+      return Response.json(
+        { status: error.code.toLowerCase(), message: error.message },
+        { status: error.httpStatus }
+      );
+    }
     return Response.json(
-      {
-        status: 'file_not_available',
-        message: 'File is not available in local storage. Production needs persistent object storage.'
-      },
-      { status: 404 }
+      { status: 'request_file_storage_unavailable', message: 'Файл тимчасово недоступний.' },
+      { status: 503 }
     );
   }
 
   await writeAuditLog(prisma, {
     actor: auditUserActor(session.session.user.id),
     companyId: file.request.companyId,
-    entityType: 'DOCUMENT',
+    entityType: 'REQUEST_FILE',
     entityId: file.id,
     entityLabel: file.fileName,
-    action: 'DOCUMENT_DOWNLOADED',
+    action: 'REQUEST_FILE_DOWNLOADED',
     category: 'CRITICAL_READ',
     metadata: {
-      source: 'ADMIN_CRM', requestId: file.requestId, requestNumber: file.request.requestNumber,
-      fileName: file.fileName, size: file.size, mimeType: file.mimeType
+      source: 'ADMIN_CRM',
+      requestId: file.requestId,
+      requestNumber: file.request.requestNumber,
+      storageProvider: file.storageProvider,
+      sizeBytes: file.size,
+      mimeType: file.mimeType
     },
-    allowedFields: { metadata: ['source', 'requestId', 'requestNumber', 'fileName', 'size', 'mimeType'] },
+    allowedFields: {
+      metadata: [
+        'source',
+        'requestId',
+        'requestNumber',
+        'storageProvider',
+        'sizeBytes',
+        'mimeType'
+      ]
+    },
     requestContext: auditRequestContextFromHeaders(request.headers)
   });
 
-  return new Response(localFile.buffer, {
+  const inline = ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimeType);
+  return new Response(new Uint8Array(buffer), {
     headers: {
       'Content-Type': file.mimeType || 'application/octet-stream',
-      'Content-Disposition': `inline; filename="${contentDispositionFileName(file.fileName)}"`,
-      'Cache-Control': 'private, max-age=60'
+      'Content-Disposition': requestFileContentDisposition(file.fileName, inline),
+      'Content-Length': String(buffer.byteLength),
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff'
     }
   });
 }

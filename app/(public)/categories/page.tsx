@@ -1,6 +1,11 @@
 ﻿import Link from 'next/link';
 
+import type { Metadata } from 'next';
+
 import { catalogCategories } from '@/lib/catalog/catalog-data';
+import { createPublicMetadata, PUBLIC_PAGE_SEO } from '@/lib/seo';
+
+export const metadata: Metadata = createPublicMetadata(PUBLIC_PAGE_SEO.categories);
 
 export default function CategoriesPage() {
   return (

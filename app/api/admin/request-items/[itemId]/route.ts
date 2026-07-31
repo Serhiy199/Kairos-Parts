@@ -1,34 +1,18 @@
+import { revalidatePath } from 'next/cache';
+
 import { crmAccessError, getCrmApiSession } from '@/lib/admin/access';
-import { buildAuditDiff } from '@/lib/audit-log/payload';
 import { auditRequestContextFromHeaders } from '@/lib/audit-log/request-context';
-import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
-import { prisma } from '@/lib/prisma';
-import { parseRequestItemInput } from '@/lib/request-items/validation';
+import {
+  RequestItemUpdateError,
+  updateRequestItem
+} from '@/lib/request-items/update';
+import {
+  deleteRequestItem,
+  RequestItemDeleteError
+} from '@/lib/request-items/delete';
+import { parseRequestItemUpdateInput } from '@/lib/request-items/validation';
 
 export const runtime = 'nodejs';
-
-const ITEM_FIELDS = [
-  'name', 'brand', 'catalogNumber', 'analogNumber', 'quantity', 'availability',
-  'salePrice', 'visibleToClient', 'includeInInvoice'
-] as const;
-
-function itemSnapshot(item: {
-  name: string; brand: string | null; catalogNumber: string | null; analogNumber: string | null;
-  quantity: number; availability: string | null; salePrice: { toString(): string } | null;
-  visibleToClient: boolean; includeInInvoice: boolean;
-}) {
-  return {
-    name: item.name,
-    brand: item.brand,
-    catalogNumber: item.catalogNumber,
-    analogNumber: item.analogNumber,
-    quantity: item.quantity,
-    availability: item.availability,
-    salePrice: item.salePrice?.toString() ?? null,
-    visibleToClient: item.visibleToClient,
-    includeInInvoice: item.includeInInvoice
-  };
-}
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ itemId: string }> }) {
   const access = await getCrmApiSession();
@@ -44,55 +28,83 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ it
     return Response.json({ status: 'invalid_json' }, { status: 400 });
   }
 
-  const parsed = parseRequestItemInput(body);
+  const requestId = typeof body.requestId === 'string' ? body.requestId.trim() : '';
+  const expectedUpdatedAt = typeof body.expectedUpdatedAt === 'string'
+    ? body.expectedUpdatedAt.trim()
+    : '';
+  const parsed = parseRequestItemUpdateInput(body);
 
-  if (!parsed.ok) {
-    return Response.json({ status: 'validation_error', message: parsed.error }, { status: 400 });
+  if (!requestId || !expectedUpdatedAt || !parsed.ok) {
+    return Response.json(
+      {
+        status: 'validation_error',
+        message: parsed.ok ? 'Invalid request item update metadata.' : parsed.error
+      },
+      { status: 400 }
+    );
   }
-
-  const existing = await prisma.requestItem.findUnique({
-    where: { id: itemId },
-    include: { request: { select: { requestNumber: true, companyId: true } } }
-  });
-
-  if (!existing) {
-    return Response.json({ status: 'not_found' }, { status: 404 });
-  }
-
-  const {
-    purchasePrice: _purchasePrice,
-    supplierName: _supplierName,
-    visibleToClient: _visibleToClient,
-    ...itemData
-  } = parsed.data;
-  void _purchasePrice;
-  void _supplierName;
-  void _visibleToClient;
 
   const requestContext = auditRequestContextFromHeaders(request.headers);
-  const item = await prisma.$transaction(async (tx) => {
-    const updated = await tx.requestItem.update({ where: { id: itemId }, data: itemData });
-    const before = itemSnapshot(existing);
-    const after = itemSnapshot(updated);
-    const diff = buildAuditDiff(before, after, ITEM_FIELDS);
-    await writeAuditLog(tx, {
-      actor: auditUserActor(access.session.user.id),
-      companyId: existing.request.companyId,
-      entityType: 'REQUEST_ITEM',
-      entityId: existing.id,
-      entityLabel: updated.catalogNumber ? `${updated.name} · ${updated.catalogNumber}` : updated.name,
-      action: 'REQUEST_ITEM_UPDATED',
-      category: before.salePrice !== after.salePrice || before.quantity !== after.quantity ? 'FINANCIAL_CRITICAL' : 'STANDARD',
-      oldValue: diff.before,
-      newValue: diff.after,
-      metadata: { source: 'ADMIN_CRM', requestNumber: existing.request.requestNumber },
-      allowedFields: { oldValue: ITEM_FIELDS, newValue: ITEM_FIELDS, metadata: ['source', 'requestNumber'] },
+  let result: Awaited<ReturnType<typeof updateRequestItem>>;
+  try {
+    result = await updateRequestItem({
+      requestItemId: itemId,
+      requestId,
+      expectedUpdatedAt,
+      actor: { id: access.session.user.id },
+      values: parsed.data,
       requestContext
     });
-    return updated;
-  });
+  } catch (error) {
+    const code = error instanceof RequestItemUpdateError
+      ? error.code
+      : 'REQUEST_ITEM_UPDATE_FAILED';
+    console.error('Request item PATCH failed.', {
+      requestId,
+      requestItemId: itemId,
+      expectedUpdatedAt,
+      errorCode: code
+    });
+    if (code === 'REQUEST_ITEM_NOT_FOUND' || code === 'REQUEST_ITEM_NOT_IN_REQUEST') {
+      return Response.json({ status: 'not_found' }, { status: 404 });
+    }
+    if (code === 'ACTOR_NOT_ALLOWED') {
+      return Response.json({ status: 'forbidden' }, { status: 403 });
+    }
+    if (code === 'REQUEST_ITEM_VERSION_CONFLICT') {
+      return Response.json({ status: 'version_conflict' }, { status: 409 });
+    }
+    if (code === 'APPROVED_REQUEST_ITEM_LOCKED') {
+      return Response.json({ status: 'approved_item_locked' }, { status: 409 });
+    }
+    if (code === 'REQUEST_SELECTION_MUTATION_LOCKED') {
+      return Response.json({ status: 'selection_mutation_locked' }, { status: 409 });
+    }
+    if (code === 'REQUEST_ITEM_VALIDATION_FAILED') {
+      return Response.json({ status: 'validation_error' }, { status: 400 });
+    }
+    return Response.json({ status: 'update_failed' }, { status: 500 });
+  }
 
-  return Response.json({ item });
+  if (result.outcome === 'no_changes') {
+    return Response.json({
+      status: 'no_changes',
+      code: result.code,
+      item: result.item,
+      changedFields: []
+    });
+  }
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/requests');
+  revalidatePath(`/admin/requests/${result.item.requestId}`);
+
+  return Response.json({
+    status: 'updated',
+    code: result.code,
+    item: result.item,
+    changedFields: result.changedFields
+  });
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ itemId: string }> }) {
@@ -103,33 +115,38 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   }
 
   const { itemId } = await params;
-  const existing = await prisma.requestItem.findUnique({
-    where: { id: itemId },
-    include: { request: { select: { requestNumber: true, companyId: true } } }
-  });
-
-  if (!existing) {
-    return Response.json({ status: 'not_found' }, { status: 404 });
-  }
-
-  const snapshot = itemSnapshot(existing);
   const requestContext = auditRequestContextFromHeaders(request.headers);
-  await prisma.$transaction(async (tx) => {
-    await tx.requestItem.delete({ where: { id: itemId } });
-    await writeAuditLog(tx, {
-      actor: auditUserActor(access.session.user.id),
-      companyId: existing.request.companyId,
-      entityType: 'REQUEST_ITEM',
-      entityId: existing.id,
-      entityLabel: existing.catalogNumber ? `${existing.name} · ${existing.catalogNumber}` : existing.name,
-      action: 'REQUEST_ITEM_DELETED',
-      category: snapshot.salePrice !== null || snapshot.quantity !== 1 ? 'FINANCIAL_CRITICAL' : 'STANDARD',
-      oldValue: snapshot,
-      metadata: { source: 'ADMIN_CRM', requestNumber: existing.request.requestNumber },
-      allowedFields: { oldValue: ITEM_FIELDS, metadata: ['source', 'requestNumber'] },
+  let result: Awaited<ReturnType<typeof deleteRequestItem>>;
+  try {
+    result = await deleteRequestItem({
+      requestItemId: itemId,
+      actor: { id: access.session.user.id },
       requestContext
     });
-  });
+  } catch (error) {
+    if (error instanceof RequestItemDeleteError) {
+      if (error.code === 'REQUEST_ITEM_NOT_FOUND') {
+        return Response.json({ status: 'not_found' }, { status: 404 });
+      }
+      if (error.code === 'ACTOR_NOT_ALLOWED') {
+        return Response.json({ status: 'forbidden' }, { status: 403 });
+      }
+      if (error.code === 'REQUEST_SELECTION_MUTATION_LOCKED') {
+        return Response.json({ status: 'selection_mutation_locked' }, { status: 409 });
+      }
+      if (error.code === 'APPROVED_REQUEST_ITEM_DELETE_BLOCKED') {
+        return Response.json(
+          { status: 'approved_item_delete_blocked' },
+          { status: 409 }
+        );
+      }
+    }
+    throw error;
+  }
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/requests');
+  revalidatePath(`/admin/requests/${result.item.requestId}`);
 
   return Response.json({ status: 'deleted' });
 }

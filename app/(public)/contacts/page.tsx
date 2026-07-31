@@ -3,14 +3,11 @@ import Image from 'next/image';
 import { TbBrandTelegram, TbClock, TbMail, TbMapPin, TbPhone } from 'react-icons/tb';
 
 import { siteContacts } from '@/lib/site-contacts';
+import { createPublicMetadata, PUBLIC_PAGE_SEO } from '@/lib/seo';
 
 import { ContactForm } from './contact-form';
 
-export const metadata: Metadata = {
-  title: 'Контакти Kairos Parts — зв’язок із командою',
-  description:
-    'Зв’яжіться з Kairos Parts щодо підбору запчастин, комерційної пропозиції, співпраці або статусу заявки.'
-};
+export const metadata: Metadata = createPublicMetadata(PUBLIC_PAGE_SEO.contacts);
 
 const contacts = [
   {

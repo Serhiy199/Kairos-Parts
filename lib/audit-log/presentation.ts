@@ -1,3 +1,5 @@
+import { formatDateOnlyShort } from '@/lib/logistics/date-only';
+
 type AuditDetail = {
   key: string;
   label: string;
@@ -7,6 +9,8 @@ type AuditDetail = {
 export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   REQUEST: 'Заявка',
   REQUEST_ITEM: 'Позиція заявки',
+  REQUEST_SELECTION_BATCH: 'Ревізія погодження',
+  REQUEST_SELECTION_BATCH_ITEM: 'Позиція ревізії погодження',
   VEHICLE: 'Техніка',
   REQUEST_DOCUMENT: 'Документ заявки',
   DOCUMENT: 'Документ',
@@ -23,6 +27,9 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   AUTH_ATTEMPT: 'Спроба входу',
   INVITATION: 'Запрошення',
   TELEGRAM_REQUEST: 'Telegram-заявка',
+  REQUEST_FILE: 'Файл заявки',
+  LOGISTICS_REQUEST: 'Логістична заявка',
+  LOGISTICS_TARIFF_CITY: 'Тарифне місто Logistics',
   SYSTEM: 'Система'
 };
 
@@ -64,6 +71,14 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   REQUEST_ITEM_DELETED: 'Позицію заявки видалено',
   REQUEST_ITEMS_SENT_FOR_APPROVAL: 'Позиції надіслано на погодження',
   REQUEST_ITEMS_CLIENT_APPROVAL_CHANGED: 'Вибір позицій клієнтом змінено',
+  REQUEST_SELECTION_BATCH_CREATED: 'Ревізію погодження створено',
+  REQUEST_SELECTION_BATCH_SENT: 'Ревізію надіслано на погодження',
+  REQUEST_SELECTION_BATCH_APPROVED: 'Ревізію погоджено',
+  REQUEST_SELECTION_BATCH_PARTIALLY_APPROVED: 'Ревізію частково погоджено',
+  REQUEST_SELECTION_BATCH_REJECTED: 'Ревізію відхилено',
+  REQUEST_SELECTION_BATCH_SUPERSEDED: 'Ревізію замінено новішою',
+  REQUEST_SELECTION_ITEM_APPROVED: 'Позицію ревізії погоджено',
+  REQUEST_SELECTION_ITEM_REJECTED: 'Позицію ревізії відхилено',
   COMMERCIAL_OFFER_CREATED: 'Комерційну пропозицію створено',
   COMMERCIAL_OFFER_UPDATED: 'Комерційну пропозицію оновлено',
   COMMERCIAL_OFFER_ITEMS_CHANGED: 'Позиції комерційної пропозиції змінено',
@@ -83,12 +98,28 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   DOCUMENT_VISIBILITY_CHANGED: 'Видимість документа змінено',
   DOCUMENT_DELETED: 'Документ видалено',
   DOCUMENT_DOWNLOADED: 'Документ завантажено користувачем',
+  REQUEST_FILE_UPLOADED: 'Файл заявки завантажено',
+  REQUEST_FILE_DOWNLOADED: 'Файл заявки завантажено користувачем',
+  REQUEST_FILE_DELETED: 'Файл заявки видалено',
+  REQUEST_FILE_STORAGE_MIGRATED: 'Сховище файла заявки мігровано',
+  REQUEST_FILE_STORAGE_MISSING: 'Файл заявки недоступний у сховищі',
+  OCR_STARTED: 'OCR запущено',
+  OCR_COMPLETED: 'OCR завершено',
+  OCR_FAILED: 'OCR завершився помилкою',
+  OCR_CORRECTED: 'OCR-текст виправлено',
   COMPANY_UPDATED: 'Компанію оновлено',
   COMPANY_BILLING_UPDATED: 'Реквізити компанії оновлено',
   COMPANY_PRIMARY_CONTACT_CHANGED: 'Основний контакт компанії змінено',
   COMPANY_MEMBER_ADDED: 'Учасника компанії додано',
   COMPANY_MEMBER_REMOVED: 'Учасника компанії видалено',
-  CLIENT_BILLING_UPDATED: 'Реквізити клієнта оновлено'
+  CLIENT_BILLING_UPDATED: 'Реквізити клієнта оновлено',
+  LOGISTICS_REQUEST_CREATED: 'Логістичну заявку створено',
+  LOGISTICS_STATUS_CHANGED: 'Статус логістичної заявки змінено',
+  LOGISTICS_INTERNAL_COMMENT_CREATED: 'Внутрішній коментар додано',
+  LOGISTICS_TARIFF_UPDATED: 'Тариф Logistics оновлено',
+  LOGISTICS_PREFERRED_DATE_CHANGED: 'Змінено бажану дату перевезення',
+  LOGISTICS_INDIVIDUAL_PRICE_CHANGED:
+    'Змінено індивідуальну вартість перевезення'
 };
 
 export const AUDIT_EVENT_LABELS: Record<string, string> = {
@@ -137,6 +168,8 @@ const KEY_LABELS: Record<string, string> = {
   changedFields: 'Змінені поля',
   source: 'Джерело',
   itemCount: 'Кількість позицій',
+  revision: 'Ревізія',
+  snapshotSchemaVersion: 'Версія snapshot',
   approvedItemCount: 'Погоджено позицій',
   rejectedItemCount: 'Відхилено позицій',
   status: 'Статус',
@@ -158,6 +191,9 @@ const KEY_LABELS: Record<string, string> = {
   iban: 'IBAN',
   requestId: 'ID заявки',
   requestNumber: 'Номер заявки',
+  tariffCityCode: 'Код тарифного міста',
+  preferredDeliveryDate: 'Бажана дата перевезення',
+  commentId: 'ID внутрішнього коментаря',
   invoiceNumber: 'Номер рахунку',
   commercialOfferNumber: 'Номер пропозиції',
   currency: 'Валюта',
@@ -191,6 +227,13 @@ const VALUE_LABELS: Record<string, string> = {
   DISABLED: 'Вимкнений',
   NEW: 'Нова заявка',
   IN_PROGRESS: 'Підбір у роботі',
+  OFFER_PREPARING: 'Підбір у роботі',
+  WAITING_APPROVAL: 'Очікує підтвердження',
+  AWAITING_INVOICE: 'Очікує рахунок',
+  INVOICE_SENT: 'Рахунок надісланий',
+  AWAITING_SHIPMENT: 'Очікує на відвантаження',
+  ORDERED: 'Очікує на відвантаження',
+  IN_DELIVERY: 'Очікує на відвантаження',
   AWAITING_CLIENT: 'Очікує клієнта',
   COMPLETED: 'Завершено',
   CANCELLED: 'Скасовано',
@@ -230,6 +273,8 @@ const DATE_KEYS = new Set([
   'approvedAt',
   'rejectedAt'
 ]);
+
+const DATE_ONLY_KEYS = new Set(['preferredDeliveryDate']);
 
 export function asAuditRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -306,6 +351,9 @@ export function formatAuditValue(value: unknown, key?: string): string {
     }
     if (key && DATE_KEYS.has(key)) {
       return formatDateValue(value) ?? shorten(value);
+    }
+    if (key && DATE_ONLY_KEYS.has(key)) {
+      return formatDateOnlyShort(value) || shorten(value);
     }
     return VALUE_LABELS[value] ?? shorten(value);
   }

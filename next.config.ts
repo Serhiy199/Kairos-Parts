@@ -2,6 +2,10 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  serverExternalPackages: [
+    'tesseract.js',
+    'tesseract.js-core'
+  ],
   images: {
     remotePatterns: [
       {
@@ -14,6 +18,14 @@ const nextConfig: NextConfig = {
     '/*': [
       './node_modules/prisma/build/public/assets/inter-all-400-normal.4c1f8a0d.woff',
       './node_modules/prisma/build/public/assets/inter-all-600-normal.d0a7c8a9.woff'
+    ],
+    '/api/ocr': [
+      './node_modules/tesseract.js/src/worker-script/**',
+      './node_modules/tesseract.js-core/**'
+    ],
+    '/admin/requests/[id]': [
+      './node_modules/tesseract.js/src/worker-script/**',
+      './node_modules/tesseract.js-core/**'
     ]
   },
   experimental: {

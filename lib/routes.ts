@@ -2,6 +2,8 @@ export const PUBLIC_ROUTES = [
   '/',
   '/about',
   '/how-it-works',
+  '/logistics',
+  '/logistics/request',
   '/categories',
   '/categories/[slug]',
   '/contacts',
@@ -56,6 +58,8 @@ export const API_ROUTES = [
   '/api/admin/manufacturers',
   '/api/vehicles',
   '/api/documents',
+  '/api/logistics/addresses/autocomplete',
+  '/api/logistics/addresses/resolve',
   '/api/telegram/webhook',
   '/api/ocr',
   '/api/notifications'

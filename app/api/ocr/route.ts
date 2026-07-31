@@ -1,11 +1,12 @@
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { RequestFileStorageError } from '@/lib/files/request-file-storage';
 import { runOcrForRequestFile } from '@/lib/ocr/service';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
-  await requireCrmSession();
+  const session = await requireCrmSession();
 
   if (!hasDatabaseUrl()) {
     return Response.json({ status: 'database_not_configured' }, { status: 503 });
@@ -19,6 +20,7 @@ export async function POST(request: Request) {
 
   try {
     const result = await runOcrForRequestFile({
+      actor: { type: 'CRM', userId: session.user.id },
       requestId: payload.requestId,
       fileId: payload.fileId
     });
@@ -33,6 +35,12 @@ export async function POST(request: Request) {
       confidence: result.confidence
     });
   } catch (error) {
+    if (error instanceof RequestFileStorageError) {
+      return Response.json(
+        { status: error.code.toLowerCase(), message: error.message },
+        { status: error.httpStatus }
+      );
+    }
     return Response.json(
       {
         status: 'ocr_error',

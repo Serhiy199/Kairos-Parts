@@ -18,9 +18,39 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const vehicle = await prisma.vehicle.findFirst({
     where: { id, AND: [vehicleAccessWhere(result.access)] },
-    include: {
+    select: {
+      id: true,
+      clientId: true,
+      companyId: true,
+      name: true,
+      type: true,
+      manufacturer: true,
+      model: true,
+      year: true,
+      vinOrSerial: true,
+      comment: true,
+      archivedAt: true,
+      createdAt: true,
+      updatedAt: true,
       requests: { select: { id: true, requestNumber: true, status: true, createdAt: true } },
-      documents: true
+      documents: {
+        where: {
+          OR: [
+            { source: 'CLIENT' },
+            { visibleToClient: true }
+          ]
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        select: {
+          id: true,
+          fileName: true,
+          mimeType: true,
+          size: true,
+          source: true,
+          visibleToClient: true,
+          createdAt: true
+        }
+      }
     }
   });
 

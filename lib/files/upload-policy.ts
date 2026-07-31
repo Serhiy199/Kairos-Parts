@@ -1,6 +1,7 @@
 export const ALLOWED_UPLOAD_MIME_TYPES = [
   'image/jpeg',
   'image/png',
+  'image/webp',
   'application/pdf',
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -9,7 +10,7 @@ export const ALLOWED_UPLOAD_MIME_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 ] as const;
 
-export const ALLOWED_UPLOAD_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.pdf', '.xls', '.xlsx', '.csv', '.doc', '.docx'] as const;
+export const ALLOWED_UPLOAD_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.pdf', '.xls', '.xlsx', '.csv', '.doc', '.docx'] as const;
 
 export function getUploadMaxSizeMb() {
   const parsed = Number(process.env.FILE_UPLOAD_MAX_SIZE_MB ?? 20);

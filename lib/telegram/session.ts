@@ -1,4 +1,4 @@
-import { saveRequestFileBufferLocal } from '@/lib/files/local-storage';
+import { uploadRequestFilesForActor } from '@/lib/files/request-file-upload-service';
 import {
   EQUIPMENT_TAXONOMY_TELEGRAM_FIELDS_ENABLED,
   EQUIPMENT_TEXT_FIELD_MAX_LENGTH
@@ -6,6 +6,8 @@ import {
 import { getPhoneLookupTail, normalizeUkrainianPhone, phoneNumbersMatch } from '@/lib/phone/normalize';
 import { prisma } from '@/lib/prisma';
 import { generatePublicStatusToken } from '@/lib/requests/identifiers';
+import { buildAbsoluteUrl, getAppBaseUrl } from '@/lib/site-url';
+import { notifyNewPartsRequest } from '@/lib/staff-telegram/notifications';
 import { vehicleAccessWhereForClient } from '@/lib/vehicles/ownership';
 import { getActiveEquipmentTypeNames, getActiveManufacturerNamesForType, validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
@@ -51,7 +53,7 @@ type TelegramDraftMetadata = {
 };
 
 const MAX_TELEGRAM_FILE_SIZE_BYTES = 20 * 1024 * 1024;
-const ALLOWED_DOCUMENT_EXTENSIONS = ['jpg', 'jpeg', 'png', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx'];
+const ALLOWED_DOCUMENT_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx'];
 
 function toStringId(id: number | string) {
   return String(id);
@@ -155,15 +157,8 @@ function getMessageText(message: TelegramMessage) {
   return message.text?.trim() ?? '';
 }
 
-function getAppBaseUrl() {
-  return process.env.APP_BASE_URL || process.env.NEXTAUTH_URL || 'https://kairos-parts.vercel.app';
-}
-
 function buildStatusUrl(publicStatusToken: string) {
-  const baseUrl = getAppBaseUrl();
-  const path = `/request/status/${publicStatusToken}`;
-
-  return `${baseUrl.replace(/\/$/, '')}${path}`;
+  return buildAbsoluteUrl(`/request/status/${publicStatusToken}`);
 }
 
 function getLargestPhoto(message: TelegramMessage): TelegramDraftFile | null {
@@ -920,49 +915,38 @@ function buildTelegramRequestDescription(input: { description?: string | null })
   return input.description?.trim() || 'Не вказано';
 }
 
-async function attachTelegramFiles(requestId: string, files: TelegramDraftFile[]) {
-  const savedFiles = [];
+async function attachTelegramFiles(
+  requestId: string,
+  files: TelegramDraftFile[],
+  actor: {
+    userId: string;
+    clientProfileId: string;
+    companyId: string | null;
+  }
+) {
+  const inputs = [];
 
   for (const file of files) {
-    try {
-      const telegramFile = await getTelegramFile(file.fileId);
-
-      if (!telegramFile.file_path) {
-        throw new Error('Telegram file path is missing.');
-      }
-
-      const buffer = await downloadTelegramFile(telegramFile.file_path);
-      const savedFile = await saveRequestFileBufferLocal(requestId, {
+    const telegramFile = await getTelegramFile(file.fileId);
+    if (!telegramFile.file_path) {
+      throw new Error('Telegram file path is missing.');
+    }
+    const buffer = await downloadTelegramFile(telegramFile.file_path);
+    inputs.push({
         fileName: file.fileName,
         buffer,
         mimeType: file.mimeType
-      });
-      const requestFile = await prisma.requestFile.create({
-        data: {
-          requestId,
-          fileName: savedFile.fileName,
-          storageKey: savedFile.storageKey,
-          fileUrl: savedFile.fileUrl,
-          mimeType: savedFile.mimeType,
-          size: savedFile.size
-        }
-      });
-      savedFiles.push(requestFile);
-    } catch {
-      const requestFile = await prisma.requestFile.create({
-        data: {
-          requestId,
-          fileName: file.fileName,
-          storageKey: `telegram/${file.fileId}`,
-          mimeType: file.mimeType,
-          size: file.size ?? 0
-        }
-      });
-      savedFiles.push(requestFile);
-    }
+    });
   }
 
-  return savedFiles;
+  return uploadRequestFilesForActor({
+    actor: {
+      type: 'TELEGRAM',
+      ...actor
+    },
+    requestId,
+    files: inputs
+  });
 }
 
 async function createTelegramRequest(draft: TelegramDraft) {
@@ -1068,9 +1052,35 @@ async function createTelegramRequest(draft: TelegramDraft) {
     }
   });
 
-  await attachTelegramFiles(createdRequest.id, files);
+  try {
+    await attachTelegramFiles(createdRequest.id, files, {
+      userId: clientProfile.user.id,
+      clientProfileId: clientProfile.id,
+      companyId: company?.id ?? null
+    });
+  } catch (error) {
+    await prisma.request.delete({ where: { id: createdRequest.id } }).catch((cleanupError) => {
+      console.error('Telegram request cleanup failed after file upload failure', {
+        requestId: createdRequest.id,
+        reason: cleanupError instanceof Error ? cleanupError.name : 'unknown'
+      });
+    });
+    throw error;
+  }
   await prisma.telegramDraftRequest.delete({
     where: { telegramUserId: draft.telegramUserId }
+  });
+
+  await notifyNewPartsRequest({
+    id: createdRequest.id,
+    requestNumber: createdRequest.requestNumber,
+    companyName:
+      draft.companyName ??
+      clientProfile.companyName ??
+      company?.name ??
+      null,
+    contactName: draft.contactName,
+    contactPhone: draft.phone
   });
 
   return createdRequest;

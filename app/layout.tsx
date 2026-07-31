@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import { Exo_2, Inter, Oxanium } from 'next/font/google';
 import { UkrainianValidation } from '@/components/ui/ukrainian-validation';
+import { ToastProvider } from '@/components/ui/toast-provider';
+import { PUBLIC_PAGE_SEO, SITE_LOCALE, SITE_NAME } from '@/lib/seo';
+import { PUBLIC_SITE_URL } from '@/lib/site-url';
 import './globals.css';
 
 const inter = Inter({
@@ -22,8 +25,21 @@ const exo2 = Exo_2({
 });
 
 export const metadata: Metadata = {
-  title: 'Kairos Parts',
-  description: 'B2B platform for spare parts requests and manager CRM workflows.'
+  metadataBase: PUBLIC_SITE_URL,
+  title: SITE_NAME,
+  description: PUBLIC_PAGE_SEO.home.description,
+  openGraph: {
+    type: 'website',
+    locale: SITE_LOCALE,
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: PUBLIC_PAGE_SEO.home.description
+  },
+  twitter: {
+    card: 'summary',
+    title: SITE_NAME,
+    description: PUBLIC_PAGE_SEO.home.description
+  }
 };
 
 export default function RootLayout({
@@ -35,7 +51,7 @@ export default function RootLayout({
     <html lang="uk" className={`${inter.variable} ${oxanium.variable} ${exo2.variable}`}>
       <body className="font-ui">
         <UkrainianValidation />
-        {children}
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

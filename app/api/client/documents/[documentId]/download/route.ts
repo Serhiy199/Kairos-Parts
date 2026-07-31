@@ -13,7 +13,18 @@ export async function GET(_request: Request, { params }: { params: Promise<{ doc
   const { access } = accessResult;
 
   const document = await prisma.document.findFirst({
-    where: { id: documentId, visibleToClient: true, AND: [documentAccessWhere(access)] },
+    where: {
+      id: documentId,
+      AND: [
+        documentAccessWhere(access),
+        {
+          OR: [
+            { visibleToClient: true },
+            { vehicleId: { not: null }, source: 'CLIENT' }
+          ]
+        }
+      ]
+    },
     select: { fileName: true, storageKey: true, mimeType: true, size: true }
   });
   if (!document) return Response.json({ status: 'document_not_found' }, { status: 404 });

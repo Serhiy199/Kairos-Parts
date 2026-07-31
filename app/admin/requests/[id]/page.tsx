@@ -1,6 +1,6 @@
 ﻿import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import type { Prisma } from '@prisma/client';
+import type { Prisma, RequestSelectionBatchStatus } from '@prisma/client';
 
 import {
   assignAdminRequestManager,
@@ -21,20 +21,39 @@ import {
   updateAdminRequestStatus
 } from '@/app/admin/actions';
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
+import { RequestSelectionSubmitButton } from '@/components/admin/request-selection-submit-button';
 import { StatusBadge } from '@/components/client/status-badge';
 import { ActionIcon } from '@/components/ui/action-icons';
-import { ManualEquipmentFields } from '@/components/vehicles/manual-equipment-fields';
+import {
+  ReactiveActionForm,
+  ReactiveSubmitButton
+} from '@/components/workflow/reactive-action-form';
 import { requireCrmSession } from '@/lib/admin/access';
+import type { WorkflowActionResult } from '@/lib/actions/workflow-result';
+import { getAdminRequestFeedback } from '@/lib/admin/request-feedback';
 import { hasDatabaseUrl } from '@/lib/env/database';
-import { EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
+import { buildInvoicePartyRows } from '@/lib/invoices/party-details';
 import { calculateInvoiceLineTotal, calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
+import {
+  getRequestInvoiceEligibility,
+  type RequestInvoiceEligibility
+} from '@/lib/invoices/selection';
 import { getVehicleDisplay } from '@/lib/vehicles/name';
 import { INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 import { PART_MANUFACTURERS } from '@/lib/parts/part-manufacturers';
 import { prisma } from '@/lib/prisma';
+import { getAdminRequestItemPresentation } from '@/lib/request-items/admin-presentation';
+import {
+  getRequestSelectionResendEligibility,
+  type RequestSelectionResendEligibility
+} from '@/lib/request-selection/resend-eligibility';
+import { REQUEST_SELECTION_BATCH_STATUS_LABELS } from '@/lib/request-selection/presentation';
 import { REQUEST_DOCUMENT_TYPE_LABELS, REQUEST_DOCUMENT_TYPES } from '@/lib/request-documents/validation';
 import { REQUEST_SOURCE_LABELS } from '@/lib/requests/sources';
-import { normalizeRequestStatusForSelection, REQUEST_STATUS_LABELS, REQUEST_STATUSES } from '@/lib/requests/statuses';
+import {
+  MANUAL_REQUEST_STATUSES,
+  REQUEST_STATUS_LABELS
+} from '@/lib/requests/statuses';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,49 +63,6 @@ function formatSize(size: number) {
 
 function formatMoney(value: { toString: () => string } | null, currency: string) {
   return value ? formatInvoiceMoney(value, currency) : '—';
-}
-
-function resultMessage(result?: string) {
-  const messages: Record<string, string> = {
-    'status-updated': 'Статус оновлено.',
-    assigned: 'Відповідального менеджера оновлено.',
-    'comment-added': 'Внутрішній коментар додано.',
-    'admin-only': 'Призначати менеджера може тільки ADMIN.',
-    'status-error': 'Не вдалося оновити статус.',
-    'ocr-created': 'OCR виконано. Перевірте результат нижче.',
-    'ocr-corrected': 'OCR-текст оновлено.',
-    'ocr-error': 'Не вдалося запустити OCR.',
-    'ocr-correction-error': 'Не вдалося зберегти OCR-корекцію.',
-    'assign-error': 'Не вдалося призначити менеджера.',
-    'comment-error': 'Коментар не може бути порожнім.',
-    'manager-not-found': 'Менеджера не знайдено.',
-    'item-created': 'Позицію додано.',
-    'item-updated': 'Позицію оновлено.',
-    'item-deleted': 'Позицію видалено.',
-    'items-sent-for-approval': 'Позиції відправлено клієнту на погодження.',
-    'items-send-empty': 'Немає нових позицій для відправлення на погодження.',
-    'items-send-error': 'Не вдалося відправити позиції на погодження.',
-    'item-error': 'Перевірте дані позиції.',
-    'item-not-found': 'Позицію не знайдено.',
-    'document-created': 'Документ додано.',
-    'document-updated': 'Документ оновлено.',
-    'document-deleted': 'Документ видалено.',
-    'document-error': 'Перевірте дані документа.',
-    'document-not-found': 'Документ не знайдено.',
-    'invoice-created': 'Рахунок створено.',
-    'invoice-sent': 'Рахунок надіслано клієнту.',
-    'invoice-cancelled': 'Рахунок скасовано.',
-    'invoice-paid': 'Рахунок позначено як оплачений.',
-    'invoice-no-approved-items': 'Немає погоджених позицій для створення рахунку.',
-    'invoice-not-found': 'Рахунок не знайдено.',
-    'invoice-invalid-transition': 'Некоректна зміна статусу рахунку.',
-    'invoice-empty': 'Не можна надіслати порожній рахунок.',
-    'invoice-forbidden': 'Недостатньо прав для роботи з рахунком.',
-    'invoice-seller-details-required': 'Спочатку заповніть реквізити продавця.',
-    'invoice-error': 'Не вдалося обробити рахунок.'
-  };
-
-  return result ? messages[result] : null;
 }
 
 export default async function AdminRequestDetailPage({
@@ -127,6 +103,23 @@ export default async function AdminRequestDetailPage({
         assignedManager: { select: { id: true, name: true, email: true, role: true } },
         files: { orderBy: { createdAt: 'desc' } },
         items: { orderBy: { createdAt: 'desc' } },
+        selectionBatches: {
+          orderBy: [{ revision: 'desc' }, { createdAt: 'desc' }],
+          take: 1,
+          include: {
+            items: {
+              orderBy: [{ position: 'asc' }, { id: 'asc' }],
+              select: {
+                id: true,
+                sourceRequestItemId: true,
+                position: true,
+                itemName: true,
+                status: true,
+                clientComment: true
+              }
+            }
+          }
+        },
         invoices: {
           orderBy: { createdAt: 'desc' },
           include: {
@@ -169,15 +162,18 @@ export default async function AdminRequestDetailPage({
     notFound();
   }
 
-  const message = resultMessage(query.result);
-  const publicStatusUrl = `/request/status/${request.publicStatusToken}`;
+  const selectionEligibility = await getRequestSelectionResendEligibility({
+    requestId: request.id
+  });
+  const invoiceEligibility = await getRequestInvoiceEligibility(request.id);
+  const feedback = getAdminRequestFeedback(query.result);
   const contactName = request.client?.contactName ?? request.guestName ?? 'Гість';
   const companyName = request.company?.name ?? request.client?.companyName ?? request.companyName ?? '—';
   const phone = request.client?.phone ?? request.guestPhone ?? '—';
   const email = request.client?.email ?? request.guestEmail ?? '—';
-  const selectedRequestStatus = normalizeRequestStatusForSelection(request.status);
-  const approvedInvoiceItemCount = request.items.filter((item) => item.visibleToClient && item.approvedByClient && item.includeInInvoice).length;
-  const ocrImageFiles = request.files.filter((file) => file.mimeType.startsWith('image/'));
+  const ocrImageFiles = request.files.filter((file) =>
+    ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimeType)
+  );
 
   return (
     <div className="grid w-full min-w-0 max-w-full gap-4 sm:gap-5 xl:gap-6">
@@ -202,7 +198,16 @@ export default async function AdminRequestDetailPage({
         </div>
       </div>
 
-      {message ? <div className="min-w-0 break-words rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">{message}</div> : null}
+      {feedback ? (
+        <div
+          role={feedback.tone === 'error' ? 'alert' : 'status'}
+          aria-live={feedback.tone === 'error' ? 'assertive' : 'polite'}
+          className={`min-w-0 break-words rounded-md border p-4 text-sm ${feedback.className}`}
+        >
+          <span className="font-bold">{feedback.marker}:</span>{' '}
+          <span className="font-semibold">{feedback.message}</span>
+        </div>
+      ) : null}
 
       <div className="grid w-full min-w-0 max-w-full gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] xl:gap-6">
         <main className="grid min-w-0 gap-4 sm:gap-5 xl:gap-6">
@@ -255,9 +260,18 @@ export default async function AdminRequestDetailPage({
             </section>
           ) : null}
 
-          <RequestItemsSection requestId={request.id} items={request.items} />
+          <RequestItemsSection
+            requestId={request.id}
+            items={request.items}
+            eligibility={selectionEligibility}
+            latestSelectionBatch={request.selectionBatches[0] ?? null}
+          />
 
-          <InvoicesSection requestId={request.id} invoices={request.invoices} approvedInvoiceItemCount={approvedInvoiceItemCount} />
+          <InvoicesSection
+            requestId={request.id}
+            invoices={request.invoices}
+            eligibility={invoiceEligibility}
+          />
 
           <RequestDocumentsSection requestId={request.id} documents={request.requestDocuments} />
 
@@ -415,10 +429,18 @@ export default async function AdminRequestDetailPage({
             <p className="text-sm font-bold uppercase text-accent">Дії</p>
             <form action={updateAdminRequestStatus} className="mt-4 grid gap-3">
               <input type="hidden" name="requestId" value={request.id} />
+              <input type="hidden" name="intent" value="manual-status-change" />
+              <p className="text-sm leading-6 text-muted">
+                Поточний статус:{' '}
+                <span className="font-semibold text-foreground">
+                  {REQUEST_STATUS_LABELS[request.status]}
+                </span>
+              </p>
               <label className="grid min-w-0 gap-2 text-sm font-semibold text-foreground">
-                Статус
-                <select name="status" defaultValue={selectedRequestStatus} className="h-11 w-full min-w-0 rounded-md border border-border px-3 text-sm outline-none focus:border-accent">
-                  {REQUEST_STATUSES.map((status) => <option key={status} value={status}>{REQUEST_STATUS_LABELS[status]}</option>)}
+                Ручна дія
+                <select name="status" defaultValue="" required className="h-11 w-full min-w-0 rounded-md border border-border px-3 text-sm outline-none focus:border-accent">
+                  <option value="" disabled>Оберіть статус</option>
+                  {MANUAL_REQUEST_STATUSES.map((status) => <option key={status} value={status}>{REQUEST_STATUS_LABELS[status]}</option>)}
                 </select>
               </label>
               <button className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
@@ -448,13 +470,6 @@ export default async function AdminRequestDetailPage({
                 <p className="text-xs leading-5 text-muted">MANAGER бачить відповідального, але призначення на Day 9 доступне тільки ADMIN.</p>
               )}
             </form>
-          </section>
-
-          <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
-            <p className="text-sm font-bold uppercase text-accent">Public status</p>
-            <Link href={publicStatusUrl} className="mt-3 block min-w-0 break-words text-sm font-semibold text-foreground [overflow-wrap:anywhere] transition hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-              {publicStatusUrl}
-            </Link>
           </section>
 
           <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
@@ -489,6 +504,7 @@ export default async function AdminRequestDetailPage({
 
 type RequestItemView = {
   id: string;
+  updatedAt: Date;
   equipmentType: string | null;
   name: string;
   brand: string | null;
@@ -509,6 +525,7 @@ type RequestItemView = {
 
 type InvoiceItemView = {
   id: string;
+  selectionBatchItemId: string | null;
   name: string;
   brand: string | null;
   catalogNumber: string | null;
@@ -569,19 +586,7 @@ function BillingSnapshotCard({ title, snapshot, buyer = false }: { title: string
     );
   }
 
-  const rows = [
-    ['Назва', snapshot.legalName],
-    ['ЄДРПОУ', snapshot.edrpou],
-    ['ІПН', snapshot.ipn],
-    ['IBAN', snapshot.iban],
-    ['Банк', snapshot.bankName],
-    ['МФО', snapshot.mfo],
-    ['Юридична адреса', snapshot.legalAddress],
-    ['Контактна особа', snapshot.contactPerson],
-    ['Телефон', snapshot.phone],
-    ['Email', snapshot.email],
-    ...(buyer ? [['Платник ПДВ', snapshot.vatPayer ? 'Так' : 'Ні']] : [])
-  ].filter(([, value]) => value !== undefined);
+  const rows = buildInvoicePartyRows(snapshot, { buyer }) ?? [];
 
   return (
     <div className="min-w-0 rounded-md border border-border bg-card p-4">
@@ -598,8 +603,134 @@ function BillingSnapshotCard({ title, snapshot, buyer = false }: { title: string
   );
 }
 
-function RequestItemsSection({ requestId, items }: { requestId: string; items: RequestItemView[] }) {
-  const hiddenItemCount = items.filter((item) => !item.visibleToClient).length;
+function requestSelectionMessage(
+  items: RequestItemView[],
+  eligibility: RequestSelectionResendEligibility
+) {
+  if (eligibility.finalizedSelectionLocked) {
+    return 'Клієнт завершив погодження. Підбір доступний лише для перегляду.';
+  }
+  if (
+    eligibility.requestStatus === 'WAITING_APPROVAL'
+    && eligibility.hasUnpublishedSelectionChanges
+  ) {
+    return 'Є ненадіслані зміни. Клієнт поки бачить попередню версію підбору. Після завершення редагування оновіть підбір для клієнта.';
+  }
+  if (
+    eligibility.requestStatus === 'WAITING_APPROVAL'
+    && !eligibility.hasUnpublishedSelectionChanges
+  ) {
+    return 'Очікуємо фінальне погодження клієнта. Клієнт бачить актуальну версію підбору.';
+  }
+  if (eligibility.reason === 'REQUEST_STATUS_BLOCKED') {
+    return 'Поточний статус заявки не дозволяє надсилати нову версію добірки.';
+  }
+  if (eligibility.reason === 'INVOICE_DRAFT_EXISTS') {
+    return 'Повторне погодження недоступне: для заявки вже створено чернетку рахунку.';
+  }
+  if (eligibility.reason === 'INVOICE_ALREADY_SENT') {
+    return 'Рахунок уже надіслано. Для додаткових позицій потрібен окремий workflow.';
+  }
+  if (eligibility.reason === 'ACTIVE_SENT_BATCH_EXISTS') {
+    return 'Поточна версія вже очікує рішення клієнта.';
+  }
+  if (eligibility.reason === 'HAS_REJECTED_CHANGES') {
+    return 'Підбір уже фіналізований клієнтом і не може бути змінений.';
+  }
+  if (
+    eligibility.reason === 'HAS_NEW_REPLACEMENT_ITEMS'
+    || eligibility.reason === 'HAS_REJECTED_AND_NEW_ITEMS'
+  ) {
+    return 'Для додаткового підбору клієнту потрібно створити нову заявку.';
+  }
+  if (items.length === 0) {
+    return 'Позицій ще немає.';
+  }
+  if (eligibility.removedBatchItemIds.length > 0) {
+    return 'Склад добірки змінився після останнього надсилання. Створіть нову версію для клієнта.';
+  }
+  if (eligibility.changedItemIds.length > 0) {
+    return 'Після останнього надсилання позиції було змінено. Надішліть нову версію клієнту на погодження.';
+  }
+  if (eligibility.newItemIds.length > 0 || eligibility.notSentItemIds.length > 0) {
+    return 'Є нові позиції, які ще не входять до надісланої версії.';
+  }
+  return 'Усі актуальні позиції вже входять до останньої надісланої версії.';
+}
+
+function RequestItemsSection({
+  requestId,
+  items,
+  eligibility,
+  latestSelectionBatch
+}: {
+  requestId: string;
+  items: RequestItemView[];
+  eligibility: RequestSelectionResendEligibility;
+  latestSelectionBatch: {
+    id: string;
+    revision: number;
+    status: RequestSelectionBatchStatus;
+    items: Array<{
+      id: string;
+      sourceRequestItemId: string | null;
+      position: number;
+      itemName: string;
+      status: 'PENDING' | 'APPROVED' | 'REJECTED';
+      clientComment: string | null;
+    }>;
+  } | null;
+}) {
+  const stateByItemId = new Map(
+    eligibility.items.map((item) => [item.requestItemId, item.state])
+  );
+  const versionByItemId = new Map(
+    eligibility.items.map((item) => [item.requestItemId, item.currentUpdatedAt])
+  );
+  const selectionBySourceItemId = new Map(
+    (latestSelectionBatch?.items ?? [])
+      .filter(
+        (item): item is typeof item & { sourceRequestItemId: string } =>
+          Boolean(item.sourceRequestItemId)
+      )
+      .map((item) => [
+        item.sourceRequestItemId,
+        {
+          batchStatus: latestSelectionBatch!.status,
+          itemStatus: item.status,
+          clientComment: item.clientComment
+        }
+      ])
+  );
+  const eligibleIds = new Set(eligibility.eligibleItemIds);
+  const selectedItems = items.filter((item) => eligibleIds.has(item.id));
+  const normalizedMutationStatus =
+    eligibility.requestStatus === 'OFFER_PREPARING'
+      ? 'IN_PROGRESS'
+      : eligibility.requestStatus;
+  const managerMutationsAllowed =
+    !eligibility.finalizedSelectionLocked
+    && (
+      normalizedMutationStatus === 'NEW'
+      || normalizedMutationStatus === 'IN_PROGRESS'
+      || (
+        normalizedMutationStatus === 'WAITING_APPROVAL'
+        && Boolean(eligibility.activeBatchId)
+      )
+    );
+  const latestApprovedCount = latestSelectionBatch?.items.filter(
+    (item) => item.status === 'APPROVED'
+  ).length ?? 0;
+  const latestRejectedItems = latestSelectionBatch?.items.filter(
+    (item) => item.status === 'REJECTED'
+  ) ?? [];
+  const latestPendingCount = latestSelectionBatch?.items.filter(
+    (item) => item.status === 'PENDING'
+  ).length ?? 0;
+  const finalizedSelection =
+    latestSelectionBatch?.status === 'APPROVED'
+    || latestSelectionBatch?.status === 'PARTIALLY_APPROVED'
+    || latestSelectionBatch?.status === 'REJECTED';
 
   return (
     <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
@@ -613,21 +744,67 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
         </div>
         <div className="grid w-full min-w-0 gap-3 xl:w-auto xl:min-w-[280px] xl:max-w-[320px] xl:shrink-0">
           <span className="w-fit rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{items.length} позицій</span>
-          <p className="text-xs leading-5 text-muted">
-            {hiddenItemCount > 0
-              ? `${hiddenItemCount} нових позицій ще не відправлено клієнту.`
-              : 'Усі додані позиції вже відправлені або позицій ще немає.'}
-          </p>
+          <p className="text-xs leading-5 text-muted">{requestSelectionMessage(items, eligibility)}</p>
         </div>
       </div>
+
+      {!finalizedSelection && latestSelectionBatch ? (
+        <div className="mt-5 rounded-md border border-border bg-surface-muted p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-bold text-foreground">
+              Результат погодження версії №{latestSelectionBatch.revision}
+            </p>
+            <span className="rounded-full bg-card px-2.5 py-1 text-xs font-bold text-muted">
+              {REQUEST_SELECTION_BATCH_STATUS_LABELS[latestSelectionBatch.status]}
+            </span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success">
+              Погоджено: {latestApprovedCount}
+            </span>
+            <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
+              Відхилено: {latestRejectedItems.length}
+            </span>
+            {latestPendingCount > 0 ? (
+              <span className="rounded-full bg-[#FFF7E0] px-2.5 py-1 text-xs font-bold text-[#8A5B24]">
+                Очікує рішення: {latestPendingCount}
+              </span>
+            ) : null}
+          </div>
+          {latestRejectedItems.some((item) => item.clientComment) ? (
+          <div className="mt-3 grid gap-2">
+            {latestRejectedItems.filter((item) => item.clientComment).map((batchItem) => (
+              <div
+                key={batchItem.id}
+                className="min-w-0 rounded-md border border-red-100 bg-card p-3"
+              >
+                <p className="break-words text-xs font-semibold text-foreground">
+                  {batchItem.position}. {batchItem.itemName}
+                </p>
+                <p className="mt-1 whitespace-pre-wrap break-words text-xs text-red-700">
+                  {batchItem.clientComment}
+                </p>
+              </div>
+            ))}
+          </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mt-5 grid min-w-0 max-w-full gap-3 rounded-md border border-border p-3 sm:p-4">
         {items.map((item) => {
           const itemTotal = item.salePrice ? calculateInvoiceLineTotal(item.quantity, item.salePrice) : null;
+          const resendState = stateByItemId.get(item.id) ?? 'NOT_SENT';
+          const selection = selectionBySourceItemId.get(item.id) ?? null;
+          const presentation = getAdminRequestItemPresentation({
+            state: resendState,
+            selection
+          });
+          const approvedLocked = presentation.locked;
 
           return (
           <article key={item.id} className="min-w-0 rounded-md border border-border bg-card p-3 sm:p-4">
-            <div className="grid min-w-0 gap-4 min-[1800px]:grid-cols-[minmax(180px,1.4fr)_minmax(140px,1fr)_minmax(80px,0.5fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(140px,1fr)]">
+            <div className="grid min-w-0 gap-4 min-[1800px]:grid-cols-[minmax(180px,1.4fr)_minmax(140px,1fr)_minmax(80px,0.5fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(180px,1fr)]">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
                 <p className="mt-2 break-words font-bold text-foreground">{item.name}</p>
@@ -657,42 +834,35 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase text-muted">Клієнт</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {!item.visibleToClient ? (
-                    <span className="inline-flex rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-muted">Не відправлено клієнту</span>
-                  ) : null}
-                  {item.visibleToClient ? (
-                    item.approvedByClient ? (
-                      <span className="inline-flex rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success">Погоджено клієнтом</span>
-                    ) : (
-                      <span className="inline-flex rounded-full bg-[#FFF7E0] px-2.5 py-1 text-xs font-bold text-[#8A5B24]">Очікує погодження</span>
-                    )
-                  ) : null}
-                  {item.visibleToClient ? (
-                    item.includeInInvoice ? (
-                      <span className="inline-flex rounded-full bg-[#E8F1FF] px-2.5 py-1 text-xs font-bold text-info">Включено у рахунок</span>
-                    ) : (
-                      <span className="inline-flex rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-muted">Не включено у рахунок</span>
-                    )
-                  ) : null}
-                </div>
-                {item.approvedAt ? <p className="mt-2 text-xs text-muted">Погоджено: {item.approvedAt.toLocaleString('uk-UA')}</p> : null}
+                <span
+                  aria-label={`Статус клієнта: ${presentation.clientStatus.label}`}
+                  className={`mt-2 inline-flex max-w-full items-center justify-center rounded-full px-2.5 py-1 text-center text-xs font-bold leading-4 sm:whitespace-nowrap ${presentation.clientStatus.className}`}
+                >
+                  {presentation.clientStatus.label}
+                </span>
+                {selection?.clientComment ? (
+                  <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-red-700">
+                    {selection.clientComment}
+                  </p>
+                ) : null}
               </div>
             </div>
 
+            {managerMutationsAllowed && !approvedLocked ? (
             <div className="mt-4 grid min-w-0 gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
               <details className="group">
                 <summary className="cursor-pointer break-words text-sm font-bold text-foreground transition hover:text-accent">Редагувати позицію</summary>
                 <div className="mt-4 min-w-0 rounded-md border border-border bg-surface-muted p-3 sm:p-4">
-                  <RequestItemForm action={updateAdminRequestItem} requestId={requestId} item={item} submitLabel="Зберегти позицію" />
+                  <RequestItemForm action={updateAdminRequestItem} requestId={requestId} item={item} submitLabel="Зберегти позицію" pendingLabel="Зберігаємо…" />
                 </div>
               </details>
-              <form action={deleteAdminRequestItem} className="sm:justify-self-end">
+              <ReactiveActionForm action={deleteAdminRequestItem} className="sm:justify-self-end">
                 <input type="hidden" name="requestId" value={requestId} />
                 <input type="hidden" name="itemId" value={item.id} />
-                <button className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-danger/30 px-4 py-2 text-sm font-bold text-danger transition hover:bg-danger/10 sm:w-auto">Видалити</button>
-              </form>
+                <ReactiveSubmitButton pendingLabel="Видаляємо…" className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-danger/30 px-4 py-2 text-sm font-bold text-danger transition hover:bg-danger/10 disabled:opacity-60 sm:w-auto">Видалити</ReactiveSubmitButton>
+              </ReactiveActionForm>
             </div>
+            ) : null}
           </article>
           );
         })}
@@ -703,22 +873,62 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
         ) : null}
       </div>
 
+      {managerMutationsAllowed ? (
       <details className="mt-5 rounded-md border border-border bg-surface-muted p-4" open={items.length === 0}>
         <summary className="cursor-pointer text-sm font-bold text-foreground">Додати позицію</summary>
         <div className="mt-4">
-          <RequestItemForm action={createAdminRequestItem} requestId={requestId} submitLabel="Додати позицію" />
+          <RequestItemForm action={createAdminRequestItem} requestId={requestId} submitLabel="Додати позицію" pendingLabel="Додаємо…" />
         </div>
       </details>
+      ) : null}
 
+      {managerMutationsAllowed ? (
       <div className="mt-5 flex min-w-0 border-t border-border pt-5 sm:justify-end">
-        <form action={sendAdminRequestItemsForApproval} className="w-full sm:w-auto">
+        <ReactiveActionForm action={sendAdminRequestItemsForApproval} className="w-full sm:w-auto">
           <input type="hidden" name="requestId" value={requestId} />
-          <button className="inline-flex min-h-11 w-full items-center justify-center gap-2 whitespace-normal rounded-md bg-accent px-4 py-3 text-center text-sm font-bold leading-5 text-foreground transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto">
-            <ActionIcon name="send" />
-            Відправити на погодження
-          </button>
-        </form>
+          <input
+            type="hidden"
+            name="mode"
+            value={eligibility.mode ?? (eligibility.activeBatchId ? 'RESEND_ACTIVE' : 'INITIAL')}
+          />
+          {eligibility.activeBatchId ? (
+            <>
+              <input
+                type="hidden"
+                name="expectedActiveBatchId"
+                value={eligibility.activeBatchId}
+              />
+              <input
+                type="hidden"
+                name="expectedActiveRevision"
+                value={eligibility.activeRevision ?? ''}
+              />
+            </>
+          ) : null}
+          {selectedItems.map((item) => (
+            <input key={item.id} type="hidden" name="requestItemId" value={item.id} />
+          ))}
+          <input
+            type="hidden"
+            name="requestItemVersions"
+            value={JSON.stringify(
+              selectedItems.map((item) => ({
+                id: item.id,
+                updatedAt: versionByItemId.get(item.id) ?? item.updatedAt.toISOString()
+              }))
+            )}
+          />
+          <RequestSelectionSubmitButton
+            disabled={!eligibility.canSend}
+            label={
+              eligibility.activeBatchId
+                ? 'Оновити підбір для клієнта'
+                : 'Надіслати підбір клієнту'
+            }
+          />
+        </ReactiveActionForm>
       </div>
+      ) : null}
     </section>
   );
 }
@@ -726,13 +936,56 @@ function RequestItemsSection({ requestId, items }: { requestId: string; items: R
 function InvoicesSection({
   requestId,
   invoices,
-  approvedInvoiceItemCount
+  eligibility
 }: {
   requestId: string;
   invoices: InvoiceView[];
-  approvedInvoiceItemCount: number;
+  eligibility: RequestInvoiceEligibility;
 }) {
-  const canCreateInvoice = approvedInvoiceItemCount > 0;
+  const canCreateInvoice = eligibility.eligible;
+  const hasExistingInvoice = invoices.length > 0;
+  const showCreateInvoiceControl =
+    eligibility.requestStatus !== 'CANCELLED' && !hasExistingInvoice;
+  const allItemsRejected =
+    eligibility.approvedCount === 0 &&
+    eligibility.rejectedCount > 0 &&
+    eligibility.pendingCount === 0 &&
+    eligibility.batchStatus === 'REJECTED';
+  const suppressCompletedSelectionNotice =
+    eligibility.approvedCount > 0 &&
+    !eligibility.eligible &&
+    [
+      'REQUEST_NOT_AWAITING_INVOICE',
+      'APPROVED_ITEMS_ALREADY_INVOICED',
+      'INVOICE_ALREADY_EXISTS_FOR_SELECTION'
+    ].includes(eligibility.reason);
+  const blockedReason = !eligibility.eligible
+    ? allItemsRejected
+      ? 'На жаль, сформувати рахунок неможливо, оскільки клієнт відхилив усі запропоновані позиції.'
+      : {
+        REQUEST_NOT_FOUND: 'Заявку не знайдено.',
+        REQUEST_NOT_AWAITING_INVOICE:
+          'Рахунок стане доступним після завершення погодження з хоча б однією погодженою позицією.',
+        ACTIVE_SELECTION_REVIEW:
+          'Клієнт ще не завершив погодження актуального підбору. Рахунок можна сформувати після фінального рішення.',
+        NO_FINALIZED_APPROVED_BATCH:
+          'Немає завершеної версії підбору, придатної для рахунку.',
+        NO_APPROVED_ITEMS:
+          'У погодженому підборі немає позицій для формування рахунку.',
+        PENDING_ITEMS_REMAIN:
+          'В останній версії підбору ще залишилися позиції без рішення клієнта.',
+        APPROVED_ITEM_PRICE_MISSING:
+          'Для погодженої позиції не вказано ціну. Підготуйте нову версію підбору.',
+        APPROVED_ITEMS_CURRENCY_MISMATCH:
+          'Погоджені позиції мають різні валюти. Підготуйте узгоджену версію підбору.',
+        APPROVED_ITEMS_ALREADY_INVOICED:
+          'Погоджені позиції вже пов’язані з рахунком.',
+        INVOICE_ALREADY_EXISTS_FOR_SELECTION:
+          'Для цієї заявки рахунок уже створено.',
+        LEGACY_SELECTION_AMBIGUOUS:
+          'Заявка містить історичний багатоверсійний підбір. Перед формуванням рахунку потрібна перевірка даних.'
+        }[eligibility.reason]
+    : null;
 
   return (
     <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
@@ -741,29 +994,37 @@ function InvoicesSection({
           <p className="text-sm font-bold uppercase text-accent">Рахунки</p>
           <h3 className="mt-2 text-xl font-bold text-foreground">Рахунки на основі погоджених позицій</h3>
           <p className="mt-2 text-sm leading-6 text-muted">
-            Рахунок формується тільки з позицій, які клієнт погодив і відмітив для включення у рахунок.
+            Рахунок формується тільки з погоджених позицій останньої завершеної
+            незмінної версії підбору.
           </p>
         </div>
-        <form action={createAdminInvoice} className="w-full lg:w-auto">
-          <input type="hidden" name="requestId" value={requestId} />
-          <button
-            disabled={!canCreateInvoice}
-            className="inline-flex w-full items-center justify-center gap-2 whitespace-normal rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-muted lg:w-auto"
-          >
-            <ActionIcon name="plus" />
-            Створити рахунок
-          </button>
-        </form>
+        {showCreateInvoiceControl ? (
+          <ReactiveActionForm action={createAdminInvoice} className="w-full lg:w-auto">
+            <input type="hidden" name="requestId" value={requestId} />
+            <ReactiveSubmitButton
+              pendingLabel="Створюємо рахунок…"
+              disabled={!canCreateInvoice}
+              className="inline-flex w-full items-center justify-center gap-2 whitespace-normal rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-muted lg:w-auto"
+            >
+              <ActionIcon name="plus" />
+              Створити рахунок
+            </ReactiveSubmitButton>
+          </ReactiveActionForm>
+        ) : null}
       </div>
 
-      {!canCreateInvoice ? (
-        <p className="mt-4 rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm font-semibold text-[#8A5B24]">
-          Рахунок можна створити після того, як клієнт погодить позиції та відмітить їх для включення у рахунок.
-        </p>
-      ) : (
-        <p className="mt-4 rounded-md border border-info/20 bg-[#E8F1FF] p-4 text-sm font-semibold text-info">
-          До рахунку готово {approvedInvoiceItemCount} позицій.
-        </p>
+      {!showCreateInvoiceControl ||
+      canCreateInvoice ||
+      suppressCompletedSelectionNotice ? null : (
+        <div
+          className={`mt-4 rounded-md border p-4 text-sm ${
+            allItemsRejected
+              ? 'border-danger/30 bg-[#FEF3F2] text-danger'
+              : 'border-warning/30 bg-[#FFF7E0] text-[#8A5B24]'
+          }`}
+        >
+          <p className="font-semibold">{blockedReason}</p>
+        </div>
       )}
 
       <div className="mt-5 grid gap-4">
@@ -874,14 +1135,14 @@ function InvoicesSection({
                       Друк / PDF
                     </Link>
                     {canSend ? (
-                      <form action={sendAdminInvoice} className="w-full sm:w-auto">
+                      <ReactiveActionForm action={sendAdminInvoice} className="w-full sm:w-auto">
                         <input type="hidden" name="requestId" value={requestId} />
                         <input type="hidden" name="invoiceId" value={invoice.id} />
-                        <button className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent-hover sm:w-auto">
+                        <ReactiveSubmitButton pendingLabel="Надсилаємо…" className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:opacity-60 sm:w-auto">
                           <ActionIcon name="send" />
                           Надіслати клієнту
-                        </button>
-                      </form>
+                        </ReactiveSubmitButton>
+                      </ReactiveActionForm>
                     ) : null}
                     {canMarkPaid ? (
                       <form action={markAdminInvoicePaid} className="w-full sm:w-auto">
@@ -931,37 +1192,36 @@ function RequestItemForm({
   action,
   requestId,
   item,
-  submitLabel
+  submitLabel,
+  pendingLabel
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  action: (formData: FormData) => Promise<WorkflowActionResult>;
   requestId: string;
   item?: RequestItemView;
   submitLabel: string;
+  pendingLabel: string;
 }) {
   return (
-    <form action={action} className="grid min-w-0 gap-4">
+    <ReactiveActionForm action={action} className="grid min-w-0 gap-4" resetOnSuccess={!item}>
       <input type="hidden" name="requestId" value={requestId} />
       {item ? <input type="hidden" name="itemId" value={item.id} /> : null}
+      {item ? (
+        <input
+          type="hidden"
+          name="expectedUpdatedAt"
+          value={item.updatedAt.toISOString()}
+        />
+      ) : null}
       <div className="grid min-w-0 gap-3 md:grid-cols-2 min-[1800px]:grid-cols-3">
-        {EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED ? null : (
-          <ManualEquipmentFields
-            typeName="equipmentType"
-            manufacturerName="brand"
-            typeDefaultValue={item?.equipmentType ?? ''}
-            manufacturerDefaultValue={item?.brand ?? ''}
-          />
-        )}
         <TextField name="name" label="Назва запчастини" required defaultValue={item?.name} />
-        {EQUIPMENT_TAXONOMY_REQUEST_ITEM_FIELDS_ENABLED ? (
-          <PartManufacturerField defaultValue={item?.brand} listId={`part-manufacturer-${item?.id ?? 'new'}`} />
-        ) : null}
+        <PartManufacturerField defaultValue={item?.brand} listId={`part-manufacturer-${item?.id ?? 'new'}`} />
         <TextField name="catalogNumber" label="Каталожний номер" defaultValue={item?.catalogNumber} />
         <TextField name="quantity" label="Кількість" type="number" min="1" defaultValue={String(item?.quantity ?? 1)} />
         <TextField name="unit" label="Одиниця" defaultValue={item?.unit ?? 'шт'} />
         <TextField name="availability" label="Наявність" defaultValue={item?.availability} />
         <TextField name="salePrice" label="Ціна без ПДВ" type="number" min="0" step="0.01" defaultValue={item?.salePrice?.toString()} />
-        <TextField name="currency" label="Валюта" defaultValue={item?.currency ?? 'UAH'} />
       </div>
+      <input type="hidden" name="currency" value={item?.currency ?? 'UAH'} />
       <label className="grid min-w-0 gap-2 text-sm font-semibold text-foreground">
         Коментар
         <textarea
@@ -971,21 +1231,22 @@ function RequestItemForm({
           className="min-w-0 w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
         />
       </label>
-      <button className="inline-flex w-full items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover sm:w-fit">
+      <ReactiveSubmitButton pendingLabel={pendingLabel} className="inline-flex w-full items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:opacity-60 sm:w-fit">
         {submitLabel}
-      </button>
-    </form>
+      </ReactiveSubmitButton>
+    </ReactiveActionForm>
   );
 }
 
 function PartManufacturerField({ defaultValue, listId }: { defaultValue?: string | null; listId: string }) {
   return (
     <label className="grid min-w-0 gap-2 text-sm font-semibold text-foreground">
-      Виробник
+      <span>Виробник <span aria-hidden="true">*</span></span>
       <input
         name="brand"
         list={listId}
         defaultValue={defaultValue ?? ''}
+        required
         className="h-11 w-full min-w-0 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
       />
       <datalist id={listId}>

@@ -1,0 +1,56 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+
+import { LogisticsRequestForm } from '@/components/public/logistics/logistics-request-form';
+import { getLogisticsRequestContactPrefill } from '@/lib/logistics/access';
+import { getKyivTodayDateOnly } from '@/lib/logistics/date-only';
+
+export const metadata: Metadata = {
+  title: 'Заявка на перевезення | Kairos Logistics',
+  description:
+    'Заповніть дані точок відвантаження й отримайте фіксований або індивідуальний розрахунок перевезення Kairos Logistics.',
+  robots: {
+    index: false,
+    follow: false
+  }
+};
+
+export default async function LogisticsRequestPage() {
+  const initialContact = await getLogisticsRequestContactPrefill();
+  const minPreferredDeliveryDate = getKyivTodayDateOnly();
+
+  return (
+    <>
+      <section className="bg-primary py-12 text-white sm:py-16">
+        <div className="kp-container">
+          <Link
+            href="/logistics"
+            className="inline-flex rounded-sm text-sm font-semibold text-accent transition hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+          >
+            ← Повернутися до Kairos Logistics
+          </Link>
+          <p className="mt-7 text-xs font-bold uppercase tracking-[0.2em] text-accent">
+            Kairos Logistics
+          </p>
+          <h1 className="mt-3 max-w-4xl font-display text-4xl font-bold leading-tight sm:text-5xl">
+            Заявка на перевезення
+          </h1>
+          <p className="mt-5 max-w-3xl text-base leading-7 text-white/75 sm:text-lg">
+            Додайте точки відвантаження та оберіть місце доставки. Для тарифних
+            міст вартість розраховується автоматично, а для інших населених
+            пунктів її погодить із вами менеджер.
+          </p>
+        </div>
+      </section>
+
+      <section className="bg-public-page py-10 sm:py-14 lg:py-16">
+        <div className="kp-container">
+          <LogisticsRequestForm
+            initialContact={initialContact}
+            minPreferredDeliveryDate={minPreferredDeliveryDate}
+          />
+        </div>
+      </section>
+    </>
+  );
+}

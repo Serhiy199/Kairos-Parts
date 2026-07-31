@@ -1,19 +1,27 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { TbArrowLeft, TbBuilding, TbDownload, TbFileDescription, TbPhotoEdit, TbUser } from 'react-icons/tb';
+import { TbArrowLeft, TbBuilding, TbUser } from 'react-icons/tb';
 
 import { ContextualChangeRequestForm } from '@/app/client/change-requests/contextual-change-request-form';
 import { updateClientVehicle } from '@/app/client/vehicles/actions';
+import { deleteClientVehicleDocument } from '@/app/client/vehicles/document-actions';
+import {
+  deleteClientVehicleImage,
+  reorderClientVehicleImages,
+  setPrimaryClientVehicleImage,
+  uploadClientVehicleImages
+} from '@/app/client/vehicles/image-actions';
 import { VehicleForm } from '@/app/client/vehicles/vehicle-form';
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
 import { StatusBadge } from '@/components/client/status-badge';
+import { ClientVehicleDocumentManager } from '@/components/vehicles/client-vehicle-document-manager';
 import { ClientVehicleGallery } from '@/components/vehicles/client-vehicle-gallery';
+import { VehicleImageManager } from '@/components/vehicles/vehicle-image-manager';
 import { getClientAccessContext, requireClientSession } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { getClientVehicleDetail } from '@/lib/vehicles/client-queries';
 import { getVehicleDisplay } from '@/lib/vehicles/name';
-import { formatVehicleDocumentSize, vehicleDocumentTypeLabel } from '@/lib/vehicles/documents';
 import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
 export const dynamic = 'force-dynamic';
@@ -37,7 +45,7 @@ export default async function ClientVehicleDetailPage({
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ updated?: string; error?: string; result?: string }>;
+  searchParams: Promise<{ created?: string; updated?: string; assets?: string; cleanup?: string; error?: string; result?: string }>;
 }) {
   const session = await requireClientSession();
   const { id } = await params;
@@ -69,15 +77,24 @@ export default async function ClientVehicleDetailPage({
             <TbArrowLeft aria-hidden="true" className="size-4" />
             Назад до парку техніки
           </Link>
-          <Link href={`/client/vehicles/${vehicle.id}/photos`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-            <TbPhotoEdit aria-hidden="true" className="size-4" />
-            Керувати фото
-          </Link>
         </div>
       </nav>
 
+      {query.created ? (
+        <div role="status" className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">Техніку та вибрані файли збережено.</div>
+      ) : null}
       {query.updated ? (
-        <div role="status" className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">Дані техніки оновлено.</div>
+        <div role="status" className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">Дані техніки та вибрані файли збережено.</div>
+      ) : null}
+      {query.assets === 'partial' ? (
+        <div role="alert" className="rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm font-semibold text-[#8A5B24]">
+          Основні дані збережено, але не всі вибрані файли вдалося додати. Перевірте списки нижче та повторіть завантаження за потреби.
+        </div>
+      ) : null}
+      {query.cleanup === 'failed' ? (
+        <div role="alert" className="rounded-md border border-danger/30 bg-danger/10 p-4 text-sm font-semibold text-danger">
+          Частину тимчасово завантажених файлів не вдалося автоматично очистити. Подію зафіксовано для технічної перевірки.
+        </div>
       ) : null}
       {query.error ? (
         <div role="alert" className="rounded-md border border-danger/30 bg-[#FEF3F2] p-4 text-sm font-semibold text-danger">
@@ -141,39 +158,47 @@ export default async function ClientVehicleDetailPage({
         </section>
       ) : null}
 
-      <VehicleDocumentsSection documents={vehicle.documents} />
-
       <section aria-labelledby="vehicle-edit-heading" className="grid gap-4">
         <div>
           <h2 id="vehicle-edit-heading" className="text-xl font-bold text-foreground">Редагувати техніку</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">Оновіть характеристики власної техніки. Власник і зв’язки із заявками не змінюються.</p>
+          <p className="mt-2 text-sm leading-6 text-muted">Оновіть характеристики та додайте нові фото або документи одним збереженням.</p>
         </div>
         <VehicleForm
           action={updateClientVehicle.bind(null, vehicle.id)}
           submitLabel="Зберегти зміни"
           taxonomy={taxonomy}
           vehicle={vehicle}
+          existingImageCount={vehicle.images.length}
+          existingDocumentCount={vehicle.documents.length}
+          existingDocumentBytes={vehicle.documents.reduce((total, document) => total + document.size, 0)}
         />
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ContextualChangeRequestForm
-          title="Передати уточнення менеджеру"
-          description="Опишіть, які дані потрібно перевірити. Після погодження дозволена зміна буде застосована автоматично."
-          entityType="VEHICLE"
-          entityId={vehicle.id}
-          action="UPDATE"
-          redirectTo={currentPath}
-          fieldOptions={[
-            { value: 'name', label: 'Назва техніки', currentValue: vehicle.name },
-            { value: 'type', label: 'Тип техніки', currentValue: vehicle.type },
-            { value: 'manufacturer', label: 'Виробник', currentValue: vehicle.manufacturer },
-            { value: 'model', label: 'Модель', currentValue: vehicle.model },
-            { value: 'year', label: 'Рік', currentValue: vehicle.year },
-            { value: 'vinOrSerial', label: 'VIN / серійний номер', currentValue: vehicle.vinOrSerial },
-            { value: 'comment', label: 'Примітка', currentValue: vehicle.comment }
-          ]}
-        />
+      <VehicleImageManager
+        vehicleId={vehicle.id}
+        vehicleLabel={vehicleLabel}
+        images={vehicle.images}
+        uploadAction={uploadClientVehicleImages.bind(null, vehicle.id)}
+        setPrimaryAction={setPrimaryClientVehicleImage.bind(null, vehicle.id)}
+        reorderAction={reorderClientVehicleImages.bind(null, vehicle.id)}
+        deleteAction={deleteClientVehicleImage.bind(null, vehicle.id)}
+        showUpload={false}
+      />
+
+      <ClientVehicleDocumentManager
+        documents={vehicle.documents.map((document) => ({
+          id: document.id,
+          fileName: document.fileName,
+          mimeType: document.mimeType,
+          size: document.size,
+          source: document.source,
+          createdAt: document.createdAt.toISOString(),
+          canDelete: document.source === 'CLIENT' && document.uploadedById === session.user.id
+        }))}
+        deleteAction={deleteClientVehicleDocument.bind(null, vehicle.id)}
+      />
+
+      <div className="grid gap-4">
         {!vehicle.archivedAt ? (
           <ContextualChangeRequestForm
             title="Запросити архівацію техніки"
@@ -204,50 +229,6 @@ function VehicleFact({ label, value, breakWords = false }: { label: string; valu
 }
 
 type VehicleDetail = NonNullable<Awaited<ReturnType<typeof getClientVehicleDetail>>>;
-
-function VehicleDocumentsSection({ documents }: { documents: VehicleDetail['documents'] }) {
-  return (
-    <section aria-labelledby="vehicle-documents-heading" className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-        <div>
-          <h2 id="vehicle-documents-heading" className="text-xl font-bold text-foreground">Документи техніки</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">Документи, які менеджер відкрив для вашого кабінету.</p>
-        </div>
-        <Link href="/client/documents" className="inline-flex min-h-10 items-center text-sm font-bold text-foreground transition hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-          Усі документи
-        </Link>
-      </div>
-
-      {documents.length === 0 ? (
-        <div className="mt-5 flex items-center gap-3 rounded-md border border-dashed border-border p-5 text-sm text-muted">
-          <TbFileDescription aria-hidden="true" className="size-5 shrink-0" />
-          Документи для цієї техніки ще не додані
-        </div>
-      ) : (
-        <div className="mt-5 grid gap-3">
-          {documents.map((document) => (
-            <article key={document.id} className="flex min-w-0 flex-col justify-between gap-4 rounded-md border border-border p-4 sm:flex-row sm:items-center">
-              <div className="min-w-0">
-                <p className="break-words font-bold text-foreground">{document.fileName}</p>
-                <p className="mt-1 text-xs text-muted">
-                  {vehicleDocumentTypeLabel(document.mimeType)} · {formatVehicleDocumentSize(document.size)} · {document.createdAt.toLocaleDateString('uk-UA')}
-                </p>
-              </div>
-              <a
-                href={`/api/client/vehicle-documents/${document.id}/download`}
-                aria-label={`Завантажити ${document.fileName}`}
-                className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-accent px-4 py-2 text-sm font-bold text-foreground transition hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-              >
-                <TbDownload aria-hidden="true" className="size-4" />
-                Завантажити
-              </a>
-            </article>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
 
 function RelatedRequests({ requests }: { requests: VehicleDetail['requests'] }) {
   return (

@@ -10,7 +10,7 @@ import {
 import { vehicleOwnershipForClient } from '@/lib/vehicles/ownership';
 import { pickEditableVehicleFields } from '@/lib/vehicles/change-snapshot';
 import { normalizeVehicleVin } from '@/lib/vehicles/vin';
-import { validateVehicleName } from '@/lib/vehicles/name';
+import { buildVehicleDisplayName, VehicleNameBuildError } from '@/lib/vehicles/name';
 
 export const runtime = 'nodejs';
 
@@ -48,7 +48,6 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json()) as Record<string, unknown>;
-  const nameResult = validateVehicleName(body.name);
   const type = readString(body.type);
   const manufacturer = readString(body.manufacturer);
   const model = readString(body.model);
@@ -56,16 +55,22 @@ export async function POST(request: Request) {
   const yearValue = typeof body.year === 'number' ? body.year : Number(readString(body.year));
   const year = Number.isInteger(yearValue) && yearValue > 1900 && yearValue < 2200 ? yearValue : null;
 
-  if (!nameResult.ok) {
+  if (!type || !manufacturer || !model || vinSource.length > 120) {
     return Response.json(
-      { status: 'validation_error', message: nameResult.message, field: 'name' },
+      { status: 'validation_error', message: 'Перевірте обовʼязкові поля та довжину VIN або серійного номера.' },
       { status: 400 }
     );
   }
 
-  if (!type || !manufacturer || !model || vinSource.length > 120) {
+  let canonicalName;
+  try {
+    canonicalName = buildVehicleDisplayName({ manufacturer, model });
+  } catch (error) {
+    const field = error instanceof VehicleNameBuildError && error.code === 'VEHICLE_MANUFACTURER_REQUIRED'
+      ? 'manufacturer'
+      : 'model';
     return Response.json(
-      { status: 'validation_error', message: 'Перевірте обовʼязкові поля та довжину VIN або серійного номера.' },
+      { status: 'validation_error', message: 'Перевірте виробника та модель.', field },
       { status: 400 }
     );
   }
@@ -82,10 +87,10 @@ export async function POST(request: Request) {
     const vehicle = await tx.vehicle.create({
       data: {
         ...owner,
-        name: nameResult.name,
+        name: canonicalName.name,
         type,
-        manufacturer,
-        model,
+        manufacturer: canonicalName.manufacturer,
+        model: canonicalName.model,
         year,
         vinOrSerial,
         comment: readString(body.comment) || null

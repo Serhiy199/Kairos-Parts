@@ -16,7 +16,6 @@ type SearchParams = {
   status?: string;
   source?: string;
   manager?: string;
-  category?: string;
   dateFrom?: string;
   dateTo?: string;
   q?: string;
@@ -48,10 +47,6 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
     where.assignedManagerId = params.manager;
   }
 
-  if (params.category) {
-    where.categoryId = params.category;
-  }
-
   if (params.dateFrom || params.dateTo) {
     where.createdAt = {
       ...(params.dateFrom ? { gte: new Date(params.dateFrom) } : {}),
@@ -75,14 +70,13 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
     ];
   }
 
-  const [requests, managers, categories] = await Promise.all([
+  const [requests, managers] = await Promise.all([
     prisma.request.findMany({
       where,
       orderBy: { updatedAt: 'desc' },
       take: 100,
       include: {
         client: { select: { contactName: true, companyName: true, phone: true } },
-        category: { select: { id: true, name: true } },
         assignedManager: { select: { id: true, name: true, email: true } }
       }
     }),
@@ -90,10 +84,6 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
       where: { role: { in: ['MANAGER', 'ADMIN'] } },
       orderBy: [{ role: 'asc' }, { name: 'asc' }],
       select: { id: true, name: true, email: true, role: true }
-    }),
-    prisma.category.findMany({
-      orderBy: { name: 'asc' },
-      select: { id: true, name: true }
     })
   ]);
   const filterFormKey = [
@@ -101,7 +91,6 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
     inputValue(params.status),
     inputValue(params.source),
     inputValue(params.manager),
-    inputValue(params.category),
     inputValue(params.dateFrom),
     inputValue(params.dateTo)
   ].join('|');
@@ -115,7 +104,7 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
           {session.user.role === 'ADMIN' ? 'Адміністратор бачить повний потік заявок.' : 'Менеджер бачить CRM потік заявок. Обмеження тільки призначеними менеджеру заявками ще не ввімкнено.'}
         </p>
 
-        <form key={filterFormKey} action="/admin/requests" method="get" className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+        <form key={filterFormKey} action="/admin/requests" method="get" className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
           <input name="q" defaultValue={inputValue(params.q)} placeholder="Пошук: №, телефон, клієнт, VIN" className="h-11 min-w-0 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25 sm:col-span-2 2xl:col-span-2" />
           <select name="status" defaultValue={inputValue(params.status)} className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent">
             <option value="">Всі статуси</option>
@@ -128,10 +117,6 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
           <select name="manager" defaultValue={inputValue(params.manager)} className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent">
             <option value="">Всі менеджери</option>
             {managers.map((manager) => <option key={manager.id} value={manager.id}>{manager.name ?? manager.email}</option>)}
-          </select>
-          <select name="category" defaultValue={inputValue(params.category)} className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent">
-            <option value="">Всі категорії</option>
-            {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
           </select>
           <input name="dateFrom" type="date" defaultValue={inputValue(params.dateFrom)} className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent" />
           <input name="dateTo" type="date" defaultValue={inputValue(params.dateTo)} className="h-11 rounded-md border border-border px-3 text-sm outline-none focus:border-accent" />
@@ -150,12 +135,19 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
         {requests.length > 0 ? (
           <div className="grid gap-3 p-4 sm:p-5 xl:hidden">
             {requests.map((request) => (
-              <article key={request.id} className="rounded-md border border-border bg-card p-4">
+              <article
+                key={request.id}
+                className={`rounded-md border p-4 ${
+                  request.status === 'NEW'
+                    ? 'border-success/40 bg-[#F5FBF7] shadow-[inset_4px_0_0_#2E7D4F]'
+                    : 'border-border bg-card'
+                }`}
+              >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <Link href={`/admin/requests/${request.id}`} className="break-words font-bold text-foreground transition hover:text-accent">
                     {request.requestNumber}
                   </Link>
-                  <StatusBadge status={request.status} />
+                  <StatusBadge status={request.status} highlightNew />
                 </div>
                 <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
                   <RequestCardField label="Клієнт" value={request.client?.companyName ?? request.client?.contactName ?? request.companyName ?? request.guestName ?? 'Гість'} />
@@ -173,7 +165,7 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
           </div>
         ) : null}
         <div className="hidden overflow-x-auto xl:block">
-          <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border bg-surface-muted text-muted">
                 <th className="px-4 py-3 font-bold">№</th>
@@ -181,7 +173,6 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
                 <th className="px-4 py-3 font-bold">Клієнт</th>
                 <th className="px-4 py-3 font-bold">Телефон</th>
                 <th className="px-4 py-3 font-bold">Джерело</th>
-                <th className="px-4 py-3 font-bold">Категорія</th>
                 <th className="px-4 py-3 font-bold">Техніка</th>
                 <th className="px-4 py-3 font-bold">Статус</th>
                 <th className="px-4 py-3 font-bold">Менеджер</th>
@@ -190,15 +181,21 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
             </thead>
             <tbody>
               {requests.map((request) => (
-                <tr key={request.id} className="border-b border-border last:border-0">
+                <tr
+                  key={request.id}
+                  className={`border-b border-border last:border-0 ${
+                    request.status === 'NEW'
+                      ? 'bg-[#F5FBF7] shadow-[inset_4px_0_0_#2E7D4F]'
+                      : 'transition-colors hover:bg-surface-muted/50'
+                  }`}
+                >
                   <td className="px-4 py-3"><Link href={`/admin/requests/${request.id}`} className="font-bold text-foreground transition hover:text-accent">{request.requestNumber}</Link></td>
                   <td className="px-4 py-3 text-muted">{request.createdAt.toLocaleDateString('uk-UA')}</td>
                   <td className="px-4 py-3 text-muted">{request.client?.companyName ?? request.client?.contactName ?? request.companyName ?? request.guestName ?? 'Гість'}</td>
                   <td className="px-4 py-3 text-muted">{request.client?.phone ?? request.guestPhone ?? '—'}</td>
                   <td className="px-4 py-3 text-muted">{REQUEST_SOURCE_LABELS[request.source]}</td>
-                  <td className="px-4 py-3 text-muted">{request.category?.name ?? '—'}</td>
                   <td className="px-4 py-3 text-muted">{request.equipmentType ?? '—'}</td>
-                  <td className="px-4 py-3"><StatusBadge status={request.status} /></td>
+                  <td className="px-4 py-3"><StatusBadge status={request.status} highlightNew /></td>
                   <td className="px-4 py-3 text-muted">{request.assignedManager?.name ?? request.assignedManager?.email ?? 'Не призначено'}</td>
                   <td className="px-4 py-3 text-muted">{request.updatedAt.toLocaleDateString('uk-UA')}</td>
                 </tr>

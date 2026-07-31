@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { auth } from '@/auth';
@@ -5,9 +6,15 @@ import { ActionIcon } from '@/components/ui/action-icons';
 import { getClientAccessContext, getClientProfileForSession, requestAccessWhere, vehicleAccessWhere } from '@/lib/client/access';
 import { EQUIPMENT_TAXONOMY_REQUEST_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { getUploadMaxSizeMb } from '@/lib/files/upload-policy';
+import { NOINDEX_METADATA } from '@/lib/seo';
 import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
 import { RequestForm } from './request-form';
+
+export const metadata: Metadata = {
+  title: 'Створення заявки — Kairos Parts',
+  ...NOINDEX_METADATA
+};
 
 export default async function RequestPage({
   searchParams

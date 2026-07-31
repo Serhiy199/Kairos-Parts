@@ -6,6 +6,10 @@ import PDFDocument from 'pdfkit';
 
 import { buildInvoicePartyDetails } from '@/lib/invoices/party-details';
 import {
+  buildInvoiceHeading,
+  INVOICE_VALIDITY_NOTICE
+} from '@/lib/invoices/presentation';
+import {
   calculateInvoiceTotals,
   formatInvoiceMoney,
   resolveInvoiceLineTotal,
@@ -155,13 +159,13 @@ function addKeyValueRows(doc: PDFKit.PDFDocument, rows: Array<[string, string]>,
   return y;
 }
 
-function addPartyDetailsBlock(doc: PDFKit.PDFDocument, title: string, snapshot: BillingSnapshot | null, currentY: number, includeVatPayer = false) {
+function addPartyDetailsBlock(doc: PDFKit.PDFDocument, title: string, snapshot: BillingSnapshot | null, currentY: number, buyer = false) {
   const contentWidth = getContentWidth(doc);
   const titleHeight = 11;
   const paddingX = 10;
   const paddingY = 8;
   const details =
-    buildInvoicePartyDetails(snapshot, { includeVatPayer }) ?? 'Реквізити не збережені у snapshot цього рахунку.';
+    buildInvoicePartyDetails(snapshot, { buyer }) ?? 'Реквізити не збережені у snapshot цього рахунку.';
   const paragraphWidth = contentWidth - paddingX * 2;
   const paragraphHeight = measureText(doc, details, paragraphWidth, { size: BODY_FONT_SIZE, lineGap: 1 });
   const blockHeight = paddingY * 2 + titleHeight + 4 + paragraphHeight;
@@ -362,19 +366,16 @@ function addInvoiceTotalsBlock(doc: PDFKit.PDFDocument, totals: InvoiceTotals, c
 
 function addSignatureBlock(doc: PDFKit.PDFDocument, currentY: number) {
   const contentWidth = getContentWidth(doc);
-  const columnWidth = (contentWidth - 60) / 2;
+  const signatureWidth = Math.min(contentWidth * 0.48, 360);
   let y = ensureSpace(doc, currentY + 10, 42);
 
-  writeText(doc, 'Виконавець', PAGE_MARGIN, y, columnWidth, { bold: true, size: 8.8, color: '#050505' });
-  writeText(doc, 'Замовник', PAGE_MARGIN + columnWidth + 60, y, columnWidth, { bold: true, size: 8.8, color: '#050505' });
+  writeText(doc, 'Виконавець', PAGE_MARGIN, y, signatureWidth, { bold: true, size: 8.8, color: '#050505' });
   y += 20;
   doc
     .strokeColor('#101010')
     .lineWidth(0.8)
     .moveTo(PAGE_MARGIN, y)
-    .lineTo(PAGE_MARGIN + columnWidth, y)
-    .moveTo(PAGE_MARGIN + columnWidth + 60, y)
-    .lineTo(PAGE_MARGIN + columnWidth + 60 + columnWidth, y)
+    .lineTo(PAGE_MARGIN + signatureWidth, y)
     .stroke();
 
   return y + 8;
@@ -423,7 +424,7 @@ export async function generateInvoicePdfBuffer(invoiceId: string): Promise<{ buf
   });
   y += 15;
 
-  writeText(doc, `Рахунок ${invoice.invoiceNumber}`, PAGE_MARGIN, y, contentWidth, {
+  writeText(doc, buildInvoiceHeading(invoice.invoiceNumber, invoice.sentAt), PAGE_MARGIN, y, contentWidth, {
     bold: true,
     size: 19,
     color: '#050505'
@@ -433,6 +434,13 @@ export async function generateInvoicePdfBuffer(invoiceId: string): Promise<{ buf
   writeText(doc, `Заявка: ${invoice.request.requestNumber}`, PAGE_MARGIN, y, contentWidth, {
     size: 8.8,
     color: '#4C4F54'
+  });
+  y += 17;
+
+  writeText(doc, INVOICE_VALIDITY_NOTICE, PAGE_MARGIN, y, contentWidth, {
+    bold: true,
+    size: 8.8,
+    color: '#30343a'
   });
   y += 17;
 
