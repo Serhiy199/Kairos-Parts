@@ -30,11 +30,11 @@ export const PUBLIC_PAGE_SEO = {
     description:
       'Зв’яжіться з Kairos Parts щодо підбору запчастин, комерційної пропозиції, співпраці або статусу заявки.'
   },
-  categories: {
-    path: '/categories',
-    title: 'Категорії запчастин і техніки — Kairos Parts',
+  logistics: {
+    path: '/logistics',
+    title: 'Kairos Logistics — доставка товарів для агропідприємств | Kairos Parts',
     description:
-      'Оберіть напрям підбору запчастин для аграрної, вантажної, комерційної та спеціальної техніки.'
+      'Забір товарів у постачальників у межах Київської області та доставка до бази Kairos Parts у Кагарлику або в господарства Кагарлицької громади.'
   },
   usedEquipment: {
     path: '/used-equipment',
