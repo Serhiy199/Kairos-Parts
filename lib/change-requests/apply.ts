@@ -5,6 +5,7 @@ import {
   EQUIPMENT_TEXT_FIELD_MAX_LENGTH
 } from '@/lib/features/equipment-taxonomy';
 import { findVehicleVinDuplicate } from '@/lib/vehicles/duplicates';
+import { buildVehicleDisplayName } from '@/lib/vehicles/name';
 import { isValidVehicleOwnership } from '@/lib/vehicles/ownership';
 import { normalizeTaxonomyName } from '@/lib/vehicles/taxonomy-normalization';
 import {
@@ -27,6 +28,7 @@ type ApplyResult =
         | 'change-request-invalid-value'
         | 'change-request-stale-conflict'
         | 'change-request-vehicle-vin-duplicate'
+        | 'change-request-approved-item-locked'
         | 'change-request-target-not-found-or-forbidden';
     };
 
@@ -241,11 +243,35 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
       where: changeRequest.companyId
         ? { id: changeRequest.entityId, visibleToClient: true, request: { companyId: changeRequest.companyId } }
         : { id: changeRequest.entityId, visibleToClient: true, request: { client: { userId: changeRequest.requestedById } } },
-      select: { id: true, name: true, brand: true, catalogNumber: true, analogNumber: true, quantity: true, unit: true, comment: true }
+      select: {
+        id: true,
+        requestId: true,
+        name: true,
+        brand: true,
+        catalogNumber: true,
+        analogNumber: true,
+        quantity: true,
+        unit: true,
+        comment: true
+      }
     });
 
     if (!requestItem) {
       return { ok: false, status: 'change-request-target-not-found-or-forbidden' };
+    }
+    const approvedSnapshot = await tx.requestSelectionBatchItem.findFirst({
+      where: {
+        sourceRequestItemId: requestItem.id,
+        status: 'APPROVED',
+        batch: {
+          requestId: requestItem.requestId,
+          status: { in: ['APPROVED', 'PARTIALLY_APPROVED'] }
+        }
+      },
+      select: { id: true }
+    });
+    if (approvedSnapshot) {
+      return { ok: false, status: 'change-request-approved-item-locked' };
     }
 
     await tx.requestItem.update({ where: { id: requestItem.id }, data });
@@ -272,7 +298,7 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
   if (changeRequest.entityType === 'VEHICLE' && changeRequest.action === 'UPDATE') {
     const field = normalizeVehicleField(changeRequest.fieldName);
 
-    if (!field) {
+    if (!field || field === 'name') {
       return { ok: false, status: 'change-request-field-not-allowed' };
     }
 
@@ -371,7 +397,27 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
       }
     }
 
-    await tx.vehicle.update({ where: { id: vehicle.id }, data: { ...data, [field]: canonicalNewValue } });
+    const updateData: Prisma.VehicleUpdateInput = { ...data, [field]: canonicalNewValue };
+    let oldValue: Prisma.InputJsonObject = { [field]: currentValue };
+    let newValue: Prisma.InputJsonObject = { [field]: canonicalNewValue as Prisma.InputJsonValue };
+
+    if (field === 'manufacturer' || field === 'model') {
+      try {
+        const canonicalName = buildVehicleDisplayName({
+          manufacturer: field === 'manufacturer' ? canonicalNewValue : vehicle.manufacturer,
+          model: field === 'model' ? canonicalNewValue : vehicle.model
+        });
+        updateData.name = canonicalName.name;
+        updateData.manufacturer = canonicalName.manufacturer;
+        updateData.model = canonicalName.model;
+        oldValue = { ...oldValue, name: vehicle.name };
+        newValue = { ...newValue, name: canonicalName.name };
+      } catch {
+        return { ok: false, status: 'change-request-invalid-value' };
+      }
+    }
+
+    await tx.vehicle.update({ where: { id: vehicle.id }, data: updateData });
 
     return {
       ok: true,
@@ -379,8 +425,8 @@ export async function applyChangeRequest(tx: Prisma.TransactionClient, changeReq
         entityType: 'VEHICLE',
         entityId: vehicle.id,
         action: 'CHANGE_APPLIED',
-        oldValue: { [field]: currentValue },
-        newValue: { [field]: canonicalNewValue },
+        oldValue,
+        newValue,
         metadata: {
           fieldName: changeRequest.fieldName,
           normalizedField: field,

@@ -1,15 +1,21 @@
 ﻿import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { approveClientRequestItemsAction } from '@/app/client/actions';
+import { ClientApprovalBatchSection } from '@/components/client/client-approval-batch-section';
 import { ClientDbBlocker } from '@/components/client/client-db-blocker';
+import { ClientLegacySelectionSection } from '@/components/client/client-legacy-selection-section';
 import { StatusBadge } from '@/components/client/status-badge';
 import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
-import { calculateInvoiceLineTotal, calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
+import { calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
 import { CLIENT_INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
 import { prisma } from '@/lib/prisma';
 import { REQUEST_DOCUMENT_TYPE_LABELS } from '@/lib/request-documents/validation';
+import {
+  ClientRequestApprovalReadError,
+  getClientRequestApprovalReadModel
+} from '@/lib/request-selection/client-read-model';
+import type { ClientRequestApprovalReadModel } from '@/lib/request-selection/client-read-model';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +33,20 @@ function resultMessage(result?: string) {
     'item-selection-required': 'Оберіть хоча б одну позицію для включення у рахунок.',
     'items-approval-error': 'Не вдалося погодити позиції. Спробуйте ще раз.',
     'items-approval-forbidden': 'Позиції не знайдено або вони недоступні для вашого кабінету.',
+    'selection-item-approved': 'Позицію погоджено. Очікується рішення щодо інших позицій.',
+    'selection-fully-approved': 'Усі позиції погоджено. Заявка очікує рахунок.',
+    'selection-item-rejected-pending': 'Позицію відхилено. Очікується рішення щодо інших позицій.',
+    'selection-partially-approved': 'Погодження завершено частково. Рахунок можна сформувати лише за погодженими позиціями.',
+    'selection-fully-rejected': 'Усі позиції відхилено. Менеджер підготує оновлену версію підбору.',
+    'selection-decision-noop': 'Це рішення вже збережено.',
+    'selection-decision-stale': 'Ця версія підбору вже неактуальна. Оновіть сторінку.',
+    'selection-decision-conflict': 'Рішення для цієї позиції вже зафіксовано й не може бути змінене.',
+    'selection-decision-forbidden': 'Ця добірка недоступна для вашого кабінету.',
+    'selection-rejection-comment-required': 'Вкажіть причину відхилення.',
+    'selection-rejection-comment-invalid': 'Причина має містити від 3 до 500 символів без HTML.',
+    'selection-decision-error': 'Не вдалося зберегти рішення. Спробуйте ще раз.',
+    'selection-finalization-invariant-failed':
+      'Рішення не збережено, тому що заявка не перейшла до очікування рахунку. Оновіть сторінку та повторіть дію.',
     'item-change-created': 'Уточнення по позиції передано менеджеру.',
     'item-change-required': 'Вкажіть нове значення або причину уточнення.',
     'item-change-field-forbidden': 'Це поле не можна змінювати з кабінету клієнта.',
@@ -49,6 +69,12 @@ function resultMessageTone(result?: string) {
     'item-selection-required',
     'items-approval-error',
     'items-approval-forbidden',
+    'selection-decision-conflict',
+    'selection-decision-forbidden',
+    'selection-rejection-comment-required',
+    'selection-rejection-comment-invalid',
+    'selection-decision-error',
+    'selection-finalization-invariant-failed',
     'item-change-required',
     'item-change-field-forbidden',
     'item-change-forbidden',
@@ -61,7 +87,15 @@ function resultMessageTone(result?: string) {
     'entity-not-found-or-forbidden'
   ]);
 
-  return result && errorResults.has(result) ? 'error' : 'success';
+  const warningResults = new Set([
+    'selection-item-rejected-pending',
+    'selection-fully-rejected',
+    'selection-decision-stale',
+    'selection-decision-conflict'
+  ]);
+  if (result && errorResults.has(result)) return 'error';
+  if (result && warningResults.has(result)) return 'warning';
+  return 'success';
 }
 
 export default async function ClientRequestDetailPage({
@@ -90,10 +124,6 @@ export default async function ClientRequestDetailPage({
     include: {
       manufacturer: true,
       company: { select: { name: true } },
-      items: {
-        where: { visibleToClient: true },
-        orderBy: { createdAt: 'desc' }
-      },
       requestDocuments: {
         where: { visibleToClient: true },
         orderBy: { createdAt: 'desc' }
@@ -116,6 +146,30 @@ export default async function ClientRequestDetailPage({
     notFound();
   }
 
+  let approvalReadModel: ClientRequestApprovalReadModel | null = null;
+  let approvalReadFailed = false;
+  try {
+    approvalReadModel = await getClientRequestApprovalReadModel({
+      requestId: request.id,
+      actorUserId: session.user.id
+    });
+  } catch (error) {
+    if (
+      error instanceof ClientRequestApprovalReadError
+      && (error.code === 'REQUEST_NOT_FOUND'
+        || error.code === 'REQUEST_ACCESS_DENIED'
+        || error.code === 'ACTOR_NOT_FOUND'
+        || error.code === 'ACTOR_NOT_ALLOWED')
+    ) {
+      notFound();
+    }
+    approvalReadFailed = true;
+    console.error('Client request approval read model failed.', {
+      requestId: request.id,
+      code: error instanceof ClientRequestApprovalReadError ? error.code : 'UNKNOWN'
+    });
+  }
+
   const details = [
     ['Дата створення', request.createdAt.toLocaleString('uk-UA')],
     ['Оновлено', request.updatedAt.toLocaleString('uk-UA')],
@@ -126,7 +180,6 @@ export default async function ClientRequestDetailPage({
   ];
   const message = resultMessage(query.result);
   const messageTone = resultMessageTone(query.result);
-  const pendingApprovalItems = request.items.filter((item) => !item.approvedByClient);
 
   return (
     <div className="grid gap-6">
@@ -135,18 +188,14 @@ export default async function ClientRequestDetailPage({
           className={
             messageTone === 'error'
               ? 'rounded-md border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700'
-              : 'rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success'
+              : messageTone === 'warning'
+                ? 'rounded-md border border-warning/30 bg-[#FFF7E0] p-4 text-sm font-semibold text-[#8A5B24]'
+                : 'rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success'
           }
         >
           {message}
         </div>
       ) : null}
-      {pendingApprovalItems.length > 0 ? (
-        <div className="rounded-md border border-success/30 bg-[#E7F6EC] p-4 text-sm font-semibold text-success">
-          У цій заявці є {pendingApprovalItems.length} {pendingApprovalItems.length === 1 ? 'позиція' : 'позиції'} на погодження. Оберіть потрібні позиції та натисніть “Погодити вибрані позиції”.
-        </div>
-      ) : null}
-
       <div className="rounded-lg border border-border bg-card p-6 shadow-card">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
@@ -177,90 +226,21 @@ export default async function ClientRequestDetailPage({
         ))}
       </div>
 
-      {request.items.length > 0 ? (
-        <div className="min-w-0 rounded-lg border border-border bg-card p-6 shadow-card">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h3 className="text-lg font-bold text-foreground">Підібрані позиції</h3>
-              <p className="mt-2 text-sm text-muted">
-                Оберіть позиції, які потрібно включити у рахунок.
-              </p>
-            </div>
-            {pendingApprovalItems.length > 0 ? (
-              <span className="w-fit rounded-full bg-[#E7F6EC] px-3 py-1 text-xs font-bold text-success">
-                {pendingApprovalItems.length} на погодження
-              </span>
-            ) : null}
-            <form id="approve-request-items" action={approveClientRequestItemsAction}>
-              <input type="hidden" name="requestId" value={request.id} />
-              <button className="inline-flex items-center justify-center rounded-md bg-accent px-5 py-3 text-sm font-bold text-foreground transition hover:bg-accent-hover">
-                Погодити вибрані позиції
-              </button>
-            </form>
-          </div>
-          <div className="mt-4 grid min-w-0 gap-3">
-            {request.items.map((item) => {
-              const itemTotal = item.salePrice ? calculateInvoiceLineTotal(item.quantity, item.salePrice) : null;
-
-              return (
-              <article key={item.id} className="min-w-0 rounded-md border border-border p-4">
-                  <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,auto)] xl:items-start">
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold uppercase text-muted">Запчастина</p>
-                      <p className="mt-2 font-bold text-foreground">{item.name}</p>
-                      <p className="mt-1 text-xs text-muted">{item.brand ?? 'Виробник уточнюється'}</p>
-                      {item.comment ? <p className="mt-2 text-xs leading-5 text-muted">{item.comment}</p> : null}
-                    </div>
-                    <div className="text-sm text-muted">
-                      <p className="text-xs font-bold uppercase text-muted">Номери</p>
-                      <p className="mt-2">Каталог: <span className="font-semibold text-foreground">{item.catalogNumber ?? '—'}</span></p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold uppercase text-muted">К-сть</p>
-                      <p className="mt-2 font-semibold text-foreground">{item.quantity} {item.unit}</p>
-                    </div>
-                    <div className="text-sm text-muted">
-                      <p className="text-xs font-bold uppercase text-muted">Наявність</p>
-                      <p className="mt-2">{item.availability ?? 'Уточнюється'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold uppercase text-muted">Ціна без ПДВ</p>
-                      <p className="mt-2 font-semibold text-foreground">{formatMoney(item.salePrice, item.currency) ?? 'Уточнюється'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold uppercase text-muted">Сума без ПДВ</p>
-                      <p className="mt-2 font-semibold text-foreground">{formatMoney(itemTotal, item.currency) ?? 'Уточнюється'}</p>
-                    </div>
-                    <div className="grid gap-2">
-                      <label className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-bold text-foreground transition hover:border-accent hover:bg-surface-muted">
-                        <input
-                          form="approve-request-items"
-                          type="checkbox"
-                          name="itemIds"
-                          value={item.id}
-                          defaultChecked={item.includeInInvoice}
-                          className="h-4 w-4 accent-[var(--accent)]"
-                        />
-                        Включити у рахунок
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {item.approvedByClient ? (
-                          <span className="rounded-full bg-[#E7F6EC] px-2.5 py-1 text-xs font-bold text-success">Погоджено</span>
-                        ) : (
-                          <span className="rounded-full bg-[#FFF7E0] px-2.5 py-1 text-xs font-bold text-[#8A5B24]">Очікує погодження</span>
-                        )}
-                        {item.includeInInvoice ? (
-                          <span className="rounded-full bg-[#E8F1FF] px-2.5 py-1 text-xs font-bold text-info">Включено у рахунок</span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-              </article>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
+      {approvalReadFailed ? (
+        <section className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+          Не вдалося завантажити добірку позицій. Оновіть сторінку або зверніться до менеджера.
+        </section>
+      ) : approvalReadModel?.mode === 'BATCH' ? (
+        <ClientApprovalBatchSection model={approvalReadModel} />
+      ) : approvalReadModel?.mode === 'LEGACY' ? (
+        <ClientLegacySelectionSection
+          items={approvalReadModel.legacyItems}
+        />
+      ) : (
+        <section className="rounded-lg border border-border bg-card p-6 text-sm text-muted shadow-card">
+          Підібраних позицій для цієї заявки поки немає.
+        </section>
+      )}
 
       {request.invoices.length > 0 ? (
         <div className="rounded-lg border border-border bg-card p-6 shadow-card">
@@ -379,9 +359,15 @@ export default async function ClientRequestDetailPage({
         <div className="mt-4 grid gap-2">
           {request.files.length > 0 ? (
             request.files.map((file) => (
-              <div key={file.id} className="rounded-md border border-border bg-surface-muted px-3 py-2 text-sm text-muted">
+              <a
+                key={file.id}
+                href={`/api/client/files/${file.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-md border border-border bg-surface-muted px-3 py-2 text-sm text-muted transition hover:border-accent hover:text-foreground"
+              >
                 {file.fileName} · {(file.size / 1024 / 1024).toFixed(2)} MB
-              </div>
+              </a>
             ))
           ) : (
             <p className="text-sm text-muted">Файлів немає.</p>

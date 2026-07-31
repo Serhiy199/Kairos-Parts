@@ -1,45 +1,22 @@
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
   TbClipboardText,
   TbDatabaseCog,
   TbFileInvoice,
-  TbGauge,
   TbPackage,
-  TbReportMoney,
   TbSettingsSearch,
-  TbShieldCheck,
-  TbTruckDelivery,
   TbUserCog,
   TbUserSearch
 } from 'react-icons/tb';
 
 import { ActionIcon } from '@/components/ui/action-icons';
+import { createPublicMetadata, PUBLIC_PAGE_SEO } from '@/lib/seo';
 
 const telegramBotUrl = 'https://t.me/kairos_parts_bot';
 
-const processHighlights = [
-  {
-    title: 'Швидко',
-    text: 'Оперативно опрацьовуємо заявку та підбираємо рішення.',
-    icon: TbGauge
-  },
-  {
-    title: 'Надійно',
-    text: 'Працюємо з перевіреними постачальниками.',
-    icon: TbShieldCheck
-  },
-  {
-    title: 'Прозоро',
-    text: 'Ціни, строки та умови погоджуємо до замовлення.',
-    icon: TbReportMoney
-  },
-  {
-    title: 'Оперативна доставка',
-    text: 'Організовуємо доставку запчастин по всій Україні.',
-    icon: TbTruckDelivery
-  }
-];
+export const metadata: Metadata = createPublicMetadata(PUBLIC_PAGE_SEO.howItWorks);
 
 const steps = [
   {
@@ -117,34 +94,6 @@ export default function HowItWorksPage() {
             </p>
           </div>
 
-          <div
-            role="list"
-            aria-label="Переваги процесу"
-            className="mt-8 grid grid-cols-1 overflow-hidden rounded-xl border border-white/15 bg-primary/70 shadow-panel backdrop-blur-md sm:mt-10 sm:grid-cols-2 lg:mt-12 lg:grid-cols-4"
-          >
-            {processHighlights.map((highlight, index) => {
-              const Icon = highlight.icon;
-              const mobileBorders = index < processHighlights.length - 1 ? 'border-b border-white/10' : '';
-              const tabletBorders = `${index === 2 ? 'sm:border-b-0' : ''} ${index % 2 === 0 ? 'sm:border-r sm:border-white/10' : 'sm:border-r-0'}`;
-              const desktopBorders = index < processHighlights.length - 1 ? 'lg:border-r lg:border-b-0 lg:border-white/10' : 'lg:border-0';
-
-              return (
-                <div
-                  key={highlight.title}
-                  role="listitem"
-                  className={`flex min-w-0 items-center gap-3 px-4 py-3 sm:p-5 lg:px-5 lg:py-4 ${mobileBorders} ${tabletBorders} ${desktopBorders}`}
-                >
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full border border-accent/25 bg-accent/10 text-accent">
-                    <Icon aria-hidden="true" focusable="false" className="size-7 stroke-[1.5]" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-base font-bold leading-snug text-white">{highlight.title}</p>
-                    <p className="mt-1.5 text-sm leading-relaxed text-white/75">{highlight.text}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </section>
 

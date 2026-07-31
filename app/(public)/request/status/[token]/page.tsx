@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { StatusBadge } from '@/components/client/status-badge';
@@ -5,8 +6,13 @@ import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
 import { REQUEST_SOURCE_LABELS } from '@/lib/requests/sources';
 import { getRequestStatusMeta, REQUEST_STATUS_LABELS } from '@/lib/requests/statuses';
+import { NOINDEX_METADATA } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
+export const metadata: Metadata = {
+  title: 'Статус заявки — Kairos Parts',
+  ...NOINDEX_METADATA
+};
 
 function formatDate(date: Date) {
   return date.toLocaleString('uk-UA', {

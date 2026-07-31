@@ -15,6 +15,14 @@ enum UserRole {
   ADMIN
 }
 
+enum DocumentSource {
+  CLIENT
+  MANAGER
+  ADMIN
+  SYSTEM
+  LEGACY
+}
+
 enum UserStatus {
   INVITED
   ACTIVE
@@ -43,11 +51,28 @@ enum RequestStatus {
   IN_PROGRESS
   OFFER_PREPARING
   WAITING_APPROVAL
+  AWAITING_INVOICE
+  INVOICE_SENT
   AWAITING_SHIPMENT
   ORDERED
   IN_DELIVERY
   COMPLETED
   CANCELLED
+}
+
+enum RequestSelectionBatchStatus {
+  DRAFT
+  SENT
+  APPROVED
+  PARTIALLY_APPROVED
+  REJECTED
+  SUPERSEDED
+}
+
+enum RequestSelectionBatchItemStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum NotificationChannel {
@@ -67,6 +92,24 @@ enum OCRProvider {
   AWS_TEXTRACT
   AZURE_VISION
   OTHER
+}
+
+enum RequestFileStorageProvider {
+  CLOUDINARY
+  LEGACY_LOCAL
+}
+
+enum RequestFileStorageStatus {
+  AVAILABLE
+  MISSING
+  MIGRATION_PENDING
+  MIGRATION_FAILED
+}
+
+enum RequestFileSource {
+  CLIENT_FORM
+  TELEGRAM
+  LEGACY
 }
 
 enum RequestDocumentType {
@@ -120,6 +163,8 @@ enum ChangeAction {
 enum AuditEntityType {
   REQUEST
   REQUEST_ITEM
+  REQUEST_SELECTION_BATCH
+  REQUEST_SELECTION_BATCH_ITEM
   VEHICLE
   REQUEST_DOCUMENT
   DOCUMENT
@@ -136,6 +181,9 @@ enum AuditEntityType {
   AUTH_ATTEMPT
   INVITATION
   TELEGRAM_REQUEST
+  REQUEST_FILE
+  LOGISTICS_REQUEST
+  LOGISTICS_TARIFF_CITY
   SYSTEM
 }
 
@@ -169,6 +217,14 @@ enum AuditAction {
   REQUEST_ITEM_DELETED
   REQUEST_ITEMS_SENT_FOR_APPROVAL
   REQUEST_ITEMS_CLIENT_APPROVAL_CHANGED
+  REQUEST_SELECTION_BATCH_CREATED
+  REQUEST_SELECTION_BATCH_SENT
+  REQUEST_SELECTION_BATCH_APPROVED
+  REQUEST_SELECTION_BATCH_PARTIALLY_APPROVED
+  REQUEST_SELECTION_BATCH_REJECTED
+  REQUEST_SELECTION_BATCH_SUPERSEDED
+  REQUEST_SELECTION_ITEM_APPROVED
+  REQUEST_SELECTION_ITEM_REJECTED
   COMMERCIAL_OFFER_CREATED
   COMMERCIAL_OFFER_UPDATED
   COMMERCIAL_OFFER_ITEMS_CHANGED
@@ -188,12 +244,27 @@ enum AuditAction {
   DOCUMENT_VISIBILITY_CHANGED
   DOCUMENT_DELETED
   DOCUMENT_DOWNLOADED
+  REQUEST_FILE_UPLOADED
+  REQUEST_FILE_DOWNLOADED
+  REQUEST_FILE_DELETED
+  REQUEST_FILE_STORAGE_MIGRATED
+  REQUEST_FILE_STORAGE_MISSING
+  OCR_STARTED
+  OCR_COMPLETED
+  OCR_FAILED
+  OCR_CORRECTED
   COMPANY_UPDATED
   COMPANY_BILLING_UPDATED
   COMPANY_PRIMARY_CONTACT_CHANGED
   COMPANY_MEMBER_ADDED
   COMPANY_MEMBER_REMOVED
   CLIENT_BILLING_UPDATED
+  LOGISTICS_REQUEST_CREATED
+  LOGISTICS_STATUS_CHANGED
+  LOGISTICS_INTERNAL_COMMENT_CREATED
+  LOGISTICS_TARIFF_UPDATED
+  LOGISTICS_PREFERRED_DATE_CHANGED
+  LOGISTICS_INDIVIDUAL_PRICE_CHANGED
 }
 
 enum AuditLogCategory {
@@ -217,43 +288,69 @@ enum UsedEquipmentInquiryStatus {
   CANCELLED
 }
 
+enum LogisticsRequestStatus {
+  NEW
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum LogisticsDestinationType {
+  KAIROS_BASE
+  FARM
+}
+
+enum LogisticsAddressProvider {
+  MOCK
+  GOOGLE
+  MANUAL
+}
+
+enum LogisticsPricingType {
+  FIXED
+  INDIVIDUAL
+}
+
 model User {
-  id                      String                 @id @default(cuid())
-  name                    String?
-  email                   String?                @unique
-  emailVerified           DateTime?
-  image                   String?
-  phone                   String?                @unique
-  normalizedPhone         String?                @unique
-  passwordHash            String?
-  role                    UserRole               @default(CLIENT)
-  status                  UserStatus             @default(ACTIVE)
-  authVersion             Int                    @default(1)
-  accounts                Account[]
-  sessions                Session[]
-  clientProfile           ClientProfile?
-  managerProfile          ManagerProfile?
-  companyMemberships      CompanyMember[]
-  assignedRequests        Request[]              @relation("AssignedManager")
-  statusChanges           RequestStatusHistory[] @relation("StatusChangedBy")
-  comments                RequestComment[]       @relation("RequestCommentAuthor")
-  uploadedDocuments       RequestDocument[]      @relation("RequestDocumentUploadedBy")
-  uploadedOwnerDocuments  Document[]             @relation("DocumentUploadedBy")
-  createdCommercialOffers CommercialOffer[]      @relation("CommercialOfferCreatedBy")
-  clientInvoices          Invoice[]              @relation("InvoiceClient")
-  createdInvoices         Invoice[]              @relation("InvoiceCreatedBy")
-  changeRequestsRequested ChangeRequest[]        @relation("ChangeRequestRequestedBy")
-  changeRequestsReviewed  ChangeRequest[]        @relation("ChangeRequestReviewedBy")
-  archivedVehicles        Vehicle[]              @relation("VehicleArchivedBy")
-  auditLogs               AuditLog[]             @relation("AuditLogActor")
-  managerInvitations      ManagerInvitation[]    @relation("ManagerInvitationUser")
-  invitationsCreated      ManagerInvitation[]    @relation("ManagerInvitationCreatedBy")
-  usedEquipmentCreated    UsedEquipment[]        @relation("UsedEquipmentCreatedBy")
-  usedEquipmentUpdated    UsedEquipment[]        @relation("UsedEquipmentUpdatedBy")
-  usedEquipmentInquiries  UsedEquipmentInquiry[] @relation("UsedEquipmentInquiryAssignee")
-  notifications           Notification[]
-  createdAt               DateTime               @default(now())
-  updatedAt               DateTime               @updatedAt
+  id                        String                      @id @default(cuid())
+  name                      String?
+  email                     String?                     @unique
+  emailVerified             DateTime?
+  image                     String?
+  phone                     String?                     @unique
+  normalizedPhone           String?                     @unique
+  passwordHash              String?
+  role                      UserRole                    @default(CLIENT)
+  status                    UserStatus                  @default(ACTIVE)
+  authVersion               Int                         @default(1)
+  accounts                  Account[]
+  sessions                  Session[]
+  clientProfile             ClientProfile?
+  managerProfile            ManagerProfile?
+  companyMemberships        CompanyMember[]
+  assignedRequests          Request[]                   @relation("AssignedManager")
+  statusChanges             RequestStatusHistory[]      @relation("StatusChangedBy")
+  comments                  RequestComment[]            @relation("RequestCommentAuthor")
+  uploadedDocuments         RequestDocument[]           @relation("RequestDocumentUploadedBy")
+  uploadedOwnerDocuments    Document[]                  @relation("DocumentUploadedBy")
+  createdCommercialOffers   CommercialOffer[]           @relation("CommercialOfferCreatedBy")
+  createdSelectionBatches   RequestSelectionBatch[]     @relation("RequestSelectionBatchCreatedBy")
+  selectionBatchDecisions   RequestSelectionBatchItem[] @relation("RequestSelectionBatchItemDecisionBy")
+  clientInvoices            Invoice[]                   @relation("InvoiceClient")
+  createdInvoices           Invoice[]                   @relation("InvoiceCreatedBy")
+  changeRequestsRequested   ChangeRequest[]             @relation("ChangeRequestRequestedBy")
+  changeRequestsReviewed    ChangeRequest[]             @relation("ChangeRequestReviewedBy")
+  archivedVehicles          Vehicle[]                   @relation("VehicleArchivedBy")
+  auditLogs                 AuditLog[]                  @relation("AuditLogActor")
+  managerInvitations        ManagerInvitation[]         @relation("ManagerInvitationUser")
+  invitationsCreated        ManagerInvitation[]         @relation("ManagerInvitationCreatedBy")
+  usedEquipmentCreated      UsedEquipment[]             @relation("UsedEquipmentCreatedBy")
+  usedEquipmentUpdated      UsedEquipment[]             @relation("UsedEquipmentUpdatedBy")
+  usedEquipmentInquiries    UsedEquipmentInquiry[]      @relation("UsedEquipmentInquiryAssignee")
+  logisticsInternalComments LogisticsInternalComment[]  @relation("LogisticsInternalCommentAuthor")
+  notifications             Notification[]
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
 }
 
 model Account {
@@ -309,44 +406,46 @@ model VerificationToken {
 }
 
 model ClientProfile {
-  id             String                @id @default(cuid())
-  userId         String                @unique
-  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clientType     ClientType            @default(BUSINESS)
-  companyName    String?
-  taxId          String?
-  contactName    String?
-  firstName      String?
-  lastName       String?
-  phone          String?
-  telegramUserId String?               @unique
-  telegramChatId String?               @unique
-  email          String?
-  requests       Request[]
-  vehicles       Vehicle[]
-  documents      Document[]
-  billingDetails ClientBillingDetails?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  id                String                @id @default(cuid())
+  userId            String                @unique
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientType        ClientType            @default(BUSINESS)
+  companyName       String?
+  taxId             String?
+  contactName       String?
+  firstName         String?
+  lastName          String?
+  phone             String?
+  telegramUserId    String?               @unique
+  telegramChatId    String?               @unique
+  email             String?
+  requests          Request[]
+  logisticsRequests LogisticsRequest[]
+  vehicles          Vehicle[]
+  documents         Document[]
+  billingDetails    ClientBillingDetails?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
 }
 
 model Company {
-  id             String                 @id @default(cuid())
-  name           String
-  edrpou         String?
-  phone          String?
-  email          String?
-  legalAddress   String?
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-  members        CompanyMember[]
-  requests       Request[]
-  vehicles       Vehicle[]
-  documents      Document[]
-  changeRequests ChangeRequest[]
-  auditLogs      AuditLog[]
-  invoices       Invoice[]
-  billingDetails CompanyBillingDetails?
+  id                String                 @id @default(cuid())
+  name              String
+  edrpou            String?
+  phone             String?
+  email             String?
+  legalAddress      String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  members           CompanyMember[]
+  requests          Request[]
+  logisticsRequests LogisticsRequest[]
+  vehicles          Vehicle[]
+  documents         Document[]
+  changeRequests    ChangeRequest[]
+  auditLogs         AuditLog[]
+  invoices          Invoice[]
+  billingDetails    CompanyBillingDetails?
 
   @@unique([name, edrpou])
   @@index([edrpou])
@@ -513,47 +612,49 @@ model ManagerInvitation {
 }
 
 model Request {
-  id                String                 @id @default(cuid())
-  requestNumber     String                 @unique @default(dbgenerated("'KP-'::text || nextval('request_number_seq'::regclass)::text"))
-  publicStatusToken String                 @unique
-  source            RequestSource
-  status            RequestStatus          @default(NEW)
-  clientId          String?
-  client            ClientProfile?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  companyId         String?
-  company           Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  guestName         String?
-  guestPhone        String?
-  guestEmail        String?
-  companyName       String?
-  categoryId        String?
-  category          Category?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  subcategoryId     String?
-  subcategory       Subcategory?           @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
-  manufacturerId    String?
-  manufacturer      Manufacturer?          @relation(fields: [manufacturerId], references: [id], onDelete: SetNull)
-  manufacturerName  String?
-  vehicleId         String?
-  vehicle           Vehicle?               @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  equipmentType     String?
-  model             String?
-  vehicleYear       Int?
-  vinOrSerial       String?
-  description       String
-  assignedManagerId String?
-  assignedManager   User?                  @relation("AssignedManager", fields: [assignedManagerId], references: [id], onDelete: SetNull)
-  files             RequestFile[]
-  items             RequestItem[]
-  documents         Document[]
-  requestDocuments  RequestDocument[]
-  commercialOffers  CommercialOffer[]
-  invoices          Invoice[]
-  statusHistory     RequestStatusHistory[]
-  ocrResults        OCRResult[]
-  notifications     Notification[]
-  comments          RequestComment[]
-  createdAt         DateTime               @default(now())
-  updatedAt         DateTime               @updatedAt
+  id                       String                  @id @default(cuid())
+  requestNumber            String                  @unique @default(dbgenerated("'KP-'::text || nextval('request_number_seq'::regclass)::text"))
+  publicStatusToken        String                  @unique
+  source                   RequestSource
+  status                   RequestStatus           @default(NEW)
+  selectionRevisionCounter Int                     @default(0)
+  clientId                 String?
+  client                   ClientProfile?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  companyId                String?
+  company                  Company?                @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  guestName                String?
+  guestPhone               String?
+  guestEmail               String?
+  companyName              String?
+  categoryId               String?
+  category                 Category?               @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  subcategoryId            String?
+  subcategory              Subcategory?            @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  manufacturerId           String?
+  manufacturer             Manufacturer?           @relation(fields: [manufacturerId], references: [id], onDelete: SetNull)
+  manufacturerName         String?
+  vehicleId                String?
+  vehicle                  Vehicle?                @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  equipmentType            String?
+  model                    String?
+  vehicleYear              Int?
+  vinOrSerial              String?
+  description              String
+  assignedManagerId        String?
+  assignedManager          User?                   @relation("AssignedManager", fields: [assignedManagerId], references: [id], onDelete: SetNull)
+  files                    RequestFile[]
+  items                    RequestItem[]
+  documents                Document[]
+  requestDocuments         RequestDocument[]
+  commercialOffers         CommercialOffer[]
+  invoices                 Invoice[]
+  statusHistory            RequestStatusHistory[]
+  ocrResults               OCRResult[]
+  notifications            Notification[]
+  comments                 RequestComment[]
+  selectionBatches         RequestSelectionBatch[]
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
 
   @@index([clientId])
   @@index([companyId])
@@ -567,53 +668,138 @@ model Request {
 }
 
 model RequestFile {
-  id         String      @id @default(cuid())
-  requestId  String
-  request    Request     @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  fileName   String
-  storageKey String
-  fileUrl    String?
-  mimeType   String
-  size       Int
-  ocrResults OCRResult[]
-  createdAt  DateTime    @default(now())
+  id                    String                     @id @default(cuid())
+  requestId             String
+  request               Request                    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  fileName              String
+  storageKey            String
+  fileUrl               String?
+  mimeType              String
+  size                  Int
+  storageProvider       RequestFileStorageProvider @default(LEGACY_LOCAL)
+  storageStatus         RequestFileStorageStatus   @default(MIGRATION_PENDING)
+  storagePublicId       String?
+  storageResourceType   String?
+  storageDeliveryType   String?
+  storageVersion        String?
+  storageFormat         String?
+  storageChecksumSha256 String?
+  source                RequestFileSource          @default(LEGACY)
+  migratedAt            DateTime?
+  ocrResults            OCRResult[]
+  createdAt             DateTime                   @default(now())
 
   @@index([requestId])
+  @@index([storageProvider, storageStatus])
+  @@index([requestId, storageProvider])
+  @@index([storagePublicId])
 }
 
 model RequestItem {
-  id                   String                @id @default(cuid())
+  id                   String                      @id @default(cuid())
   requestId            String
-  request              Request               @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  request              Request                     @relation(fields: [requestId], references: [id], onDelete: Cascade)
   vehicleId            String?
-  vehicle              Vehicle?              @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  vehicle              Vehicle?                    @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   equipmentType        String?
   name                 String
   brand                String?
   catalogNumber        String?
   analogNumber         String?
-  quantity             Int                   @default(1)
-  unit                 String                @default("шт")
+  quantity             Int                         @default(1)
+  unit                 String                      @default("шт")
   supplierName         String?
   availability         String?
   deliveryTime         String?
-  purchasePrice        Decimal?              @db.Decimal(12, 2)
-  salePrice            Decimal?              @db.Decimal(12, 2)
-  currency             String                @default("UAH")
+  purchasePrice        Decimal?                    @db.Decimal(12, 2)
+  salePrice            Decimal?                    @db.Decimal(12, 2)
+  currency             String                      @default("UAH")
   comment              String?
-  visibleToClient      Boolean               @default(false)
-  approvedByClient     Boolean               @default(false)
-  includeInInvoice     Boolean               @default(false)
+  visibleToClient      Boolean                     @default(false)
+  approvedByClient     Boolean                     @default(false)
+  includeInInvoice     Boolean                     @default(false)
   approvedAt           DateTime?
   commercialOfferItems CommercialOfferItem[]
   invoiceItems         InvoiceItem[]
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  selectionBatchItems  RequestSelectionBatchItem[]
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
 
   @@index([requestId])
   @@index([vehicleId])
   @@index([visibleToClient])
   @@index([includeInInvoice])
+}
+
+model RequestSelectionBatch {
+  id                    String                      @id @default(cuid())
+  requestId             String
+  request               Request                     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  revision              Int
+  status                RequestSelectionBatchStatus @default(DRAFT)
+  snapshotSchemaVersion Int
+  snapshotHash          String                      @db.Char(64)
+  createdByUserId       String?
+  createdBy             User?                       @relation("RequestSelectionBatchCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  sentAt                DateTime?
+  approvedAt            DateTime?
+  rejectedAt            DateTime?
+  supersededAt          DateTime?
+  items                 RequestSelectionBatchItem[]
+  invoice               Invoice?
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+
+  @@unique([requestId, revision])
+  @@index([requestId, status])
+  @@index([createdByUserId])
+  @@index([createdAt])
+}
+
+model RequestSelectionBatchItem {
+  id                    String                          @id @default(cuid())
+  batchId               String
+  batch                 RequestSelectionBatch           @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  sourceRequestItemId   String?
+  sourceRequestItem     RequestItem?                    @relation(fields: [sourceRequestItemId], references: [id], onDelete: SetNull)
+  position              Int
+  status                RequestSelectionBatchItemStatus @default(PENDING)
+  decisionByUserId      String?
+  decisionBy            User?                           @relation("RequestSelectionBatchItemDecisionBy", fields: [decisionByUserId], references: [id], onDelete: SetNull)
+  invoiceItem           InvoiceItem?
+  approvedAt            DateTime?
+  rejectedAt            DateTime?
+  clientComment         String?
+  snapshotSchemaVersion Int
+  snapshotHash          String                          @db.Char(64)
+  sourceUpdatedAt       DateTime
+  equipmentType         String?
+  itemName              String
+  brand                 String?
+  catalogNumber         String?
+  analogNumber          String?
+  quantity              Int
+  unit                  String
+  availability          String?
+  deliveryTime          String?
+  approvedUnitPrice     Decimal?                        @db.Decimal(12, 2)
+  currency              String
+  managerComment        String?
+  vehicleIdSnapshot     String?
+  vehicleDisplayName    String?
+  vehicleBrand          String?
+  vehicleModel          String?
+  vehicleYear           Int?
+  vehicleVin            String?
+  createdAt             DateTime                        @default(now())
+  updatedAt             DateTime                        @updatedAt
+
+  @@unique([batchId, position])
+  @@unique([batchId, sourceRequestItemId])
+  @@index([batchId, status])
+  @@index([sourceRequestItemId])
+  @@index([snapshotHash])
+  @@index([decisionByUserId])
 }
 
 model RequestDocument {
@@ -691,32 +877,35 @@ model CommercialOfferItem {
 }
 
 model Invoice {
-  id             String        @id @default(cuid())
-  requestId      String
-  request        Request       @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  companyId      String?
-  company        Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  clientId       String?
-  client         User?         @relation("InvoiceClient", fields: [clientId], references: [id], onDelete: SetNull)
-  invoiceNumber  String        @unique @default(dbgenerated("nextval('invoice_number_seq'::regclass)::text"))
-  status         InvoiceStatus @default(DRAFT)
-  currency       String        @default("UAH")
-  subtotal       Decimal       @default(0) @db.Decimal(12, 2)
-  totalAmount    Decimal       @default(0) @db.Decimal(12, 2)
-  managerComment String?
-  clientComment  String?
-  sellerSnapshot Json?
-  buyerSnapshot  Json?
-  createdById    String?
-  createdBy      User?         @relation("InvoiceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  sentAt         DateTime?
-  paidAt         DateTime?
-  cancelledAt    DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  items          InvoiceItem[]
+  id               String                 @id @default(cuid())
+  requestId        String
+  request          Request                @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  selectionBatchId String?                @unique
+  selectionBatch   RequestSelectionBatch? @relation(fields: [selectionBatchId], references: [id], onDelete: SetNull)
+  companyId        String?
+  company          Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  clientId         String?
+  client           User?                  @relation("InvoiceClient", fields: [clientId], references: [id], onDelete: SetNull)
+  invoiceNumber    String                 @unique @default(dbgenerated("nextval('invoice_number_seq'::regclass)::text"))
+  status           InvoiceStatus          @default(DRAFT)
+  currency         String                 @default("UAH")
+  subtotal         Decimal                @default(0) @db.Decimal(12, 2)
+  totalAmount      Decimal                @default(0) @db.Decimal(12, 2)
+  managerComment   String?
+  clientComment    String?
+  sellerSnapshot   Json?
+  buyerSnapshot    Json?
+  createdById      String?
+  createdBy        User?                  @relation("InvoiceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  sentAt           DateTime?
+  paidAt           DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  items            InvoiceItem[]
 
   @@index([requestId])
+  @@index([selectionBatchId])
   @@index([companyId])
   @@index([clientId])
   @@index([status])
@@ -724,25 +913,28 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id            String       @id @default(cuid())
-  invoiceId     String
-  invoice       Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  requestItemId String?
-  requestItem   RequestItem? @relation(fields: [requestItemId], references: [id], onDelete: SetNull)
-  name          String
-  brand         String?
-  catalogNumber String?
-  analogNumber  String?
-  quantity      Int          @default(1)
-  unit          String?      @default("шт")
-  price         Decimal      @default(0) @db.Decimal(12, 2)
-  total         Decimal      @default(0) @db.Decimal(12, 2)
-  comment       String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                   String                     @id @default(cuid())
+  invoiceId            String
+  invoice              Invoice                    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  requestItemId        String?
+  requestItem          RequestItem?               @relation(fields: [requestItemId], references: [id], onDelete: SetNull)
+  selectionBatchItemId String?                    @unique
+  selectionBatchItem   RequestSelectionBatchItem? @relation(fields: [selectionBatchItemId], references: [id], onDelete: SetNull)
+  name                 String
+  brand                String?
+  catalogNumber        String?
+  analogNumber         String?
+  quantity             Int                        @default(1)
+  unit                 String?                    @default("шт")
+  price                Decimal                    @default(0) @db.Decimal(12, 2)
+  total                Decimal                    @default(0) @db.Decimal(12, 2)
+  comment              String?
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
 
   @@index([invoiceId])
   @@index([requestItemId])
+  @@index([selectionBatchItemId])
 }
 
 model TelegramDraftRequest {
@@ -789,6 +981,92 @@ model RequestComment {
 
   @@index([requestId])
   @@index([authorId])
+}
+
+model LogisticsTariffCity {
+  id        String             @id @default(cuid())
+  code      String             @unique
+  name      String
+  price     Decimal            @db.Decimal(12, 2)
+  isActive  Boolean            @default(true)
+  requests  LogisticsRequest[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([isActive])
+}
+
+model LogisticsRequest {
+  id                     String                     @id @default(cuid())
+  requestNumber          String                     @unique @default(dbgenerated("'LG-'::text || lpad(nextval('logistics_request_number_seq'::regclass)::text, 6, '0'::text)"))
+  status                 LogisticsRequestStatus     @default(NEW)
+  clientId               String?
+  client                 ClientProfile?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  companyId              String?
+  company                Company?                   @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contactName            String
+  contactPhone           String
+  pricingType            LogisticsPricingType       @default(FIXED)
+  customLocality         String?
+  tariffCityId           String?
+  tariffCity             LogisticsTariffCity?       @relation(fields: [tariffCityId], references: [id], onDelete: Restrict)
+  tariffCityCodeSnapshot String?
+  tariffCityNameSnapshot String?
+  baseTariffSnapshot     Decimal?                   @db.Decimal(12, 2)
+  destinationType        LogisticsDestinationType
+  baseAddressSnapshot    String?
+  farmFormattedAddress   String?
+  farmExternalAddressId  String?
+  farmAddressProvider    LogisticsAddressProvider?
+  farmNormalizedLocality String?
+  pickupPointCount       Int
+  additionalPointsCharge Decimal?                   @db.Decimal(12, 2)
+  farmDeliveryCharge     Decimal?                   @db.Decimal(12, 2)
+  totalPrice             Decimal?                   @db.Decimal(12, 2)
+  clientComment          String?                    @db.Text
+  preferredDeliveryDate         DateTime?           @db.Date
+  preferredDeliveryDateSnapshot DateTime?           @db.Date
+  idempotencyKey         String                     @unique
+  pickupPoints           LogisticsPickupPoint[]
+  internalComments       LogisticsInternalComment[]
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+
+  @@index([status, createdAt])
+  @@index([clientId, createdAt])
+  @@index([companyId, createdAt])
+  @@index([tariffCityId])
+  @@index([createdAt])
+}
+
+model LogisticsPickupPoint {
+  id                           String                   @id @default(cuid())
+  logisticsRequestId           String
+  logisticsRequest             LogisticsRequest         @relation(fields: [logisticsRequestId], references: [id], onDelete: Cascade)
+  supplierName                 String?
+  formattedAddress             String
+  externalAddressId            String?
+  addressProvider              LogisticsAddressProvider
+  normalizedLocality           String?
+  normalizedAdministrativeArea String?
+  cargoDescription             String                   @db.Text
+  createdAt                    DateTime                 @default(now())
+  updatedAt                    DateTime                 @updatedAt
+
+  @@index([logisticsRequestId])
+}
+
+model LogisticsInternalComment {
+  id                 String           @id @default(cuid())
+  logisticsRequestId String
+  logisticsRequest   LogisticsRequest @relation(fields: [logisticsRequestId], references: [id], onDelete: Cascade)
+  authorUserId       String?
+  author             User?            @relation("LogisticsInternalCommentAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
+  body               String           @db.Text
+  createdAt          DateTime         @default(now())
+
+  @@index([logisticsRequestId, createdAt])
+  @@index([authorUserId])
 }
 
 model Vehicle {
@@ -856,6 +1134,7 @@ model Document {
   mimeType        String
   size            Int
   visibleToClient Boolean        @default(false)
+  source          DocumentSource
   uploadedById    String?
   uploadedBy      User?          @relation("DocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
   createdAt       DateTime       @default(now())
@@ -868,6 +1147,7 @@ model Document {
   @@index([requestId])
   @@index([vehicleId])
   @@index([vehicleId, visibleToClient])
+  @@index([vehicleId, source])
   @@index([uploadedById])
 }
 

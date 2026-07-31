@@ -1,7 +1,15 @@
 import { REQUEST_STATUS_BADGES, REQUEST_STATUS_LABELS, type AnyRequestStatus } from '@/lib/requests/statuses';
 
-export function StatusBadge({ status }: { status: AnyRequestStatus }) {
-  const colors = REQUEST_STATUS_BADGES[status];
+export function StatusBadge({
+  status,
+  highlightNew = false
+}: {
+  status: AnyRequestStatus;
+  highlightNew?: boolean;
+}) {
+  const colors = highlightNew && status === 'NEW'
+    ? { background: '#E7F6EC', text: '#2E7D4F' }
+    : REQUEST_STATUS_BADGES[status];
 
   return (
     <span

@@ -1,10 +1,12 @@
 'use server';
 
-import { RequestStatus, UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { requireCrmSession } from '@/lib/admin/access';
+import { getAdminWorkflowFeedback } from '@/lib/admin/request-feedback';
+import type { WorkflowActionResult } from '@/lib/actions/workflow-result';
 import { buildAuditDiff } from '@/lib/audit-log/payload';
 import { getServerAuditRequestContext } from '@/lib/audit-log/request-context';
 import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
@@ -19,9 +21,10 @@ import {
 import { parseCommercialOfferItemInput, parseCommercialOfferMetadata } from '@/lib/commercial-offers/validation';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { saveRequestDocumentLocal } from '@/lib/files/local-storage';
+import { RequestFileStorageError } from '@/lib/files/request-file-storage';
 import {
   cancelInvoice,
-  createInvoiceFromApprovedRequestItems,
+  createInvoiceFromApprovedSelection,
   markInvoicePaid,
   sendInvoiceToClient
 } from '@/lib/invoices/service';
@@ -29,9 +32,35 @@ import { notifyRequestStatusChange } from '@/lib/notifications/status-change';
 import { runOcrForRequestFile, updateOcrCorrection } from '@/lib/ocr/service';
 import { prisma } from '@/lib/prisma';
 import { parseRequestDocumentMetadata, readRequiredRequestDocumentFile } from '@/lib/request-documents/validation';
-import { parseRequestItemInput } from '@/lib/request-items/validation';
-import { REQUEST_STATUSES } from '@/lib/requests/statuses';
-import { sendTelegramRequestItemsApprovalNotification } from '@/lib/telegram/notifications';
+import {
+  createRequestItemDraft,
+  RequestItemDraftCreateError
+} from '@/lib/request-items/create-draft';
+import {
+  RequestItemUpdateError,
+  updateRequestItem
+} from '@/lib/request-items/update';
+import {
+  deleteRequestItem,
+  RequestItemDeleteError
+} from '@/lib/request-items/delete';
+import {
+  parseRequestItemInput,
+  parseRequestItemUpdateInput
+} from '@/lib/request-items/validation';
+import {
+  sendRequestSelectionForApproval,
+  SendRequestSelectionForApprovalError,
+  type RequestSelectionSourceVersion
+} from '@/lib/request-selection/send-for-approval';
+import {
+  isManualRequestStatus,
+  type ManualRequestStatus
+} from '@/lib/requests/statuses';
+import {
+  REQUEST_STATUS_EVENTS,
+  transitionRequestStatus
+} from '@/lib/requests/status-transition';
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -40,6 +69,10 @@ function readString(formData: FormData, key: string) {
 
 function redirectBack(requestId: string, result: string): never {
   redirect(`/admin/requests/${requestId}?result=${result}`);
+}
+
+function workflowResult(code: string, ok: boolean, refresh = true): WorkflowActionResult {
+  return { ok, feedback: getAdminWorkflowFeedback(code), refresh };
 }
 
 function getCrmRole(session: Awaited<ReturnType<typeof requireCrmSession>>): UserRole {
@@ -62,12 +95,6 @@ async function getInvoiceAuditContext(session: Awaited<ReturnType<typeof require
   };
 }
 
-const REQUEST_ITEM_AUDIT_FIELDS = [
-  'name', 'brand', 'catalogNumber', 'analogNumber', 'quantity', 'availability',
-  'salePrice', 'visibleToClient', 'includeInInvoice'
-] as const;
-
-const REQUEST_AUDIT_METADATA_FIELDS = ['source', 'itemCount', 'itemIds'] as const;
 const REQUEST_DOCUMENT_AUDIT_FIELDS = [
   'documentId', 'fileName', 'documentType', 'title', 'visibility',
   'requestId', 'size', 'mimeType'
@@ -75,38 +102,6 @@ const REQUEST_DOCUMENT_AUDIT_FIELDS = [
 
 function requestLabel(requestNumber: string) {
   return `Заявка ${requestNumber}`;
-}
-
-function requestItemLabel(name: string, catalogNumber: string | null) {
-  return catalogNumber ? `${name} · ${catalogNumber}` : name;
-}
-
-function requestItemSnapshot(item: {
-  name: string;
-  brand: string | null;
-  catalogNumber: string | null;
-  analogNumber: string | null;
-  quantity: number;
-  availability: string | null;
-  salePrice: { toString(): string } | null;
-  visibleToClient: boolean;
-  includeInInvoice: boolean;
-}) {
-  return {
-    name: item.name,
-    brand: item.brand,
-    catalogNumber: item.catalogNumber,
-    analogNumber: item.analogNumber,
-    quantity: item.quantity,
-    availability: item.availability,
-    salePrice: item.salePrice?.toString() ?? null,
-    visibleToClient: item.visibleToClient,
-    includeInInvoice: item.includeInInvoice
-  };
-}
-
-function requestItemAuditCategory(snapshot: { salePrice: string | null; quantity: number }) {
-  return snapshot.salePrice !== null || snapshot.quantity !== 1 ? 'FINANCIAL_CRITICAL' as const : 'STANDARD' as const;
 }
 
 function isFinancialRequestDocument(type: string) {
@@ -138,9 +133,16 @@ function requestDocumentSnapshot(document: {
 export async function updateAdminRequestStatus(formData: FormData) {
   const session = await requireCrmSession();
   const requestId = readString(formData, 'requestId');
+  const intent = readString(formData, 'intent');
   const status = readString(formData, 'status');
 
-  if (!hasDatabaseUrl() || !requestId || !REQUEST_STATUSES.includes(status as (typeof REQUEST_STATUSES)[number])) {
+  if (
+    !hasDatabaseUrl()
+    || !requestId
+    || intent !== 'manual-status-change'
+    || !isManualRequestStatus(status)
+    || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')
+  ) {
     redirectBack(requestId, 'status-error');
   }
 
@@ -153,40 +155,29 @@ export async function updateAdminRequestStatus(formData: FormData) {
     redirect('/admin/requests?result=request-not-found');
   }
 
-  const nextStatus = status as RequestStatus;
-  const requestContext = await getServerAuditRequestContext();
-
-  await prisma.$transaction(async (tx) => {
-    await tx.request.update({
-      where: { id: request.id },
-      data: { status: nextStatus }
-    });
-    await tx.requestStatusHistory.create({
-      data: {
-        requestId: request.id,
-        oldStatus: request.status,
-        newStatus: nextStatus,
-        changedByUserId: session.user.id
-      }
-    });
-    await writeAuditLog(tx, {
-      actor: auditUserActor(session.user.id),
-      companyId: request.companyId,
-      entityType: 'REQUEST',
-      entityId: request.id,
-      entityLabel: requestLabel(request.requestNumber),
-      action: 'REQUEST_STATUS_CHANGED',
-      category: 'STANDARD',
-      oldValue: { status: request.status },
-      newValue: { status: nextStatus },
-      metadata: { source: 'ADMIN_CRM' },
-      allowedFields: { oldValue: ['status'], newValue: ['status'], metadata: ['source'] },
-      requestContext
-    });
+  const eventByStatus: Record<ManualRequestStatus, typeof REQUEST_STATUS_EVENTS[
+    'MANUAL_SET_AWAITING_SHIPMENT'
+    | 'MANUAL_SET_COMPLETED'
+    | 'MANUAL_SET_CANCELLED'
+  ]> = {
+    AWAITING_SHIPMENT: REQUEST_STATUS_EVENTS.MANUAL_SET_AWAITING_SHIPMENT,
+    COMPLETED: REQUEST_STATUS_EVENTS.MANUAL_SET_COMPLETED,
+    CANCELLED: REQUEST_STATUS_EVENTS.MANUAL_SET_CANCELLED
+  };
+  const result = await transitionRequestStatus({
+    requestId: request.id,
+    event: eventByStatus[status],
+    actor: { id: session.user.id },
+    reason: 'Ручна зміна статусу в CRM',
+    metadata: { source: 'ADMIN_CRM' },
+    requestContext: await getServerAuditRequestContext()
   });
+  if (result.outcome === 'blocked') {
+    redirectBack(request.id, 'status-error');
+  }
 
   try {
-    await notifyRequestStatusChange(request.id, nextStatus);
+    await notifyRequestStatusChange(request.id, status);
   } catch {
     // Status updates must not fail because a notification channel is unavailable.
   }
@@ -305,7 +296,7 @@ export async function addAdminRequestComment(formData: FormData) {
 }
 
 export async function runAdminRequestOcr(formData: FormData) {
-  await requireCrmSession();
+  const session = await requireCrmSession();
   const requestId = readString(formData, 'requestId');
   const fileId = readString(formData, 'fileId');
 
@@ -314,8 +305,23 @@ export async function runAdminRequestOcr(formData: FormData) {
   }
 
   try {
-    await runOcrForRequestFile({ requestId, fileId });
-  } catch {
+    await runOcrForRequestFile({
+      actor: { type: 'CRM', userId: session.user.id },
+      requestId,
+      fileId
+    });
+  } catch (error) {
+    if (error instanceof RequestFileStorageError) {
+      if (error.code === 'PDF_OCR_NOT_SUPPORTED') {
+        redirectBack(requestId, 'ocr-pdf-not-supported');
+      }
+      if (error.code === 'REQUEST_FILE_LEGACY_MISSING') {
+        redirectBack(requestId, 'ocr-file-missing');
+      }
+      if (error.code === 'REQUEST_FILE_TOO_LARGE') {
+        redirectBack(requestId, 'ocr-file-too-large');
+      }
+    }
     redirectBack(requestId, 'ocr-error');
   }
 
@@ -324,7 +330,7 @@ export async function runAdminRequestOcr(formData: FormData) {
 }
 
 export async function updateAdminOcrCorrection(formData: FormData) {
-  await requireCrmSession();
+  const session = await requireCrmSession();
   const requestId = readString(formData, 'requestId');
   const ocrResultId = readString(formData, 'ocrResultId');
   const correctedText = readString(formData, 'correctedText');
@@ -333,7 +339,12 @@ export async function updateAdminOcrCorrection(formData: FormData) {
     redirectBack(requestId, 'ocr-correction-error');
   }
 
-  await updateOcrCorrection({ ocrResultId, correctedText });
+  await updateOcrCorrection({
+    actor: { type: 'CRM', userId: session.user.id },
+    requestId,
+    ocrResultId,
+    correctedText
+  });
 
   revalidatePath(`/admin/requests/${requestId}`);
   redirectBack(requestId, 'ocr-corrected');
@@ -345,193 +356,245 @@ export async function createAdminRequestItem(formData: FormData) {
   const parsed = parseRequestItemInput(formData);
 
   if (!hasDatabaseUrl() || !requestId || !parsed.ok) {
-    redirectBack(requestId, 'item-error');
-  }
-
-  const request = await prisma.request.findUnique({
-    where: { id: requestId },
-    select: { id: true, requestNumber: true, vehicleId: true, clientId: true, companyId: true }
-  });
-
-  if (!request) {
-    redirect('/admin/requests?result=request-not-found');
+    return workflowResult('item-error', false, false);
   }
 
   const requestContext = await getServerAuditRequestContext();
-  await prisma.$transaction(async (tx) => {
-    const item = await tx.requestItem.create({
-      data: {
-        requestId: request.id,
-        vehicleId: request.vehicleId,
-        ...parsed.data,
-        visibleToClient: false
-      }
-    });
-    const snapshot = requestItemSnapshot(item);
-    await writeAuditLog(tx, {
-      actor: auditUserActor(session.user.id),
-      companyId: request.companyId,
-      entityType: 'REQUEST_ITEM',
-      entityId: item.id,
-      entityLabel: requestItemLabel(item.name, item.catalogNumber),
-      action: 'REQUEST_ITEM_CREATED',
-      category: requestItemAuditCategory(snapshot),
-      newValue: snapshot,
-      metadata: { source: 'ADMIN_CRM' },
-      allowedFields: { newValue: REQUEST_ITEM_AUDIT_FIELDS, metadata: ['source'] },
+  let result: Awaited<ReturnType<typeof createRequestItemDraft>>;
+
+  try {
+    result = await createRequestItemDraft({
+      requestId,
+      data: parsed.data,
+      actor: { id: session.user.id },
       requestContext
     });
-  });
-
-  revalidatePath(`/admin/requests/${request.id}`);
-
-  if (request.vehicleId) {
-    revalidatePath(`/client/vehicles/${request.vehicleId}`);
+  } catch (error) {
+    if (error instanceof RequestItemDraftCreateError && error.code === 'REQUEST_NOT_FOUND') {
+      return workflowResult('request-not-found', false);
+    }
+    if (
+      error instanceof RequestItemDraftCreateError
+      && (
+        error.code === 'ACTOR_NOT_ALLOWED'
+        || error.code === 'FINAL_CLIENT_SELECTION_LOCKED'
+      )
+    ) {
+      return workflowResult('item-mutation-locked', false);
+    }
+    if (error instanceof RequestItemDraftCreateError
+      && error.code === 'REQUEST_STATUS_DOES_NOT_ALLOW_ITEM_CREATION') {
+      return workflowResult('item-status-locked', false);
+    }
+    return workflowResult('item-error', false);
   }
 
-  redirectBack(request.id, 'item-created');
+  revalidatePath('/admin');
+  revalidatePath('/admin/requests');
+  revalidatePath(`/admin/requests/${result.request.id}`);
+
+  if (result.request.vehicleId) {
+    revalidatePath(`/client/vehicles/${result.request.vehicleId}`);
+  }
+
+  return workflowResult('item-created', true);
 }
 
 export async function updateAdminRequestItem(formData: FormData) {
   const session = await requireCrmSession();
   const requestId = readString(formData, 'requestId');
   const itemId = readString(formData, 'itemId');
-  const parsed = parseRequestItemInput(formData);
+  const expectedUpdatedAt = readString(formData, 'expectedUpdatedAt');
+  const parsed = parseRequestItemUpdateInput(formData);
 
-  if (!hasDatabaseUrl() || !requestId || !itemId || !parsed.ok) {
-    redirectBack(requestId, 'item-error');
+  if (!hasDatabaseUrl() || !requestId || !itemId || !expectedUpdatedAt || !parsed.ok) {
+    return workflowResult('item-validation-error', false, false);
   }
-
-  const item = await prisma.requestItem.findFirst({
-    where: { id: itemId, requestId },
-    select: {
-      id: true, requestId: true, vehicleId: true, name: true, brand: true,
-      catalogNumber: true, analogNumber: true, quantity: true, availability: true,
-      salePrice: true, visibleToClient: true, includeInInvoice: true,
-      request: { select: { requestNumber: true, companyId: true } }
-    }
-  });
-
-  if (!item) {
-    redirectBack(requestId, 'item-not-found');
-  }
-
-  const {
-    purchasePrice: _purchasePrice,
-    supplierName: _supplierName,
-    visibleToClient: _visibleToClient,
-    ...itemData
-  } = parsed.data;
-  void _purchasePrice;
-  void _supplierName;
-  void _visibleToClient;
 
   const requestContext = await getServerAuditRequestContext();
-  await prisma.$transaction(async (tx) => {
-    const updated = await tx.requestItem.update({
-      where: { id: item.id },
-      data: itemData
-    });
-    const before = requestItemSnapshot(item);
-    const after = requestItemSnapshot(updated);
-    const diff = buildAuditDiff(before, after, REQUEST_ITEM_AUDIT_FIELDS);
-    const category = before.salePrice !== after.salePrice || before.quantity !== after.quantity
-      ? 'FINANCIAL_CRITICAL' as const
-      : 'STANDARD' as const;
-    await writeAuditLog(tx, {
-      actor: auditUserActor(session.user.id),
-      companyId: item.request.companyId,
-      entityType: 'REQUEST_ITEM',
-      entityId: item.id,
-      entityLabel: requestItemLabel(updated.name, updated.catalogNumber),
-      action: 'REQUEST_ITEM_UPDATED',
-      category,
-      oldValue: diff.before,
-      newValue: diff.after,
-      metadata: { source: 'ADMIN_CRM' },
-      allowedFields: { oldValue: REQUEST_ITEM_AUDIT_FIELDS, newValue: REQUEST_ITEM_AUDIT_FIELDS, metadata: ['source'] },
+  let result: Awaited<ReturnType<typeof updateRequestItem>>;
+  try {
+    result = await updateRequestItem({
+      requestItemId: itemId,
+      requestId,
+      expectedUpdatedAt,
+      actor: { id: session.user.id },
+      values: parsed.data,
       requestContext
     });
-  });
-
-  revalidatePath(`/admin/requests/${item.requestId}`);
-
-  if (item.vehicleId) {
-    revalidatePath(`/client/vehicles/${item.vehicleId}`);
+  } catch (error) {
+    const code = error instanceof RequestItemUpdateError
+      ? error.code
+      : 'REQUEST_ITEM_UPDATE_FAILED';
+    console.error('Request item update failed.', {
+      requestId,
+      requestItemId: itemId,
+      expectedUpdatedAt,
+      errorCode: code
+    });
+    if (code === 'REQUEST_ITEM_NOT_FOUND' || code === 'REQUEST_ITEM_NOT_IN_REQUEST') {
+      return workflowResult('item-not-found', false);
+    }
+    if (code === 'REQUEST_ITEM_VERSION_CONFLICT') {
+      return workflowResult('item-stale', false);
+    }
+    if (code === 'REQUEST_ITEM_VALIDATION_FAILED') {
+      return workflowResult('item-validation-error', false, false);
+    }
+    if (code === 'APPROVED_REQUEST_ITEM_LOCKED') {
+      return workflowResult('item-approved-locked', false);
+    }
+    if (code === 'REQUEST_SELECTION_MUTATION_LOCKED') {
+      return workflowResult('item-mutation-locked', false);
+    }
+    return workflowResult('item-update-error', false);
   }
 
-  redirectBack(item.requestId, 'item-updated');
+  if (result.outcome === 'no_changes') {
+    return workflowResult('item-no-changes', true, false);
+  }
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/requests');
+  revalidatePath(`/admin/requests/${result.item.requestId}`);
+
+  if (result.item.vehicleId) {
+    revalidatePath(`/client/vehicles/${result.item.vehicleId}`);
+  }
+
+  return workflowResult('item-updated', true);
 }
 
 export async function sendAdminRequestItemsForApproval(formData: FormData) {
   const session = await requireCrmSession();
   const requestId = readString(formData, 'requestId');
+  const requestItemIds = formData.getAll('requestItemId')
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const rawVersions = readString(formData, 'requestItemVersions');
+  const modeValue = readString(formData, 'mode');
+  const mode = modeValue === 'INITIAL' || modeValue === 'RESEND_ACTIVE'
+    ? modeValue
+    : null;
+  const expectedActiveBatchId = readString(formData, 'expectedActiveBatchId');
+  const expectedActiveRevisionRaw = readString(
+    formData,
+    'expectedActiveRevision'
+  );
+  const expectedActiveRevision = expectedActiveRevisionRaw
+    ? Number(expectedActiveRevisionRaw)
+    : undefined;
 
-  if (!hasDatabaseUrl() || !requestId) {
-    redirectBack(requestId, 'items-send-error');
+  if (modeValue === 'FOLLOW_UP_REJECTED') {
+    return workflowResult('selection-finalized-locked', false, false);
   }
 
-  const request = await prisma.request.findUnique({
-    where: { id: requestId },
-    select: {
-      id: true,
-      requestNumber: true,
-      companyId: true,
-      items: { where: { visibleToClient: false }, select: { id: true } }
-    }
-  });
-
-  if (!request) {
-    redirect('/admin/requests?result=request-not-found');
+  if (
+    !hasDatabaseUrl()
+    || !requestId
+    || !rawVersions
+    || !mode
+    || (
+      mode === 'RESEND_ACTIVE'
+      && (
+        !expectedActiveBatchId
+        || !Number.isSafeInteger(expectedActiveRevision)
+      )
+    )
+  ) {
+    return workflowResult('items-send-error', false, false);
   }
 
-  if (request.items.length === 0) {
-    redirectBack(request.id, 'items-send-empty');
-  }
-
-  const itemIds = request.items.map((item) => item.id);
-  const requestContext = await getServerAuditRequestContext();
-  const result = await prisma.$transaction(async (tx) => {
-    const updated = await tx.requestItem.updateMany({
-      where: { requestId: request.id, visibleToClient: false, id: { in: itemIds } },
-      data: { visibleToClient: true }
-    });
-    if (updated.count > 0) {
-      await writeAuditLog(tx, {
-        actor: auditUserActor(session.user.id),
-        companyId: request.companyId,
-        entityType: 'REQUEST',
-        entityId: request.id,
-        entityLabel: requestLabel(request.requestNumber),
-        action: 'REQUEST_ITEMS_SENT_FOR_APPROVAL',
-        category: 'STANDARD',
-        metadata: { source: 'ADMIN_CRM', itemCount: updated.count, itemIds: itemIds.slice(0, 50) },
-        allowedFields: { metadata: REQUEST_AUDIT_METADATA_FIELDS },
-        requestContext
-      });
-    }
-    return updated;
-  });
-
-  if (result.count === 0) {
-    redirectBack(request.id, 'items-send-empty');
-  }
-
+  let expectedRequestItemVersions: RequestSelectionSourceVersion[];
   try {
-    const notificationResult = await sendTelegramRequestItemsApprovalNotification({ requestId: request.id });
-
-    if (notificationResult.status === 'failed') {
-      console.warn(`Telegram items approval notification failed for request ${request.id}.`);
-    }
+    const parsed = JSON.parse(rawVersions) as unknown;
+    if (!Array.isArray(parsed)) throw new Error('Expected an array.');
+    expectedRequestItemVersions = parsed.map((entry) => {
+      if (
+        !entry
+        || typeof entry !== 'object'
+        || !('id' in entry)
+        || !('updatedAt' in entry)
+        || typeof entry.id !== 'string'
+        || typeof entry.updatedAt !== 'string'
+      ) {
+        throw new Error('Invalid request item version.');
+      }
+      return { id: entry.id, updatedAt: new Date(entry.updatedAt) };
+    });
   } catch {
-    console.warn(`Telegram items approval notification could not be processed for request ${request.id}.`);
+    return workflowResult('items-send-stale', false);
   }
 
-  revalidatePath(`/admin/requests/${request.id}`);
+  const requestContext = await getServerAuditRequestContext();
+  let notificationFailed = false;
+  try {
+    const result = await sendRequestSelectionForApproval({
+      requestId,
+      requestItemIds,
+      expectedRequestItemVersions,
+      expectedActiveBatchId: expectedActiveBatchId || undefined,
+      expectedActiveRevision,
+      actor: { id: session.user.id },
+      mode,
+      requestContext
+    });
+    notificationFailed = result.notification.status === 'failed';
+    if (notificationFailed) {
+      console.warn(`Telegram items approval notification failed for request ${requestId}.`);
+    }
+  } catch (error) {
+    if (error instanceof SendRequestSelectionForApprovalError) {
+      if (error.code === 'EMPTY_SELECTION') return workflowResult('items-send-empty', false);
+      if (error.code === 'SOURCE_ITEM_VERSION_CONFLICT') {
+        return workflowResult('items-send-stale', false);
+      }
+      if (
+        error.code === 'ACTIVE_SELECTION_VERSION_CONFLICT'
+        || error.code === 'ACTIVE_SENT_BATCH_CONFLICT'
+        || error.code === 'BATCH_SUPERSEDE_FAILED'
+      ) {
+        return workflowResult('items-send-stale', false);
+      }
+      if (error.code === 'NO_SELECTION_CHANGES') {
+        return workflowResult('selection-update-no-changes', false);
+      }
+      if (error.code === 'DUPLICATE_SEND_OPERATION') {
+        return workflowResult('items-send-duplicate', false);
+      }
+      if (error.code === 'REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND') {
+        return workflowResult('items-send-status-locked', false);
+      }
+      if (error.code === 'FINALIZED_SELECTION_LOCKED') {
+        return workflowResult('selection-finalized-locked', false);
+      }
+      if (error.code === 'REQUEST_NOT_FOUND') {
+        return workflowResult('request-not-found', false);
+      }
+    }
+    console.error('Failed to send request selection for approval.', {
+      requestId,
+      errorCode: error instanceof SendRequestSelectionForApprovalError ? error.code : 'UNEXPECTED'
+    });
+    return workflowResult('items-send-error', false);
+  }
+
+  revalidatePath(`/admin/requests/${requestId}`);
+  revalidatePath('/admin');
+  revalidatePath('/admin/requests');
   revalidatePath('/client');
   revalidatePath('/client/requests');
-  revalidatePath(`/client/requests/${request.id}`);
-  redirectBack(request.id, 'items-sent-for-approval');
+  revalidatePath(`/client/requests/${requestId}`);
+  if (notificationFailed) {
+    return workflowResult('items-sent-for-approval-notification-failed', true);
+  }
+  return workflowResult(
+    mode === 'RESEND_ACTIVE'
+      ? 'selection-updated-for-client'
+      : 'items-sent-for-approval',
+    true
+  );
 }
 
 export async function deleteAdminRequestItem(formData: FormData) {
@@ -540,49 +603,46 @@ export async function deleteAdminRequestItem(formData: FormData) {
   const itemId = readString(formData, 'itemId');
 
   if (!hasDatabaseUrl() || !requestId || !itemId) {
-    redirectBack(requestId, 'item-error');
+    return workflowResult('item-error', false, false);
   }
 
-  const item = await prisma.requestItem.findFirst({
-    where: { id: itemId, requestId },
-    select: {
-      id: true, requestId: true, vehicleId: true, name: true, brand: true,
-      catalogNumber: true, analogNumber: true, quantity: true, availability: true,
-      salePrice: true, visibleToClient: true, includeInInvoice: true,
-      request: { select: { companyId: true } }
-    }
-  });
-
-  if (!item) {
-    redirectBack(requestId, 'item-not-found');
-  }
-
-  const snapshot = requestItemSnapshot(item);
   const requestContext = await getServerAuditRequestContext();
-  await prisma.$transaction(async (tx) => {
-    await tx.requestItem.delete({ where: { id: item.id } });
-    await writeAuditLog(tx, {
-      actor: auditUserActor(session.user.id),
-      companyId: item.request.companyId,
-      entityType: 'REQUEST_ITEM',
-      entityId: item.id,
-      entityLabel: requestItemLabel(item.name, item.catalogNumber),
-      action: 'REQUEST_ITEM_DELETED',
-      category: requestItemAuditCategory(snapshot),
-      oldValue: snapshot,
-      metadata: { source: 'ADMIN_CRM' },
-      allowedFields: { oldValue: REQUEST_ITEM_AUDIT_FIELDS, metadata: ['source'] },
+  let result: Awaited<ReturnType<typeof deleteRequestItem>>;
+  try {
+    result = await deleteRequestItem({
+      requestItemId: itemId,
+      requestId,
+      actor: { id: session.user.id },
       requestContext
     });
-  });
-
-  revalidatePath(`/admin/requests/${item.requestId}`);
-
-  if (item.vehicleId) {
-    revalidatePath(`/client/vehicles/${item.vehicleId}`);
+  } catch (error) {
+    if (error instanceof RequestItemDeleteError) {
+      if (error.code === 'REQUEST_ITEM_NOT_FOUND') {
+        return workflowResult('item-not-found', false);
+      }
+      if (error.code === 'APPROVED_REQUEST_ITEM_DELETE_BLOCKED') {
+        return workflowResult('item-approved-delete-blocked', false);
+      }
+      if (
+        error.code === 'REQUEST_SELECTION_MUTATION_LOCKED'
+        || error.code === 'ACTOR_NOT_ALLOWED'
+      ) {
+        return workflowResult('item-mutation-locked', false);
+      }
+    }
+    console.error('Request item delete failed.', { requestId, requestItemId: itemId });
+    return workflowResult('item-error', false);
   }
 
-  redirectBack(item.requestId, 'item-deleted');
+  revalidatePath('/admin');
+  revalidatePath('/admin/requests');
+  revalidatePath(`/admin/requests/${result.item.requestId}`);
+
+  if (result.item.vehicleId) {
+    revalidatePath(`/client/vehicles/${result.item.vehicleId}`);
+  }
+
+  return workflowResult('item-deleted', true);
 }
 
 export async function createAdminRequestDocument(formData: FormData) {
@@ -871,10 +931,10 @@ export async function createAdminInvoice(formData: FormData) {
   const requestId = readString(formData, 'requestId');
 
   if (!hasDatabaseUrl() || !requestId) {
-    redirectBack(requestId, 'invoice-error');
+    return workflowResult('invoice-error', false, false);
   }
 
-  const result = await createInvoiceFromApprovedRequestItems({
+  const result = await createInvoiceFromApprovedSelection({
     requestId,
     createdById: session.user.id,
     createdByRole: getCrmRole(session),
@@ -882,11 +942,11 @@ export async function createAdminInvoice(formData: FormData) {
   });
 
   if (!result.ok) {
-    redirectBack(requestId, result.status);
+    return workflowResult(result.status, false);
   }
 
   revalidatePath(`/admin/requests/${requestId}`);
-  redirectBack(requestId, 'invoice-created');
+  return workflowResult('invoice-created', true);
 }
 
 export async function sendAdminInvoice(formData: FormData) {
@@ -895,18 +955,33 @@ export async function sendAdminInvoice(formData: FormData) {
   const invoiceId = readString(formData, 'invoiceId');
 
   if (!hasDatabaseUrl() || !requestId || !invoiceId) {
-    redirectBack(requestId, 'invoice-error');
+    return workflowResult('invoice-send-error', false, false);
   }
 
-  const result = await sendInvoiceToClient(invoiceId, await getInvoiceAuditContext(session));
+  let result: Awaited<ReturnType<typeof sendInvoiceToClient>>;
+  try {
+    result = await sendInvoiceToClient({
+      invoiceId,
+      expectedRequestId: requestId,
+      audit: await getInvoiceAuditContext(session)
+    });
+  } catch {
+    return workflowResult('invoice-send-error', false);
+  }
 
   if (!result.ok) {
-    redirectBack(requestId, result.status);
+    return workflowResult(result.status, false);
   }
 
   revalidatePath(`/admin/requests/${requestId}`);
   revalidatePath(`/client/requests/${requestId}`);
-  redirectBack(requestId, 'invoice-sent');
+  if (result.outcome === 'noop') {
+    return workflowResult('invoice-already-sent', true);
+  }
+  if (!result.notificationDelivered) {
+    return workflowResult('invoice-sent-notification-failed', true);
+  }
+  return workflowResult('invoice-sent', true);
 }
 
 export async function cancelAdminInvoice(formData: FormData) {

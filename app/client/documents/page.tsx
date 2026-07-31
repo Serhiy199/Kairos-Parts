@@ -31,7 +31,17 @@ export default async function ClientDocumentsPage() {
   const requestWhere = requestAccessWhere(access);
   const [documents, requestFiles, requestDocuments] = await Promise.all([
     prisma.document.findMany({
-      where: { AND: [documentAccessWhere(access), { visibleToClient: true }] },
+      where: {
+        AND: [
+          documentAccessWhere(access),
+          {
+            OR: [
+              { visibleToClient: true },
+              { vehicleId: { not: null }, source: 'CLIENT' }
+            ]
+          }
+        ]
+      },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       select: {
         id: true,

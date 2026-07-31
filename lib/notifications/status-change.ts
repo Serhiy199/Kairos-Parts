@@ -2,6 +2,7 @@ import type { RequestStatus } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import { REQUEST_STATUS_LABELS } from '@/lib/requests/statuses';
+import { buildAbsoluteUrl } from '@/lib/site-url';
 import { sendTelegramMessage } from '@/lib/telegram/bot';
 
 type RequestForNotification = {
@@ -27,10 +28,7 @@ type RequestForNotification = {
 };
 
 function buildStatusUrl(publicStatusToken: string) {
-  const baseUrl = process.env.APP_BASE_URL || process.env.NEXTAUTH_URL || '';
-  const path = `/request/status/${publicStatusToken}`;
-
-  return baseUrl ? `${baseUrl.replace(/\/$/, '')}${path}` : path;
+  return buildAbsoluteUrl(`/request/status/${publicStatusToken}`);
 }
 
 function extractTelegramChatId(request: RequestForNotification) {

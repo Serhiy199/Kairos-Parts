@@ -28,9 +28,10 @@ type VehicleImageManagerProps = {
   setPrimaryAction: (imageId: string) => Promise<VehicleImageActionState>;
   reorderAction: (orderedImageIds: string[]) => Promise<VehicleImageActionState>;
   deleteAction: (imageId: string) => Promise<VehicleImageActionState>;
+  showUpload?: boolean;
 };
 
-export function VehicleImageManager({ vehicleLabel, images, uploadAction, setPrimaryAction, reorderAction, deleteAction }: VehicleImageManagerProps) {
+export function VehicleImageManager({ vehicleLabel, images, uploadAction, setPrimaryAction, reorderAction, deleteAction, showUpload = true }: VehicleImageManagerProps) {
   const [state, formAction, isPending] = useActionState(uploadAction, EMPTY_VEHICLE_IMAGE_ACTION_STATE);
   const [actionState, setActionState] = useState(EMPTY_VEHICLE_IMAGE_ACTION_STATE);
   const [isGalleryPending, startGalleryTransition] = useTransition();
@@ -68,7 +69,7 @@ export function VehicleImageManager({ vehicleLabel, images, uploadAction, setPri
         <span className="w-fit rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{images.length}/{MAX_VEHICLE_IMAGES}</span>
       </div>
 
-      <form action={formAction} className="grid gap-3 rounded-md border border-dashed border-border bg-surface-muted p-4">
+      {showUpload ? <form action={formAction} className="grid gap-3 rounded-md border border-dashed border-border bg-surface-muted p-4">
         <label htmlFor="vehicle-images" className="text-sm font-bold text-foreground">Додати фотографії</label>
         <input
           ref={inputRef}
@@ -90,7 +91,7 @@ export function VehicleImageManager({ vehicleLabel, images, uploadAction, setPri
             {state.message}
           </p>
         ) : null}
-      </form>
+      </form> : null}
 
       {images.length === 0 ? (
         <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">Фотографії ще не додані.</p>

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { FaClipboardList, FaTractor } from 'react-icons/fa';
@@ -19,8 +20,11 @@ import {
 } from 'react-icons/tb';
 
 import { ActionIcon } from '@/components/ui/action-icons';
+import { createPublicMetadata, PUBLIC_PAGE_SEO } from '@/lib/seo';
 
 const telegramBotUrl = 'https://t.me/kairos_parts_bot';
+
+export const metadata: Metadata = createPublicMetadata(PUBLIC_PAGE_SEO.home);
 
 const processSteps = [
   {

@@ -6,6 +6,7 @@ import { requireCrmSession } from '@/lib/admin/access';
 import { getServerAuditRequestContext } from '@/lib/audit-log/request-context';
 import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { hasCloudinaryConfig } from '@/lib/cloudinary/server';
+import { resolveDocumentSourceForActor } from '@/lib/documents/source';
 import { documentOwnerData, hasExactlyOneDocumentOwner, ownerDocumentWhere, type DocumentOwnerContext, type OwnerDocumentType } from '@/lib/documents/ownership';
 import {
   cleanupDocumentAssets,
@@ -16,14 +17,13 @@ import {
 import { prisma } from '@/lib/prisma';
 import {
   getVehicleDocumentFiles,
-  sanitizeVehicleDocumentName,
   type VehicleDocumentActionState,
   validateVehicleDocumentFiles
 } from '@/lib/vehicles/documents';
 
 const GENERIC_UPLOAD_ERROR = 'Не вдалося завантажити документ.';
 const OWNER_DOCUMENT_AUDIT_METADATA_FIELDS = [
-  'event', 'actorRole', 'documentOwnerType', 'documents', 'documentId',
+  'event', 'actorRole', 'source', 'documentOwnerType', 'documents', 'documentId',
   'originalName', 'visibleToClient', 'mimeType', 'size'
 ] as const;
 
@@ -81,7 +81,13 @@ export async function uploadAdminOwnerDocuments(
   }
 
   const visibleToClient = formData.get('visibleToClient') === 'on';
-  const uploads: Array<{ file: File; upload: CloudinaryDocumentUpload }> = [];
+  const source = resolveDocumentSourceForActor(session.user.role);
+  const uploads: Array<{
+    file: File;
+    fileName: string;
+    mimeType: string;
+    upload: CloudinaryDocumentUpload;
+  }> = [];
   const ownerData = documentOwnerData(owner);
 
   if (!hasExactlyOneDocumentOwner(ownerData)) {
@@ -89,19 +95,23 @@ export async function uploadAdminOwnerDocuments(
   }
 
   try {
-    for (const file of files) {
-      uploads.push({ file, upload: await uploadDocument(owner, file) });
+    for (const item of validation.files) {
+      uploads.push({
+        ...item,
+        upload: await uploadDocument(owner, item.file)
+      });
     }
 
     await prisma.$transaction(async (tx) => {
-      const created = await Promise.all(uploads.map(({ file, upload }) => tx.document.create({ data: {
+      const created = await Promise.all(uploads.map(({ fileName, mimeType, upload }) => tx.document.create({ data: {
         ...ownerData,
-        fileName: sanitizeVehicleDocumentName(file.name),
+        fileName,
         storageKey: upload.storageKey,
         fileUrl: null,
-        mimeType: file.type,
+        mimeType,
         size: upload.bytes,
         visibleToClient,
+        source,
         uploadedById: session.user.id
       } })));
       const auditTarget = ownerAuditTarget(owner);
@@ -112,8 +122,15 @@ export async function uploadAdminOwnerDocuments(
         category: 'STANDARD',
         metadata: {
           event: owner.type === 'company' ? 'COMPANY_DOCUMENT_UPLOADED' : 'CLIENT_DOCUMENT_UPLOADED',
-          actorRole: session.user.role, documentOwnerType: owner.type,
-          documents: created.map((document) => ({ id: document.id, originalName: document.fileName, mimeType: document.mimeType, size: document.size, visibleToClient: document.visibleToClient }))
+          actorRole: session.user.role, source, documentOwnerType: owner.type,
+          documents: created.map((document) => ({
+            id: document.id,
+            originalName: document.fileName,
+            mimeType: document.mimeType,
+            size: document.size,
+            visibleToClient: document.visibleToClient,
+            source: document.source
+          }))
         },
         allowedFields: { metadata: OWNER_DOCUMENT_AUDIT_METADATA_FIELDS },
         requestContext

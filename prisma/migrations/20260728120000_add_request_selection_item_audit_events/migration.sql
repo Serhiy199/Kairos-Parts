@@ -1,0 +1,8 @@
+-- Add item-level audit vocabulary for Stage 5 client selection decisions.
+ALTER TYPE "AuditEntityType"
+  ADD VALUE IF NOT EXISTS 'REQUEST_SELECTION_BATCH_ITEM';
+
+ALTER TYPE "AuditAction"
+  ADD VALUE IF NOT EXISTS 'REQUEST_SELECTION_ITEM_APPROVED';
+ALTER TYPE "AuditAction"
+  ADD VALUE IF NOT EXISTS 'REQUEST_SELECTION_ITEM_REJECTED';

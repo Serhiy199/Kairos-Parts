@@ -1,0 +1,477 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+
+import { LogisticsStatusBadge } from '@/components/admin/logistics/logistics-status-badge';
+import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
+import {
+  ReactiveActionForm,
+  ReactiveSubmitButton
+} from '@/components/workflow/reactive-action-form';
+import { requireCrmSession } from '@/lib/admin/access';
+import { hasDatabaseUrl } from '@/lib/env/database';
+import {
+  addLogisticsInternalComment,
+  updateLogisticsIndividualPrice,
+  updateLogisticsPreferredDeliveryDate,
+  updateLogisticsRequestStatus
+} from '@/lib/logistics/crm-actions';
+import {
+  formatDateOnlyLongUk,
+  getKyivTodayDateOnly
+} from '@/lib/logistics/date-only';
+import {
+  LOGISTICS_DESTINATION_LABELS,
+  LOGISTICS_SOURCE_LABELS,
+  LOGISTICS_PRICING_TYPE_LABELS,
+  LOGISTICS_STATUS_LABELS,
+  LOGISTICS_STATUS_TRANSITIONS,
+  formatNullableLogisticsUah
+} from '@/lib/logistics/crm-presentation';
+import { getLogisticsRequestDetail } from '@/lib/logistics/crm-queries';
+
+export const dynamic = 'force-dynamic';
+
+function dateTime(value: string) {
+  return new Date(value).toLocaleString('uk-UA', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
+}
+
+export default async function AdminLogisticsDetailPage({
+  params
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const session = await requireCrmSession();
+  const { id } = await params;
+
+  if (!hasDatabaseUrl()) return <AdminDbBlocker />;
+
+  const request = await getLogisticsRequestDetail(id);
+  if (!request) notFound();
+  const transitions = LOGISTICS_STATUS_TRANSITIONS[request.status];
+  const canUpdateStatus =
+    session.user.role === 'ADMIN' || session.user.role === 'MANAGER';
+  const minPreferredDeliveryDate = getKyivTodayDateOnly();
+
+  return (
+    <div className="cabinet-stack">
+      <section className="cabinet-card">
+        <Link
+          href="/admin/logistics"
+          className="text-sm font-semibold text-muted transition hover:text-accent"
+        >
+          ← До логістичних заявок
+        </Link>
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-bold uppercase text-accent">
+              Kairos Logistics
+            </p>
+            <h2 className="mt-2 break-words text-2xl font-bold text-foreground">
+              {request.requestNumber}
+            </h2>
+            <p className="mt-2 text-sm text-muted">
+              {LOGISTICS_SOURCE_LABELS[request.source]}
+              {request.sourceName ? ` · ${request.sourceName}` : ''}
+            </p>
+          </div>
+          <LogisticsStatusBadge status={request.status} />
+        </div>
+        <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <DetailField label="Створено" value={dateTime(request.createdAt)} />
+          <DetailField label="Оновлено" value={dateTime(request.updatedAt)} />
+          <DetailField
+            label="Тип доставки"
+            value={LOGISTICS_DESTINATION_LABELS[request.destinationType]}
+          />
+          <DetailField
+            label="Кінцева сума"
+            value={formatNullableLogisticsUah(
+              request.totalPrice,
+              'Ще не встановлена'
+            )}
+            emphasis
+          />
+        </dl>
+      </section>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
+        <div className="grid min-w-0 gap-5">
+          <section className="cabinet-card">
+            <h3 className="text-lg font-bold text-foreground">Контакт</h3>
+            <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+              <DetailField label="Ім’я" value={request.contactName} />
+              <div className="min-w-0">
+                <dt className="font-semibold text-muted">Телефон</dt>
+                <dd className="mt-1 break-words">
+                  <a
+                    href={`tel:${request.contactPhone}`}
+                    className="font-semibold text-foreground transition hover:text-accent"
+                  >
+                    {request.contactPhone}
+                  </a>
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          <section className="cabinet-card">
+            <h3 className="text-lg font-bold text-foreground">
+              Тариф і розрахунок
+            </h3>
+            {request.pricingType === 'FIXED' ? (
+              <>
+              <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+              <DetailField
+                label="Тарифне місто"
+                value={request.tariffCityName ?? 'Дані тарифу недоступні'}
+              />
+              <DetailField
+                label="Базовий тариф"
+                value={formatNullableLogisticsUah(
+                  request.baseTariff,
+                  'Дані тарифу недоступні'
+                )}
+              />
+              <DetailField
+                label="Кількість точок"
+                value={String(request.pickupPointCount)}
+              />
+              <DetailField
+                label="Доплата за точки"
+                value={formatNullableLogisticsUah(
+                  request.additionalPointsCharge,
+                  'Дані тарифу недоступні'
+                )}
+              />
+              <DetailField
+                label="Доплата за господарство"
+                value={formatNullableLogisticsUah(
+                  request.farmDeliveryCharge,
+                  'Дані тарифу недоступні'
+                )}
+              />
+              <DetailField
+                label="Загальна кінцева сума"
+                value={formatNullableLogisticsUah(
+                  request.totalPrice,
+                  'Дані тарифу недоступні'
+                )}
+                emphasis
+              />
+              </dl>
+              <p className="mt-4 rounded-md bg-surface-muted px-3 py-2 text-sm font-semibold text-muted">
+                Усі ціни включають ПДВ. Розрахунок зафіксовано на момент
+                створення заявки.
+              </p>
+              </>
+            ) : (
+              <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                <DetailField
+                  label="Тип розрахунку"
+                  value={LOGISTICS_PRICING_TYPE_LABELS.INDIVIDUAL}
+                />
+                <DetailField
+                  label="Населений пункт"
+                  value={request.customLocality ?? 'Не вказано'}
+                />
+                <DetailField
+                  label="Кінцева вартість"
+                  value={formatNullableLogisticsUah(
+                    request.totalPrice,
+                    'Ще не встановлена'
+                  )}
+                  emphasis
+                />
+              </dl>
+            )}
+          </section>
+
+          <section className="cabinet-card">
+            <h3 className="text-lg font-bold text-foreground">
+              Точки відвантаження
+            </h3>
+            <div className="mt-4 grid gap-4">
+              {request.pickupPoints.map((point, index) => (
+                <article
+                  key={point.id}
+                  className="rounded-md border border-border bg-surface-muted/50 p-3.5"
+                >
+                  <h4 className="font-bold text-foreground">
+                    Точка {index + 1}
+                  </h4>
+                  <p className="mt-3 text-sm font-semibold text-muted">
+                    Назва компанії / постачальника
+                  </p>
+                  <p className="mt-1 break-words text-sm text-foreground">
+                    {point.supplierName || 'Компанію не вказано'}
+                  </p>
+                  <p className="mt-3 text-sm font-semibold text-muted">
+                    Адреса завантаження
+                  </p>
+                  <p className="mt-1 break-words text-sm text-foreground">
+                    {point.formattedAddress}
+                  </p>
+                  <p className="mt-3 text-sm font-semibold text-muted">
+                    Опис вантажу
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground">
+                    {point.cargoDescription}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="cabinet-card">
+            <h3 className="text-lg font-bold text-foreground">
+              Місце доставки
+            </h3>
+            <div className="mt-3 rounded-md border border-border bg-surface-muted/50 p-3.5">
+              <p className="text-sm font-semibold text-muted">
+                {LOGISTICS_DESTINATION_LABELS[request.destinationType]}
+              </p>
+              <p className="mt-1 break-words text-sm text-foreground">
+                {request.destinationAddress ?? 'Адреса недоступна'}
+              </p>
+            </div>
+          </section>
+
+          {request.clientComment ? (
+            <section className="cabinet-card">
+              <h3 className="text-lg font-bold text-foreground">
+                Коментар клієнта
+              </h3>
+              <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
+                {request.clientComment}
+              </p>
+            </section>
+          ) : null}
+        </div>
+
+        <div className="grid min-w-0 content-start gap-5">
+          {request.pricingType === 'INDIVIDUAL' ? (
+            <section className="cabinet-card">
+              <h3 className="text-lg font-bold text-foreground">
+                Індивідуальний розрахунок
+              </h3>
+              <ReactiveActionForm action={updateLogisticsIndividualPrice}>
+                <input type="hidden" name="requestId" value={request.id} />
+                <input
+                  type="hidden"
+                  name="expectedUpdatedAt"
+                  value={request.updatedAt}
+                />
+                <label
+                  htmlFor="logistics-individual-total-price"
+                  className="mt-4 block text-sm font-semibold text-foreground"
+                >
+                  Кінцева вартість перевезення
+                </label>
+                <input
+                  id="logistics-individual-total-price"
+                  name="totalPrice"
+                  type="text"
+                  inputMode="decimal"
+                  pattern="[0-9]+([.,][0-9]{1,2})?"
+                  defaultValue={request.totalPrice ?? ''}
+                  required
+                  className="mt-2 h-11 w-full rounded-md border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                />
+                <p className="mt-2 text-xs leading-5 text-muted">
+                  Вкажіть кінцеву суму з ПДВ після уточнення маршруту та умов
+                  перевезення.
+                </p>
+                <ReactiveSubmitButton
+                  pendingLabel="Зберігаємо…"
+                  className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-accent px-4 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Зберегти розрахунок
+                </ReactiveSubmitButton>
+              </ReactiveActionForm>
+            </section>
+          ) : null}
+
+          <section className="cabinet-card">
+            <h3 className="text-lg font-bold text-foreground">
+              Бажана дата перевезення
+            </h3>
+            <p className="mt-3 font-semibold text-foreground">
+              {request.preferredDeliveryDate
+                ? formatDateOnlyLongUk(request.preferredDeliveryDate)
+                : 'Бажану дату не вказано'}
+            </p>
+            <ReactiveActionForm
+              action={updateLogisticsPreferredDeliveryDate}
+              className="mt-5"
+            >
+              <input type="hidden" name="requestId" value={request.id} />
+              <input
+                type="hidden"
+                name="expectedUpdatedAt"
+                value={request.updatedAt}
+              />
+              <label
+                htmlFor="logistics-preferred-delivery-date"
+                className="text-sm font-semibold text-foreground"
+              >
+                Змінити бажану дату
+              </label>
+              <input
+                id="logistics-preferred-delivery-date"
+                name="preferredDeliveryDate"
+                type="date"
+                min={minPreferredDeliveryDate}
+                defaultValue={request.preferredDeliveryDate ?? ''}
+                required
+                className="mt-2 h-11 w-full rounded-md border border-border bg-card px-3 text-sm text-foreground outline-none [color-scheme:dark] focus:border-accent focus:ring-2 focus:ring-accent/20"
+              />
+              <p className="mt-2 text-xs leading-5 text-muted">
+                Дата є бажаною. Остаточну можливість виконання потрібно
+                узгодити з клієнтом.
+              </p>
+              <ReactiveSubmitButton
+                pendingLabel="Зберігаємо…"
+                className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-accent px-4 text-sm font-bold text-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Зберегти дату
+              </ReactiveSubmitButton>
+            </ReactiveActionForm>
+          </section>
+
+          <section className="cabinet-card">
+            <h3 className="text-lg font-bold text-foreground">
+              Поточний статус
+            </h3>
+            <div className="mt-3">
+              <LogisticsStatusBadge status={request.status} />
+            </div>
+            {canUpdateStatus && transitions.length > 0 ? (
+              <div className="mt-5 grid gap-2">
+                <p className="text-sm font-semibold text-muted">
+                  Доступні переходи
+                </p>
+                {transitions.map((targetStatus) => (
+                  <ReactiveActionForm
+                    key={targetStatus}
+                    action={updateLogisticsRequestStatus}
+                  >
+                    <input type="hidden" name="requestId" value={request.id} />
+                    <input
+                      type="hidden"
+                      name="expectedStatus"
+                      value={request.status}
+                    />
+                    <input
+                      type="hidden"
+                      name="targetStatus"
+                      value={targetStatus}
+                    />
+                    <ReactiveSubmitButton
+                      pendingLabel="Оновлюємо…"
+                      className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border px-4 text-sm font-bold text-foreground transition hover:border-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Змінити на «{LOGISTICS_STATUS_LABELS[targetStatus]}»
+                    </ReactiveSubmitButton>
+                  </ReactiveActionForm>
+                ))}
+              </div>
+            ) : null}
+            {canUpdateStatus && transitions.length === 0 ? (
+              <p className="mt-4 text-sm text-muted">
+                Статус є кінцевим і не може бути змінений.
+              </p>
+            ) : null}
+          </section>
+
+          <section className="cabinet-card">
+            <h3 className="text-lg font-bold text-foreground">
+              Внутрішні коментарі
+            </h3>
+            <div className="mt-4 grid gap-3">
+              {request.internalComments.length > 0 ? (
+                request.internalComments.map((comment) => (
+                  <article
+                    key={comment.id}
+                    className="rounded-md border border-border bg-surface-muted/50 p-3"
+                  >
+                    <div className="flex flex-wrap justify-between gap-2 text-xs text-muted">
+                      <span className="font-semibold">{comment.authorName}</span>
+                      <time dateTime={comment.createdAt}>
+                        {dateTime(comment.createdAt)}
+                      </time>
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
+                      {comment.body}
+                    </p>
+                  </article>
+                ))
+              ) : (
+                <p className="text-sm text-muted">
+                  Внутрішніх коментарів поки немає.
+                </p>
+              )}
+            </div>
+
+            <ReactiveActionForm
+              action={addLogisticsInternalComment}
+              resetOnSuccess
+              className="mt-5"
+            >
+              <input type="hidden" name="requestId" value={request.id} />
+              <label
+                htmlFor="logistics-internal-comment"
+                className="text-sm font-semibold text-foreground"
+              >
+                Новий коментар
+              </label>
+              <textarea
+                id="logistics-internal-comment"
+                name="body"
+                required
+                maxLength={2000}
+                rows={5}
+                className="mt-2 min-h-32 w-full resize-y rounded-md border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/20"
+              />
+              <ReactiveSubmitButton
+                pendingLabel="Додаємо…"
+                className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-accent px-4 text-sm font-bold text-foreground transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Додати коментар
+              </ReactiveSubmitButton>
+            </ReactiveActionForm>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailField({
+  label,
+  value,
+  emphasis = false
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <div
+      className={`min-w-0 rounded-md px-3 py-2.5 ${
+        emphasis ? 'bg-accent/10' : 'bg-surface-muted/60'
+      }`}
+    >
+      <dt className="font-semibold text-muted">{label}</dt>
+      <dd
+        className={`mt-1 break-words font-semibold tabular-nums ${
+          emphasis ? 'text-accent' : 'text-foreground'
+        }`}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}

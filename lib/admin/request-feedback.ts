@@ -1,0 +1,234 @@
+export type AdminActionFeedbackTone = 'success' | 'warning' | 'error';
+
+export type AdminActionFeedback = {
+  tone: AdminActionFeedbackTone;
+  marker: 'Успішно' | 'Увага' | 'Помилка';
+  message: string;
+  className: string;
+};
+
+export type AdminWorkflowFeedback = Pick<AdminActionFeedback, 'tone' | 'message'> & {
+  code: string;
+};
+
+const tonePresentation = {
+  success: {
+    marker: 'Успішно',
+    className: 'border-success/30 bg-[#E7F6EC] text-success'
+  },
+  warning: {
+    marker: 'Увага',
+    className: 'border-accent/40 bg-[#FFF7E0] text-[#8A5B24]'
+  },
+  error: {
+    marker: 'Помилка',
+    className: 'border-danger/30 bg-danger/10 text-danger'
+  }
+} as const satisfies Record<
+  AdminActionFeedbackTone,
+  Pick<AdminActionFeedback, 'marker' | 'className'>
+>;
+
+const feedbackByResult = {
+  'status-updated': { tone: 'success', message: 'Статус оновлено.' },
+  assigned: { tone: 'success', message: 'Відповідального менеджера оновлено.' },
+  'comment-added': { tone: 'success', message: 'Внутрішній коментар додано.' },
+  'admin-only': { tone: 'warning', message: 'Призначати менеджера може тільки ADMIN.' },
+  'status-error': { tone: 'error', message: 'Не вдалося оновити статус.' },
+  'ocr-created': { tone: 'success', message: 'OCR виконано. Перевірте результат нижче.' },
+  'ocr-corrected': { tone: 'success', message: 'OCR-текст оновлено.' },
+  'ocr-error': { tone: 'error', message: 'Не вдалося запустити OCR.' },
+  'ocr-pdf-not-supported': {
+    tone: 'warning',
+    message: 'OCR для PDF поки не підтримується. Завантажте зображення сторінки у форматі JPG, PNG або WebP.'
+  },
+  'ocr-file-missing': {
+    tone: 'error',
+    message: 'Файл недоступний. Ймовірно, він був завантажений у старе локальне сховище та не зберігся. Завантажте файл повторно.'
+  },
+  'ocr-file-too-large': {
+    tone: 'warning',
+    message: 'Файл перевищує максимальний розмір для OCR.'
+  },
+  'ocr-correction-error': { tone: 'error', message: 'Не вдалося зберегти OCR-корекцію.' },
+  'assign-error': { tone: 'error', message: 'Не вдалося призначити менеджера.' },
+  'comment-error': { tone: 'warning', message: 'Коментар не може бути порожнім.' },
+  'manager-not-found': { tone: 'warning', message: 'Менеджера не знайдено.' },
+  'item-created': { tone: 'success', message: 'Позицію додано.' },
+  'request-not-found': { tone: 'error', message: 'Заявку не знайдено.' },
+  'item-updated': { tone: 'success', message: 'Позицію оновлено.' },
+  'item-no-changes': { tone: 'warning', message: 'Змін у позиції не виявлено.' },
+  'item-validation-error': { tone: 'error', message: 'Перевірте введені дані позиції.' },
+  'item-stale': {
+    tone: 'warning',
+    message: 'Позицію вже було змінено. Оновіть сторінку та повторіть редагування.'
+  },
+  'item-update-error': {
+    tone: 'error',
+    message: 'Не вдалося оновити позицію. Спробуйте ще раз.'
+  },
+  'item-approved-locked': {
+    tone: 'warning',
+    message: 'Позицію вже погоджено клієнтом. Її погоджені дані не можна змінити.'
+  },
+  'item-approved-delete-blocked': {
+    tone: 'warning',
+    message: 'Погоджену позицію не можна видалити.'
+  },
+  'item-mutation-locked': {
+    tone: 'warning',
+    message:
+      'Клієнт уже завершив погодження. Підбір зафіксований і більше не може бути змінений. Для додаткових деталей потрібно створити нову заявку.'
+  },
+  'item-deleted': { tone: 'success', message: 'Позицію видалено.' },
+  'items-sent-for-approval': {
+    tone: 'success',
+    message: 'Позиції надіслано клієнту на погодження.'
+  },
+  'selection-updated-for-client': {
+    tone: 'success',
+    message: 'Оновлену версію підбору надіслано клієнту.'
+  },
+  'selection-update-no-changes': {
+    tone: 'warning',
+    message: 'Після останнього надсилання підбір не змінювався.'
+  },
+  'items-sent-for-approval-notification-failed': {
+    tone: 'warning',
+    message: 'Позиції надіслано в кабінет клієнта, але Telegram-повідомлення не доставлено.'
+  },
+  'items-send-empty': {
+    tone: 'warning',
+    message: 'Немає нових позицій для відправлення на погодження.'
+  },
+  'items-send-stale': {
+    tone: 'warning',
+    message: 'Позиції змінилися після відкриття сторінки. Оновіть сторінку та перевірте добірку.'
+  },
+  'items-send-duplicate': {
+    tone: 'warning',
+    message: 'Цю добірку вже відправлено на погодження.'
+  },
+  'items-send-status-locked': {
+    tone: 'warning',
+    message: 'Поточний статус заявки не дозволяє відправити добірку на погодження.'
+  },
+  'selection-finalized-locked': {
+    tone: 'warning',
+    message: 'Клієнт уже завершив погодження. Підбір зафіксований і більше не може бути змінений. Для додаткових деталей потрібно створити нову заявку.'
+  },
+  'items-send-error': {
+    tone: 'error',
+    message: 'Не вдалося відправити позиції на погодження. Спробуйте ще раз.'
+  },
+  'item-error': { tone: 'warning', message: 'Перевірте дані позиції.' },
+  'item-status-locked': {
+    tone: 'warning',
+    message: 'Підбір уже фіналізований клієнтом і не може бути змінений.'
+  },
+  'item-not-found': { tone: 'warning', message: 'Позицію не знайдено.' },
+  'document-created': { tone: 'success', message: 'Документ додано.' },
+  'document-updated': { tone: 'success', message: 'Документ оновлено.' },
+  'document-deleted': { tone: 'success', message: 'Документ видалено.' },
+  'document-error': { tone: 'warning', message: 'Перевірте дані документа.' },
+  'document-not-found': { tone: 'warning', message: 'Документ не знайдено.' },
+  'invoice-created': { tone: 'success', message: 'Рахунок створено.' },
+  'invoice-sent': { tone: 'success', message: 'Рахунок надіслано клієнту.' },
+  'invoice-sent-notification-failed': {
+    tone: 'warning',
+    message:
+      'Рахунок надіслано в кабінет клієнта, але повідомлення не доставлено.'
+  },
+  'invoice-already-sent': {
+    tone: 'warning',
+    message: 'Рахунок уже надіслано клієнту.'
+  },
+  'invoice-cancelled': { tone: 'success', message: 'Рахунок скасовано.' },
+  'invoice-paid': { tone: 'success', message: 'Рахунок позначено як оплачений.' },
+  'invoice-no-approved-items': {
+    tone: 'warning',
+    message: 'Немає погоджених позицій для створення рахунку.'
+  },
+  'invoice-request-not-awaiting': {
+    tone: 'warning',
+    message: 'Статус заявки ще не дозволяє створити рахунок.'
+  },
+  'invoice-selection-not-found': {
+    tone: 'warning',
+    message: 'Не знайдено завершеної версії підбору для рахунку.'
+  },
+  'invoice-selection-stale': {
+    tone: 'warning',
+    message: 'Версія підбору неактуальна або ще очікує рішення клієнта.'
+  },
+  'invoice-selection-active-review': {
+    tone: 'warning',
+    message:
+      'Клієнт ще не завершив погодження актуального підбору. Рахунок можна сформувати після фінального рішення.'
+  },
+  'invoice-selection-legacy-ambiguous': {
+    tone: 'warning',
+    message:
+      'Заявка містить історичний багатоверсійний підбір. Перед формуванням рахунку потрібна перевірка даних.'
+  },
+  'invoice-approved-price-missing': {
+    tone: 'warning',
+    message: 'Для погодженої позиції не вказано ціну.'
+  },
+  'invoice-currency-mismatch': {
+    tone: 'warning',
+    message: 'Погоджені позиції мають різні валюти.'
+  },
+  'invoice-selection-already-invoiced': {
+    tone: 'warning',
+    message: 'Для цієї версії підбору рахунок уже створено.'
+  },
+  'invoice-not-found': { tone: 'warning', message: 'Рахунок не знайдено.' },
+  'invoice-invalid-transition': {
+    tone: 'warning',
+    message: 'Некоректна зміна статусу рахунку.'
+  },
+  'invoice-request-mismatch': {
+    tone: 'error',
+    message: 'Рахунок не належить цій заявці.'
+  },
+  'invoice-request-not-awaiting-send': {
+    tone: 'warning',
+    message: 'Поточний статус заявки не дозволяє надіслати рахунок.'
+  },
+  'invoice-empty': { tone: 'warning', message: 'Не можна надіслати порожній рахунок.' },
+  'invoice-forbidden': {
+    tone: 'warning',
+    message: 'Недостатньо прав для роботи з рахунком.'
+  },
+  'invoice-seller-details-required': {
+    tone: 'warning',
+    message: 'Спочатку заповніть реквізити продавця.'
+  },
+  'invoice-error': { tone: 'error', message: 'Не вдалося обробити рахунок.' },
+  'invoice-send-error': {
+    tone: 'error',
+    message: 'Не вдалося надіслати рахунок. Спробуйте ще раз.'
+  }
+} as const satisfies Record<string, { tone: AdminActionFeedbackTone; message: string }>;
+
+export function getAdminRequestFeedback(result?: string): AdminActionFeedback | null {
+  if (!result || !Object.prototype.hasOwnProperty.call(feedbackByResult, result)) {
+    return null;
+  }
+
+  const feedback = feedbackByResult[result as keyof typeof feedbackByResult];
+  return {
+    ...feedback,
+    ...tonePresentation[feedback.tone]
+  };
+}
+
+export function getAdminWorkflowFeedback(result: string): AdminWorkflowFeedback {
+  const feedback = getAdminRequestFeedback(result);
+  return feedback ? { code: result, tone: feedback.tone, message: feedback.message } : {
+    code: 'unknown-error',
+    tone: 'error',
+    message: 'Не вдалося виконати дію. Спробуйте ще раз.'
+  };
+}

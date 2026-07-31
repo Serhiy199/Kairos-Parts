@@ -1,6 +1,7 @@
 type ActionIconProps = {
   name:
     | 'login'
+    | 'dashboard'
     | 'plus'
     | 'filter'
     | 'reset'
@@ -34,6 +35,17 @@ export function ActionIcon({ name, className = 'size-4' }: ActionIconProps) {
         <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
         <path d="m10 17 5-5-5-5" />
         <path d="M15 12H3" />
+      </svg>
+    );
+  }
+
+  if (name === 'dashboard') {
+    return (
+      <svg {...baseProps}>
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
       </svg>
     );
   }

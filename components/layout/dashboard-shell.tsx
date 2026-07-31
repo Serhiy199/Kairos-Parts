@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
 import {
+  TbArrowLeft,
   TbArrowsExchange,
   TbBuilding,
   TbBuildingStore,
@@ -16,6 +17,7 @@ import {
   TbMenu2,
   TbMessageCircle,
   TbTractor,
+  TbTruckDelivery,
   TbUser,
   TbUsers,
   TbUsersGroup,
@@ -30,6 +32,7 @@ export type DashboardNavItem = {
   href: string;
   label: string;
   badge?: number;
+  badgeTone?: 'default' | 'success';
   icon?: NavIcon;
   activePrefix?: string;
 };
@@ -291,7 +294,9 @@ function SidebarContent({ navItems, pathname, homeHref, logoutAction, onNavigate
                     <span
                       aria-label={`${item.badge} нових`}
                       className={`inline-flex min-w-6 shrink-0 items-center justify-center rounded-full px-2 py-0.5 text-xs font-bold ${
-                        isActive ? 'bg-foreground text-accent' : 'bg-[#E7F6EC] text-success'
+                        item.badgeTone === 'success'
+                          ? 'bg-[#E7F6EC] text-success'
+                          : isActive ? 'bg-foreground text-accent' : 'bg-[#E7F6EC] text-success'
                       }`}
                     >
                       {item.badge > 99 ? '99+' : item.badge}
@@ -302,14 +307,24 @@ function SidebarContent({ navItems, pathname, homeHref, logoutAction, onNavigate
             );
           })}
         </nav>
-        <form action={logoutAction} className="mt-3 border-t border-white/10 pt-3">
-          <button
-            type="submit"
-            className="w-full rounded-md border border-white/15 px-3 py-2.5 text-left text-sm font-semibold text-sidebar-text transition hover:border-white/25 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        <div className="mt-3 grid gap-2 border-t border-white/10 pt-3">
+          <Link
+            href="/"
+            onClick={onNavigate}
+            className="flex w-full items-center gap-2.5 rounded-md border border-white/15 px-3 py-2.5 text-sm font-semibold text-sidebar-text transition hover:border-white/25 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            Вийти
-          </button>
-        </form>
+            <TbArrowLeft aria-hidden="true" className="size-[18px] shrink-0" />
+            <span>Повернутися на сайт</span>
+          </Link>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="w-full rounded-md border border-white/15 px-3 py-2.5 text-left text-sm font-semibold text-sidebar-text transition hover:border-white/25 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              Вийти
+            </button>
+          </form>
+        </div>
       </div>
     </>
   );
@@ -318,6 +333,7 @@ function SidebarContent({ navItems, pathname, homeHref, logoutAction, onNavigate
 const NAV_ICONS = {
   dashboard: TbLayoutDashboard,
   requests: TbClipboardList,
+  logistics: TbTruckDelivery,
   messages: TbMessageCircle,
   tractor: TbTractor,
   clients: TbUsers,

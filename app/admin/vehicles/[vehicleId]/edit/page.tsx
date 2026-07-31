@@ -24,7 +24,7 @@ export default async function AdminVehicleEditPage({
   searchParams
 }: {
   params: Promise<{ vehicleId: string }>;
-  searchParams: Promise<{ created?: string }>;
+  searchParams: Promise<{ created?: string; updated?: string; assets?: string; cleanup?: string }>;
 }) {
   await requireCrmSession();
   const { vehicleId } = await params;
@@ -59,6 +59,7 @@ export default async function AdminVehicleEditPage({
             mimeType: true,
             size: true,
             visibleToClient: true,
+            source: true,
             createdAt: true,
             uploadedBy: { select: { name: true, email: true } }
           }
@@ -106,7 +107,6 @@ export default async function AdminVehicleEditPage({
     .find((manufacturer) => manufacturer.name.toLocaleLowerCase('uk-UA') === vehicle.manufacturer.toLocaleLowerCase('uk-UA'));
 
   const initialValues: AdminVehicleFormValues = {
-    name: vehicle.name,
     equipmentType: vehicle.type,
     manufacturerId: matchingManufacturer?.id ?? '',
     manufacturer: vehicle.manufacturer,
@@ -179,7 +179,22 @@ export default async function AdminVehicleEditPage({
 
       {query.created === '1' ? (
         <div className="rounded-md border border-success/30 bg-[#E7F6EC] px-4 py-3 text-sm font-semibold text-success" aria-live="polite">
-          Техніку створено. Тепер додайте фотографії.
+          Техніку та вибрані файли збережено.
+        </div>
+      ) : null}
+      {query.updated === '1' ? (
+        <div className="rounded-md border border-success/30 bg-[#E7F6EC] px-4 py-3 text-sm font-semibold text-success" aria-live="polite">
+          Дані техніки та вибрані файли збережено.
+        </div>
+      ) : null}
+      {query.assets === 'partial' ? (
+        <div role="alert" className="rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-sm font-semibold text-foreground">
+          Основні дані збережено, але не всі вибрані файли вдалося додати. Перевірте списки нижче та повторіть завантаження за потреби.
+        </div>
+      ) : null}
+      {query.cleanup === 'failed' ? (
+        <div role="alert" className="rounded-md border border-danger/30 bg-danger/10 px-4 py-3 text-sm font-semibold text-danger">
+          Частину тимчасово завантажених файлів не вдалося автоматично очистити. Подію зафіксовано для технічної перевірки.
         </div>
       ) : null}
 
@@ -190,6 +205,9 @@ export default async function AdminVehicleEditPage({
         taxonomy={taxonomy}
         initialValues={initialValues}
         cancelHref={`${profileHref}#fleet`}
+        existingImageCount={vehicle.images.length}
+        existingDocumentCount={vehicle.documents.length}
+        existingDocumentBytes={vehicle.documents.reduce((total, document) => total + document.size, 0)}
       />
 
       <div id="photos" className="scroll-mt-6">
@@ -201,6 +219,7 @@ export default async function AdminVehicleEditPage({
           setPrimaryAction={setPrimaryAction}
           reorderAction={reorderAction}
           deleteAction={deleteAction}
+          showUpload={false}
         />
       </div>
 
@@ -212,7 +231,14 @@ export default async function AdminVehicleEditPage({
         </div>
       ) : null}
 
-      <VehicleDocumentManager vehicleId={vehicle.id} documents={vehicle.documents} />
+      <VehicleDocumentManager
+        vehicleId={vehicle.id}
+        documents={vehicle.documents.map((document) => ({
+          ...document,
+          createdAt: document.createdAt.toISOString()
+        }))}
+        showUpload={false}
+      />
     </div>
   );
 }

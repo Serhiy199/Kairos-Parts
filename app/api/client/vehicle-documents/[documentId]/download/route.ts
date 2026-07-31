@@ -1,6 +1,7 @@
-import { clientAccessError, getClientApiSession, vehicleAccessWhere } from '@/lib/client/access';
+import { clientAccessError, getClientApiSession } from '@/lib/client/access';
 import { fetchVehicleDocument, vehicleDocumentContentDisposition } from '@/lib/files/cloudinary-vehicle-documents';
 import { prisma } from '@/lib/prisma';
+import { clientReadableVehicleDocumentWhere } from '@/lib/vehicles/document-access';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -13,9 +14,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ doc
   const document = await prisma.document.findFirst({
     where: {
       id: documentId,
-      vehicleId: { not: null },
-      visibleToClient: true,
-      vehicle: vehicleAccessWhere(access.access)
+      AND: [clientReadableVehicleDocumentWhere(access.access)]
     },
     select: { fileName: true, storageKey: true, mimeType: true, size: true }
   });

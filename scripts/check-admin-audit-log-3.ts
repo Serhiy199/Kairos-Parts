@@ -41,19 +41,36 @@ async function assertStaticCoverage() {
   ] as const;
   for (const action of expectedActions) assert.equal(AUDIT_ACTIONS[action], action);
 
-  const [requestActions, offers, invoices, companies, adminPrint, clientPrint, adminDownload] = await Promise.all([
+  const [
+    requestActions,
+    selectionSend,
+    offers,
+    invoices,
+    companies,
+    adminPrint,
+    clientPrint,
+    adminDownload,
+    requestStatusTransition
+  ] = await Promise.all([
     source('app/admin/actions.ts'),
+    source('lib/request-selection/send-for-approval.ts'),
     source('lib/commercial-offers/service.ts'),
     source('lib/invoices/service.ts'),
     source('app/admin/company-actions.ts'),
     source('app/admin/invoices/[invoiceId]/print/page.tsx'),
     source('app/client/invoices/[invoiceId]/print/page.tsx'),
-    source('app/api/admin/request-documents/[documentId]/file/route.ts')
+    source('app/api/admin/request-documents/[documentId]/file/route.ts'),
+    source('lib/requests/status-transition.ts')
   ]);
 
-  assert.match(requestActions, /REQUEST_STATUS_CHANGED[\s\S]*category: 'STANDARD'/);
-  assert.match(requestActions, /REQUEST_ITEMS_SENT_FOR_APPROVAL/);
+  assert.match(
+    requestStatusTransition,
+    /REQUEST_STATUS_CHANGED[\s\S]*category: 'STANDARD'/
+  );
+  assert.match(requestActions, /transitionRequestStatus/);
   assert.match(requestActions, /prisma\.\$transaction\(async \(tx\)/);
+  assert.match(selectionSend, /REQUEST_ITEMS_SENT_FOR_APPROVAL/);
+  assert.match(selectionSend, /writeAuditLog\(tx/);
   assert.match(offers, /COMMERCIAL_OFFER_CREATED[\s\S]*FINANCIAL_CRITICAL/);
   assert.match(offers, /COMMERCIAL_OFFER_ITEMS_CHANGED[\s\S]*FINANCIAL_CRITICAL/);
   assert.match(offers, /writeOfferAudit\(tx/);
