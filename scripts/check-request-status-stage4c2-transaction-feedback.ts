@@ -349,8 +349,8 @@ async function main() {
   const statusTransitionIndex = sendSource.indexOf('dependencies.transitionRequest({');
   const sendBatchIndex = sendSource.indexOf("event: 'SEND'");
   const visibilityIndex = sendSource.indexOf('const previousSourceIds');
-  const transactionEndIndex = sendSource.indexOf(
-    'REQUEST_SELECTION_SEND_TRANSACTION_OPTIONS\n      );'
+  const transactionEndIndex = sendSource.search(
+    /REQUEST_SELECTION_SEND_TRANSACTION_OPTIONS\r?\n\s+\);/
   );
   const notifyIndex = sendSource.indexOf('dependencies.notify(');
   const sendActionSource = actionSource.slice(
