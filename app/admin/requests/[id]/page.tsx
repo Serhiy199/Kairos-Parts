@@ -40,7 +40,6 @@ import {
 } from '@/lib/invoices/selection';
 import { getVehicleDisplay } from '@/lib/vehicles/name';
 import { INVOICE_STATUS_LABELS } from '@/lib/invoices/validation';
-import { PART_MANUFACTURERS } from '@/lib/parts/part-manufacturers';
 import { prisma } from '@/lib/prisma';
 import { getAdminRequestItemPresentation } from '@/lib/request-items/admin-presentation';
 import {
@@ -1214,7 +1213,7 @@ function RequestItemForm({
       ) : null}
       <div className="grid min-w-0 gap-3 md:grid-cols-2 min-[1800px]:grid-cols-3">
         <TextField name="name" label="Назва запчастини" required defaultValue={item?.name} />
-        <PartManufacturerField defaultValue={item?.brand} listId={`part-manufacturer-${item?.id ?? 'new'}`} />
+        <PartManufacturerField defaultValue={item?.brand} />
         <TextField name="catalogNumber" label="Каталожний номер" defaultValue={item?.catalogNumber} />
         <TextField name="quantity" label="Кількість" type="number" min="1" defaultValue={String(item?.quantity ?? 1)} />
         <TextField name="unit" label="Одиниця" defaultValue={item?.unit ?? 'шт'} />
@@ -1238,22 +1237,19 @@ function RequestItemForm({
   );
 }
 
-function PartManufacturerField({ defaultValue, listId }: { defaultValue?: string | null; listId: string }) {
+function PartManufacturerField({ defaultValue }: { defaultValue?: string | null }) {
   return (
     <label className="grid min-w-0 gap-2 text-sm font-semibold text-foreground">
       <span>Виробник <span aria-hidden="true">*</span></span>
       <input
+        type="text"
         name="brand"
-        list={listId}
         defaultValue={defaultValue ?? ''}
         required
+        maxLength={120}
+        placeholder="Наприклад: Bosch або John Deere"
         className="h-11 w-full min-w-0 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
       />
-      <datalist id={listId}>
-        {PART_MANUFACTURERS.map((manufacturer) => (
-          <option key={manufacturer} value={manufacturer} />
-        ))}
-      </datalist>
     </label>
   );
 }
