@@ -14,7 +14,7 @@ import {
 } from '../lib/invoices/presentation';
 
 function readWorkspaceFile(filePath: string) {
-  return fs.readFileSync(path.join(process.cwd(), filePath), 'utf8');
+  return fs.readFileSync(path.join(process.cwd(), filePath), 'utf8').replace(/\r\n/g, '\n');
 }
 
 function main() {
