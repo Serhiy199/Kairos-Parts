@@ -4,17 +4,11 @@ import Link from 'next/link';
 import { LogisticsRequestForm } from '@/components/public/logistics/logistics-request-form';
 import { getLogisticsRequestContactPrefill } from '@/lib/logistics/access';
 import { getKyivTodayDateOnly } from '@/lib/logistics/date-only';
-import { buildAbsoluteUrl } from '@/lib/site-url';
-
-const canonicalUrl = buildAbsoluteUrl('/logistics/request');
 
 export const metadata: Metadata = {
   title: 'Заявка на перевезення | Kairos Logistics',
   description:
     'Заповніть дані точок відвантаження й отримайте фіксований або індивідуальний розрахунок перевезення Kairos Logistics.',
-  alternates: {
-    canonical: canonicalUrl
-  },
   robots: {
     index: false,
     follow: false

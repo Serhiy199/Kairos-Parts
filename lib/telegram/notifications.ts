@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { generateInvoicePdfBuffer } from '@/lib/invoices/pdf';
 import { calculateInvoiceTotals, formatInvoiceMoney } from '@/lib/invoices/totals';
 import { sendTelegramDocument, sendTelegramMessage, TelegramApiError } from '@/lib/telegram/bot';
+import { buildAbsoluteUrl } from '@/lib/site-url';
 
 type TelegramRecipient = {
   chatId: string;
@@ -20,14 +21,8 @@ type InvoiceSentNotificationResult =
   | { status: 'skipped-no-recipient' }
   | { status: 'skipped-invoice-not-found' };
 
-function getClientBaseUrl() {
-  const baseUrl = process.env.APP_BASE_URL || process.env.NEXTAUTH_URL || 'https://kairos-parts.vercel.app';
-
-  return baseUrl.replace(/\/$/, '');
-}
-
 function buildClientDirectUrl(path: string) {
-  return `${getClientBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`;
+  return buildAbsoluteUrl(path);
 }
 
 export function buildRequestItemsApprovalUrl(requestId: string) {

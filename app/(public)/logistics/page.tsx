@@ -5,29 +5,22 @@ import { TbTruckDelivery } from 'react-icons/tb';
 
 import { LogisticsFinalCta } from '@/components/public/logistics/logistics-final-cta';
 import { LogisticsRatesSection } from '@/components/public/logistics/logistics-rates-section';
-import { buildAbsoluteUrl } from '@/lib/site-url';
-
-const canonicalUrl = buildAbsoluteUrl('/logistics');
 
 export const metadata: Metadata = {
   title: 'Kairos Logistics — доставка товарів для агропідприємств | Kairos Parts',
   description:
     'Забір товарів у постачальників у межах Київської області та доставка до бази Kairos Parts у Кагарлику або в господарства Кагарлицької громади.',
-  alternates: {
-    canonical: canonicalUrl
-  },
   openGraph: {
     type: 'website',
     locale: 'uk_UA',
-    url: canonicalUrl,
     siteName: 'Kairos Parts',
     title: 'Kairos Logistics — доставка товарів для агропідприємств',
     description:
       'Забираємо товари у постачальників у межах Київської області та доставляємо до бази Kairos Parts або в господарства Кагарлицької громади.'
   },
   robots: {
-    index: true,
-    follow: true
+    index: false,
+    follow: false
   }
 };
 

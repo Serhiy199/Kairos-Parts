@@ -1,11 +1,15 @@
+import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 
 import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { getClientAccessContext, requestAccessWhere, requireClientSession } from '@/lib/client/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { prisma } from '@/lib/prisma';
+import { NOINDEX_METADATA } from '@/lib/seo';
 
 const CLIENT_INVOICE_PRINT_ROUTE = /^\/client\/invoices\/[^/]+\/print$/;
+
+export const metadata: Metadata = NOINDEX_METADATA;
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const session = await requireClientSession();

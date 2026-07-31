@@ -6,6 +6,7 @@ import {
 import { getPhoneLookupTail, normalizeUkrainianPhone, phoneNumbersMatch } from '@/lib/phone/normalize';
 import { prisma } from '@/lib/prisma';
 import { generatePublicStatusToken } from '@/lib/requests/identifiers';
+import { buildAbsoluteUrl, getAppBaseUrl } from '@/lib/site-url';
 import { notifyNewPartsRequest } from '@/lib/staff-telegram/notifications';
 import { vehicleAccessWhereForClient } from '@/lib/vehicles/ownership';
 import { getActiveEquipmentTypeNames, getActiveManufacturerNamesForType, validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
@@ -156,15 +157,8 @@ function getMessageText(message: TelegramMessage) {
   return message.text?.trim() ?? '';
 }
 
-function getAppBaseUrl() {
-  return process.env.APP_BASE_URL || process.env.NEXTAUTH_URL || 'https://kairos-parts.vercel.app';
-}
-
 function buildStatusUrl(publicStatusToken: string) {
-  const baseUrl = getAppBaseUrl();
-  const path = `/request/status/${publicStatusToken}`;
-
-  return `${baseUrl.replace(/\/$/, '')}${path}`;
+  return buildAbsoluteUrl(`/request/status/${publicStatusToken}`);
 }
 
 function getLargestPhoto(message: TelegramMessage): TelegramDraftFile | null {

@@ -1,4 +1,5 @@
 import { ContactMessageStatus } from '@prisma/client';
+import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 
 import { DashboardShell } from '@/components/layout/dashboard-shell';
@@ -6,9 +7,12 @@ import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { EQUIPMENT_TAXONOMY_ADMIN_ENABLED } from '@/lib/features/equipment-taxonomy';
 import { prisma } from '@/lib/prisma';
+import { NOINDEX_METADATA } from '@/lib/seo';
 import { getNewUsedEquipmentInquiryCount } from '@/lib/used-equipment/queries';
 
 const ADMIN_INVOICE_PRINT_ROUTE = /^\/admin\/invoices\/[^/]+\/print$/;
+
+export const metadata: Metadata = NOINDEX_METADATA;
 
 const adminNavItems = [
   { href: '/admin', label: 'Панель', icon: 'dashboard' as const },

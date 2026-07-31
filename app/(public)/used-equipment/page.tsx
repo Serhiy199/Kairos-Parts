@@ -5,14 +5,12 @@ import { FaTractor } from 'react-icons/fa';
 import { PublicUsedEquipmentCard } from '@/components/used-equipment/public-used-equipment-card';
 import { PublicUsedEquipmentPagination } from '@/components/used-equipment/public-used-equipment-pagination';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { createPublicMetadata, PUBLIC_PAGE_SEO } from '@/lib/seo';
 import { getPublicUsedEquipmentPage, parseUsedEquipmentPage } from '@/lib/used-equipment/queries';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: 'БВ техніка — Kairos Parts',
-  description: 'Публічний каталог перевіреної вживаної аграрної, вантажної та спеціальної техніки Kairos Parts.'
-};
+export const metadata: Metadata = createPublicMetadata(PUBLIC_PAGE_SEO.usedEquipment);
 
 type SearchParams = {
   page?: string | string[];
