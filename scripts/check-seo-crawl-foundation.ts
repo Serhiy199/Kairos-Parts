@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import robots, { ROBOTS_DISALLOW_PATHS } from '@/app/robots';
@@ -19,6 +19,30 @@ import {
 
 const FORBIDDEN_ORIGIN_PARTS = ['vercel.app', 'localhost', '127.0.0.1', 'www.'];
 const FORBIDDEN_SITEMAP_PREFIXES = ['/admin', '/client', '/api', '/login', '/register', '/auth'];
+const EXPECTED_CHILD_CATEGORY_PATHS = catalogCategories.map(
+  (category) => `/categories/${category.slug}`
+);
+const EXPECTED_SITEMAP_PATHS = [
+  '/',
+  '/about',
+  '/how-it-works',
+  '/contacts',
+  '/logistics',
+  '/used-equipment',
+  ...EXPECTED_CHILD_CATEGORY_PATHS
+];
+
+function sourceFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const fullPath = join(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      return sourceFiles(fullPath);
+    }
+
+    return /\.(ts|tsx)$/.test(entry.name) ? [fullPath] : [];
+  });
+}
 
 assert.equal(PUBLIC_SITE_ORIGIN, 'https://kairos-parts.com.ua');
 assert.equal(buildPublicUrl('/'), 'https://kairos-parts.com.ua/');
@@ -61,7 +85,18 @@ const sitemapUrls = sitemapEntries.map((entry) => entry.url);
 
 assert.equal(sitemapUrls.length, 13);
 assert.equal(new Set(sitemapUrls).size, sitemapUrls.length, 'Sitemap URLs must be unique.');
-assert.equal(sitemapUrls.includes(buildPublicUrl('/logistics')), false);
+assert.deepEqual(
+  sitemapUrls,
+  EXPECTED_SITEMAP_PATHS.map((path) => buildPublicUrl(path)),
+  'Sitemap must contain the canonical 13-URL inventory in the expected order.'
+);
+assert.equal(sitemapUrls.includes(buildPublicUrl('/categories')), false);
+assert.equal(sitemapUrls.includes(buildPublicUrl('/logistics')), true);
+assert.equal(sitemapUrls.includes(buildPublicUrl('/logistics/request')), false);
+
+for (const categoryPath of EXPECTED_CHILD_CATEGORY_PATHS) {
+  assert.equal(sitemapUrls.includes(buildPublicUrl(categoryPath)), true);
+}
 
 for (const urlValue of sitemapUrls) {
   const url = new URL(urlValue);
@@ -107,6 +142,53 @@ assert.deepEqual(NOINDEX_METADATA.robots, {
   follow: false
 });
 
+assert.equal(existsSync(join(process.cwd(), 'app/(public)/categories/page.tsx')), false);
+assert.equal(existsSync(join(process.cwd(), 'app/(public)/categories/[slug]/page.tsx')), true);
+assert.equal(catalogCategories.length, 7);
+
+const logisticsSource = readFileSync(
+  join(process.cwd(), 'app/(public)/logistics/page.tsx'),
+  'utf8'
+);
+assert.match(logisticsSource, /createPublicMetadata\(PUBLIC_PAGE_SEO\.logistics\)/);
+assert.doesNotMatch(logisticsSource, /index:\s*false|NOINDEX_METADATA/);
+
+const logisticsMetadata = createPublicMetadata(PUBLIC_PAGE_SEO.logistics);
+assert.equal(String(logisticsMetadata.alternates?.canonical), buildPublicUrl('/logistics'));
+assert.equal(
+  logisticsMetadata.robots && typeof logisticsMetadata.robots === 'object' && 'index' in logisticsMetadata.robots
+    ? logisticsMetadata.robots.index
+    : null,
+  true
+);
+assert.equal(
+  logisticsMetadata.robots && typeof logisticsMetadata.robots === 'object' && 'follow' in logisticsMetadata.robots
+    ? logisticsMetadata.robots.follow
+    : null,
+  true
+);
+
+const logisticsRequestSource = readFileSync(
+  join(process.cwd(), 'app/(public)/logistics/request/page.tsx'),
+  'utf8'
+);
+assert.match(logisticsRequestSource, /index:\s*false/);
+assert.match(logisticsRequestSource, /follow:\s*false/);
+
+const publicUiSources = [
+  ...sourceFiles(join(process.cwd(), 'app/(public)')),
+  ...sourceFiles(join(process.cwd(), 'components'))
+];
+
+for (const sourcePath of publicUiSources) {
+  const source = readFileSync(sourcePath, 'utf8');
+  assert.doesNotMatch(
+    source,
+    /(?:href\s*=\s*|url\s*:\s*)["']\/categories["']|buildPublicUrl\(["']\/categories["']\)/,
+    `Removed /categories route must not remain linked or referenced in structured data: ${sourcePath}`
+  );
+}
+
 const robotsMetadata = robots();
 const robotsRules = Array.isArray(robotsMetadata.rules) ? robotsMetadata.rules : [robotsMetadata.rules];
 const wildcardRule = robotsRules.find((rule) => rule.userAgent === '*');
@@ -129,7 +211,6 @@ const protectedMetadataFiles = [
   'app/client/layout.tsx',
   'app/(public)/request/page.tsx',
   'app/(public)/request/status/[token]/page.tsx',
-  'app/(public)/logistics/page.tsx',
   'app/(public)/logistics/request/page.tsx'
 ];
 

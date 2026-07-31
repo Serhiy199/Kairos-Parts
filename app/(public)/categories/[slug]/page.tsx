@@ -46,8 +46,8 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
     <>
       <section className="bg-primary px-4 py-16 text-white sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <Link href="/categories" className="text-sm font-semibold text-accent transition hover:text-white">
-            Назад до всіх категорій
+          <Link href="/" className="text-sm font-semibold text-accent transition hover:text-white">
+            ← На головну
           </Link>
           <h1 className="mt-4 max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">{category.name}</h1>
           <p className="mt-5 max-w-3xl text-base leading-7 text-sidebar-text">{category.description}</p>
@@ -121,12 +121,6 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
                 className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 Створити заявку на підбір
-              </Link>
-              <Link
-                href="/categories"
-                className="rounded-md border border-public-border px-5 py-3 text-center text-sm font-semibold text-public-primary transition hover:border-public-border-accent-hover hover:bg-public-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              >
-                До всіх категорій
               </Link>
             </div>
           </div>

@@ -9,7 +9,7 @@ export const STATIC_SITEMAP_PATHS = [
   PUBLIC_PAGE_SEO.about.path,
   PUBLIC_PAGE_SEO.howItWorks.path,
   PUBLIC_PAGE_SEO.contacts.path,
-  PUBLIC_PAGE_SEO.categories.path,
+  PUBLIC_PAGE_SEO.logistics.path,
   PUBLIC_PAGE_SEO.usedEquipment.path
 ] as const;
 
