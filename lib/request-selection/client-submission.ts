@@ -15,6 +15,10 @@ import {
   RequestStatusTransitionError,
   transitionRequestStatus
 } from '@/lib/requests/status-transition';
+import {
+  CLIENT_REQUEST_NOTIFICATION_EVENTS,
+  notifyRequestLifecycleEvent
+} from '@/lib/notifications/status-change';
 
 export type SubmitClientSelectionInput = {
   requestId: string;
@@ -97,12 +101,14 @@ type SubmitClientSelectionDependencies = {
   transitionBatch: typeof transitionRequestSelectionBatchStatus;
   transitionRequest: typeof transitionRequestStatus;
   writeAudit: typeof writeAuditLog;
+  notify?: typeof notifyRequestLifecycleEvent;
 };
 
 const defaultDependencies: SubmitClientSelectionDependencies = {
   transitionBatch: transitionRequestSelectionBatchStatus,
   transitionRequest: transitionRequestStatus,
-  writeAudit: writeAuditLog
+  writeAudit: writeAuditLog,
+  notify: notifyRequestLifecycleEvent
 };
 
 const transactionOptions = {
@@ -546,7 +552,7 @@ export function createSubmitClientSelectionService(
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        return await database.$transaction(
+        const result = await database.$transaction(
           (transaction) =>
             executeClientSelectionSubmission(
               transaction,
@@ -556,6 +562,22 @@ export function createSubmitClientSelectionService(
             ),
           transactionOptions
         );
+        if (result.outcome === 'changed' && dependencies.notify) {
+          const event = result.batchStatus === 'REJECTED'
+            ? CLIENT_REQUEST_NOTIFICATION_EVENTS.CLIENT_SELECTION_REJECTED_ALL
+            : CLIENT_REQUEST_NOTIFICATION_EVENTS.CLIENT_SELECTION_APPROVED;
+          try {
+            await dependencies.notify(input.requestId, event);
+          } catch (error) {
+            console.warn('Client selection Telegram notification failed.', {
+              event,
+              requestId: input.requestId,
+              recipientType: 'CLIENT',
+              errorCategory: error instanceof Error ? error.name : 'UNKNOWN'
+            });
+          }
+        }
+        return result;
       } catch (error) {
         if (error instanceof SubmitClientSelectionError) throw error;
         if (databaseErrorCode(error) === 'P2034' && attempt === 0) continue;

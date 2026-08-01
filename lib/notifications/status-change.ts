@@ -1,131 +1,167 @@
-import type { RequestStatus } from '@prisma/client';
-
 import { prisma } from '@/lib/prisma';
-import { REQUEST_STATUS_LABELS } from '@/lib/requests/statuses';
 import { buildAbsoluteUrl } from '@/lib/site-url';
-import { sendTelegramMessage } from '@/lib/telegram/bot';
+import { sendTelegramMessage, TelegramApiError } from '@/lib/telegram/bot';
+import { resolveRequestItemsApprovalRecipient } from '@/lib/telegram/notifications';
 
-type RequestForNotification = {
-  id: string;
-  requestNumber: string;
-  publicStatusToken: string;
-  source: 'WEBSITE' | 'CLIENT_DASHBOARD' | 'TELEGRAM' | 'MANAGER';
-  status: RequestStatus;
-  guestEmail: string | null;
-  guestPhone: string | null;
-  client: {
-    id: string;
-    email: string | null;
-    phone: string | null;
-    userId: string;
-    user: {
-      id: string;
-      email: string | null;
-      phone: string | null;
-    };
-  } | null;
-  comments: Array<{ message: string }>;
-};
+export const CLIENT_REQUEST_NOTIFICATION_EVENTS = {
+  WORK_STARTED: 'WORK_STARTED',
+  CLIENT_SELECTION_APPROVED: 'CLIENT_SELECTION_APPROVED',
+  CLIENT_SELECTION_REJECTED_ALL: 'CLIENT_SELECTION_REJECTED_ALL',
+  AWAITING_SHIPMENT: 'AWAITING_SHIPMENT',
+  COMPLETED: 'COMPLETED',
+  CANCELLED_BY_MANAGER: 'CANCELLED_BY_MANAGER'
+} as const;
 
-function buildStatusUrl(publicStatusToken: string) {
-  return buildAbsoluteUrl(`/request/status/${publicStatusToken}`);
+export type ClientRequestNotificationEvent =
+  (typeof CLIENT_REQUEST_NOTIFICATION_EVENTS)[keyof typeof CLIENT_REQUEST_NOTIFICATION_EVENTS];
+
+export function buildClientRequestUrl(requestId: string) {
+  return buildAbsoluteUrl(`/client/requests/${requestId}`);
 }
 
-function extractTelegramChatId(request: RequestForNotification) {
-  for (const comment of request.comments) {
-    const match = comment.message.match(/^chatId:\s*(.+)$/m);
-
-    if (match?.[1]) {
-      return match[1].trim();
-    }
-  }
-
-  return null;
-}
-
-function buildStatusMessage(request: RequestForNotification, nextStatus: RequestStatus) {
+export function buildClientRequestLifecycleMessage(
+  event: ClientRequestNotificationEvent,
+  requestNumber: string
+) {
+  const content: Record<ClientRequestNotificationEvent, [string, string]> = {
+    WORK_STARTED: [
+      'Заявку прийнято в роботу',
+      'Менеджер розпочав підбір запчастин.'
+    ],
+    CLIENT_SELECTION_APPROVED: [
+      'Ваше рішення отримано',
+      'Погоджені позиції зафіксовано. Заявка перейшла до підготовки рахунку.'
+    ],
+    CLIENT_SELECTION_REJECTED_ALL: [
+      'Заявку скасовано',
+      'Ви не погодили жодної позиції актуального підбору.'
+    ],
+    AWAITING_SHIPMENT: [
+      'Очікується відвантаження',
+      'Замовлення готується до відвантаження.'
+    ],
+    COMPLETED: [
+      'Заявку завершено',
+      'Роботу із заявкою успішно завершено.'
+    ],
+    CANCELLED_BY_MANAGER: [
+      'Заявку скасовано менеджером',
+      'Менеджер припинив подальшу роботу із заявкою.'
+    ]
+  };
+  const [stage, explanation] = content[event];
   return [
-    'Статус вашої заявки оновлено.',
+    `Заявка ${requestNumber}`,
     '',
-    `Заявка: ${request.requestNumber}`,
-    `Новий статус: ${REQUEST_STATUS_LABELS[nextStatus]}`,
-    'Переглянути статус:',
-    buildStatusUrl(request.publicStatusToken)
+    `Новий етап: ${stage}.`,
+    explanation
   ].join('\n');
 }
 
-export async function notifyRequestStatusChange(requestId: string, nextStatus: RequestStatus) {
+export type ClientLifecycleNotificationResult =
+  | { status: 'sent'; notificationId: string }
+  | { status: 'failed'; notificationId?: string }
+  | { status: 'skipped-no-recipient' }
+  | { status: 'skipped-request-not-found' };
+
+async function executeRequestLifecycleNotification(
+  requestId: string,
+  event: ClientRequestNotificationEvent
+): Promise<ClientLifecycleNotificationResult> {
   const request = await prisma.request.findUnique({
     where: { id: requestId },
-    include: {
-      client: { include: { user: true } },
-      comments: {
-        where: { internal: true },
-        orderBy: { createdAt: 'desc' },
-        take: 10
+    select: {
+      id: true,
+      requestNumber: true,
+      client: { select: { userId: true, telegramChatId: true } },
+      company: {
+        select: {
+          members: {
+            orderBy: { createdAt: 'asc' },
+            select: {
+              isPrimaryContact: true,
+              user: {
+                select: {
+                  id: true,
+                  clientProfile: { select: { telegramChatId: true } }
+                }
+              }
+            }
+          }
+        }
       }
     }
   });
+  if (!request) return { status: 'skipped-request-not-found' };
 
-  if (!request) {
-    return;
-  }
+  const recipient = resolveRequestItemsApprovalRecipient(request);
+  if (!recipient) return { status: 'skipped-no-recipient' };
 
-  const message = buildStatusMessage(request, nextStatus);
-  const chatId = request.source === 'TELEGRAM' ? extractTelegramChatId(request) : null;
-
-  if (chatId) {
+  const message = buildClientRequestLifecycleMessage(event, request.requestNumber);
+  let notificationId: string | undefined;
+  try {
     const notification = await prisma.notification.create({
       data: {
         requestId: request.id,
-        userId: request.client?.userId,
+        userId: recipient.userId,
         channel: 'TELEGRAM',
         status: 'PENDING',
         message
       }
     });
-
-    try {
-      await sendTelegramMessage(chatId, message);
-      await prisma.notification.update({
-        where: { id: notification.id },
-        data: { status: 'SENT', sentAt: new Date() }
-      });
-      return;
-    } catch (error) {
-      await prisma.notification.update({
-        where: { id: notification.id },
-        data: {
-          status: 'FAILED',
-          message: `${message}\n\nDelivery error: ${error instanceof Error ? error.message : 'Unknown Telegram error'}`
-        }
-      });
-      return;
-    }
-  }
-
-  const email = request.client?.email ?? request.client?.user.email ?? request.guestEmail;
-
-  if (email) {
-    await prisma.notification.create({
-      data: {
-        requestId: request.id,
-        userId: request.client?.userId,
-        channel: 'EMAIL',
-        status: 'PENDING',
-        message: `${message}\n\nEmail delivery placeholder for: ${email}`
+    notificationId = notification.id;
+    await sendTelegramMessage(recipient.chatId, message, {
+      replyMarkup: {
+        inline_keyboard: [[{
+          text: 'Відкрити заявку',
+          url: buildClientRequestUrl(request.id)
+        }]]
       }
     });
-    return;
-  }
-
-  await prisma.notification.create({
-    data: {
-      requestId: request.id,
-      userId: request.client?.userId,
-      channel: request.source === 'TELEGRAM' ? 'TELEGRAM' : 'EMAIL',
-      status: 'FAILED',
-      message: `${message}\n\nNo available notification channel.`
+    await prisma.notification.update({
+      where: { id: notification.id },
+      data: { status: 'SENT', sentAt: new Date() }
+    });
+    return { status: 'sent', notificationId: notification.id };
+  } catch (error) {
+    if (notificationId) {
+      await prisma.notification.update({
+        where: { id: notificationId },
+        data: { status: 'FAILED' }
+      }).catch((updateError) => {
+        console.warn('Telegram notification persistence update failed.', {
+          event,
+          requestId,
+          recipientType: 'CLIENT',
+          errorCategory: updateError instanceof Error ? updateError.name : 'UNKNOWN'
+        });
+      });
     }
-  });
+    console.warn('Client Telegram notification failed.', {
+      event,
+      requestId,
+      recipientType: 'CLIENT',
+      httpStatus: error instanceof TelegramApiError ? error.status : undefined,
+      errorCategory: error instanceof Error ? error.name : 'UNKNOWN'
+    });
+    return { status: 'failed', notificationId };
+  }
+}
+
+export async function notifyRequestLifecycleEvent(
+  requestId: string,
+  event: ClientRequestNotificationEvent
+): Promise<ClientLifecycleNotificationResult> {
+  try {
+    return await executeRequestLifecycleNotification(requestId, event);
+  } catch (error) {
+    console.warn('Client Telegram notification failed before delivery.', {
+      event,
+      requestId,
+      recipientType: 'CLIENT',
+      httpStatus: error instanceof TelegramApiError ? error.status : undefined,
+      errorCategory: error instanceof Error ? error.name : 'UNKNOWN'
+    });
+    return { status: 'failed' };
+  }
 }

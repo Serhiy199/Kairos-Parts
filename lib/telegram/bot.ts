@@ -8,6 +8,8 @@ type TelegramApiResponse<T> = {
   description?: string;
 };
 
+const TELEGRAM_API_TIMEOUT_MS = 7_000;
+
 type TelegramFileResult = {
   file_id: string;
   file_unique_id?: string;
@@ -76,11 +78,19 @@ function getTelegramBotClient() {
 
 async function telegramApi<T>(method: string, body: Record<string, unknown>): Promise<T> {
   const token = getBotToken();
-  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TELEGRAM_API_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
   const payload = (await response.json()) as TelegramApiResponse<T>;
 
   if (!response.ok || !payload.ok || payload.result === undefined) {

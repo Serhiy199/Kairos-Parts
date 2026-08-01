@@ -194,7 +194,12 @@ export async function POST(request: Request) {
       requestNumber: createdRequest.requestNumber,
       companyName: parsed.data.companyName || null,
       contactName: parsed.data.contactName,
-      contactPhone: parsed.data.phone
+      contactPhone: parsed.data.phone,
+      equipment: [equipmentType, manufacturerName, parsed.data.model]
+        .filter(Boolean)
+        .join(' · ') || null,
+      description: parsed.data.description,
+      source: 'CLIENT_DASHBOARD'
     });
 
     return Response.json(
