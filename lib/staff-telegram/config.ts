@@ -20,7 +20,10 @@ function isExplicitlyEnabled(value: string | undefined) {
 }
 
 export function getStaffTelegramConfig(): StaffTelegramConfig {
+  const managerChatId = process.env.TELEGRAM_MANAGER_CHAT_ID?.trim() ?? '';
+  const usesSharedBot = managerChatId.length > 0;
   if (
+    !usesSharedBot &&
     !isExplicitlyEnabled(
       process.env.STAFF_TELEGRAM_NOTIFICATIONS_ENABLED
     )
@@ -28,8 +31,12 @@ export function getStaffTelegramConfig(): StaffTelegramConfig {
     return { enabled: false };
   }
 
-  const token = process.env.STAFF_TELEGRAM_BOT_TOKEN?.trim() ?? '';
-  const chatId = process.env.STAFF_TELEGRAM_CHAT_ID?.trim() ?? '';
+  const token = usesSharedBot
+    ? process.env.TELEGRAM_BOT_TOKEN?.trim() ?? ''
+    : process.env.STAFF_TELEGRAM_BOT_TOKEN?.trim() ?? '';
+  const chatId = usesSharedBot
+    ? managerChatId
+    : process.env.STAFF_TELEGRAM_CHAT_ID?.trim() ?? '';
 
   if (
     !/^\d+:[A-Za-z0-9_-]+$/.test(token) ||

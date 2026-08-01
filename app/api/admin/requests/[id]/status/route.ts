@@ -9,6 +9,10 @@ import {
   REQUEST_STATUS_EVENTS,
   transitionRequestStatus
 } from '@/lib/requests/status-transition';
+import {
+  CLIENT_REQUEST_NOTIFICATION_EVENTS,
+  notifyRequestLifecycleEvent
+} from '@/lib/notifications/status-change';
 
 export const runtime = 'nodejs';
 
@@ -65,6 +69,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       { status: 'transition_blocked', reason: result.reason },
       { status: 409 }
     );
+  }
+  if (result.outcome === 'changed') {
+    const notificationEvent = {
+      AWAITING_SHIPMENT: CLIENT_REQUEST_NOTIFICATION_EVENTS.AWAITING_SHIPMENT,
+      COMPLETED: CLIENT_REQUEST_NOTIFICATION_EVENTS.COMPLETED,
+      CANCELLED: CLIENT_REQUEST_NOTIFICATION_EVENTS.CANCELLED_BY_MANAGER
+    }[body.status];
+    await notifyRequestLifecycleEvent(id, notificationEvent);
   }
   const updatedRequest = await prisma.request.findUnique({ where: { id } });
 

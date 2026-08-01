@@ -14,6 +14,10 @@ import {
   type RequestStatusTransitionResult
 } from '@/lib/requests/status-transition';
 import { normalizeRequestStatusForSelection } from '@/lib/requests/statuses';
+import {
+  CLIENT_REQUEST_NOTIFICATION_EVENTS,
+  notifyRequestLifecycleEvent
+} from '@/lib/notifications/status-change';
 
 const REQUEST_ITEM_AUDIT_FIELDS = [
   'name',
@@ -111,9 +115,12 @@ type TransactionRunner = {
   ): Promise<T>;
 };
 
-export function createRequestItemDraftService(database: TransactionRunner) {
+export function createRequestItemDraftService(
+  database: TransactionRunner,
+  notify: typeof notifyRequestLifecycleEvent = async () => ({ status: 'skipped-no-recipient' })
+) {
   return async function createRequestItemDraft(input: CreateRequestItemDraftInput) {
-    return database.$transaction(async (tx) => {
+    const result = await database.$transaction(async (tx) => {
       const request = await tx.request.findUnique({
         where: { id: input.requestId },
         select: {
@@ -243,7 +250,24 @@ export function createRequestItemDraftService(database: TransactionRunner) {
         }
       };
     }, { isolationLevel: 'Serializable' });
+
+    if (result.transition.outcome === 'changed') {
+      try {
+        await notify(result.request.id, CLIENT_REQUEST_NOTIFICATION_EVENTS.WORK_STARTED);
+      } catch (error) {
+        console.warn('Client work-started Telegram notification failed.', {
+          event: CLIENT_REQUEST_NOTIFICATION_EVENTS.WORK_STARTED,
+          requestId: result.request.id,
+          recipientType: 'CLIENT',
+          errorCategory: error instanceof Error ? error.name : 'UNKNOWN'
+        });
+      }
+    }
+    return result;
   };
 }
 
-export const createRequestItemDraft = createRequestItemDraftService(prisma);
+export const createRequestItemDraft = createRequestItemDraftService(
+  prisma,
+  notifyRequestLifecycleEvent
+);

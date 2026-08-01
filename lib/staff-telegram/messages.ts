@@ -81,7 +81,9 @@ export type NewPartsRequestMessageInput = {
   companyName: string | null;
   contactName: string;
   contactPhone: string;
-  itemCount?: number;
+  equipment: string | null;
+  description: string;
+  source: 'CLIENT_DASHBOARD' | 'TELEGRAM';
 };
 
 export function buildNewPartsRequestMessage(
@@ -93,17 +95,18 @@ export function buildNewPartsRequestMessage(
         `Контакт: ${plainText(input.contactName, 120)}`
       ]
     : [`Клієнт: ${plainText(input.contactName, 120)}`];
-  const itemCountLine =
-    input.itemCount && input.itemCount > 0
-      ? [`Кількість позицій: ${input.itemCount}`]
-      : [];
+  const equipmentLine = input.equipment
+    ? [`Техніка: ${plainText(input.equipment, 180)}`]
+    : [];
 
   return [
-    '🟡 Нова заявка на підбір позицій',
+    '🟡 Нова заявка на підбір запчастин',
     '',
     `Заявка: ${plainText(input.requestNumber, 40)}`,
     ...identityLines,
     `Телефон: ${plainText(input.contactPhone, 32)}`,
-    ...itemCountLine
+    ...equipmentLine,
+    `Опис: ${plainText(input.description, 300)}`,
+    `Джерело: ${input.source === 'TELEGRAM' ? 'Telegram-бот' : 'Кабінет клієнта'}`
   ].join('\n');
 }

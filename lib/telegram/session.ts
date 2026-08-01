@@ -1080,7 +1080,10 @@ async function createTelegramRequest(draft: TelegramDraft) {
       company?.name ??
       null,
     contactName: draft.contactName,
-    contactPhone: draft.phone
+    contactPhone: draft.phone,
+    equipment: [equipmentType, manufacturerName, model].filter(Boolean).join(' · ') || null,
+    description,
+    source: 'TELEGRAM'
   });
 
   return createdRequest;

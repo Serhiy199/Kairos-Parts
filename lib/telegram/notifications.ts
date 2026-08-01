@@ -35,15 +35,17 @@ export function buildRequestItemsApprovalMessage(
 ) {
   if (updatedSelection) {
     return [
-      `Менеджер оновив підбір за вашою заявкою ${requestNumber}.`,
+      `Заявка ${requestNumber}`,
       '',
-      'Перевірте актуальний список позицій перед погодженням.'
+      'Новий етап: позиції надіслано на погодження.',
+      'Менеджер оновив підбір. Перевірте актуальний список позицій перед погодженням.'
     ].join('\n');
   }
   return [
-    `По вашій заявці ${requestNumber} менеджер підібрав позиції.`,
+    `Заявка ${requestNumber}`,
     '',
-    'Перейдіть в особистий кабінет, щоб переглянути варіанти, обрати потрібні позиції та погодити їх для рахунку.'
+    'Новий етап: позиції надіслано на погодження.',
+    'Перейдіть у кабінет, щоб переглянути варіанти та надати одне підсумкове рішення.'
   ].join('\n');
 }
 
@@ -93,8 +95,9 @@ export function buildInvoiceSentMessage({
   currency: string;
 }) {
   return [
-    `По вашій заявці ${requestNumber} сформовано рахунок ${invoiceNumber}.`,
+    `Заявка ${requestNumber}`,
     '',
+    `Новий етап: рахунок ${invoiceNumber} надіслано.`,
     `Сума до оплати: ${formatInvoiceMoney(totalAmount, currency)}.`,
     '',
     'Переглянути рахунок можна в особистому кабінеті Kairos Parts.'
@@ -237,7 +240,7 @@ export async function sendTelegramRequestItemsApprovalNotification({
       where: { id: notification.id },
       data: {
         status: 'FAILED',
-        message: `${message}\n\nTelegram delivery failed: ${errorMessage}`
+        message
       }
     });
 
@@ -350,7 +353,7 @@ export async function sendTelegramInvoiceSentNotification({
       where: { id: notification.id },
       data: {
         status: 'FAILED',
-        message: `${message}\n\nTelegram delivery failed: ${errorMessage}`
+        message
       }
     });
 

@@ -37,6 +37,8 @@
     "test:ocr-storage-stage2": "tsx scripts/check-ocr-storage-stage2-cloudinary-request-files.ts",
     "test:ocr-runtime-stage3": "tsx scripts/check-ocr-runtime-stage3-tesseract-worker.ts",
     "test:seo-crawl-foundation": "tsx scripts/check-seo-crawl-foundation.ts",
+    "test:telegram-manager-request-created": "tsx scripts/check-telegram-manager-request-created.ts",
+    "test:telegram-client-request-lifecycle": "tsx scripts/check-telegram-client-request-lifecycle.ts",
     "audit:request-file-storage": "tsx scripts/audit-request-file-storage.ts",
     "migrate:request-files-cloudinary": "tsx scripts/migrate-request-files-to-cloudinary.ts",
     "test:logistics-address-combobox": "tsx scripts/check-logistics-request-form.ts",

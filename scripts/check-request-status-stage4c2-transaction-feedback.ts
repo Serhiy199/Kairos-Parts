@@ -343,7 +343,8 @@ async function main() {
   assert.equal(getAdminRequestFeedback('<script>alert(1)</script>'), null);
   assert.equal(getAdminRequestFeedback('items-send-error bg-success'), null);
 
-  const sendSource = readFileSync('lib/request-selection/send-for-approval.ts', 'utf8');
+  const sendSource = readFileSync('lib/request-selection/send-for-approval.ts', 'utf8')
+    .replace(/\r\n/g, '\n');
   const actionSource = readFileSync('app/admin/actions.ts', 'utf8');
   const pageSource = readFileSync('app/admin/requests/[id]/page.tsx', 'utf8');
   const statusTransitionIndex = sendSource.indexOf('dependencies.transitionRequest({');

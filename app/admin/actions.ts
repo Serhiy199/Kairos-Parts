@@ -28,7 +28,10 @@ import {
   markInvoicePaid,
   sendInvoiceToClient
 } from '@/lib/invoices/service';
-import { notifyRequestStatusChange } from '@/lib/notifications/status-change';
+import {
+  CLIENT_REQUEST_NOTIFICATION_EVENTS,
+  notifyRequestLifecycleEvent
+} from '@/lib/notifications/status-change';
 import { runOcrForRequestFile, updateOcrCorrection } from '@/lib/ocr/service';
 import { prisma } from '@/lib/prisma';
 import { parseRequestDocumentMetadata, readRequiredRequestDocumentFile } from '@/lib/request-documents/validation';
@@ -176,10 +179,13 @@ export async function updateAdminRequestStatus(formData: FormData) {
     redirectBack(request.id, 'status-error');
   }
 
-  try {
-    await notifyRequestStatusChange(request.id, status);
-  } catch {
-    // Status updates must not fail because a notification channel is unavailable.
+  if (result.outcome === 'changed') {
+    const notificationEvent = {
+      AWAITING_SHIPMENT: CLIENT_REQUEST_NOTIFICATION_EVENTS.AWAITING_SHIPMENT,
+      COMPLETED: CLIENT_REQUEST_NOTIFICATION_EVENTS.COMPLETED,
+      CANCELLED: CLIENT_REQUEST_NOTIFICATION_EVENTS.CANCELLED_BY_MANAGER
+    }[status];
+    await notifyRequestLifecycleEvent(request.id, notificationEvent);
   }
 
   revalidatePath('/admin');
