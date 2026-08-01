@@ -7,14 +7,13 @@ import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { createUsedEquipment } from '@/app/admin/used-equipment/items/actions';
 import type { UsedEquipmentFormValues } from '@/lib/used-equipment/validation';
-import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
 export const dynamic = 'force-dynamic';
 
 const initialValues: UsedEquipmentFormValues = {
-  title: '',
-  equipmentType: '',
-  manufacturerId: '',
+  type: '',
+  manufacturer: '',
+  model: '',
   year: '',
   description: '',
   internalComment: '',
@@ -27,8 +26,6 @@ export default async function AdminUsedEquipmentNewPage() {
   if (!hasDatabaseUrl()) {
     return <AdminDbBlocker />;
   }
-
-  const taxonomy = await getActiveEquipmentTaxonomy();
 
   return (
     <div className="grid gap-6">
@@ -51,7 +48,7 @@ export default async function AdminUsedEquipmentNewPage() {
         </div>
       </section>
 
-      <UsedEquipmentForm action={createUsedEquipment} mode="create" taxonomy={taxonomy} initialValues={initialValues} />
+      <UsedEquipmentForm action={createUsedEquipment} mode="create" initialValues={initialValues} />
     </div>
   );
 }
