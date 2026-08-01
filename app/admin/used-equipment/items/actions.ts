@@ -27,7 +27,6 @@ import {
   type UsedEquipmentFormState,
   validateUsedEquipmentForm
 } from '@/lib/used-equipment/validation';
-import { validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
 function serverError(values: ReturnType<typeof getUsedEquipmentFormValues>, message = 'Не вдалося зберегти техніку. Спробуйте ще раз.') {
   return {
@@ -84,21 +83,6 @@ export async function createUsedEquipment(_state: UsedEquipmentFormState, formDa
     return imageError(values, 'Cloudinary не налаштований. Додайте змінні CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY і CLOUDINARY_API_SECRET.');
   }
 
-  const manufacturerResult = await validateEquipmentTaxonomySelection({
-    equipmentType: validation.data.equipmentType,
-    manufacturerId: validation.data.manufacturerId
-  });
-  if (!manufacturerResult.ok) {
-    return {
-      status: 'error',
-      message: 'Перевірте обов’язкові поля.',
-      values,
-      fieldErrors: {
-        [manufacturerResult.field === 'equipmentType' ? 'equipmentType' : 'manufacturerId']: manufacturerResult.message
-      }
-    };
-  }
-
   const slug = await generateUniqueUsedEquipmentSlug(validation.data.title);
   const primaryIndex = getCreatePrimaryIndex(formData, files.length);
   let equipmentId: string | null = null;
@@ -109,9 +93,10 @@ export async function createUsedEquipment(_state: UsedEquipmentFormState, formDa
       data: {
         title: validation.data.title,
         slug,
-        equipmentType: manufacturerResult.equipmentType.name,
-        manufacturerId: manufacturerResult.manufacturer.id,
-        manufacturerName: manufacturerResult.manufacturer.name,
+        equipmentType: validation.data.type,
+        manufacturerId: null,
+        manufacturerName: validation.data.manufacturer,
+        model: validation.data.model,
         year: validation.data.year,
         description: validation.data.description,
         internalComment: validation.data.internalComment,
@@ -221,21 +206,6 @@ export async function updateUsedEquipment(equipmentId: string, _state: UsedEquip
     return imageError(values, 'Cloudinary не налаштований. Додайте змінні CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY і CLOUDINARY_API_SECRET.');
   }
 
-  const manufacturerResult = await validateEquipmentTaxonomySelection({
-    equipmentType: validation.data.equipmentType,
-    manufacturerId: validation.data.manufacturerId
-  });
-  if (!manufacturerResult.ok) {
-    return {
-      status: 'error',
-      message: 'Перевірте обов’язкові поля.',
-      values,
-      fieldErrors: {
-        [manufacturerResult.field === 'equipmentType' ? 'equipmentType' : 'manufacturerId']: manufacturerResult.message
-      }
-    };
-  }
-
   const deletedPublicIds = existingItem.images
     .filter((image) => imageKeys.deletedIds.has(image.id))
     .map((image) => image.cloudinaryPublicId);
@@ -254,9 +224,10 @@ export async function updateUsedEquipment(equipmentId: string, _state: UsedEquip
         where: { id: equipmentId },
         data: {
           title: validation.data.title,
-          equipmentType: manufacturerResult.equipmentType.name,
-          manufacturerId: manufacturerResult.manufacturer.id,
-          manufacturerName: manufacturerResult.manufacturer.name,
+          equipmentType: validation.data.type,
+          manufacturerId: null,
+          manufacturerName: validation.data.manufacturer,
+          model: validation.data.model,
           year: validation.data.year,
           description: validation.data.description,
           internalComment: validation.data.internalComment,

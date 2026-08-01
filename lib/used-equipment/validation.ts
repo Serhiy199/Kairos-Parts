@@ -1,14 +1,17 @@
 import type { UsedEquipmentStatus } from '@prisma/client';
 
 import { validateAndSanitizeUsedEquipmentDescription } from '@/lib/used-equipment/description';
+import { buildUsedEquipmentTitle } from '@/lib/used-equipment/title';
 
 export const USED_EQUIPMENT_ALLOWED_FORM_STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED'] as const satisfies UsedEquipmentStatus[];
 export const USED_EQUIPMENT_NO_IMAGE_STATUSES = ['DRAFT', 'ARCHIVED'] as const satisfies UsedEquipmentStatus[];
+export const USED_EQUIPMENT_IDENTITY_FIELD_MAX_LENGTH = 120;
+export const USED_EQUIPMENT_TITLE_MAX_LENGTH = 180;
 
 export type UsedEquipmentFormField =
-  | 'title'
-  | 'equipmentType'
-  | 'manufacturerId'
+  | 'type'
+  | 'manufacturer'
+  | 'model'
   | 'year'
   | 'description'
   | 'internalComment'
@@ -16,9 +19,9 @@ export type UsedEquipmentFormField =
   | 'images';
 
 export type UsedEquipmentFormValues = {
-  title: string;
-  equipmentType: string;
-  manufacturerId: string;
+  type: string;
+  manufacturer: string;
+  model: string;
   year: string;
   description: string;
   internalComment: string;
@@ -34,8 +37,9 @@ export type UsedEquipmentFormState = {
 
 export type ValidUsedEquipmentInput = {
   title: string;
-  equipmentType: string;
-  manufacturerId: string;
+  type: string;
+  manufacturer: string;
+  model: string;
   year: number | null;
   description: string;
   internalComment: string | null;
@@ -50,9 +54,9 @@ export function getUsedEquipmentFormValues(formData: FormData, fallbackStatus: U
   const statusValue = String(formData.get('status') ?? fallbackStatus);
 
   return {
-    title: String(formData.get('title') ?? ''),
-    equipmentType: String(formData.get('equipmentType') ?? ''),
-    manufacturerId: String(formData.get('manufacturerId') ?? ''),
+    type: String(formData.get('type') ?? ''),
+    manufacturer: String(formData.get('manufacturer') ?? ''),
+    model: String(formData.get('model') ?? ''),
     year: String(formData.get('year') ?? ''),
     description: String(formData.get('description') ?? ''),
     internalComment: String(formData.get('internalComment') ?? ''),
@@ -64,28 +68,35 @@ export function isUsedEquipmentStatus(value: string): value is UsedEquipmentStat
   return USED_EQUIPMENT_ALLOWED_FORM_STATUSES.includes(value as UsedEquipmentStatus);
 }
 
+function validateRequiredIdentityField(
+  value: string,
+  field: 'type' | 'manufacturer' | 'model',
+  fieldErrors: Partial<Record<UsedEquipmentFormField, string>>
+) {
+  const labels = {
+    type: 'тип техніки',
+    manufacturer: 'виробника',
+    model: 'модель'
+  };
+  if (!value) {
+    fieldErrors[field] = `Вкажіть ${labels[field]}.`;
+  } else if (value.length > USED_EQUIPMENT_IDENTITY_FIELD_MAX_LENGTH) {
+    fieldErrors[field] = `Значення не може перевищувати ${USED_EQUIPMENT_IDENTITY_FIELD_MAX_LENGTH} символів.`;
+  }
+}
+
 export function validateUsedEquipmentForm(values: UsedEquipmentFormValues, options: { allowStatusEdit: boolean }) {
   const fieldErrors: Partial<Record<UsedEquipmentFormField, string>> = {};
-  const title = values.title.trim();
-  const equipmentType = values.equipmentType.trim();
-  const manufacturerId = values.manufacturerId.trim();
+  const type = values.type.trim();
+  const manufacturer = values.manufacturer.trim();
+  const model = values.model.trim();
   const yearValue = values.year.trim();
   const description = values.description.trim();
   const internalComment = values.internalComment.trim();
 
-  if (title.length < 3) {
-    fieldErrors.title = 'Вкажіть назву техніки.';
-  } else if (title.length > 180) {
-    fieldErrors.title = 'Назва має бути не довшою за 180 символів.';
-  }
-
-  if (!equipmentType) {
-    fieldErrors.equipmentType = 'Оберіть тип техніки зі списку.';
-  }
-
-  if (!manufacturerId) {
-    fieldErrors.manufacturerId = 'Оберіть виробника зі списку.';
-  }
+  validateRequiredIdentityField(type, 'type', fieldErrors);
+  validateRequiredIdentityField(manufacturer, 'manufacturer', fieldErrors);
+  validateRequiredIdentityField(model, 'model', fieldErrors);
 
   let year: number | null = null;
   if (yearValue) {
@@ -97,6 +108,11 @@ export function validateUsedEquipmentForm(values: UsedEquipmentFormValues, optio
         fieldErrors.year = 'Вкажіть рік у діапазоні 1950-2100.';
       }
     }
+  }
+
+  const title = buildUsedEquipmentTitle({ type, manufacturer, model, year });
+  if (title.length > USED_EQUIPMENT_TITLE_MAX_LENGTH) {
+    fieldErrors.type = `Сформована назва не може перевищувати ${USED_EQUIPMENT_TITLE_MAX_LENGTH} символів.`;
   }
 
   const descriptionValidation = validateAndSanitizeUsedEquipmentDescription(description);
@@ -120,8 +136,9 @@ export function validateUsedEquipmentForm(values: UsedEquipmentFormValues, optio
     ok: true as const,
     data: {
       title,
-      equipmentType,
-      manufacturerId,
+      type,
+      manufacturer,
+      model,
       year,
       description: descriptionValidation.ok ? descriptionValidation.html : '',
       internalComment: internalComment || null,

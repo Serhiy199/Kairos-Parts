@@ -5,7 +5,6 @@ import { useActionState, useEffect, useMemo, useState } from 'react';
 import { FaSave } from 'react-icons/fa';
 
 import { AdminRichTextEditor } from '@/components/admin/admin-rich-text-editor';
-import { SearchableCombobox, type SearchableComboboxOption } from '@/components/ui/searchable-combobox';
 import { UsedEquipmentImageManager, type UsedEquipmentExistingImage } from '@/components/used-equipment/used-equipment-image-manager';
 import { USED_EQUIPMENT_STATUS_LABELS } from '@/lib/used-equipment/status';
 import {
@@ -13,14 +12,13 @@ import {
   type UsedEquipmentFormState,
   type UsedEquipmentFormValues,
   USED_EQUIPMENT_ALLOWED_FORM_STATUSES,
+  USED_EQUIPMENT_IDENTITY_FIELD_MAX_LENGTH,
   USED_EQUIPMENT_NO_IMAGE_STATUSES
 } from '@/lib/used-equipment/validation';
-import type { EquipmentTaxonomyType } from '@/lib/vehicles/taxonomy';
 
 type UsedEquipmentFormProps = {
   action: (state: UsedEquipmentFormState, formData: FormData) => Promise<UsedEquipmentFormState>;
   mode: 'create' | 'edit';
-  taxonomy: EquipmentTaxonomyType[];
   initialValues: UsedEquipmentFormValues;
   hasImages?: boolean;
   existingImages?: UsedEquipmentExistingImage[];
@@ -45,47 +43,19 @@ function FieldError({ error }: { error?: string }) {
 export function UsedEquipmentForm({
   action,
   mode,
-  taxonomy,
   initialValues,
   hasImages = false,
   existingImages = []
 }: UsedEquipmentFormProps) {
   const [state, formAction, isPending] = useActionState(action, EMPTY_USED_EQUIPMENT_FORM_STATE);
   const values = state.values ?? initialValues;
-  const [equipmentType, setEquipmentType] = useState(values.equipmentType);
-  const [manufacturerId, setManufacturerId] = useState(values.manufacturerId);
   const [description, setDescription] = useState(values.description);
 
   useEffect(() => {
     if (state.values) {
-      setEquipmentType(state.values.equipmentType);
-      setManufacturerId(state.values.manufacturerId);
       setDescription(state.values.description);
     }
   }, [state.values]);
-
-  const equipmentTypeOptions = useMemo<SearchableComboboxOption[]>(
-    () => taxonomy.map((option) => ({ value: option.name, label: option.name })),
-    [taxonomy]
-  );
-
-  const manufacturerOptions = useMemo<SearchableComboboxOption[]>(() => {
-    const selectedType = taxonomy.find((option) => option.name === equipmentType);
-    return (selectedType?.manufacturers ?? []).map((manufacturer) => ({
-      value: manufacturer.id,
-      label: manufacturer.name
-    }));
-  }, [equipmentType, taxonomy]);
-
-  useEffect(() => {
-    if (!manufacturerId) {
-      return;
-    }
-
-    if (!manufacturerOptions.some((option) => option.value === manufacturerId)) {
-      setManufacturerId('');
-    }
-  }, [manufacturerId, manufacturerOptions]);
 
   const statusOptions = useMemo(() => {
     if (mode === 'create') {
@@ -105,37 +75,46 @@ export function UsedEquipmentForm({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <label className="grid gap-2 text-sm font-semibold text-foreground">
-          Назва техніки *
-          <input name="title" defaultValue={values.title} className={fieldClass(state.fieldErrors?.title)} />
-          <FieldError error={state.fieldErrors?.title} />
+          Тип техніки *
+          <input
+            type="text"
+            name="type"
+            required
+            maxLength={USED_EQUIPMENT_IDENTITY_FIELD_MAX_LENGTH}
+            defaultValue={values.type}
+            placeholder="Наприклад: Трактор, комбайн або обприскувач"
+            className={fieldClass(state.fieldErrors?.type)}
+          />
+          <FieldError error={state.fieldErrors?.type} />
         </label>
 
-        <SearchableCombobox
-          variant="light"
-          label="Тип техніки"
-          name="equipmentType"
-          options={equipmentTypeOptions}
-          value={equipmentType}
-          onChange={setEquipmentType}
-          placeholder="Оберіть тип техніки"
-          emptyMessage="Тип техніки не знайдено"
-          required
-          error={state.fieldErrors?.equipmentType}
-        />
+        <label className="grid gap-2 text-sm font-semibold text-foreground">
+          Виробник *
+          <input
+            type="text"
+            name="manufacturer"
+            required
+            maxLength={USED_EQUIPMENT_IDENTITY_FIELD_MAX_LENGTH}
+            defaultValue={values.manufacturer}
+            placeholder="Наприклад: John Deere, Claas або Amazone"
+            className={fieldClass(state.fieldErrors?.manufacturer)}
+          />
+          <FieldError error={state.fieldErrors?.manufacturer} />
+        </label>
 
-        <SearchableCombobox
-          variant="light"
-          label="Виробник"
-          name="manufacturerId"
-          options={manufacturerOptions}
-          value={manufacturerId}
-          onChange={setManufacturerId}
-          placeholder={equipmentType ? 'Оберіть виробника' : 'Спочатку оберіть тип техніки'}
-          emptyMessage="Виробника не знайдено"
-          disabled={!equipmentType}
-          required
-          error={state.fieldErrors?.manufacturerId}
-        />
+        <label className="grid gap-2 text-sm font-semibold text-foreground">
+          Модель *
+          <input
+            type="text"
+            name="model"
+            required
+            maxLength={USED_EQUIPMENT_IDENTITY_FIELD_MAX_LENGTH}
+            defaultValue={values.model}
+            placeholder="Наприклад: 6155M"
+            className={fieldClass(state.fieldErrors?.model)}
+          />
+          <FieldError error={state.fieldErrors?.model} />
+        </label>
 
         <label className="grid gap-2 text-sm font-semibold text-foreground">
           Рік випуску

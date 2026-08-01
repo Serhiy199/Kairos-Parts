@@ -12,7 +12,6 @@ import { prisma } from '@/lib/prisma';
 import { normalizeUsedEquipmentDescriptionForEditor } from '@/lib/used-equipment/description';
 import { getUsedEquipmentStatusLabel } from '@/lib/used-equipment/status';
 import type { UsedEquipmentFormValues } from '@/lib/used-equipment/validation';
-import { getActiveEquipmentTaxonomy } from '@/lib/vehicles/taxonomy';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,8 +36,8 @@ export default async function AdminUsedEquipmentEditPage({ params }: PageProps) 
         slug: true,
         title: true,
         equipmentType: true,
-        manufacturerId: true,
         manufacturerName: true,
+        model: true,
         year: true,
         description: true,
         internalComment: true,
@@ -70,15 +69,10 @@ export default async function AdminUsedEquipmentEditPage({ params }: PageProps) 
     notFound();
   }
 
-  const taxonomy = await getActiveEquipmentTaxonomy({
-    equipmentType: item.equipmentType,
-    manufacturer: item.manufacturerName
-  });
-
   const initialValues: UsedEquipmentFormValues = {
-    title: item.title,
-    equipmentType: item.equipmentType,
-    manufacturerId: item.manufacturerId ?? '',
+    type: item.equipmentType,
+    manufacturer: item.manufacturerName,
+    model: item.model ?? '',
     year: item.year ? String(item.year) : '',
     description: normalizeUsedEquipmentDescriptionForEditor(item.description),
     internalComment: item.internalComment ?? '',
@@ -128,7 +122,6 @@ export default async function AdminUsedEquipmentEditPage({ params }: PageProps) 
       <UsedEquipmentForm
         action={action}
         mode="edit"
-        taxonomy={taxonomy}
         initialValues={initialValues}
         hasImages={item.images.length > 0}
         existingImages={item.images}
