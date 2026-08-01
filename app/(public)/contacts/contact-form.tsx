@@ -87,6 +87,11 @@ export function ContactForm() {
       <p className="mt-3 max-w-2xl text-base leading-7 text-public-muted">
         Опишіть питання або залиште контактні дані. Менеджер зв’яжеться з вами для уточнення.
       </p>
+      <p className="mt-4 rounded-xl border border-public-border bg-public-section px-4 py-3 text-sm leading-6 text-public-muted">
+        Надсилання заявки через сайт не є автоматичним укладенням договору, підтвердженням наявності товару
+        або остаточним підтвердженням замовлення. Умови, ціна, наявність і строки погоджуються з менеджером
+        окремо.
+      </p>
 
       <form key={state.submissionId} ref={formRef} action={formAction} className="mt-8" noValidate onSubmit={handleSubmit}>
         <div aria-hidden="true" className="absolute left-[-10000px] top-auto h-px w-px overflow-hidden">
@@ -232,7 +237,8 @@ export function ContactForm() {
               className="mt-1 h-5 w-5 shrink-0 rounded border-public-border bg-public-section accent-[var(--accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             />
             <label htmlFor="contact-consent" className="text-sm leading-6 text-public-secondary">
-              Я погоджуюся на обробку персональних даних для отримання відповіді на звернення.
+              Я погоджуюся на обробку наданих персональних даних ТОВ «КАЙРОС ПАРТС» для розгляду мого
+              звернення та надання відповіді.
             </label>
           </div>
           <FieldError id="contact-consent-error" message={errors.consent} />

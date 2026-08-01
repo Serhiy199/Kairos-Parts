@@ -28,7 +28,7 @@ export const PUBLIC_PAGE_SEO = {
     path: '/contacts',
     title: 'Контакти Kairos Parts — зв’язок із командою',
     description:
-      'Зв’яжіться з Kairos Parts щодо підбору запчастин, комерційної пропозиції, співпраці або статусу заявки.'
+      'Контактні канали, адреса та юридична інформація Kairos Parts для звернень щодо запчастин, документів і співпраці.'
   },
   logistics: {
     path: '/logistics',

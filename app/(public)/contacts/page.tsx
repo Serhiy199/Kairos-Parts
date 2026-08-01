@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import { TbBrandTelegram, TbClock, TbMail, TbMapPin, TbPhone } from 'react-icons/tb';
 
+import { companyLegalDetails } from '@/lib/company-details';
 import { siteContacts } from '@/lib/site-contacts';
 import { createPublicMetadata, PUBLIC_PAGE_SEO } from '@/lib/seo';
 
@@ -21,15 +22,15 @@ const contacts = [
   {
     label: 'EMAIL',
     value: siteContacts.email.display,
-    description: 'Для списків позицій, документів і B2B-звернень.',
+    description: 'Для списків позицій, документів, B2B-звернень та загальних питань.',
     icon: TbMail,
     href: siteContacts.email.href,
     ariaLabel: `Написати на email ${siteContacts.email.display}`
   },
   {
-    label: 'АДРЕСА',
+    label: 'ОФІС, СКЛАД, БАЗА, ПУНКТ ОБСЛУГОВУВАННЯ ТА ВИДАЧІ',
     value: siteContacts.address.display,
-    description: 'Відкрийте адресу в Google Maps, щоб прокласти маршрут.',
+    description: 'Відвідування можливе без попереднього погодження у робочі години.',
     icon: TbMapPin,
     href: siteContacts.address.href,
     external: true,
@@ -156,6 +157,94 @@ export default function ContactsPage() {
           </div>
         </div>
       </section>
+
+      <section
+        className="border-t border-public-border bg-public-section py-16 sm:py-20 lg:py-24"
+        aria-labelledby="legal-information-title"
+      >
+        <div className="kp-container">
+          <div className="max-w-3xl">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent sm:text-sm">
+              ОПЕРАТОР СЕРВІСУ
+            </p>
+            <h2
+              id="legal-information-title"
+              className="mt-3 text-3xl font-bold leading-tight text-public-primary sm:text-4xl"
+            >
+              Юридична інформація
+            </h2>
+            <p className="mt-4 text-base leading-7 text-public-secondary sm:text-lg sm:leading-8">
+              Відомості про юридичну особу, яка керує сервісом Kairos Parts та є володільцем персональних даних.
+            </p>
+            <div aria-hidden="true" className="mt-6 h-px w-16 bg-accent" />
+          </div>
+
+          <div className="mt-10 overflow-hidden rounded-[22px] border border-public-border bg-public-card shadow-panel">
+            <div className="border-b border-public-border bg-primary px-6 py-7 text-white sm:px-8 lg:px-10">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Назва юридичної особи</p>
+              <p className="mt-3 break-words text-2xl font-bold leading-tight sm:text-3xl">
+                {companyLegalDetails.shortName}
+              </p>
+            </div>
+
+            <dl className="grid min-w-0 gap-px bg-public-border sm:grid-cols-2">
+              <LegalDetail label="Повна назва" value={companyLegalDetails.fullName} />
+              <LegalDetail label="Код ЄДРПОУ" value={companyLegalDetails.edrpou} />
+              <LegalDetail
+                label="Юридична адреса та адреса для листування"
+                value={companyLegalDetails.legalAddress.display}
+              />
+              <LegalDetail
+                label="Телефон у реквізитах"
+                value={companyLegalDetails.legalPhone.display}
+                href={companyLegalDetails.legalPhone.href}
+              />
+              <LegalDetail
+                label="Email для офіційних звернень"
+                value={companyLegalDetails.email.display}
+                href={companyLegalDetails.email.href}
+              />
+              <LegalDetail
+                label="Володілець персональних даних"
+                value={companyLegalDetails.personalDataController}
+              />
+              <LegalDetail
+                label="Запити щодо персональних даних"
+                value={companyLegalDetails.email.display}
+                href={companyLegalDetails.email.href}
+              />
+            </dl>
+
+            <div className="border-t border-public-border px-6 py-7 sm:px-8 lg:px-10">
+              <h3 className="text-lg font-bold text-public-primary">Письмові претензії</h3>
+              <p className="mt-3 max-w-5xl text-sm leading-7 text-public-muted sm:text-base">
+                Письмові претензії приймаються поштою за юридичною адресою {companyLegalDetails.shortName}:{' '}
+                {companyLegalDetails.legalAddress.display}.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
     </>
+  );
+}
+
+function LegalDetail({ label, value, href }: { label: string; value: string; href?: string }) {
+  return (
+    <div className="min-w-0 bg-public-card px-6 py-6 sm:px-8 lg:px-10">
+      <dt className="text-xs font-bold uppercase tracking-[0.16em] text-accent">{label}</dt>
+      <dd className="mt-2 break-words text-base font-semibold leading-7 text-public-primary">
+        {href ? (
+          <a
+            href={href}
+            className="transition hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+          >
+            {value}
+          </a>
+        ) : (
+          value
+        )}
+      </dd>
+    </div>
   );
 }

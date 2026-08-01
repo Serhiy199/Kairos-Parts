@@ -12,7 +12,7 @@ export const siteContacts = {
     href: 'https://maps.app.goo.gl/rfnXF6WgSMuvKLAK6?g_st=it'
   },
   workingHours: {
-    display: '8:30–17:30'
+    display: 'Пн–Сб: 08:30–17:30'
   },
   telegram: {
     display: '@kairos_parts_bot',
