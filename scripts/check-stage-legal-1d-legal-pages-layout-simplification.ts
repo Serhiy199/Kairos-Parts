@@ -56,7 +56,7 @@ assert.deepEqual(termsMetadata.robots, { index: true, follow: true });
 
 assert.match(footerSource, /href="\/privacy-policy"/);
 assert.match(footerSource, /href="\/terms-of-use"/);
-assert.match(footerSource, /href="\/contacts"/);
+assert.match(footerSource, /\{ href: '\/contacts', label: 'Контакти' \}/);
 
 const sitemapUrls = sitemap().map((entry) => entry.url);
 assert.equal(sitemapUrls.length, 15);

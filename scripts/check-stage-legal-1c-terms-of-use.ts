@@ -88,7 +88,7 @@ assert.doesNotMatch(pageSource, /process\.env|DATABASE_URL|TELEGRAM_BOT_TOKEN|CL
 
 assert.match(footerSource, /href="\/privacy-policy"/);
 assert.match(footerSource, /href="\/terms-of-use"/);
-assert.match(footerSource, /href="\/contacts"/);
+assert.match(footerSource, /\{ href: '\/contacts', label: 'Контакти' \}/);
 assert.match(footerSource, /aria-label="Правова інформація"/);
 
 assert.match(registerSource, /Реєструючись, ви підтверджуєте, що ознайомилися з/);

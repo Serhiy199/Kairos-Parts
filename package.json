@@ -42,6 +42,7 @@
     "test:legal-privacy-1b": "tsx scripts/check-stage-legal-1b-privacy-policy.ts",
     "test:legal-terms-1c": "tsx scripts/check-stage-legal-1c-terms-of-use.ts",
     "test:legal-layout-1d": "tsx scripts/check-stage-legal-1d-legal-pages-layout-simplification.ts",
+    "test:legal-footer-1e": "tsx scripts/check-stage-legal-1e-footer-legal-links-placement.ts",
     "audit:request-file-storage": "tsx scripts/audit-request-file-storage.ts",
     "migrate:request-files-cloudinary": "tsx scripts/migrate-request-files-to-cloudinary.ts",
     "test:logistics-address-combobox": "tsx scripts/check-logistics-request-form.ts",

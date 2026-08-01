@@ -69,10 +69,20 @@ export async function PublicLayout({ children }: { children: React.ReactNode }) 
                 className="h-12 w-auto object-contain"
               />
             </div>
-            <p className="mt-4 max-w-md text-sm leading-6 text-public-muted">
-              Єдина точка контакту для підбору та постачання запчастин для аграрної, вантажної та
-              спеціальної техніки.
-            </p>
+            <nav aria-label="Правова інформація" className="mt-4 grid gap-2 text-sm text-public-muted">
+              <Link
+                href="/privacy-policy"
+                className="w-fit transition hover:text-public-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                Політика конфіденційності
+              </Link>
+              <Link
+                href="/terms-of-use"
+                className="w-fit transition hover:text-public-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                Умови користування
+              </Link>
+            </nav>
           </div>
           <div>
             <p className="text-sm font-bold text-public-primary">Навігація</p>
@@ -127,28 +137,8 @@ export async function PublicLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
         <div className="border-t border-public-border">
-          <div className="kp-container flex flex-col items-center justify-between gap-3 py-4 text-center text-xs text-public-subtle sm:flex-row sm:text-left">
+          <div className="kp-container py-4 text-center text-xs text-public-subtle sm:text-left">
             <span>© 2026 Kairos Parts. MVP public website foundation.</span>
-            <nav aria-label="Правова інформація" className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:justify-end">
-              <Link
-                href="/privacy-policy"
-                className="transition hover:text-public-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-              >
-                Політика конфіденційності
-              </Link>
-              <Link
-                href="/terms-of-use"
-                className="transition hover:text-public-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-              >
-                Умови користування
-              </Link>
-              <Link
-                href="/contacts"
-                className="transition hover:text-public-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-              >
-                Контакти
-              </Link>
-            </nav>
           </div>
         </div>
       </footer>
