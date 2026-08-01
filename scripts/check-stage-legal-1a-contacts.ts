@@ -67,10 +67,11 @@ assert.match(formSource, /required/);
 assert.match(formSource, /htmlFor="contact-consent"/);
 assert.match(
   formSource,
-  /Я погоджуюся на обробку наданих персональних даних ТОВ «КАЙРОС ПАРТС» для розгляду мого/
+  /Я ознайомився\(лася\) з/
 );
+assert.match(formSource, /Політикою конфіденційності/);
+assert.match(formSource, /href="\/privacy-policy"/);
 assert.match(formSource, /Надсилання заявки через сайт не є автоматичним укладенням договору/);
-assert.doesNotMatch(formSource, /href=["']\/privacy-policy["']/);
 assert.doesNotMatch(scopedPublicSources, /\bIBAN\b|\bМФО\b|банківськ(?:ий|і|ого) рахун/iu);
 
 const validForm = new FormData();
@@ -109,7 +110,8 @@ assert.match(actionSource, /prisma\.contactMessage\.create/);
 assert.doesNotMatch(actionSource, /telegram|Telegram/);
 assert.match(schemaSource, /model ContactMessage[\s\S]*status\s+ContactMessageStatus\s+@default\(NEW\)/);
 assert.match(sitemapSource, /PUBLIC_PAGE_SEO\.contacts\.path/);
-assert.doesNotMatch(sitemapSource, /privacy-policy|terms-of-use/);
+assert.match(sitemapSource, /PUBLIC_PAGE_SEO\.privacyPolicy\.path/);
+assert.doesNotMatch(sitemapSource, /terms-of-use/);
 assert.match(publicLayoutSource, /siteContacts\.phone\.display/);
 assert.match(publicLayoutSource, /siteContacts\.email\.display/);
 

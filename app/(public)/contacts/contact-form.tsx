@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { type FormEvent, useActionState, useEffect, useRef, useState } from 'react';
 
 import { submitContactMessage, type ContactFormActionState } from './actions';
@@ -237,7 +238,14 @@ export function ContactForm() {
               className="mt-1 h-5 w-5 shrink-0 rounded border-public-border bg-public-section accent-[var(--accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             />
             <label htmlFor="contact-consent" className="text-sm leading-6 text-public-secondary">
-              Я погоджуюся на обробку наданих персональних даних ТОВ «КАЙРОС ПАРТС» для розгляду мого
+              Я ознайомився(лася) з{' '}
+              <Link
+                href="/privacy-policy"
+                className="font-semibold text-public-primary underline decoration-accent underline-offset-4 transition hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                Політикою конфіденційності
+              </Link>{' '}
+              та погоджуюся на обробку наданих персональних даних ТОВ «КАЙРОС ПАРТС» для розгляду мого
               звернення та надання відповіді.
             </label>
           </div>

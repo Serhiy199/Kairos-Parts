@@ -30,6 +30,12 @@ export const PUBLIC_PAGE_SEO = {
     description:
       'Контактні канали, адреса та юридична інформація Kairos Parts для звернень щодо запчастин, документів і співпраці.'
   },
+  privacyPolicy: {
+    path: '/privacy-policy',
+    title: 'Політика конфіденційності | Kairos Parts',
+    description:
+      'Інформація про те, які персональні дані обробляє Kairos Parts, для чого вони використовуються, як захищаються та як подати запит щодо своїх даних.'
+  },
   logistics: {
     path: '/logistics',
     title: 'Kairos Logistics — доставка товарів для агропідприємств | Kairos Parts',

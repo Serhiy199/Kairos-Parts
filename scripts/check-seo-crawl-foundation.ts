@@ -27,6 +27,7 @@ const EXPECTED_SITEMAP_PATHS = [
   '/about',
   '/how-it-works',
   '/contacts',
+  '/privacy-policy',
   '/logistics',
   '/used-equipment',
   ...EXPECTED_CHILD_CATEGORY_PATHS
@@ -83,15 +84,17 @@ for (const forbiddenPart of FORBIDDEN_ORIGIN_PARTS) {
 const sitemapEntries = sitemap();
 const sitemapUrls = sitemapEntries.map((entry) => entry.url);
 
-assert.equal(sitemapUrls.length, 13);
+assert.equal(sitemapUrls.length, 14);
 assert.equal(new Set(sitemapUrls).size, sitemapUrls.length, 'Sitemap URLs must be unique.');
 assert.deepEqual(
   sitemapUrls,
   EXPECTED_SITEMAP_PATHS.map((path) => buildPublicUrl(path)),
-  'Sitemap must contain the canonical 13-URL inventory in the expected order.'
+  'Sitemap must contain the canonical 14-URL inventory in the expected order.'
 );
 assert.equal(sitemapUrls.includes(buildPublicUrl('/categories')), false);
 assert.equal(sitemapUrls.includes(buildPublicUrl('/logistics')), true);
+assert.equal(sitemapUrls.includes(buildPublicUrl('/privacy-policy')), true);
+assert.equal(sitemapUrls.includes(buildPublicUrl('/terms-of-use')), false);
 assert.equal(sitemapUrls.includes(buildPublicUrl('/logistics/request')), false);
 
 for (const categoryPath of EXPECTED_CHILD_CATEGORY_PATHS) {
@@ -120,7 +123,7 @@ const expectedMetadataInputs = [
   }))
 ];
 
-assert.equal(expectedMetadataInputs.length, 13);
+assert.equal(expectedMetadataInputs.length, 14);
 
 for (const input of expectedMetadataInputs) {
   const metadata = createPublicMetadata(input);

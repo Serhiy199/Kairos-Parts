@@ -39,6 +39,7 @@
     "test:telegram-client-request-lifecycle": "tsx scripts/check-telegram-client-request-lifecycle.ts",
     "test:used-equipment-free-text-fields": "tsx scripts/check-used-equipment-free-text-fields.ts",
     "test:legal-contacts-1a": "tsx scripts/check-stage-legal-1a-contacts.ts",
+    "test:legal-privacy-1b": "tsx scripts/check-stage-legal-1b-privacy-policy.ts",
     "audit:request-file-storage": "tsx scripts/audit-request-file-storage.ts",
     "migrate:request-files-cloudinary": "tsx scripts/migrate-request-files-to-cloudinary.ts",
     "test:logistics-address-combobox": "tsx scripts/check-logistics-request-form.ts",

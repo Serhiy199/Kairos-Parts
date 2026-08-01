@@ -127,8 +127,14 @@ export async function PublicLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
         <div className="border-t border-public-border">
-          <div className="kp-container py-4 text-center text-xs text-public-subtle">
-            © 2026 Kairos Parts. MVP public website foundation.
+          <div className="kp-container flex flex-col items-center justify-between gap-3 py-4 text-center text-xs text-public-subtle sm:flex-row sm:text-left">
+            <span>© 2026 Kairos Parts. MVP public website foundation.</span>
+            <Link
+              href="/privacy-policy"
+              className="transition hover:text-public-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+            >
+              Політика конфіденційності
+            </Link>
           </div>
         </div>
       </footer>
