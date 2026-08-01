@@ -8,33 +8,6 @@ export const metadata: Metadata = createPublicMetadata(PUBLIC_PAGE_SEO.termsOfUs
 
 const TERMS_DATE = '1 серпня 2026 року';
 
-const sections = [
-  { id: 'general', title: '1. Загальні положення' },
-  { id: 'operator', title: '2. Оператор сервісу' },
-  { id: 'scope', title: '3. Предмет і сфера застосування Умов' },
-  { id: 'account', title: '4. Реєстрація та обліковий запис' },
-  { id: 'security', title: '5. Авторизація і безпека акаунта' },
-  { id: 'accuracy', title: '6. Достовірність даних' },
-  { id: 'requests', title: '7. Створення та опрацювання заявок' },
-  { id: 'request-status', title: '8. Статус заявки та відсутність автоматичного договору' },
-  { id: 'approvals', title: '9. Погодження позицій і комерційних пропозицій' },
-  { id: 'logistics', title: '10. Logistics-заявки' },
-  { id: 'vehicles-files', title: '11. Техніка, фотографії та документи' },
-  { id: 'materials', title: '12. Вимоги до матеріалів користувача' },
-  { id: 'prohibited', title: '13. Заборонені дії' },
-  { id: 'restrictions', title: '14. Обмеження або припинення доступу' },
-  { id: 'intellectual-property', title: '15. Інтелектуальна власність' },
-  { id: 'availability', title: '16. Доступність сервісу і технічні роботи' },
-  { id: 'external-services', title: '17. Сторонні сервіси та посилання' },
-  { id: 'liability', title: '18. Межі відповідальності' },
-  { id: 'personal-data', title: '19. Персональні дані' },
-  { id: 'claims', title: '20. Офіційні звернення та претензії' },
-  { id: 'changes', title: '21. Зміни до Умов' },
-  { id: 'law', title: '22. Застосовне право' },
-  { id: 'contacts', title: '23. Контактна інформація' },
-  { id: 'effective-date', title: '24. Дата набрання чинності' }
-] as const;
-
 const listClassName = 'mt-3 grid gap-2 pl-5 text-base leading-7 text-public-muted';
 const linkClassName =
   'font-semibold text-public-primary underline decoration-accent underline-offset-4 transition hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
@@ -61,78 +34,31 @@ export default function TermsOfUsePage() {
       </section>
 
       <section className="bg-public-page py-12 sm:py-16 lg:py-20">
-        <div className="kp-container grid items-start gap-8 lg:grid-cols-[minmax(0,0.34fr)_minmax(0,0.66fr)]">
-          <aside className="grid gap-6 lg:sticky lg:top-24">
-            <div className="overflow-hidden rounded-[22px] border border-public-border bg-public-card shadow-panel">
-              <div className="border-b border-public-border bg-primary px-6 py-5 text-white">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Оператор сервісу</p>
-                <p className="mt-2 text-xl font-bold">{companyLegalDetails.shortName}</p>
-              </div>
-              <dl className="grid gap-4 px-6 py-6 text-sm leading-6">
-                <div>
-                  <dt className="font-bold text-public-primary">Код ЄДРПОУ</dt>
-                  <dd className="mt-1 text-public-muted">{companyLegalDetails.edrpou}</dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-public-primary">Юридична адреса</dt>
-                  <dd className="mt-1 break-words text-public-muted">
-                    {companyLegalDetails.legalAddress.display}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-public-primary">Email</dt>
-                  <dd className="mt-1 break-all">
-                    <a
-                      href={companyLegalDetails.email.href}
-                      className="font-semibold text-public-primary underline decoration-accent underline-offset-4 transition hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-                    >
-                      {companyLegalDetails.email.display}
-                    </a>
-                  </dd>
-                </div>
-              </dl>
-            </div>
-
-            <nav aria-label="Зміст Умов" className="rounded-[22px] border border-public-border bg-public-card p-6">
-              <h2 className="text-lg font-bold text-public-primary">Зміст</h2>
-              <ol className="mt-4 grid gap-2 text-sm leading-6 text-public-muted">
-                {sections.map((section) => (
-                  <li key={section.id}>
-                    <a
-                      href={`#${section.id}`}
-                      className="transition hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                    >
-                      {section.title}
-                    </a>
-                  </li>
-                ))}
-              </ol>
-            </nav>
-          </aside>
-
+        <div className="kp-container">
           <article className="min-w-0 overflow-hidden rounded-[22px] border border-public-border bg-public-card px-6 py-8 shadow-panel sm:px-8 lg:px-10 lg:py-10">
             <p className="rounded-xl border border-accent/30 bg-accent/10 px-5 py-4 text-sm leading-6 text-public-secondary">
               Ці Умови описують поточну роботу сервісу й підготовлені для подальшого погодження з юристом.
               Вони не є публічною офертою та не замінюють окремі домовленості або документи сторін.
             </p>
 
-            <TermsSection id="general" title="1. Загальні положення">
+            <TermsSection id="operator" title="1. Оператор сервісу">
+              <p>
+                Оператором є {companyLegalDetails.fullName} ({companyLegalDetails.shortName}), код ЄДРПОУ{' '}
+                {companyLegalDetails.edrpou}, юридична адреса: {companyLegalDetails.legalAddress.display}.
+                Офіційний email:{' '}
+                <a className={linkClassName} href={companyLegalDetails.email.href}>
+                  {companyLegalDetails.email.display}
+                </a>
+                .
+              </p>
+            </TermsSection>
+
+            <TermsSection id="general" title="2. Загальні положення">
               <p>
                 Ці Умови регулюють користування сайтом kairos-parts.com.ua, його публічними сторінками,
                 реєстрацією, особистим кабінетом, заявками та файлами. Перед використанням відповідної
                 функції користувачеві слід ознайомитися з Умовами. Простий перегляд сторінок не означає
                 безумовного укладення договору.
-              </p>
-            </TermsSection>
-
-            <TermsSection id="operator" title="2. Оператор сервісу">
-              <p>
-                Оператором є {companyLegalDetails.fullName}, код ЄДРПОУ {companyLegalDetails.edrpou},
-                юридична адреса: {companyLegalDetails.legalAddress.display}. Офіційний email:{' '}
-                <a className={linkClassName} href={companyLegalDetails.email.href}>
-                  {companyLegalDetails.email.display}
-                </a>
-                .
               </p>
             </TermsSection>
 

@@ -8,29 +8,9 @@ export const metadata: Metadata = createPublicMetadata(PUBLIC_PAGE_SEO.privacyPo
 
 const POLICY_DATE = '1 серпня 2026 року';
 
-const sections = [
-  { id: 'general', title: '1. Загальні положення' },
-  { id: 'controller', title: '2. Хто обробляє персональні дані' },
-  { id: 'data', title: '3. Які дані ми можемо отримувати' },
-  { id: 'sources', title: '4. Як ми отримуємо дані' },
-  { id: 'purposes', title: '5. Для чого використовуються дані' },
-  { id: 'legal-bases', title: '6. Правові підстави обробки' },
-  { id: 'account', title: '7. Акаунт, авторизація та cookies' },
-  { id: 'requests', title: '8. Заявки, документи та фотографії' },
-  { id: 'telegram', title: '9. Telegram та інші канали зв’язку' },
-  { id: 'providers', title: '10. Сторонні постачальники й передача даних' },
-  { id: 'retention', title: '11. Зберігання та строки зберігання' },
-  { id: 'security', title: '12. Захист персональних даних' },
-  { id: 'rights', title: '13. Права користувача' },
-  { id: 'request-procedure', title: '14. Як подати запит щодо даних' },
-  { id: 'minors', title: '15. Дані неповнолітніх' },
-  { id: 'external-links', title: '16. Зовнішні посилання' },
-  { id: 'changes', title: '17. Зміни до Політики' },
-  { id: 'contacts', title: '18. Контактна інформація' },
-  { id: 'effective-date', title: '19. Дата набрання чинності' }
-] as const;
-
 const listClassName = 'mt-3 grid gap-2 pl-5 text-base leading-7 text-public-muted';
+const linkClassName =
+  'font-semibold text-public-primary underline decoration-accent underline-offset-4 transition hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
 export default function PrivacyPolicyPage() {
   return (
@@ -54,74 +34,31 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section className="bg-public-page py-12 sm:py-16 lg:py-20">
-        <div className="kp-container grid items-start gap-8 lg:grid-cols-[minmax(0,0.34fr)_minmax(0,0.66fr)]">
-          <aside className="grid gap-6 lg:sticky lg:top-24">
-            <div className="overflow-hidden rounded-[22px] border border-public-border bg-public-card shadow-panel">
-              <div className="border-b border-public-border bg-primary px-6 py-5 text-white">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Володілець даних</p>
-                <p className="mt-2 text-xl font-bold">{companyLegalDetails.shortName}</p>
-              </div>
-              <dl className="grid gap-4 px-6 py-6 text-sm leading-6">
-                <div>
-                  <dt className="font-bold text-public-primary">Код ЄДРПОУ</dt>
-                  <dd className="mt-1 text-public-muted">{companyLegalDetails.edrpou}</dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-public-primary">Юридична адреса</dt>
-                  <dd className="mt-1 break-words text-public-muted">
-                    {companyLegalDetails.legalAddress.display}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-public-primary">Privacy-запити</dt>
-                  <dd className="mt-1 break-all">
-                    <a
-                      href={companyLegalDetails.email.href}
-                      className="font-semibold text-public-primary underline decoration-accent underline-offset-4 transition hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-                    >
-                      {companyLegalDetails.email.display}
-                    </a>
-                  </dd>
-                </div>
-              </dl>
-            </div>
-
-            <nav aria-label="Зміст Політики" className="rounded-[22px] border border-public-border bg-public-card p-6">
-              <h2 className="text-lg font-bold text-public-primary">Зміст</h2>
-              <ol className="mt-4 grid gap-2 text-sm leading-6 text-public-muted">
-                {sections.map((section) => (
-                  <li key={section.id}>
-                    <a
-                      href={`#${section.id}`}
-                      className="transition hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                    >
-                      {section.title}
-                    </a>
-                  </li>
-                ))}
-              </ol>
-            </nav>
-          </aside>
-
+        <div className="kp-container">
           <article className="min-w-0 overflow-hidden rounded-[22px] border border-public-border bg-public-card px-6 py-8 shadow-panel sm:px-8 lg:px-10 lg:py-10">
             <p className="rounded-xl border border-accent/30 bg-accent/10 px-5 py-4 text-sm leading-6 text-public-secondary">
               Цей текст описує поточну роботу сервісу та підготовлений для подальшого погодження з юристом.
               Він не є індивідуальною юридичною консультацією.
             </p>
 
-            <PolicySection id="general" title="1. Загальні положення">
+            <PolicySection id="controller" title="1. Володілець персональних даних">
+              <p>
+                Володільцем персональних даних та оператором сервісу є {companyLegalDetails.fullName} ({companyLegalDetails.shortName}),
+                код ЄДРПОУ {companyLegalDetails.edrpou}, юридична адреса: {companyLegalDetails.legalAddress.display}.
+                Email із питань персональних даних:{' '}
+                <a className={linkClassName} href={companyLegalDetails.email.href}>
+                  {companyLegalDetails.email.display}
+                </a>
+                .
+              </p>
+            </PolicySection>
+
+            <PolicySection id="general" title="2. Загальні положення">
               <p>
                 Ця Політика пояснює обробку персональних даних під час використання сайту Kairos Parts,
                 особистого кабінету, форм заявок, контактної форми та офіційного Telegram-бота. Ми
                 обробляємо лише дані, потрібні для роботи сервісу, комунікації, безпеки та виконання
                 застосовних обов’язків.
-              </p>
-            </PolicySection>
-
-            <PolicySection id="controller" title="2. Хто обробляє персональні дані">
-              <p>
-                Володільцем персональних даних та оператором сервісу є {companyLegalDetails.fullName}, код
-                ЄДРПОУ {companyLegalDetails.edrpou}, юридична адреса: {companyLegalDetails.legalAddress.display}.
               </p>
             </PolicySection>
 
