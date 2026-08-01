@@ -67,7 +67,7 @@ assert.doesNotMatch(pageSource, /process\.env|DATABASE_URL|TELEGRAM_BOT_TOKEN|CL
 
 assert.match(footerSource, /href="\/privacy-policy"/);
 assert.match(footerSource, /Політика конфіденційності/);
-assert.doesNotMatch(footerSource, /href=["']\/terms-of-use["']/);
+assert.match(footerSource, /href="\/terms-of-use"/);
 
 assert.match(formSource, /id="contact-consent"/);
 assert.match(formSource, /name="consent"/);
@@ -94,11 +94,11 @@ assert.equal(missingConsent.ok, false);
 if (!missingConsent.ok) assert.ok(missingConsent.errors.consent);
 
 const sitemapUrls = sitemap().map((entry) => entry.url);
-assert.equal(sitemapUrls.length, 14);
-assert.equal(new Set(sitemapUrls).size, 14);
+assert.equal(sitemapUrls.length, 15);
+assert.equal(new Set(sitemapUrls).size, 15);
 assert.equal(sitemapUrls.includes(buildPublicUrl('/privacy-policy')), true);
 assert.equal(sitemapUrls.includes(buildPublicUrl('/categories')), false);
-assert.equal(sitemapUrls.includes(buildPublicUrl('/terms-of-use')), false);
+assert.equal(sitemapUrls.includes(buildPublicUrl('/terms-of-use')), true);
 
 const robotsMetadata = robots();
 assert.equal(

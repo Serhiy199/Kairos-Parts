@@ -129,12 +129,26 @@ export async function PublicLayout({ children }: { children: React.ReactNode }) 
         <div className="border-t border-public-border">
           <div className="kp-container flex flex-col items-center justify-between gap-3 py-4 text-center text-xs text-public-subtle sm:flex-row sm:text-left">
             <span>© 2026 Kairos Parts. MVP public website foundation.</span>
-            <Link
-              href="/privacy-policy"
-              className="transition hover:text-public-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-            >
-              Політика конфіденційності
-            </Link>
+            <nav aria-label="Правова інформація" className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:justify-end">
+              <Link
+                href="/privacy-policy"
+                className="transition hover:text-public-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+              >
+                Політика конфіденційності
+              </Link>
+              <Link
+                href="/terms-of-use"
+                className="transition hover:text-public-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+              >
+                Умови користування
+              </Link>
+              <Link
+                href="/contacts"
+                className="transition hover:text-public-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+              >
+                Контакти
+              </Link>
+            </nav>
           </div>
         </div>
       </footer>

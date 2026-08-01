@@ -111,7 +111,7 @@ assert.doesNotMatch(actionSource, /telegram|Telegram/);
 assert.match(schemaSource, /model ContactMessage[\s\S]*status\s+ContactMessageStatus\s+@default\(NEW\)/);
 assert.match(sitemapSource, /PUBLIC_PAGE_SEO\.contacts\.path/);
 assert.match(sitemapSource, /PUBLIC_PAGE_SEO\.privacyPolicy\.path/);
-assert.doesNotMatch(sitemapSource, /terms-of-use/);
+assert.match(sitemapSource, /PUBLIC_PAGE_SEO\.termsOfUse\.path/);
 assert.match(publicLayoutSource, /siteContacts\.phone\.display/);
 assert.match(publicLayoutSource, /siteContacts\.email\.display/);
 

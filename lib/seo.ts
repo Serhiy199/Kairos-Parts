@@ -36,6 +36,12 @@ export const PUBLIC_PAGE_SEO = {
     description:
       'Інформація про те, які персональні дані обробляє Kairos Parts, для чого вони використовуються, як захищаються та як подати запит щодо своїх даних.'
   },
+  termsOfUse: {
+    path: '/terms-of-use',
+    title: 'Умови користування | Kairos Parts',
+    description:
+      'Правила користування сайтом Kairos Parts, особистим кабінетом, заявками, документами та іншими функціями сервісу.'
+  },
   logistics: {
     path: '/logistics',
     title: 'Kairos Logistics — доставка товарів для агропідприємств | Kairos Parts',
