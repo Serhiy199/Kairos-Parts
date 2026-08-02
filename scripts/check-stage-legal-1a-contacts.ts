@@ -51,9 +51,12 @@ assert.match(pageSource, /Відвідування можливе без поп�
 assert.match(pageSource, /legal-information-title/);
 assert.match(pageSource, /label="Телефон у реквізитах"/);
 assert.match(pageSource, /label="Юридична адреса та адреса для листування"/);
-assert.match(pageSource, /label="Володілець персональних даних"/);
-assert.match(pageSource, /label="Запити щодо персональних даних"/);
-assert.match(pageSource, /Письмові претензії приймаються поштою за юридичною адресою/);
+assert.match(pageSource, /Юридична особа/);
+assert.match(pageSource, /Повна назва:/);
+assert.match(pageSource, /label="Email для офіційних звернень і питань щодо персональних даних"/);
+assert.doesNotMatch(pageSource, /label="Володілець персональних даних"/);
+assert.doesNotMatch(pageSource, /label="Запити щодо персональних даних"/);
+assert.match(pageSource, /Приймаються поштою за зазначеною вище юридичною адресою\./);
 assert.match(pageSource, /grid min-w-0/);
 assert.match(pageSource, /overflow-hidden/);
 assert.match(pageSource, /break-words/);
