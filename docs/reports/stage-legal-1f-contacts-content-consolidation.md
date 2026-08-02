@@ -2,7 +2,7 @@
 
 ## 1. Executive summary
 
-Сторінку `/contacts` спрощено без втрати підтверджених контактних або юридичних даних. Практичний контактний блок і contact form залишено без функціональних змін, а юридичну секцію зведено до шести чітких груп без дубльованих headings, email-карток, картки володільця даних і повтору повної адреси в тексті претензій.
+Сторінку `/contacts` спрощено без втрати підтверджених контактних або юридичних даних. Legal heading та юридичну особу перенесено нагору, а контактні й юридичні реквізити скомпоновано навколо незміненої contact form. Окрему нижню legal section прибрано; email відображається в main content один раз.
 
 ## 2. Git baseline
 
@@ -20,45 +20,46 @@
 
 | Information | Previous occurrences | New representation |
 | --- | --- | --- |
-| Email | Практичний контакт; офіційні звернення; privacy-запити | Практичний контакт збережено; у legal block одна спільна група |
-| Назва ТОВ | Коротка назва; повна назва; окрема картка володільця | Одна група `Юридична особа` з short name і secondary full name |
-| Юридична адреса | Реквізит; повний повтор у claims text | Одна address group; claims посилаються на адресу вище |
+| Email | Практичний контакт; офіційні звернення; privacy-запити | Одна email-група біля форми для всіх типів звернень |
+| Телефони | Номер менеджера у contacts; юридичний номер в окремій legal card | Один телефонний пункт із двома номерами та різними призначеннями |
+| Назва ТОВ | Коротка назва; повна назва; окрема картка володільця | Одна верхня група `Юридична особа` з short name і secondary full name |
+| Адреси | Фактична адреса у contacts; юридична адреса в окремій legal section | Один address-пункт із двома явно розділеними адресами |
 | Статус оператора/володільця | Eyebrow; heading; пояснювальний абзац; окрема картка | Один H2 і один точний підзаголовок |
 | Письмові претензії | Окремий wrapper з повтором ТОВ та адреси | Одна legal detail group з коротким текстом |
 
-Зайвими рівнями були окремий primary-name wrapper, сім однотипних detail cards і ще один claims wrapper усередині зовнішньої card shell.
+Зайвим рівнем була окрема нижня legal section. Після follow-up усі дані знаходяться в одній основній секції після hero.
 
 ## 5. Contact block preservation
 
-Збережено номер менеджера `(068) 008 77 08`, email `kairos_parts@ukr.net`, фактичну адресу `м. Кагарлик, вул. Миронівська, 33д`, Telegram `@kairos_parts_bot`, графік `Пн–Сб: 08:30–17:30` та їхні призначення. Фактична адреса не названа юридичною, а юридичний номер не перенесено у практичний блок.
+Збережено номер менеджера `(068) 008 77 08`, юридичний номер `+38 (067) 668-08-08`, email `kairos_parts@ukr.net`, фактичну адресу `м. Кагарлик, вул. Миронівська, 33д`, юридичну адресу на `вул. Сергієнка, буд. 20`, Telegram і графік. Обидва номери тепер розміщені в одному телефонному пункті, а обидві адреси — в одному address-пункті з окремими labels і призначеннями.
 
 ## 6. Legal heading simplification
 
-Eyebrow `ОПЕРАТОР СЕРВІСУ` видалено. Залишено H2 `Юридична інформація` та один підзаголовок: `Реквізити ТОВ «КАЙРОС ПАРТС» як оператора сервісу та володільця персональних даних.`
+H2 `Юридична інформація` та підзаголовок `Реквізити ТОВ «КАЙРОС ПАРТС» як оператора сервісу та володільця персональних даних.` перенесено на початок основної секції замість `Оберіть зручний спосіб зв’язку` і його пояснення.
 
 ## 7. Legal entity consolidation
 
-Коротку назву `ТОВ «КАЙРОС ПАРТС»` і повну назву згруповано в одному semantic `dt`/`dd` item `Юридична особа`. Повну назву збережено як secondary text. Окремої картки `Володілець персональних даних` більше немає; правовий статус явно збережено в підзаголовку.
+Коротку назву `ТОВ «КАЙРОС ПАРТС»` і повну назву згруповано в одному верхньому summary block відразу після legal heading. Окремої картки `Володілець персональних даних` немає; правовий статус явно збережено в підзаголовку.
 
 ## 8. Email consolidation
 
-Дві legal email-картки замінено однією групою `Email для офіційних звернень і питань щодо персональних даних`. У legal section email і `mailto:` відображаються рівно один раз. Email у верхньому практичному блоці не видалено.
+У main content залишено одну email-групу `EMAIL` з одним `mailto:`. Її description охоплює списки позицій, документи, B2B, загальні, офіційні та privacy-звернення. Окрему legal email-групу видалено.
 
 ## 9. Claims wording simplification
 
-Текст скорочено до `Приймаються поштою за зазначеною вище юридичною адресою.` Повна юридична адреса виводиться лише у власній address group.
+Claims block перенесено під contact form. Текст: `Приймаються поштою за зазначеною в блоці контактів юридичною адресою.` Повна юридична адреса виводиться один раз у спільному address-пункті.
 
 ## 10. Layout changes
 
-Legal content оформлено одним адаптивним definition-list grid: дві колонки від `sm`, одна колонка на mobile. Юридична особа і claims займають повну ширину; довгі значення мають `min-w-0` та `break-words`. Додатковий вкладений claims wrapper прибрано.
+Після верхнього legal summary розміщено двоколонковий desktop card: контакти ліворуч, `ЄДРПОУ → форма → письмові претензії` праворуч. На mobile колонки складаються послідовно. Довгі значення використовують `min-w-0` і `break-words`; окремої нижньої legal section немає.
 
 ## 11. Accessibility
 
 - Rendered DOM: один H1; усі section headings — H2, без heading-level skip.
-- Legal section має `aria-labelledby="legal-information-title"` і semantic `dl`/`dt`/`dd`.
+- Основна секція має `aria-labelledby="legal-information-title"`; form/requisites column має окреме accessible label.
 - Обидва телефони мають різні `tel:` URI; email має `mailto:`.
 - Link focus-visible styles збережені.
-- Browser DOM не містить дубльованих legal detail names.
+- Browser DOM містить один main-content email link; телефони й адреси мають різні accessible meanings.
 
 ## 12. Metadata and SEO preservation
 
@@ -66,13 +67,13 @@ Legal content оформлено одним адаптивним definition-list
 
 ## 13. Regression tests
 
-Додано `scripts/check-stage-legal-1f-contacts-content-consolidation.ts` і npm script `test:legal-contacts-consolidation-1f`. Stage 1A assertions оновлено з попереднього дубльованого presentation contract на новий consolidated contract, зберігши перевірки реквізитів, форми, parser, action, schema, canonical і robots.
+Stage 1F regression перевіряє single-section layout, одну email-групу, об'єднані телефонний/address-пункти, порядок `legal heading → entity → contacts`, порядок `ЄДРПОУ → форма → claims`, незмінні form fields, canonical і sitemap. Stage 1A assertions синхронізовано з новим presentation contract без послаблення data/form/action перевірок.
 
 ## 14. Responsive browser QA
 
 - URL: локальний production build, `GET /contacts` → `200`.
-- Desktop `1280×720`: PASS; stylesheets loaded: 2; legal section має 6 груп; email/address по одному разу; overflow відсутній; footer і sticky header не перекривають content.
-- Mobile `390×844`: PASS; rendered content width 375 px і scroll width 375 px; усі legal cards мають ширину 341 px; форма має ширину 293 px; overflow і overlay відсутні.
+- Desktop `1280×720`: PASS; stylesheets loaded: 2; legal heading/entity нагорі; email один раз; обидва телефони поруч; `ЄДРПОУ` перед формою; claims після submit; overflow відсутній.
+- Mobile `390×844`: PASS; rendered width і scroll width 375 px; single-column order коректний; обидві адреси читабельні й розділені; overflow/overlay відсутні.
 - `tel:+380680087708`, `tel:+380676680808`, `mailto:kairos_parts@ukr.net` присутні у rendered DOM.
 - Console warnings/errors: 0.
 - Через паралельні локальні Next-процеси на 3000/3001 QA виконано в ізольованому temporary dist directory; після QA server зупинено, directory видалено, тимчасові config/tsconfig зміни повністю прибрано.
@@ -81,7 +82,7 @@ Legal content оформлено одним адаптивним definition-list
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| `test:legal-contacts-consolidation-1f` | PASS | `legalGroups=6`, sitemap 15, contacts canonical |
+| `test:legal-contacts-consolidation-1f` | PASS | single section, one email group, sitemap 15, contacts canonical |
 | `test:legal-contacts-1a` | PASS | canonical, required consent, `ContactMessageStatus.NEW` |
 | `test:legal-privacy-1b` | PASS | 19 sections, sitemap 15, canonical |
 | `test:legal-terms-1c` | PASS | 24 sections, sitemap 15, canonical |

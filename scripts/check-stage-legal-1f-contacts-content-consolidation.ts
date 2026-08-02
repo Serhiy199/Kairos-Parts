@@ -22,11 +22,14 @@ assert.equal(companyLegalDetails.legalPhone.href, 'tel:+380676680808');
 assert.notEqual(siteContacts.phone.href, companyLegalDetails.legalPhone.href);
 assert.equal(siteContacts.email.display, 'kairos_parts@ukr.net');
 assert.equal(siteContacts.address.display, 'м. Кагарлик, вул. Миронівська, 33д');
+assert.notEqual(siteContacts.address.display, companyLegalDetails.legalAddress.display);
 assert.equal(siteContacts.telegram.display, '@kairos_parts_bot');
 assert.equal(siteContacts.workingHours.display, 'Пн–Сб: 08:30–17:30');
 
 assert.equal((pageSource.match(/<h1\b/g) ?? []).length, 1);
+assert.equal(occurrences(pageSource, 'id="legal-information-title"'), 1);
 assert.match(pageSource, /<h2[\s\S]*Юридична інформація/);
+assert.doesNotMatch(pageSource, /Оберіть зручний спосіб зв’язку/);
 assert.doesNotMatch(legalSection, /ОПЕРАТОР СЕРВІСУ/);
 assert.match(
   legalSection,
@@ -37,29 +40,41 @@ assert.match(legalSection, />Юридична особа</);
 assert.match(legalSection, /companyLegalDetails\.shortName/);
 assert.match(legalSection, /Повна назва:/);
 assert.match(legalSection, /companyLegalDetails\.fullName/);
-assert.match(legalSection, /label="ЄДРПОУ"/);
-assert.match(legalSection, /label="Юридична адреса та адреса для листування"/);
-assert.match(legalSection, /label="Телефон у реквізитах"/);
-assert.match(
-  legalSection,
-  /label="Email для офіційних звернень і питань щодо персональних даних"/
-);
-assert.match(legalSection, /label="Письмові претензії"/);
+assert.match(legalSection, />ЄДРПОУ</);
+assert.match(pageSource, /ЮРИДИЧНА АДРЕСА ТА АДРЕСА ДЛЯ ЛИСТУВАННЯ/);
+assert.match(pageSource, /secondaryLabel: 'ТЕЛЕФОН У РЕКВІЗИТАХ'/);
+assert.match(legalSection, />Письмові претензії</);
 
-assert.equal(occurrences(legalSection, 'companyLegalDetails.email.display'), 1);
-assert.equal(occurrences(legalSection, 'companyLegalDetails.email.href'), 1);
-assert.equal(occurrences(legalSection, 'companyLegalDetails.legalAddress.display'), 1);
-assert.doesNotMatch(legalSection, /label="Назва юридичної особи"/);
-assert.doesNotMatch(legalSection, /label="Повна назва"/);
+assert.equal(occurrences(pageSource, "label: 'EMAIL'"), 1);
+assert.equal(occurrences(pageSource, 'siteContacts.email.display'), 2);
+assert.equal(occurrences(pageSource, 'siteContacts.email.href'), 1);
+assert.equal(occurrences(pageSource, 'companyLegalDetails.email.display'), 0);
+assert.equal(occurrences(pageSource, 'companyLegalDetails.email.href'), 0);
+assert.equal(occurrences(pageSource, 'companyLegalDetails.legalAddress.display'), 1);
+assert.equal(occurrences(pageSource, 'siteContacts.address.display'), 2);
+assert.equal(occurrences(pageSource, 'companyLegalDetails.legalPhone.display'), 2);
+assert.equal(occurrences(pageSource, 'siteContacts.phone.display'), 2);
 assert.doesNotMatch(legalSection, /label="Володілець персональних даних"/);
 assert.doesNotMatch(legalSection, /label="Запити щодо персональних даних"/);
-assert.match(legalSection, /Приймаються поштою за зазначеною вище юридичною адресою\./);
+assert.match(legalSection, /Приймаються поштою за зазначеною в блоці контактів юридичною адресою\./);
 assert.doesNotMatch(legalSection, /Письмові претензії приймаються[\s\S]*companyLegalDetails\.legalAddress\.display/);
 
+const legalTitleIndex = pageSource.indexOf('id="legal-information-title"');
+const legalEntityIndex = pageSource.indexOf('companyLegalDetails.shortName');
+const contactGridIndex = pageSource.indexOf('Контактна інформація');
+const edrpouIndex = pageSource.indexOf('companyLegalDetails.edrpou');
+const formIndex = pageSource.indexOf('<ContactForm />');
+const claimsIndex = pageSource.indexOf('Письмові претензії');
+assert.ok(legalTitleIndex < legalEntityIndex);
+assert.ok(legalEntityIndex < contactGridIndex);
+assert.ok(edrpouIndex < formIndex);
+assert.ok(formIndex < claimsIndex);
+assert.equal(occurrences(pageSource, '<ContactForm />'), 1);
+
 assert.match(pageSource, /ОФІС, СКЛАД, БАЗА, ПУНКТ ОБСЛУГОВУВАННЯ ТА ВИДАЧІ/);
-assert.doesNotMatch(pageSource, /siteContacts\.address[\s\S]{0,180}юридичн/i);
-assert.match(pageSource, /grid min-w-0 gap-px bg-public-border sm:grid-cols-2/);
-assert.match(pageSource, /sm:col-span-2/);
+assert.match(pageSource, /value: siteContacts\.address\.display,[\s\S]*Відвідування можливе без попереднього погодження/);
+assert.match(pageSource, /secondaryLabel: 'ЮРИДИЧНА АДРЕСА',[\s\S]*companyLegalDetails\.legalAddress\.display/);
+assert.match(pageSource, /lg:grid-cols-\[minmax\(0,0\.37fr\)_minmax\(0,0\.63fr\)\]/);
 assert.match(pageSource, /overflow-hidden/);
 assert.match(pageSource, /break-words/);
 assert.match(pageSource, /focus-visible:outline/);
@@ -98,5 +113,5 @@ assert.equal(new Set(sitemapUrls).size, 15);
 assert.equal(sitemapUrls.includes(buildPublicUrl('/contacts')), true);
 
 console.log(
-  `stageLegal1FContacts=PASS legalGroups=6 sitemapUrls=${sitemapUrls.length} canonical=${String(metadata.alternates?.canonical)}`
+  `stageLegal1FContacts=PASS layout=single-section emailGroups=1 sitemapUrls=${sitemapUrls.length} canonical=${String(metadata.alternates?.canonical)}`
 );

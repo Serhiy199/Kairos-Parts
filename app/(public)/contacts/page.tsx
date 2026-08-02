@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
+import type { IconType } from 'react-icons';
 import { TbBrandTelegram, TbClock, TbMail, TbMapPin, TbPhone } from 'react-icons/tb';
 
 import { companyLegalDetails } from '@/lib/company-details';
@@ -10,31 +11,56 @@ import { ContactForm } from './contact-form';
 
 export const metadata: Metadata = createPublicMetadata(PUBLIC_PAGE_SEO.contacts);
 
-const contacts = [
+type ContactItem = {
+  label: string;
+  value: string;
+  description: string;
+  icon: IconType;
+  href?: string;
+  external?: boolean;
+  ariaLabel?: string;
+  secondaryLabel?: string;
+  secondaryValue?: string;
+  secondaryDescription?: string;
+  secondaryHref?: string;
+  secondaryAriaLabel?: string;
+};
+
+const contacts: ContactItem[] = [
   {
     label: 'ТЕЛЕФОН',
     value: siteContacts.phone.display,
     description: 'Для оперативного зв’язку з менеджером.',
     icon: TbPhone,
     href: siteContacts.phone.href,
-    ariaLabel: `Зателефонувати за номером ${siteContacts.phone.display}`
+    ariaLabel: `Зателефонувати за номером ${siteContacts.phone.display}`,
+    secondaryLabel: 'ТЕЛЕФОН У РЕКВІЗИТАХ',
+    secondaryValue: companyLegalDetails.legalPhone.display,
+    secondaryDescription: 'Контактний телефон юридичної особи.',
+    secondaryHref: companyLegalDetails.legalPhone.href,
+    secondaryAriaLabel: `Зателефонувати за номером ${companyLegalDetails.legalPhone.display}`
   },
   {
     label: 'EMAIL',
     value: siteContacts.email.display,
-    description: 'Для списків позицій, документів, B2B-звернень та загальних питань.',
+    description:
+      'Для списків позицій, документів, B2B-звернень, загальних та офіційних питань, зокрема щодо персональних даних.',
     icon: TbMail,
     href: siteContacts.email.href,
     ariaLabel: `Написати на email ${siteContacts.email.display}`
   },
   {
-    label: 'ОФІС, СКЛАД, БАЗА, ПУНКТ ОБСЛУГОВУВАННЯ ТА ВИДАЧІ',
+    label:
+      'ОФІС, СКЛАД, БАЗА, ПУНКТ ОБСЛУГОВУВАННЯ ТА ВИДАЧІ / ЮРИДИЧНА АДРЕСА ТА АДРЕСА ДЛЯ ЛИСТУВАННЯ',
     value: siteContacts.address.display,
     description: 'Відвідування можливе без попереднього погодження у робочі години.',
     icon: TbMapPin,
     href: siteContacts.address.href,
     external: true,
-    ariaLabel: `Відкрити адресу ${siteContacts.address.display} у Google Maps`
+    ariaLabel: `Відкрити адресу ${siteContacts.address.display} у Google Maps`,
+    secondaryLabel: 'ЮРИДИЧНА АДРЕСА',
+    secondaryValue: companyLegalDetails.legalAddress.display,
+    secondaryDescription: 'Адреса для офіційного листування.'
   },
   {
     label: 'TELEGRAM',
@@ -94,23 +120,35 @@ export default function ContactsPage() {
         </div>
       </section>
 
-      <section className="bg-public-page py-16 sm:py-20 lg:py-24">
+      <section
+        className="bg-public-page py-16 sm:py-20 lg:py-24"
+        aria-labelledby="legal-information-title"
+      >
         <div className="kp-container">
           <div className="max-w-3xl">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent sm:text-sm">
-              ЗВ’ЯЖІТЬСЯ З НАМИ
-            </p>
-            <h2 className="mt-3 text-3xl font-bold leading-tight text-public-primary sm:text-4xl">
-              Оберіть зручний спосіб зв’язку
+            <h2
+              id="legal-information-title"
+              className="text-3xl font-bold leading-tight text-public-primary sm:text-4xl"
+            >
+              Юридична інформація
             </h2>
             <p className="mt-4 text-base leading-7 text-public-secondary sm:text-lg sm:leading-8">
-              Для підбору запчастин краще створити структуровану заявку. Для загальних питань, партнерства
-              або уточнення статусу звернення скористайтеся контактною формою.
+              Реквізити ТОВ «КАЙРОС ПАРТС» як оператора сервісу та володільця персональних даних.
             </p>
             <div aria-hidden="true" className="mt-6 h-px w-16 bg-accent" />
           </div>
 
-          <div className="mt-10 overflow-hidden rounded-[22px] border border-public-border bg-public-card shadow-panel lg:grid lg:grid-cols-[minmax(0,0.37fr)_minmax(0,0.63fr)]">
+          <div className="mt-10 overflow-hidden rounded-[22px] border border-public-border bg-primary px-6 py-7 text-white shadow-panel sm:px-8 lg:px-10">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Юридична особа</p>
+            <p className="mt-3 break-words text-2xl font-bold leading-tight sm:text-3xl">
+              {companyLegalDetails.shortName}
+            </p>
+            <p className="mt-3 break-words text-sm leading-6 text-white/75 sm:text-base sm:leading-7">
+              <span className="font-semibold text-white">Повна назва:</span> {companyLegalDetails.fullName}
+            </p>
+          </div>
+
+          <div className="mt-6 overflow-hidden rounded-[22px] border border-public-border bg-public-card shadow-panel lg:grid lg:grid-cols-[minmax(0,0.37fr)_minmax(0,0.63fr)]">
             <div className="border-b border-public-border bg-public-section p-6 sm:p-8 lg:border-b-0 lg:border-r lg:p-10 xl:p-12">
               <h2 className="text-2xl font-bold text-public-primary sm:text-3xl">Контактна інформація</h2>
               <p className="mt-3 text-base leading-7 text-public-muted">
@@ -145,6 +183,27 @@ export default function ContactsPage() {
                             <p className={`${valueClassName} break-words`}>{contact.value}</p>
                           )}
                           <p className="mt-2 text-sm leading-6 text-public-muted">{contact.description}</p>
+                          {contact.secondaryValue ? (
+                            <div className="mt-4 border-t border-public-border pt-4">
+                              <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">
+                                {contact.secondaryLabel}
+                              </p>
+                              {contact.secondaryHref ? (
+                                <a
+                                  href={contact.secondaryHref}
+                                  aria-label={contact.secondaryAriaLabel}
+                                  className={`${valueClassName} break-words hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent`}
+                                >
+                                  {contact.secondaryValue}
+                                </a>
+                              ) : (
+                                <p className={`${valueClassName} break-words`}>{contact.secondaryValue}</p>
+                              )}
+                              <p className="mt-2 text-sm leading-6 text-public-muted">
+                                {contact.secondaryDescription}
+                              </p>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     );
@@ -153,97 +212,26 @@ export default function ContactsPage() {
               </address>
             </div>
 
-            <ContactForm />
-          </div>
-        </div>
-      </section>
-
-      <section
-        className="border-t border-public-border bg-public-section py-16 sm:py-20 lg:py-24"
-        aria-labelledby="legal-information-title"
-      >
-        <div className="kp-container">
-          <div className="max-w-3xl">
-            <h2
-              id="legal-information-title"
-              className="text-3xl font-bold leading-tight text-public-primary sm:text-4xl"
-            >
-              Юридична інформація
-            </h2>
-            <p className="mt-4 text-base leading-7 text-public-secondary sm:text-lg sm:leading-8">
-              Реквізити ТОВ «КАЙРОС ПАРТС» як оператора сервісу та володільця персональних даних.
-            </p>
-            <div aria-hidden="true" className="mt-6 h-px w-16 bg-accent" />
-          </div>
-
-          <div className="mt-10 overflow-hidden rounded-[22px] border border-public-border bg-public-card shadow-panel">
-            <dl className="grid min-w-0 gap-px bg-public-border sm:grid-cols-2">
-              <div className="min-w-0 bg-primary px-6 py-7 text-white sm:col-span-2 sm:px-8 lg:px-10">
-                <dt className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Юридична особа</dt>
-                <dd className="mt-3 min-w-0">
-                  <p className="break-words text-2xl font-bold leading-tight sm:text-3xl">
-                    {companyLegalDetails.shortName}
-                  </p>
-                  <p className="mt-3 break-words text-sm leading-6 text-white/75 sm:text-base sm:leading-7">
-                    <span className="font-semibold text-white">Повна назва:</span>{' '}
-                    {companyLegalDetails.fullName}
-                  </p>
-                </dd>
+            <div aria-label="Контактна форма та юридичні реквізити" className="min-w-0 bg-public-card">
+              <div className="border-b border-public-border px-6 py-6 sm:px-8 lg:px-10 xl:px-12">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">ЄДРПОУ</p>
+                <p className="mt-2 text-lg font-bold text-public-primary sm:text-xl">
+                  {companyLegalDetails.edrpou}
+                </p>
               </div>
-              <LegalDetail label="ЄДРПОУ" value={companyLegalDetails.edrpou} />
-              <LegalDetail
-                label="Юридична адреса та адреса для листування"
-                value={companyLegalDetails.legalAddress.display}
-              />
-              <LegalDetail
-                label="Телефон у реквізитах"
-                value={companyLegalDetails.legalPhone.display}
-                href={companyLegalDetails.legalPhone.href}
-              />
-              <LegalDetail
-                label="Email для офіційних звернень і питань щодо персональних даних"
-                value={companyLegalDetails.email.display}
-                href={companyLegalDetails.email.href}
-              />
-              <LegalDetail
-                label="Письмові претензії"
-                value="Приймаються поштою за зазначеною вище юридичною адресою."
-                fullWidth
-              />
-            </dl>
+
+              <ContactForm />
+
+              <div className="border-t border-public-border px-6 py-6 sm:px-8 lg:px-10 xl:px-12">
+                <h3 className="text-lg font-bold text-public-primary">Письмові претензії</h3>
+                <p className="mt-2 text-sm leading-7 text-public-muted sm:text-base">
+                  Приймаються поштою за зазначеною в блоці контактів юридичною адресою.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
     </>
-  );
-}
-
-function LegalDetail({
-  label,
-  value,
-  href,
-  fullWidth = false
-}: {
-  label: string;
-  value: string;
-  href?: string;
-  fullWidth?: boolean;
-}) {
-  return (
-    <div className={`min-w-0 bg-public-card px-6 py-6 sm:px-8 lg:px-10 ${fullWidth ? 'sm:col-span-2' : ''}`}>
-      <dt className="text-xs font-bold uppercase tracking-[0.16em] text-accent">{label}</dt>
-      <dd className="mt-2 break-words text-base font-semibold leading-7 text-public-primary">
-        {href ? (
-          <a
-            href={href}
-            className="transition hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-          >
-            {value}
-          </a>
-        ) : (
-          value
-        )}
-      </dd>
-    </div>
   );
 }
