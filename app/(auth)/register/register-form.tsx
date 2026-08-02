@@ -161,6 +161,17 @@ export function RegisterForm({ nextPath }: { nextPath?: string }) {
           <ActionIcon name="plus" />
           Зареєструватися
         </button>
+        <p className="text-xs leading-5 text-muted md:col-span-2">
+          Реєструючись, ви підтверджуєте, що ознайомилися з{' '}
+          <Link href="/terms-of-use" className="font-semibold text-foreground underline decoration-accent underline-offset-4 transition hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+            Умовами користування
+          </Link>{' '}
+          та{' '}
+          <Link href="/privacy-policy" className="font-semibold text-foreground underline decoration-accent underline-offset-4 transition hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+            Політикою конфіденційності
+          </Link>
+          .
+        </p>
       </form>
 
       <p className="mt-5 text-sm text-muted">

@@ -1318,6 +1318,24 @@ export function LogisticsRequestForm({
           </div>
         ) : null}
 
+        <div className="mt-5 rounded-lg border border-public-border bg-public-elevated p-4 text-sm leading-6 text-public-muted">
+          <p>
+            Надсилання заявки на перевезення не є автоматичним укладенням договору або гарантією виконання
+            у вибрану дату. Умови та можливість виконання підтверджує менеджер.
+          </p>
+          <p className="mt-2">
+            Детальніше — в{' '}
+            <Link href="/terms-of-use" className="font-semibold text-public-primary underline decoration-accent underline-offset-4 transition hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+              Умовах користування
+            </Link>{' '}
+            та{' '}
+            <Link href="/privacy-policy" className="font-semibold text-public-primary underline decoration-accent underline-offset-4 transition hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+              Політиці конфіденційності
+            </Link>
+            .
+          </p>
+        </div>
+
         <button
           type="submit"
           disabled={!canSubmit}

@@ -28,7 +28,19 @@ export const PUBLIC_PAGE_SEO = {
     path: '/contacts',
     title: 'Контакти Kairos Parts — зв’язок із командою',
     description:
-      'Зв’яжіться з Kairos Parts щодо підбору запчастин, комерційної пропозиції, співпраці або статусу заявки.'
+      'Контактні канали, адреса та юридична інформація Kairos Parts для звернень щодо запчастин, документів і співпраці.'
+  },
+  privacyPolicy: {
+    path: '/privacy-policy',
+    title: 'Політика конфіденційності | Kairos Parts',
+    description:
+      'Інформація про те, які персональні дані обробляє Kairos Parts, для чого вони використовуються, як захищаються та як подати запит щодо своїх даних.'
+  },
+  termsOfUse: {
+    path: '/terms-of-use',
+    title: 'Умови користування | Kairos Parts',
+    description:
+      'Правила користування сайтом Kairos Parts, особистим кабінетом, заявками, документами та іншими функціями сервісу.'
   },
   logistics: {
     path: '/logistics',
