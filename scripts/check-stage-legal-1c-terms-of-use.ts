@@ -116,8 +116,8 @@ assert.match(contactSource, /required/);
 assert.match(contactSource, /href="\/privacy-policy"/);
 
 const sitemapUrls = sitemap().map((entry) => entry.url);
-assert.equal(sitemapUrls.length, 15);
-assert.equal(new Set(sitemapUrls).size, 15);
+assert.equal(sitemapUrls.length, 8);
+assert.equal(new Set(sitemapUrls).size, 8);
 assert.equal(sitemapUrls.includes(buildPublicUrl('/terms-of-use')), true);
 assert.equal(sitemapUrls.includes(buildPublicUrl('/privacy-policy')), true);
 assert.equal(sitemapUrls.includes(buildPublicUrl('/categories')), false);

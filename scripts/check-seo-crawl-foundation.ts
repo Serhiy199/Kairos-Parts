@@ -4,7 +4,6 @@ import { join } from 'node:path';
 
 import robots, { ROBOTS_DISALLOW_PATHS } from '@/app/robots';
 import sitemap from '@/app/sitemap';
-import { catalogCategories } from '@/lib/catalog/catalog-data';
 import {
   createPublicMetadata,
   NOINDEX_METADATA,
@@ -19,9 +18,6 @@ import {
 
 const FORBIDDEN_ORIGIN_PARTS = ['vercel.app', 'localhost', '127.0.0.1', 'www.'];
 const FORBIDDEN_SITEMAP_PREFIXES = ['/admin', '/client', '/api', '/login', '/register', '/auth'];
-const EXPECTED_CHILD_CATEGORY_PATHS = catalogCategories.map(
-  (category) => `/categories/${category.slug}`
-);
 const EXPECTED_SITEMAP_PATHS = [
   '/',
   '/about',
@@ -30,8 +26,7 @@ const EXPECTED_SITEMAP_PATHS = [
   '/privacy-policy',
   '/terms-of-use',
   '/logistics',
-  '/used-equipment',
-  ...EXPECTED_CHILD_CATEGORY_PATHS
+  '/used-equipment'
 ];
 
 function sourceFiles(directory: string): string[] {
@@ -85,12 +80,12 @@ for (const forbiddenPart of FORBIDDEN_ORIGIN_PARTS) {
 const sitemapEntries = sitemap();
 const sitemapUrls = sitemapEntries.map((entry) => entry.url);
 
-assert.equal(sitemapUrls.length, 15);
+assert.equal(sitemapUrls.length, 8);
 assert.equal(new Set(sitemapUrls).size, sitemapUrls.length, 'Sitemap URLs must be unique.');
 assert.deepEqual(
   sitemapUrls,
   EXPECTED_SITEMAP_PATHS.map((path) => buildPublicUrl(path)),
-  'Sitemap must contain the canonical 15-URL inventory in the expected order.'
+  'Sitemap must contain the canonical 8-URL inventory in the expected order.'
 );
 assert.equal(sitemapUrls.includes(buildPublicUrl('/categories')), false);
 assert.equal(sitemapUrls.includes(buildPublicUrl('/logistics')), true);
@@ -98,9 +93,7 @@ assert.equal(sitemapUrls.includes(buildPublicUrl('/privacy-policy')), true);
 assert.equal(sitemapUrls.includes(buildPublicUrl('/terms-of-use')), true);
 assert.equal(sitemapUrls.includes(buildPublicUrl('/logistics/request')), false);
 
-for (const categoryPath of EXPECTED_CHILD_CATEGORY_PATHS) {
-  assert.equal(sitemapUrls.includes(buildPublicUrl(categoryPath)), true);
-}
+assert.equal(sitemapUrls.some((url) => new URL(url).pathname.startsWith('/categories')), false);
 
 for (const urlValue of sitemapUrls) {
   const url = new URL(urlValue);
@@ -115,16 +108,9 @@ for (const urlValue of sitemapUrls) {
   );
 }
 
-const expectedMetadataInputs = [
-  ...Object.values(PUBLIC_PAGE_SEO),
-  ...catalogCategories.map((category) => ({
-    path: `/categories/${category.slug}`,
-    title: `${category.name} — Kairos Parts`,
-    description: category.description
-  }))
-];
+const expectedMetadataInputs = Object.values(PUBLIC_PAGE_SEO);
 
-assert.equal(expectedMetadataInputs.length, 15);
+assert.equal(expectedMetadataInputs.length, 8);
 
 for (const input of expectedMetadataInputs) {
   const metadata = createPublicMetadata(input);
@@ -147,8 +133,7 @@ assert.deepEqual(NOINDEX_METADATA.robots, {
 });
 
 assert.equal(existsSync(join(process.cwd(), 'app/(public)/categories/page.tsx')), false);
-assert.equal(existsSync(join(process.cwd(), 'app/(public)/categories/[slug]/page.tsx')), true);
-assert.equal(catalogCategories.length, 7);
+assert.equal(existsSync(join(process.cwd(), 'app/(public)/categories/[slug]/page.tsx')), false);
 
 const logisticsSource = readFileSync(
   join(process.cwd(), 'app/(public)/logistics/page.tsx'),
@@ -188,8 +173,8 @@ for (const sourcePath of publicUiSources) {
   const source = readFileSync(sourcePath, 'utf8');
   assert.doesNotMatch(
     source,
-    /(?:href\s*=\s*|url\s*:\s*)["']\/categories["']|buildPublicUrl\(["']\/categories["']\)/,
-    `Removed /categories route must not remain linked or referenced in structured data: ${sourcePath}`
+    /(?:href\s*=\s*|url\s*:\s*)["'`]\/categories(?:\/|["'`])|buildPublicUrl\(["'`]\/categories(?:\/|["'`])/,
+    `Removed /categories routes must not remain linked or referenced in structured data: ${sourcePath}`
   );
 }
 

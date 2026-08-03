@@ -1,6 +1,5 @@
 import type { MetadataRoute } from 'next';
 
-import { catalogCategories } from '@/lib/catalog/catalog-data';
 import { PUBLIC_PAGE_SEO } from '@/lib/seo';
 import { buildPublicUrl } from '@/lib/site-url';
 
@@ -16,9 +15,7 @@ export const STATIC_SITEMAP_PATHS = [
 ] as const;
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const categoryPaths = catalogCategories.map((category) => `/categories/${category.slug}` as const);
-
-  return [...STATIC_SITEMAP_PATHS, ...categoryPaths].map((path) => ({
+  return STATIC_SITEMAP_PATHS.map((path) => ({
     url: buildPublicUrl(path)
   }));
 }
