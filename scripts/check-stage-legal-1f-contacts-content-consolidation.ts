@@ -108,8 +108,8 @@ assert.equal(
 );
 
 const sitemapUrls = sitemap().map((entry) => entry.url);
-assert.equal(sitemapUrls.length, 15);
-assert.equal(new Set(sitemapUrls).size, 15);
+assert.equal(sitemapUrls.length, 8);
+assert.equal(new Set(sitemapUrls).size, 8);
 assert.equal(sitemapUrls.includes(buildPublicUrl('/contacts')), true);
 
 console.log(

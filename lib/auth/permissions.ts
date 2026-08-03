@@ -5,7 +5,6 @@ export const PUBLIC_ROUTE_PREFIXES = [
   '/about',
   '/how-it-works',
   '/logistics',
-  '/categories',
   '/contacts',
   '/request',
   '/login',
