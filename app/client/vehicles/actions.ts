@@ -9,8 +9,7 @@ import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import { getServerAuditRequestContext } from '@/lib/audit-log/request-context';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import {
-  EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED,
-  EQUIPMENT_TEXT_FIELD_MAX_LENGTH
+  EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED
 } from '@/lib/features/equipment-taxonomy';
 import { prisma } from '@/lib/prisma';
 import { findVehicleVinDuplicate } from '@/lib/vehicles/duplicates';
@@ -22,9 +21,9 @@ import {
 } from '@/lib/vehicles/asset-workflow';
 import {
   getAdminVehicleFormValues,
-  type AdminVehicleFormState
+  type AdminVehicleFormState,
+  validateAdminVehicleForm
 } from '@/lib/vehicles/admin-validation';
-import { normalizeVehicleVin } from '@/lib/vehicles/vin';
 
 const VEHICLE_AUDIT_VALUE_FIELDS = ['name', 'type', 'manufacturer', 'model', 'year', 'vinOrSerial', 'comment'] as const;
 const VEHICLE_AUDIT_METADATA_FIELDS = ['event', 'actorRole', 'changedFields', 'ownerType', 'ownerId'] as const;
@@ -41,41 +40,18 @@ function errorState(
 
 async function validateClientVehicleForm(formData: FormData) {
   const values = getAdminVehicleFormValues(formData);
-  const equipmentType = values.equipmentType.trim();
-  const manufacturerId = values.manufacturerId.trim();
-  const manufacturer = values.manufacturer.trim();
-  const model = values.model.trim();
-  const vinSource = values.vinOrSerial.trim();
-  const fieldErrors: AdminVehicleFormState['fieldErrors'] = {};
-
-  if (!equipmentType) fieldErrors.equipmentType = 'Вкажіть тип техніки.';
-  else if (equipmentType.length > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
-    fieldErrors.equipmentType = `Тип техніки має бути не довшим за ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.`;
+  const validation = validateAdminVehicleForm(values);
+  if (!validation.ok) {
+    return {
+      ok: false as const,
+      state: errorState(values, 'Перевірте поля форми.', validation.fieldErrors)
+    };
   }
-
-  if (EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED && !manufacturerId) {
-    fieldErrors.manufacturerId = 'Оберіть виробника зі списку.';
-  } else if (!EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED && !manufacturer) {
-    fieldErrors.manufacturer = 'Вкажіть виробника або марку.';
-  } else if (!EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED && manufacturer.length > EQUIPMENT_TEXT_FIELD_MAX_LENGTH) {
-    fieldErrors.manufacturer = `Виробник або марка має бути не довшим за ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.`;
-  }
-
-  if (!model) fieldErrors.model = 'Вкажіть модель.';
-  if (vinSource.length > 120) fieldErrors.vinOrSerial = 'VIN або серійний номер має бути не довшим за 120 символів.';
-
-  if (Object.keys(fieldErrors).length > 0) {
-    return { ok: false as const, state: errorState(values, 'Перевірте поля форми.', fieldErrors) };
-  }
-
-  const yearValue = values.year.trim();
-  const parsedYear = Number(yearValue);
-  const year = yearValue && Number.isInteger(parsedYear) && parsedYear > 1900 && parsedYear < 2200 ? parsedYear : null;
 
   const taxonomy = EQUIPMENT_TAXONOMY_VEHICLE_FIELDS_ENABLED
     ? await validateEquipmentTaxonomySelection({
-        equipmentType,
-        manufacturerId
+        equipmentType: validation.data.equipmentType,
+        manufacturerId: validation.data.manufacturerId
       })
     : null;
 
@@ -88,10 +64,15 @@ async function validateClientVehicleForm(formData: FormData) {
     };
   }
 
-  const resolvedManufacturer = taxonomy?.ok ? taxonomy.manufacturer.name : manufacturer;
+  const resolvedManufacturer = taxonomy?.ok
+    ? taxonomy.manufacturer.name
+    : validation.data.manufacturer;
   let canonicalName;
   try {
-    canonicalName = buildVehicleDisplayName({ manufacturer: resolvedManufacturer, model });
+    canonicalName = buildVehicleDisplayName({
+      manufacturer: resolvedManufacturer,
+      model: validation.data.model
+    });
   } catch (error) {
     return {
       ok: false as const,
@@ -111,12 +92,14 @@ async function validateClientVehicleForm(formData: FormData) {
     values,
     data: {
       name: canonicalName.name,
-      type: taxonomy?.ok ? taxonomy.equipmentType.name : equipmentType,
+      type: taxonomy?.ok
+        ? taxonomy.equipmentType.name
+        : validation.data.equipmentType,
       manufacturer: canonicalName.manufacturer,
       model: canonicalName.model,
-      year,
-      vinOrSerial: normalizeVehicleVin(vinSource),
-      comment: values.comment.trim() || null
+      year: validation.data.year,
+      vinOrSerial: validation.data.vinOrSerial,
+      comment: validation.data.comment
     }
   };
 }

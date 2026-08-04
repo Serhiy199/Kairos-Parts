@@ -26,6 +26,7 @@ export function ManualEquipmentFields({
         name={typeName}
         defaultValue={typeDefaultValue}
         placeholder="Наприклад: Комбайн, Трактор, Сівалка"
+        requiredMessage="Вкажіть тип техніки."
         error={typeError}
         variant={variant}
       />
@@ -34,6 +35,7 @@ export function ManualEquipmentFields({
         name={manufacturerName}
         defaultValue={manufacturerDefaultValue}
         placeholder="Наприклад: John Deere, MAN, Claas"
+        requiredMessage="Вкажіть виробника або марку."
         error={manufacturerError}
         variant={variant}
       />
@@ -46,6 +48,7 @@ function ManualField({
   name,
   defaultValue,
   placeholder,
+  requiredMessage,
   error,
   variant
 }: {
@@ -53,6 +56,7 @@ function ManualField({
   name: string;
   defaultValue: string;
   placeholder: string;
+  requiredMessage: string;
   error?: string;
   variant: 'card' | 'white';
 }) {
@@ -64,8 +68,15 @@ function ManualField({
         defaultValue={defaultValue}
         placeholder={placeholder}
         required
+        pattern={'.*\\S.*'}
         maxLength={EQUIPMENT_TEXT_FIELD_MAX_LENGTH}
         aria-invalid={Boolean(error)}
+        onInvalid={(event) => {
+          if (!event.currentTarget.value.trim()) {
+            event.currentTarget.setCustomValidity(requiredMessage);
+          }
+        }}
+        onInput={(event) => event.currentTarget.setCustomValidity('')}
         className={`h-11 w-full min-w-0 rounded-md border px-3 text-sm outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/20 ${
           variant === 'white' ? 'bg-white' : 'bg-card font-semibold text-foreground'
         } ${error ? 'border-danger/50' : 'border-border'}`}
