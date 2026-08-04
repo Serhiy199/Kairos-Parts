@@ -113,6 +113,7 @@ export function VehicleCoreFields({
         name="model"
         defaultValue={values.model}
         required
+        requiredMessage="Вкажіть модель."
         error={fieldErrors?.model}
         surface={surface}
       />
@@ -131,6 +132,8 @@ export function VehicleCoreFields({
           name="vinOrSerial"
           defaultValue={values.vinOrSerial}
           placeholder="Вкажіть VIN або серійний номер"
+          required
+          requiredMessage="Вкажіть VIN або серійний номер."
           error={fieldErrors?.vinOrSerial}
           surface={surface}
           afterError={vinAfter}
@@ -157,6 +160,7 @@ function VehicleInput({
   name,
   defaultValue,
   required = false,
+  requiredMessage,
   inputMode = 'text',
   placeholder,
   error,
@@ -167,6 +171,7 @@ function VehicleInput({
   name: 'model' | 'year' | 'vinOrSerial';
   defaultValue: string;
   required?: boolean;
+  requiredMessage?: string;
   inputMode?: 'text' | 'numeric';
   placeholder?: string;
   error?: string;
@@ -181,9 +186,16 @@ function VehicleInput({
         name={name}
         defaultValue={defaultValue}
         required={required}
+        pattern={required ? '.*\\S.*' : undefined}
         inputMode={inputMode}
         placeholder={placeholder}
         maxLength={name === 'vinOrSerial' ? 120 : undefined}
+        onInvalid={(event) => {
+          if (required && !event.currentTarget.value.trim()) {
+            event.currentTarget.setCustomValidity(requiredMessage ?? 'Заповніть поле.');
+          }
+        }}
+        onInput={(event) => event.currentTarget.setCustomValidity('')}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : undefined}
         className={inputClass(error, surface)}

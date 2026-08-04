@@ -37,7 +37,7 @@ export type ValidAdminVehicleInput = {
   manufacturer: string;
   model: string;
   year: number | null;
-  vinOrSerial: string | null;
+  vinOrSerial: string;
   comment: string | null;
 };
 
@@ -94,8 +94,8 @@ export function validateAdminVehicleForm(values: AdminVehicleFormValues) {
     fieldErrors.manufacturer = `Виробник або марка має бути не довшим за ${EQUIPMENT_TEXT_FIELD_MAX_LENGTH} символів.`;
   }
 
-  if (model.length < 2) {
-    fieldErrors.model = 'Вкажіть модель щонайменше з 2 символів.';
+  if (!model) {
+    fieldErrors.model = 'Вкажіть модель.';
   } else if (model.length > 120) {
     fieldErrors.model = 'Модель має бути не довшою за 120 символів.';
   }
@@ -112,7 +112,9 @@ export function validateAdminVehicleForm(values: AdminVehicleFormValues) {
     }
   }
 
-  if (vinSource.length > 120 || (vinOrSerial?.length ?? 0) > 120) {
+  if (!vinOrSerial) {
+    fieldErrors.vinOrSerial = 'Вкажіть VIN або серійний номер.';
+  } else if (vinSource.length > 120 || vinOrSerial.length > 120) {
     fieldErrors.vinOrSerial = 'VIN або серійний номер має бути не довшим за 120 символів.';
   }
 
@@ -132,7 +134,7 @@ export function validateAdminVehicleForm(values: AdminVehicleFormValues) {
       manufacturer,
       model,
       year,
-      vinOrSerial,
+      vinOrSerial: vinOrSerial!,
       comment: comment || null
     } satisfies ValidAdminVehicleInput
   };

@@ -43,6 +43,7 @@ export function SearchableCombobox({
   const listboxId = `${generatedId}-listbox`;
   const errorId = `${generatedId}-error`;
   const rootRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const selectedOption = useMemo(() => options.find((option) => option.value === value) ?? null, [options, value]);
   const [inputValue, setInputValue] = useState(selectedOption?.label ?? '');
   const [isOpen, setIsOpen] = useState(false);
@@ -67,6 +68,12 @@ export function SearchableCombobox({
   useEffect(() => {
     setActiveIndex(0);
   }, [inputValue, options]);
+
+  useEffect(() => {
+    inputRef.current?.setCustomValidity(
+      required && !value ? 'Оберіть значення зі списку.' : ''
+    );
+  }, [required, value]);
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -146,6 +153,7 @@ export function SearchableCombobox({
       </label>
       <input type="hidden" name={name} value={value} />
       <input
+        ref={inputRef}
         id={inputId}
         type="text"
         value={inputValue}
@@ -157,6 +165,7 @@ export function SearchableCombobox({
         aria-controls={listboxId}
         aria-activedescendant={activeOptionId}
         aria-required={required}
+        required={required}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : undefined}
         onFocus={() => setIsOpen(true)}
