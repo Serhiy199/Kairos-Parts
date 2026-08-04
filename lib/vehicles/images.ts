@@ -1,4 +1,5 @@
 import type { CloudinaryVehicleUpload } from '@/lib/cloudinary/server';
+import { getNonEmptyUploadedFiles } from '@/lib/vehicles/upload-inputs';
 
 export const MAX_VEHICLE_IMAGES = 10;
 export const MAX_VEHICLE_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -12,9 +13,7 @@ export type VehicleImageActionState = {
 export const EMPTY_VEHICLE_IMAGE_ACTION_STATE: VehicleImageActionState = { status: 'idle' };
 
 export function getVehicleImageFiles(formData: FormData) {
-  return formData
-    .getAll('images')
-    .filter((value): value is File => value instanceof File && value.size > 0);
+  return getNonEmptyUploadedFiles(formData, 'images');
 }
 
 export function validateVehicleImageFiles(files: File[], existingCount: number) {

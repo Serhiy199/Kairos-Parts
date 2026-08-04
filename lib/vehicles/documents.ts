@@ -1,3 +1,5 @@
+import { getNonEmptyUploadedFiles } from '@/lib/vehicles/upload-inputs';
+
 export const MAX_VEHICLE_DOCUMENTS = 25;
 export const MAX_VEHICLE_DOCUMENT_BYTES = 15 * 1024 * 1024;
 export const MAX_VEHICLE_DOCUMENT_BATCH_FILES = 5;
@@ -39,7 +41,7 @@ export type VehicleDocumentActionState = {
 export const EMPTY_VEHICLE_DOCUMENT_ACTION_STATE: VehicleDocumentActionState = { status: 'idle' };
 
 export function getVehicleDocumentFiles(formData: FormData) {
-  return formData.getAll('documents').filter((value): value is File => value instanceof File);
+  return getNonEmptyUploadedFiles(formData, 'documents');
 }
 
 function normalizedMimeType(file: File) {
