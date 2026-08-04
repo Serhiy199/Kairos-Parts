@@ -1,8 +1,10 @@
 import 'server-only';
 
 import {
+  buildClientApprovalFinalizedMessage,
   buildNewLogisticsRequestMessage,
   buildNewPartsRequestMessage,
+  type ClientApprovalFinalizedMessageInput,
   type NewLogisticsRequestMessageInput,
   type NewPartsRequestMessageInput
 } from '@/lib/staff-telegram/messages';
@@ -14,6 +16,7 @@ import {
 import { buildAbsoluteUrl } from '@/lib/site-url';
 
 type StaffRequestEvent =
+  | 'CLIENT_APPROVAL_FINALIZED'
   | 'NEW_LOGISTICS_REQUEST'
   | 'NEW_PARTS_REQUEST';
 
@@ -125,6 +128,25 @@ export async function notifyNewPartsRequest(
     input.requestNumber,
     () => ({
       text: buildNewPartsRequestMessage(input),
+      button: buildCrmButton(
+        `/admin/requests/${encodeURIComponent(input.id)}`
+      )
+    })
+  );
+}
+
+export async function notifyClientApprovalFinalized(
+  input: ClientApprovalFinalizedMessageInput & {
+    id: string;
+    batchId: string;
+  }
+) {
+  await notify(
+    'CLIENT_APPROVAL_FINALIZED',
+    input.id,
+    input.requestNumber,
+    () => ({
+      text: buildClientApprovalFinalizedMessage(input),
       button: buildCrmButton(
         `/admin/requests/${encodeURIComponent(input.id)}`
       )

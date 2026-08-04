@@ -64,6 +64,15 @@ type State = {
 
 type FailureMode = 'item-update' | 'batch-transition' | 'request-transition' | 'audit';
 
+type StaffApprovalNotification = {
+  id: string;
+  batchId: string;
+  requestNumber: string;
+  approvedCount: number;
+  totalCount: number;
+  requestStatus: 'AWAITING_INVOICE' | 'CANCELLED';
+};
+
 type TestTx = {
   __state: State;
   __failure: FailureMode | null;
@@ -236,7 +245,10 @@ function stateFromTx(tx: unknown) {
   return (tx as TestTx).__state;
 }
 
-function dependencies() {
+function dependencies(
+  notifications: StaffApprovalNotification[] = [],
+  notificationFailure = false
+) {
   return {
     async transitionBatch(input: {
       tx?: unknown;
@@ -321,14 +333,22 @@ function dependencies() {
         metadata: input.metadata
       });
       return { id: `aggregate-audit-${state.audits.length}` };
+    },
+    async notifyStaff(input: StaffApprovalNotification) {
+      notifications.push(input);
+      if (notificationFailure) throw new Error('mock Telegram failure');
     }
   };
 }
 
-function service(database: FakeDatabase) {
+function service(
+  database: FakeDatabase,
+  notifications: StaffApprovalNotification[] = [],
+  notificationFailure = false
+) {
   return createSubmitClientSelectionService(
     database as never,
-    dependencies() as never
+    dependencies(notifications, notificationFailure) as never
   );
 }
 
@@ -372,7 +392,8 @@ async function main() {
   );
 
   const allDb = new FakeDatabase();
-  const allResult = await service(allDb)(input(['item-1', 'item-2', 'item-3']));
+  const allNotifications: StaffApprovalNotification[] = [];
+  const allResult = await service(allDb, allNotifications)(input(['item-1', 'item-2', 'item-3']));
   assert.equal(allResult.outcome, 'changed');
   assert.equal(allResult.batchStatus, 'APPROVED');
   assert.equal(allResult.requestStatus, 'AWAITING_INVOICE');
@@ -384,9 +405,18 @@ async function main() {
   assert.equal(allDb.state.batches.get('batch-1')?.status, 'APPROVED');
   assert.equal(allDb.state.requests.get('request-1')?.status, 'AWAITING_INVOICE');
   assert.equal(allDb.state.histories.length, 1);
+  assert.deepEqual(allNotifications, [{
+    id: 'request-1',
+    batchId: 'batch-1',
+    requestNumber: 'KP-1',
+    approvedCount: 3,
+    totalCount: 3,
+    requestStatus: 'AWAITING_INVOICE'
+  }]);
 
   const partialDb = new FakeDatabase();
-  const partialResult = await service(partialDb)(input(['item-2']));
+  const partialNotifications: StaffApprovalNotification[] = [];
+  const partialResult = await service(partialDb, partialNotifications)(input(['item-2']));
   assert.equal(partialResult.outcome, 'changed');
   assert.equal(partialResult.batchStatus, 'PARTIALLY_APPROVED');
   assert.equal(partialResult.requestStatus, 'AWAITING_INVOICE');
@@ -397,9 +427,13 @@ async function main() {
   });
   assert.equal(partialDb.state.batches.get('batch-1')?.status, 'PARTIALLY_APPROVED');
   assert.equal(partialDb.state.requests.get('request-1')?.status, 'AWAITING_INVOICE');
+  assert.equal(partialNotifications.length, 1);
+  assert.equal(partialNotifications[0]?.approvedCount, 1);
+  assert.equal(partialNotifications[0]?.totalCount, 3);
 
   const zeroDb = new FakeDatabase();
-  const zeroResult = await service(zeroDb)(input([]));
+  const zeroNotifications: StaffApprovalNotification[] = [];
+  const zeroResult = await service(zeroDb, zeroNotifications)(input([]));
   assert.equal(zeroResult.outcome, 'changed');
   assert.equal(zeroResult.batchStatus, 'REJECTED');
   assert.equal(zeroResult.requestStatus, 'CANCELLED');
@@ -420,6 +454,14 @@ async function main() {
     )
   );
   assert.ok([...zeroDb.state.items.values()].every((item) => item.clientComment === null));
+  assert.deepEqual(zeroNotifications, [{
+    id: 'request-1',
+    batchId: 'batch-1',
+    requestNumber: 'KP-1',
+    approvedCount: 0,
+    totalCount: 3,
+    requestStatus: 'CANCELLED'
+  }]);
 
   const duplicateDb = new FakeDatabase();
   await expectCode(
@@ -485,7 +527,8 @@ async function main() {
   );
 
   const retryDb = new FakeDatabase();
-  const retryService = service(retryDb);
+  const retryNotifications: StaffApprovalNotification[] = [];
+  const retryService = service(retryDb, retryNotifications);
   const first = await retryService(input(['item-1', 'item-3']));
   assert.equal(first.outcome, 'changed');
   const auditCount = retryDb.state.audits.length;
@@ -494,6 +537,7 @@ async function main() {
   assert.equal(identical.outcome, 'noop');
   assert.equal(retryDb.state.audits.length, auditCount);
   assert.equal(retryDb.state.histories.length, historyCount);
+  assert.equal(retryNotifications.length, 1);
   await expectCode(
     () => retryService(input(['item-2'])),
     'SUBMISSION_CONFLICT'
@@ -509,8 +553,31 @@ async function main() {
     const failureDb = new FakeDatabase();
     failureDb.failure = failure;
     const before = cloneState(failureDb.state);
-    await assert.rejects(() => service(failureDb)(input(['item-1'])));
+    const failedNotifications: StaffApprovalNotification[] = [];
+    await assert.rejects(() => service(failureDb, failedNotifications)(input(['item-1'])));
     assert.deepEqual(failureDb.state, before);
+    assert.equal(failedNotifications.length, 0);
+  }
+
+  const telegramFailureDb = new FakeDatabase();
+  const telegramFailureNotifications: StaffApprovalNotification[] = [];
+  const originalWarn = console.warn;
+  const warningCalls: unknown[][] = [];
+  console.warn = (...args: unknown[]) => warningCalls.push(args);
+  try {
+    const telegramFailureResult = await service(
+      telegramFailureDb,
+      telegramFailureNotifications,
+      true
+    )(input(['item-1']));
+    assert.equal(telegramFailureResult.outcome, 'changed');
+    assert.equal(telegramFailureResult.requestStatus, 'AWAITING_INVOICE');
+    assert.equal(telegramFailureDb.state.requests.get('request-1')?.status, 'AWAITING_INVOICE');
+    assert.equal(telegramFailureNotifications.length, 1);
+    assert.equal(warningCalls.length, 1);
+    assert.match(String(warningCalls[0]?.[0]), /Staff Telegram approval notification failed/);
+  } finally {
+    console.warn = originalWarn;
   }
 
   const doubleDb = new FakeDatabase();

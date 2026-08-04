@@ -69,6 +69,8 @@ export class SubmitClientSelectionError extends Error {
 export type SubmitClientSelectionResult =
   | {
       outcome: 'changed';
+      batchId: string;
+      requestNumber: string;
       batchStatus: 'APPROVED' | 'PARTIALLY_APPROVED' | 'REJECTED';
       requestStatus: 'AWAITING_INVOICE' | 'CANCELLED';
       totalCount: number;
@@ -102,13 +104,27 @@ type SubmitClientSelectionDependencies = {
   transitionRequest: typeof transitionRequestStatus;
   writeAudit: typeof writeAuditLog;
   notify?: typeof notifyRequestLifecycleEvent;
+  notifyStaff?: (input: {
+    id: string;
+    batchId: string;
+    requestNumber: string;
+    approvedCount: number;
+    totalCount: number;
+    requestStatus: 'AWAITING_INVOICE' | 'CANCELLED';
+  }) => Promise<void>;
 };
 
 const defaultDependencies: SubmitClientSelectionDependencies = {
   transitionBatch: transitionRequestSelectionBatchStatus,
   transitionRequest: transitionRequestStatus,
   writeAudit: writeAuditLog,
-  notify: notifyRequestLifecycleEvent
+  notify: notifyRequestLifecycleEvent,
+  notifyStaff: async (input) => {
+    const { notifyClientApprovalFinalized } = await import(
+      '@/lib/staff-telegram/notifications'
+    );
+    await notifyClientApprovalFinalized(input);
+  }
 };
 
 const transactionOptions = {
@@ -520,6 +536,8 @@ async function executeClientSelectionSubmission(
 
   return {
     outcome: 'changed',
+    batchId: batch.id,
+    requestNumber: request.requestNumber,
     batchStatus,
     requestStatus,
     totalCount,
@@ -573,6 +591,25 @@ export function createSubmitClientSelectionService(
               event,
               requestId: input.requestId,
               recipientType: 'CLIENT',
+              errorCategory: error instanceof Error ? error.name : 'UNKNOWN'
+            });
+          }
+        }
+        if (result.outcome === 'changed' && dependencies.notifyStaff) {
+          try {
+            await dependencies.notifyStaff({
+              id: input.requestId,
+              batchId: result.batchId,
+              requestNumber: result.requestNumber,
+              approvedCount: result.approvedCount,
+              totalCount: result.totalCount,
+              requestStatus: result.requestStatus
+            });
+          } catch (error) {
+            console.warn('Staff Telegram approval notification failed.', {
+              event: 'CLIENT_APPROVAL_FINALIZED',
+              requestId: input.requestId,
+              batchId: result.batchId,
               errorCategory: error instanceof Error ? error.name : 'UNKNOWN'
             });
           }

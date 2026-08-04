@@ -110,3 +110,35 @@ export function buildNewPartsRequestMessage(
     `Джерело: ${input.source === 'TELEGRAM' ? 'Telegram-бот' : 'Кабінет клієнта'}`
   ].join('\n');
 }
+
+export type ClientApprovalFinalizedMessageInput = {
+  requestNumber: string;
+  approvedCount: number;
+  totalCount: number;
+  requestStatus: 'AWAITING_INVOICE' | 'CANCELLED';
+};
+
+export function buildClientApprovalFinalizedMessage(
+  input: ClientApprovalFinalizedMessageInput
+) {
+  if (input.requestStatus === 'CANCELLED') {
+    return [
+      '❌ Клієнт скасував заявку на етапі погодження',
+      '',
+      `Заявка: ${plainText(input.requestNumber, 40)}`,
+      `Погоджено позицій: 0 із ${input.totalCount}`,
+      'Клієнт не погодив жодної з підібраних позицій.',
+      '',
+      'Формування рахунку не потрібне.'
+    ].join('\n');
+  }
+
+  return [
+    '✅ Клієнт погодив підібрані позиції',
+    '',
+    `Заявка: ${plainText(input.requestNumber, 40)}`,
+    `Погоджено позицій: ${input.approvedCount} із ${input.totalCount}`,
+    '',
+    'Можна формувати рахунок.'
+  ].join('\n');
+}
