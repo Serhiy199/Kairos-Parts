@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
 import {
   TbArrowLeft,
-  TbArrowsExchange,
   TbBuilding,
   TbBuildingStore,
   TbClipboardList,
@@ -338,7 +337,6 @@ const NAV_ICONS = {
   tractor: TbTractor,
   clients: TbUsers,
   companies: TbBuilding,
-  changes: TbArrowsExchange,
   history: TbHistory,
   billing: TbBuildingStore,
   directories: TbHierarchy3,

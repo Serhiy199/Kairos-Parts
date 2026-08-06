@@ -51,7 +51,6 @@ export default async function ClientLayout({ children }: { children: React.React
     { href: '/client/logistics', label: 'Мої доставки', icon: 'logistics' as const },
     { href: '/client/vehicles', label: 'Мій парк техніки', icon: 'tractor' as const },
     { href: '/client/documents', label: 'Документи', icon: 'documents' as const },
-    { href: '/client/change-requests', label: 'Запити на зміну', icon: 'changes' as const },
     { href: '/client/profile', label: 'Профіль', icon: 'profile' as const }
   ];
   const wideContent = ['/client/requests', '/client/logistics', '/client/change-requests', '/client/documents'].some(

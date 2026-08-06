@@ -22,7 +22,6 @@ const adminNavItems = [
   { href: '/admin/used-equipment/items', label: 'БВ техніка', icon: 'tractor' as const, activePrefix: '/admin/used-equipment' },
   { href: '/admin/clients', label: 'Клієнти', icon: 'clients' as const },
   { href: '/admin/companies', label: 'Компанії', icon: 'companies' as const },
-  { href: '/admin/change-requests', label: 'Запити змін', icon: 'changes' as const },
   { href: '/admin/audit-log', label: 'Журнал дій', icon: 'history' as const },
   { href: '/admin/billing-settings', label: 'Реквізити продавця', icon: 'billing' as const },
   ...(EQUIPMENT_TAXONOMY_ADMIN_ENABLED

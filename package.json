@@ -49,6 +49,7 @@
     "test:legal-layout-1d": "tsx scripts/check-stage-legal-1d-legal-pages-layout-simplification.ts",
     "test:legal-footer-1e": "tsx scripts/check-stage-legal-1e-footer-legal-links-placement.ts",
     "test:legal-contacts-consolidation-1f": "tsx scripts/check-stage-legal-1f-contacts-content-consolidation.ts",
+    "test:cabinet-navigation-change-requests-hidden": "tsx scripts/check-cabinet-navigation-change-requests-hidden.ts",
     "audit:request-file-storage": "tsx scripts/audit-request-file-storage.ts",
     "migrate:request-files-cloudinary": "tsx scripts/migrate-request-files-to-cloudinary.ts",
     "test:logistics-address-combobox": "tsx scripts/check-logistics-request-form.ts",
