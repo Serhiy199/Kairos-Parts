@@ -624,7 +624,7 @@ export function LogisticsRequestForm({
     <form
       aria-label="Форма заявки Kairos Logistics"
       onSubmit={handleSubmit}
-      className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(340px,0.48fr)] lg:items-start xl:gap-10"
+      className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(340px,0.48fr)] lg:items-stretch xl:gap-10"
     >
       <label className="absolute -left-[10000px] h-px w-px overflow-hidden">
         Вебсайт
@@ -1197,10 +1197,10 @@ export function LogisticsRequestForm({
         </section>
       </div>
 
-      <div className="grid min-w-0 content-start gap-5">
+      <div className="flex min-w-0 flex-col gap-5 lg:h-full">
         <aside
           aria-labelledby="logistics-price-preview-title"
-          className="public-card min-w-0 p-5 sm:p-7"
+          className="public-card min-w-0 p-5 sm:p-7 lg:order-2 lg:mt-auto"
         >
         {pricingType === 'INDIVIDUAL' ? (
           <div>
@@ -1359,7 +1359,7 @@ export function LogisticsRequestForm({
 
 function DeliveryGuidance() {
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4 lg:order-1">
       <section
         aria-labelledby="logistics-restrictions-title"
         className="rounded-xl border border-public-danger/30 bg-public-elevated/60 p-4 sm:p-5"
