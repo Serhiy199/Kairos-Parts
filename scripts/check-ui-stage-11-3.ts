@@ -35,10 +35,14 @@ if (directoryActions.includes("value(formData, 'slug')")) {
   throw new Error('EquipmentType action still trusts a browser-provided slug.');
 }
 
-for (const icon of ['dashboard', 'requests', 'tractor', 'documents', 'changes', 'profile']) {
+for (const icon of ['dashboard', 'requests', 'tractor', 'documents', 'profile']) {
   if (!clientLayout.includes(`icon: '${icon}'`)) {
     throw new Error(`Client navigation icon is missing: ${icon}`);
   }
+}
+
+if (clientLayout.includes("href: '/client/change-requests'")) {
+  throw new Error('Client change requests must stay hidden from cabinet navigation.');
 }
 
 console.log('Stage UI 11.3 taxonomy and client navigation checks passed.');
