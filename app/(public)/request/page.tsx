@@ -182,7 +182,7 @@ async function prismaVehiclePrefill(access: NonNullable<ClientAccess>, vehicleId
     vehicleYear: vehicle.year,
     vinOrSerial: vehicle.vinOrSerial ?? '',
     description: '',
-    comment: vehicle.comment ?? ''
+    comment: ''
   };
 }
 
