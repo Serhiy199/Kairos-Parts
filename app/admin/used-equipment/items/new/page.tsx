@@ -15,6 +15,7 @@ const initialValues: UsedEquipmentFormValues = {
   manufacturer: '',
   model: '',
   year: '',
+  priceAmount: '',
   description: '',
   internalComment: '',
   status: 'DRAFT'

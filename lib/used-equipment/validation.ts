@@ -1,6 +1,7 @@
 import type { UsedEquipmentStatus } from '@prisma/client';
 
 import { validateAndSanitizeUsedEquipmentDescription } from '@/lib/used-equipment/description';
+import { parseUsedEquipmentPrice } from '@/lib/used-equipment/price';
 import { buildUsedEquipmentTitle } from '@/lib/used-equipment/title';
 
 export const USED_EQUIPMENT_ALLOWED_FORM_STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED'] as const satisfies UsedEquipmentStatus[];
@@ -13,6 +14,7 @@ export type UsedEquipmentFormField =
   | 'manufacturer'
   | 'model'
   | 'year'
+  | 'priceAmount'
   | 'description'
   | 'internalComment'
   | 'status'
@@ -23,6 +25,7 @@ export type UsedEquipmentFormValues = {
   manufacturer: string;
   model: string;
   year: string;
+  priceAmount: string;
   description: string;
   internalComment: string;
   status: UsedEquipmentStatus;
@@ -41,6 +44,7 @@ export type ValidUsedEquipmentInput = {
   manufacturer: string;
   model: string;
   year: number | null;
+  priceAmount: number;
   description: string;
   internalComment: string | null;
   status: UsedEquipmentStatus;
@@ -58,6 +62,7 @@ export function getUsedEquipmentFormValues(formData: FormData, fallbackStatus: U
     manufacturer: String(formData.get('manufacturer') ?? ''),
     model: String(formData.get('model') ?? ''),
     year: String(formData.get('year') ?? ''),
+    priceAmount: String(formData.get('priceAmount') ?? ''),
     description: String(formData.get('description') ?? ''),
     internalComment: String(formData.get('internalComment') ?? ''),
     status: isUsedEquipmentStatus(statusValue) ? statusValue : fallbackStatus
@@ -91,6 +96,7 @@ export function validateUsedEquipmentForm(values: UsedEquipmentFormValues, optio
   const manufacturer = values.manufacturer.trim();
   const model = values.model.trim();
   const yearValue = values.year.trim();
+  const price = parseUsedEquipmentPrice(values.priceAmount);
   const description = values.description.trim();
   const internalComment = values.internalComment.trim();
 
@@ -108,6 +114,18 @@ export function validateUsedEquipmentForm(values: UsedEquipmentFormValues, optio
         fieldErrors.year = 'Вкажіть рік у діапазоні 1950-2100.';
       }
     }
+  }
+
+  if (!price.ok) {
+    fieldErrors.priceAmount = price.reason === 'required'
+      ? 'Вкажіть ціну техніки у гривнях.'
+      : price.reason === 'out_of_range'
+        ? 'Ціна має бути цілим числом від 1 до 2 147 483 647 грн.'
+        : 'Ціна може містити лише цифри та пробіли між розрядами.';
+  }
+
+  if (options.allowStatusEdit && values.status === 'PUBLISHED' && !price.ok) {
+    fieldErrors.status = 'Для публікації потрібно вказати коректну ціну техніки.';
   }
 
   const title = buildUsedEquipmentTitle({ type, manufacturer, model, year });
@@ -132,6 +150,10 @@ export function validateUsedEquipmentForm(values: UsedEquipmentFormValues, optio
     return { ok: false as const, fieldErrors };
   }
 
+  if (!price.ok || !descriptionValidation.ok) {
+    throw new Error('Used equipment validation invariant failed.');
+  }
+
   return {
     ok: true as const,
     data: {
@@ -140,7 +162,8 @@ export function validateUsedEquipmentForm(values: UsedEquipmentFormValues, optio
       manufacturer,
       model,
       year,
-      description: descriptionValidation.ok ? descriptionValidation.html : '',
+      priceAmount: price.value,
+      description: descriptionValidation.html,
       internalComment: internalComment || null,
       status: options.allowStatusEdit ? values.status : 'DRAFT'
     } satisfies ValidUsedEquipmentInput

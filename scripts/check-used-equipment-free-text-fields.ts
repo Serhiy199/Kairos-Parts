@@ -17,12 +17,14 @@ function formData(input: {
   manufacturer: string;
   model: string;
   year?: string;
+  priceAmount?: string;
 }) {
   const data = new FormData();
   data.set('type', input.type);
   data.set('manufacturer', input.manufacturer);
   data.set('model', input.model);
   data.set('year', input.year ?? '');
+  data.set('priceAmount', input.priceAmount ?? '1250000');
   data.set('description', '<p>Перевірений опис техніки для продажу.</p>');
   data.set('status', 'DRAFT');
   return data;

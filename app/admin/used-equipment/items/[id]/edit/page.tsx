@@ -39,6 +39,7 @@ export default async function AdminUsedEquipmentEditPage({ params }: PageProps) 
         manufacturerName: true,
         model: true,
         year: true,
+        priceAmount: true,
         description: true,
         internalComment: true,
         status: true,
@@ -74,6 +75,7 @@ export default async function AdminUsedEquipmentEditPage({ params }: PageProps) 
     manufacturer: item.manufacturerName,
     model: item.model ?? '',
     year: item.year ? String(item.year) : '',
+    priceAmount: item.priceAmount === null ? '' : String(item.priceAmount),
     description: normalizeUsedEquipmentDescriptionForEditor(item.description),
     internalComment: item.internalComment ?? '',
     status: item.status
