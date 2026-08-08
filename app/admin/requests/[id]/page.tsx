@@ -98,7 +98,6 @@ export default async function AdminRequestDetailPage({
           }
         },
         manufacturer: true,
-        vehicle: true,
         assignedManager: { select: { id: true, name: true, email: true, role: true } },
         files: { orderBy: { createdAt: 'desc' } },
         items: { orderBy: { createdAt: 'desc' } },
@@ -243,21 +242,6 @@ export default async function AdminRequestDetailPage({
               <p className="mt-2 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">{request.description}</p>
             </div>
           </section>
-
-          {request.vehicle ? (
-            <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5 xl:p-6">
-              <p className="text-sm font-bold uppercase text-accent">Привʼязана техніка</p>
-              <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-2">
-                <Info label="Назва техніки" value={request.vehicle.name} />
-                <Info label="Тип" value={request.vehicle.type} />
-                <Info label="Виробник" value={request.vehicle.manufacturer} />
-                <Info label="Модель" value={request.vehicle.model} />
-                <Info label="Рік" value={request.vehicle.year ? String(request.vehicle.year) : '—'} />
-                <Info label="VIN / серійний номер" value={request.vehicle.vinOrSerial ?? '—'} />
-                <Info label="Коментар" value={request.vehicle.comment ?? '—'} />
-              </div>
-            </section>
-          ) : null}
 
           <RequestItemsSection
             requestId={request.id}
