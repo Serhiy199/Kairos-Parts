@@ -35,6 +35,7 @@ export async function getAdminUsedEquipmentPage({
       equipmentType: true,
       manufacturerName: true,
       year: true,
+      priceAmount: true,
       status: true,
       publishedAt: true,
       archivedAt: true,

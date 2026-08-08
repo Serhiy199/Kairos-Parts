@@ -39,3 +39,7 @@ export function formatUsedEquipmentPrice(priceAmount: number) {
   const amount = priceNumberFormat.format(priceAmount).replace(/[\u00a0\u202f]/g, ' ');
   return `${amount} грн`;
 }
+
+export function formatUsedEquipmentPriceOrFallback(priceAmount: number | null, fallback = '—') {
+  return priceAmount === null ? fallback : formatUsedEquipmentPrice(priceAmount);
+}

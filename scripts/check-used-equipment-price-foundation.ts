@@ -107,12 +107,11 @@ function main() {
   assert.equal((actions.match(/priceAmount: validation\.data\.priceAmount/g) ?? []).length, 2);
 
   const form = source('components/used-equipment/used-equipment-form.tsx');
-  assert.doesNotMatch(form, /name="priceAmount"/);
+  assert.match(form, /name="priceAmount"/);
 
   for (const path of [
     'components/used-equipment/public-used-equipment-card.tsx',
     'app/(public)/used-equipment/[slug]/page.tsx',
-    'app/admin/used-equipment/items/page.tsx',
     'app/(public)/used-equipment/actions.ts'
   ]) {
     const contents = source(path);
