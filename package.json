@@ -47,6 +47,7 @@
     "test:used-equipment-free-text-fields": "tsx scripts/check-used-equipment-free-text-fields.ts",
     "test:used-equipment-price-foundation": "tsx scripts/check-used-equipment-price-foundation.ts",
     "test:used-equipment-price-crm": "tsx scripts/check-used-equipment-price-crm.ts",
+    "test:used-equipment-price-public": "tsx scripts/check-used-equipment-price-public.ts",
     "test:legal-contacts-1a": "tsx scripts/check-stage-legal-1a-contacts.ts",
     "test:legal-privacy-1b": "tsx scripts/check-stage-legal-1b-privacy-policy.ts",
     "test:legal-terms-1c": "tsx scripts/check-stage-legal-1c-terms-of-use.ts",

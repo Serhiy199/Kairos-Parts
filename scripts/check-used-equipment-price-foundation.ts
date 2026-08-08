@@ -109,14 +109,8 @@ function main() {
   const form = source('components/used-equipment/used-equipment-form.tsx');
   assert.match(form, /name="priceAmount"/);
 
-  for (const path of [
-    'components/used-equipment/public-used-equipment-card.tsx',
-    'app/(public)/used-equipment/[slug]/page.tsx',
-    'app/(public)/used-equipment/actions.ts'
-  ]) {
-    const contents = source(path);
-    assert.doesNotMatch(contents, /priceAmount|formatUsedEquipmentPrice/, `${path} must remain unchanged by the foundation stage.`);
-  }
+  const inquiryAction = source('app/(public)/used-equipment/actions.ts');
+  assert.doesNotMatch(inquiryAction, /priceAmount|formatUsedEquipmentPrice/);
 
   console.log('Used Equipment price foundation checks passed.');
 }

@@ -87,13 +87,8 @@ function main() {
   assert.match(editPage, /requireCrmSession\(\)/);
   assert.match(list, /requireCrmSession\(\)/);
 
-  for (const path of [
-    'components/used-equipment/public-used-equipment-card.tsx',
-    'app/(public)/used-equipment/[slug]/page.tsx',
-    'app/(public)/used-equipment/actions.ts'
-  ]) {
-    assert.doesNotMatch(source(path), /priceAmount|formatUsedEquipmentPrice/, `${path} must remain unchanged.`);
-  }
+  const inquiryAction = source('app/(public)/used-equipment/actions.ts');
+  assert.doesNotMatch(inquiryAction, /priceAmount|formatUsedEquipmentPrice/);
 
   const priceMigrations = readdirSync(resolve(process.cwd(), 'prisma/migrations'))
     .filter((name) => name.includes('used_equipment_price'));
