@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { FaTractor } from 'react-icons/fa';
 
 import { UsedEquipmentInquiryDialog } from '@/components/used-equipment/used-equipment-inquiry-dialog';
+import { formatUsedEquipmentPriceOrFallback } from '@/lib/used-equipment/price';
 import type { PublicUsedEquipmentListItem } from '@/lib/used-equipment/queries';
 import { getEquipmentTypeLabel } from '@/lib/vehicles/equipment-types';
 
@@ -65,6 +66,10 @@ export function PublicUsedEquipmentCard({ item }: { item: PublicUsedEquipmentLis
               </p>
             ) : null}
           </div>
+
+          <p className="mt-auto pt-5 text-xl font-bold leading-tight text-accent sm:text-2xl">
+            {formatUsedEquipmentPriceOrFallback(item.priceAmount, 'Ціна за запитом')}
+          </p>
         </div>
       </Link>
 

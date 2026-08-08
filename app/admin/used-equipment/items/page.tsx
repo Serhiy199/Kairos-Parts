@@ -8,6 +8,7 @@ import { TbPhotoOff } from 'react-icons/tb';
 import { AdminDbBlocker } from '@/components/admin/admin-db-blocker';
 import { requireCrmSession } from '@/lib/admin/access';
 import { hasDatabaseUrl } from '@/lib/env/database';
+import { formatUsedEquipmentPriceOrFallback } from '@/lib/used-equipment/price';
 import { getAdminUsedEquipmentPage, parseUsedEquipmentPage } from '@/lib/used-equipment/queries';
 import { getUsedEquipmentStatusLabel } from '@/lib/used-equipment/status';
 
@@ -190,13 +191,14 @@ export default async function AdminUsedEquipmentItemsPage({
       ) : (
         <section className="overflow-hidden rounded-lg border border-border bg-card shadow-card">
           <div className="hidden overflow-x-auto xl:block">
-            <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[1240px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface-muted text-muted">
                   <th className="px-4 py-3 font-bold">Техніка</th>
                   <th className="px-4 py-3 font-bold">Тип</th>
                   <th className="px-4 py-3 font-bold">Виробник</th>
                   <th className="px-4 py-3 font-bold">Рік</th>
+                  <th className="px-4 py-3 font-bold">Ціна</th>
                   <th className="px-4 py-3 font-bold">Статус</th>
                   <th className="px-4 py-3 font-bold">Заявки</th>
                   <th className="px-4 py-3 font-bold">Створено</th>
@@ -219,6 +221,9 @@ export default async function AdminUsedEquipmentItemsPage({
                     <td className="px-4 py-3 text-muted">{item.equipmentType}</td>
                     <td className="px-4 py-3 text-muted">{item.manufacturerName}</td>
                     <td className="px-4 py-3 text-muted">{item.year ?? '—'}</td>
+                    <td className="whitespace-nowrap px-4 py-3 font-semibold text-foreground">
+                      {formatUsedEquipmentPriceOrFallback(item.priceAmount)}
+                    </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={item.status} />
                     </td>
@@ -250,6 +255,12 @@ export default async function AdminUsedEquipmentItemsPage({
                   <div>
                     <p className="text-xs font-bold uppercase text-muted">Рік</p>
                     <p className="mt-1 font-semibold text-foreground">{item.year ?? '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-muted">Ціна</p>
+                    <p className="mt-1 font-semibold text-foreground">
+                      {formatUsedEquipmentPriceOrFallback(item.priceAmount)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase text-muted">Заявки</p>

@@ -1236,6 +1236,7 @@ model UsedEquipment {
   manufacturerName String
   model            String?
   year             Int?
+  priceAmount      Int?
   description      String                 @db.Text
   internalComment  String?                @db.Text
   status           UsedEquipmentStatus    @default(DRAFT)

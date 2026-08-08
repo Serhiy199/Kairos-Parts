@@ -122,6 +122,24 @@ export function UsedEquipmentForm({
           <FieldError error={state.fieldErrors?.year} />
         </label>
 
+        <label className="grid gap-2 text-sm font-semibold text-foreground">
+          Ціна, грн *
+          <input
+            type="text"
+            name="priceAmount"
+            inputMode="numeric"
+            required
+            defaultValue={values.priceAmount}
+            aria-invalid={Boolean(state.fieldErrors?.priceAmount)}
+            aria-describedby={state.fieldErrors?.priceAmount ? 'used-equipment-price-error' : undefined}
+            placeholder="Наприклад: 1 250 000"
+            className={fieldClass(state.fieldErrors?.priceAmount)}
+          />
+          <div id="used-equipment-price-error">
+            <FieldError error={state.fieldErrors?.priceAmount} />
+          </div>
+        </label>
+
         {mode === 'edit' ? (
           <label className="grid gap-2 text-sm font-semibold text-foreground lg:col-span-2">
             Статус

@@ -10,6 +10,7 @@ import { SafeRichText } from '@/components/ui/safe-rich-text';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { createPublicMetadata, NOINDEX_METADATA } from '@/lib/seo';
 import { getUsedEquipmentDescriptionExcerpt } from '@/lib/used-equipment/description';
+import { formatUsedEquipmentPriceOrFallback } from '@/lib/used-equipment/price';
 import { getPublicUsedEquipmentBySlug } from '@/lib/used-equipment/queries';
 import { getEquipmentTypeLabel } from '@/lib/vehicles/equipment-types';
 
@@ -162,6 +163,13 @@ export default async function UsedEquipmentDetailPage({ params }: PageProps) {
                 <InfoRow icon={FaIndustry} label="Виробник" value={item.manufacturerName} />
                 <InfoRow icon={FaTractor} label="Тип техніки" value={equipmentTypeLabel} />
                 {item.year ? <InfoRow icon={FaCalendarAlt} label="Рік" value={String(item.year)} /> : null}
+              </div>
+
+              <div className="mt-5">
+                <p className="text-xs font-bold uppercase text-public-subtle">Ціна</p>
+                <p className="mt-2 text-2xl font-bold leading-tight text-accent sm:text-3xl">
+                  {formatUsedEquipmentPriceOrFallback(item.priceAmount, 'Ціна за запитом')}
+                </p>
               </div>
 
               <UsedEquipmentInquiryDialog
