@@ -35,6 +35,7 @@
     "test:vehicle-form-validation": "tsx scripts/check-vehicle-form-validation.ts",
     "test:vehicle-upload-input-validation": "tsx scripts/check-vehicle-upload-input-validation.ts",
     "test:request-vehicle-prefill": "tsx scripts/check-request-vehicle-prefill.ts",
+    "test:admin-request-details-linked-vehicle-cleanup": "tsx scripts/check-admin-request-details-linked-vehicle-cleanup.ts",
     "test:ocr-storage-stage2": "tsx scripts/check-ocr-storage-stage2-cloudinary-request-files.ts",
     "test:ocr-runtime-stage3": "tsx scripts/check-ocr-runtime-stage3-tesseract-worker.ts",
     "test:seo-crawl-foundation": "tsx scripts/check-seo-crawl-foundation.ts",
