@@ -268,6 +268,11 @@ async function main() {
   assert.match(action, /userId: session\.user\.id/);
   assert.doesNotMatch(action, /formData\.get\(['"](?:userId|clientId|role|status|authVersion)/);
 
+  const middleware = source('middleware.ts');
+  assert.match(middleware, /isSessionExpiredLogin/);
+  assert.match(middleware, /searchParams\.get\('error'\) === 'session-expired'/);
+  assert.match(middleware, /!isSessionExpiredLogin && pathname === '\/login'/);
+
   const preflight = source('scripts/preflight-client-profile-email-collisions.ts');
   assert.match(preflight, /CLIENT_PROFILE_EMAIL_AUDIT_CONFIRM_NON_PRODUCTION/);
   assert.match(preflight, /BEGIN READ ONLY/);

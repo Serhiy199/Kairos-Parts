@@ -32,20 +32,23 @@ export async function middleware(request: NextRequest) {
       !token.sessionInvalid
   );
   const role = hasCurrentLifecycleClaims ? (token?.role as UserRole | undefined) : undefined;
+  const isSessionExpiredLogin =
+    (pathname === '/login' || pathname === '/admin/login') &&
+    request.nextUrl.searchParams.get('error') === 'session-expired';
 
-  if (pathname === '/login' && role === 'CLIENT') {
+  if (!isSessionExpiredLogin && pathname === '/login' && role === 'CLIENT') {
     return NextResponse.redirect(buildPublicRedirectUrl(request, '/client'));
   }
 
-  if (pathname === '/login' && (role === 'MANAGER' || role === 'ADMIN')) {
+  if (!isSessionExpiredLogin && pathname === '/login' && (role === 'MANAGER' || role === 'ADMIN')) {
     return NextResponse.redirect(buildPublicRedirectUrl(request, '/admin'));
   }
 
-  if (pathname === '/admin/login' && role === 'CLIENT') {
+  if (!isSessionExpiredLogin && pathname === '/admin/login' && role === 'CLIENT') {
     return NextResponse.redirect(buildPublicRedirectUrl(request, '/client'));
   }
 
-  if (pathname === '/admin/login' && (role === 'MANAGER' || role === 'ADMIN')) {
+  if (!isSessionExpiredLogin && pathname === '/admin/login' && (role === 'MANAGER' || role === 'ADMIN')) {
     return NextResponse.redirect(buildPublicRedirectUrl(request, '/admin'));
   }
 
