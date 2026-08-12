@@ -12,6 +12,8 @@ export type ClientAccessContext = {
   clientProfileId: string;
   companyId: string | null;
   companyName: string | null;
+  companyEdrpou: string | null;
+  isPrimaryContact: boolean;
   mode: 'PERSONAL' | 'COMPANY';
 };
 
@@ -67,7 +69,7 @@ export async function getClientAccessContext(userId: string): Promise<ClientAcce
           companyMemberships: {
             take: 1,
             orderBy: { createdAt: 'asc' },
-            include: { company: { select: { id: true, name: true } } }
+            include: { company: { select: { id: true, name: true, edrpou: true } } }
           }
         }
       }
@@ -85,6 +87,8 @@ export async function getClientAccessContext(userId: string): Promise<ClientAcce
     clientProfileId: profile.id,
     companyId: membership?.companyId ?? null,
     companyName: membership?.company.name ?? null,
+    companyEdrpou: membership?.company.edrpou ?? null,
+    isPrimaryContact: membership?.isPrimaryContact ?? false,
     mode: membership ? 'COMPANY' : 'PERSONAL'
   };
 }

@@ -15,7 +15,7 @@ const errorMessages: Record<string, string> = {
 export default async function LoginPage({
   searchParams
 }: {
-  searchParams: Promise<{ error?: string; registered?: string; next?: string }>;
+  searchParams: Promise<{ error?: string; registered?: string; next?: string; 'profile-updated'?: string }>;
 }) {
   const params = await searchParams;
   const errorMessage = params.error ? errorMessages[params.error] ?? 'Не вдалося увійти.' : null;
@@ -31,6 +31,11 @@ export default async function LoginPage({
         {params.registered ? (
           <div className="mt-5 rounded-md border border-success/30 bg-[#E7F6EC] p-3 text-sm font-semibold text-success">
             Реєстрацію завершено. Тепер можна увійти.
+          </div>
+        ) : null}
+        {params['profile-updated'] === '1' ? (
+          <div role="status" className="mt-5 rounded-md border border-success/30 bg-[#E7F6EC] p-3 text-sm font-semibold text-success">
+            Дані оновлено. Увійдіть з новою електронною адресою або номером телефону.
           </div>
         ) : null}
         {errorMessage ? (

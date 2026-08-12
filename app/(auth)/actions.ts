@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 import { auth, signIn, signOut } from '@/auth';
 import { writeBestEffortLogoutAudit } from '@/lib/audit-log/auth-events';
 import { getServerAuditRequestContext } from '@/lib/audit-log/request-context';
+import { appendClientNextParam as appendNextParam, getClientNextPath } from '@/lib/auth/client-next-path';
 import { hasDatabaseUrl } from '@/lib/env/database';
 import { hashPassword } from '@/lib/auth/password';
 import { normalizeUkrainianPhone } from '@/lib/phone/normalize';
@@ -61,29 +62,6 @@ function credentialsSignInCode(result: unknown) {
   } catch {
     return null;
   }
-}
-
-function getClientNextPath(nextPath: string) {
-  if (nextPath === '/request' || nextPath.startsWith('/request?')) {
-    return nextPath;
-  }
-
-  if (nextPath === '/client' || nextPath.startsWith('/client/')) {
-    return nextPath;
-  }
-
-  return '/client';
-}
-
-function appendNextParam(path: string, nextPath: string) {
-  const normalizedNext = getClientNextPath(nextPath);
-
-  if (!nextPath || normalizedNext === '/client') {
-    return path;
-  }
-
-  const separator = path.includes('?') ? '&' : '?';
-  return `${path}${separator}next=${encodeURIComponent(normalizedNext)}`;
 }
 
 export async function registerClient(formData: FormData) {
