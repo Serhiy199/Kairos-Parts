@@ -19,6 +19,7 @@ import {
   serializeDateOnly
 } from '@/lib/logistics/date-only';
 import { prisma } from '@/lib/prisma';
+import { parseLogisticsTariffPrice } from '@/lib/logistics/tariff-price';
 
 const COMMENT_MAX_LENGTH = 2_000;
 const ID_MAX_LENGTH = 64;
@@ -472,23 +473,14 @@ export async function updateLogisticsTariffPrice(
   const session = await requireAdminSession();
   const tariffId = field(formData, 'tariffId');
   const expectedUpdatedAt = field(formData, 'expectedUpdatedAt', 40);
-  const rawPrice = field(formData, 'price', 32).replace(',', '.');
+  const rawPrice = field(formData, 'price', 32);
 
-  if (!tariffId || !expectedUpdatedAt || !PRICE_PATTERN.test(rawPrice)) {
+  const nextPrice = parseLogisticsTariffPrice(rawPrice);
+  if (!tariffId || !expectedUpdatedAt || !nextPrice) {
     return failure(
       'price-validation',
-      'Вкажіть невід’ємну суму не більше ніж із двома знаками після коми.'
+      'Вкажіть цілу суму в гривнях, більшу за нуль.'
     );
-  }
-
-  let nextPrice: Prisma.Decimal;
-  try {
-    nextPrice = new Prisma.Decimal(rawPrice);
-  } catch {
-    return failure('price-validation', 'Введено некоректну суму.');
-  }
-  if (nextPrice.isNegative() || nextPrice.greaterThan(MAX_TARIFF_PRICE)) {
-    return failure('price-validation', 'Сума виходить за допустимі межі.');
   }
 
   const expectedDate = new Date(expectedUpdatedAt);

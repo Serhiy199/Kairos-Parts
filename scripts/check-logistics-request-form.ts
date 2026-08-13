@@ -37,7 +37,6 @@ const routePath = path.join(
   'page.tsx'
 );
 const landingPath = path.join(root, 'app', '(public)', 'logistics', 'page.tsx');
-const featurePath = path.join(root, 'lib', 'features', 'logistics.ts');
 const formPath = path.join(
   root,
   'components',
@@ -56,7 +55,6 @@ const comboboxPath = path.join(
 const migrationSql = readFileSync(migrationPath, 'utf8');
 const routeSource = readFileSync(routePath, 'utf8');
 const landingSource = readFileSync(landingPath, 'utf8');
-const featureSource = readFileSync(featurePath, 'utf8');
 const formSource = readFileSync(formPath, 'utf8');
 const comboboxSource = readFileSync(comboboxPath, 'utf8');
 const pricingSource = readFileSync(
@@ -70,7 +68,6 @@ const requestFormStateSource = readFileSync(
 const stage4RuntimeSource = [
   routeSource,
   landingSource,
-  featureSource,
   formSource,
   comboboxSource,
   pricingSource,
@@ -129,18 +126,18 @@ for (const city of LOGISTICS_TARIFF_CITIES) {
 }
 assert.ok(expectedTariffs.has('IRPIN') && expectedTariffs.has('BUCHA'));
 assert.notEqual('IRPIN', 'BUCHA');
-assert.equal(ADDITIONAL_PICKUP_CHARGE_MINOR_UNITS, 50_000);
-assert.equal(FARM_DELIVERY_CHARGE_MINOR_UNITS, 50_000);
+assert.equal(ADDITIONAL_PICKUP_CHARGE_MINOR_UNITS, 60_000);
+assert.equal(FARM_DELIVERY_CHARGE_MINOR_UNITS, 100_000);
 assert.equal(parseLogisticsTariffCitySelection(''), null);
 assert.equal(parseLogisticsTariffCitySelection('UNKNOWN'), null);
 assert.equal(parseLogisticsTariffCitySelection('MYRONIVKA'), 'MYRONIVKA');
 
 const cases = [
   ['MYRONIVKA', 1, 'KAIROS_BASE', 160_000],
-  ['MYRONIVKA', 2, 'KAIROS_BASE', 210_000],
-  ['MYRONIVKA', 3, 'KAIROS_BASE', 260_000],
-  ['MYRONIVKA', 1, 'FARM', 210_000],
-  ['KYIV_RIGHT_BANK', 3, 'FARM', 400_000]
+  ['MYRONIVKA', 2, 'KAIROS_BASE', 220_000],
+  ['MYRONIVKA', 3, 'KAIROS_BASE', 280_000],
+  ['MYRONIVKA', 1, 'FARM', 260_000],
+  ['KYIV_RIGHT_BANK', 3, 'FARM', 470_000]
 ] as const;
 for (const [code, count, destination, expectedTotal] of cases) {
   assert.equal(
@@ -221,15 +218,9 @@ assert.equal(
 );
 
 assert.ok(existsSync(routePath), 'Public Logistics request route must exist.');
-assert.match(routeSource, /LOGISTICS_REQUEST_FORM_ENABLED/);
-assert.match(routeSource, /notFound\(\)/);
 assert.match(routeSource, /robots:[\s\S]*index: false[\s\S]*follow: false/);
 assert.match(landingSource, /href="\/logistics\/request"/);
-assert.match(landingSource, /Онлайн-заявка готується до запуску\./);
-assert.match(
-  featureSource,
-  /LOGISTICS_REQUEST_SUBMIT_ENABLED = isExplicitlyEnabled\([\s\S]{0,100}LOGISTICS_REQUEST_SUBMIT_ENABLED/
-);
+assert.match(landingSource, /Створити заявку на перевезення/);
 assert.match(formSource, /type="submit"[\s\S]{0,100}disabled=\{!canSubmit\}/);
 assert.match(comboboxSource, /AbortController/);
 assert.match(comboboxSource, /400/);
@@ -238,10 +229,13 @@ assert.match(comboboxSource, /\/api\/logistics\/addresses\/autocomplete/);
 assert.match(comboboxSource, /\/api\/logistics\/addresses\/resolve/);
 assert.match(comboboxSource, /if \(value\)[\s\S]{0,100}onResolvedChange\(null\)/);
 assert.match(formSource, /LogisticsTariffCityCode \| null/);
-assert.match(formSource, /value=\{tariffCityCode \?\? ''\}/);
 assert.match(
   formSource,
-  /tariffCityCode === null[\s\S]{0,100}\? null[\s\S]{0,100}type: 'TARIFF_CITY'/
+  /pricingType === 'INDIVIDUAL'[\s\S]{0,120}\? INDIVIDUAL_PRICING_SELECT_VALUE[\s\S]{0,120}: \(tariffCityCode \?\? ''\)/
+);
+assert.match(
+  formSource,
+  /pricingType === 'FIXED'[\s\S]{0,120}\? \{ tariffCityCode \}[\s\S]{0,180}: \{[\s\S]{0,120}customLocality:/
 );
 assert.match(
   pricingSource,

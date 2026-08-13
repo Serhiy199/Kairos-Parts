@@ -15,11 +15,11 @@ import {
 } from '@/lib/logistics/crm-presentation';
 import {
   isLogisticsTariffCityCode,
-  LOGISTICS_TARIFF_CITIES,
   type LogisticsTariffCityCode
 } from '@/lib/logistics/tariff-cities';
 import { prisma } from '@/lib/prisma';
 import { serializeDateOnly } from '@/lib/logistics/date-only';
+import { getConfiguredLogisticsTariffs } from '@/lib/logistics/tariff-read-model';
 
 export const LOGISTICS_CRM_PAGE_SIZE = 25;
 const SEARCH_MAX_LENGTH = 80;
@@ -314,36 +314,14 @@ export async function getLogisticsRequestDetail(id: string) {
 }
 
 export async function getLogisticsTariffs() {
-  const records = await prisma.logisticsTariffCity.findMany({
-    select: {
-      id: true,
-      code: true,
-      name: true,
-      price: true,
-      isActive: true,
-      updatedAt: true
-    }
-  });
-  const order = new Map(
-    LOGISTICS_TARIFF_CITIES.map((city, index) => [city.code, index])
-  );
-
-  return records
-    .map((record) => ({
-      id: record.id,
-      code: record.code,
-      name: record.name,
-      price: record.price.toFixed(2),
-      isActive: record.isActive,
-      updatedAt: record.updatedAt.toISOString()
-    }))
-    .sort(
-      (left, right) =>
-        (order.get(left.code as LogisticsTariffCityCode) ??
-          Number.MAX_SAFE_INTEGER) -
-        (order.get(right.code as LogisticsTariffCityCode) ??
-          Number.MAX_SAFE_INTEGER)
-    );
+  return (await getConfiguredLogisticsTariffs()).map((record) => ({
+    id: record.id,
+    code: record.code,
+    name: record.name,
+    price: record.price.toFixed(2),
+    isActive: record.isActive,
+    updatedAt: record.updatedAt.toISOString()
+  }));
 }
 
 export function logisticsCrmQuery(

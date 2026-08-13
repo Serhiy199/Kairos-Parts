@@ -52,7 +52,6 @@ const formSource = source(
   'logistics',
   'logistics-request-form.tsx'
 );
-const featureSource = source('lib', 'features', 'logistics.ts');
 const schemaSource = source('prisma', 'schema.prisma');
 
 function expectRequestError(
@@ -72,10 +71,10 @@ function decimalFromMinorUnits(minorUnits: number) {
 
 const pricingCases = [
   ['MYRONIVKA', 1, 'KAIROS_BASE', 160_000],
-  ['MYRONIVKA', 2, 'KAIROS_BASE', 210_000],
-  ['MYRONIVKA', 3, 'KAIROS_BASE', 260_000],
-  ['MYRONIVKA', 1, 'FARM', 210_000],
-  ['KYIV_RIGHT_BANK', 3, 'FARM', 400_000]
+  ['MYRONIVKA', 2, 'KAIROS_BASE', 220_000],
+  ['MYRONIVKA', 3, 'KAIROS_BASE', 280_000],
+  ['MYRONIVKA', 1, 'FARM', 260_000],
+  ['KYIV_RIGHT_BANK', 3, 'FARM', 470_000]
 ] as const;
 
 assert.equal(LOGISTICS_TARIFF_CITIES.length, 13);
@@ -108,8 +107,8 @@ for (const [code, pointCount, destination, expectedMinorUnits] of pricingCases) 
   );
 }
 assert.equal(
-  serializeLogisticsMoney(new Prisma.Decimal('4000')),
-  '4000.00'
+  serializeLogisticsMoney(new Prisma.Decimal('4700')),
+  '4700.00'
 );
 assert.throws(() =>
   calculateAuthoritativeLogisticsPrice({
@@ -156,13 +155,14 @@ const validCreatePayload = {
   tariffCityCode: 'BILA_TSERKVA',
   pickupPoints: [
     {
-      externalAddressId: 'mock:tariff-city:bila-tserkva:001',
+      supplierName: 'Synthetic supplier',
+      address: 'Synthetic pickup address',
       cargoDescription: 'Synthetic Stage 5 cargo'
     }
   ],
   destinationType: 'FARM',
   preferredDeliveryDate: '2099-08-05',
-  farmExternalAddressId: 'mock:community:kaharlyk:001',
+  farmAddress: 'Synthetic farm address',
   contactName: 'Synthetic Stage Five',
   contactPhone: '+380000000001',
   clientComment: ''
@@ -184,7 +184,7 @@ for (const [overrides, code] of [
   [{ contactName: ' ' }, 'INVALID_CONTACT_NAME'],
   [{ contactPhone: '' }, 'INVALID_CONTACT_PHONE'],
   [{ pickupPoints: [] }, 'INVALID_PICKUP_POINTS'],
-  [{ destinationType: 'FARM', farmExternalAddressId: '' }, 'INVALID_DESTINATION'],
+  [{ destinationType: 'FARM', farmAddress: '' }, 'INVALID_DESTINATION'],
   [{ destinationType: 'UNKNOWN' }, 'INVALID_DESTINATION'],
   [{ idempotencyKey: 'not-a-uuid' }, 'INVALID_IDEMPOTENCY_KEY'],
   [{ honeypot: 'bot-value' }, 'INVALID_REQUEST']
@@ -199,7 +199,8 @@ expectRequestError(
     parseLogisticsCreateInput({
       ...validCreatePayload,
       pickupPoints: Array.from({ length: 21 }, (_, index) => ({
-        externalAddressId: `mock:${index}`,
+        supplierName: `Synthetic supplier ${index}`,
+        address: `Synthetic address ${index}`,
         cargoDescription: 'Synthetic'
       }))
     }),
@@ -259,19 +260,16 @@ assert.doesNotMatch(
   /secret|sql|private|dump/i
 );
 const moneyResponse = logisticsRequestJson({
-  quote: { totalPrice: serializeLogisticsMoney(new Prisma.Decimal('4000')) }
+  quote: { totalPrice: serializeLogisticsMoney(new Prisma.Decimal('4700')) }
 });
-assert.match(JSON.stringify(await moneyResponse.json()), /"4000\.00"/);
+assert.match(JSON.stringify(await moneyResponse.json()), /"4700\.00"/);
 
 for (const [runtimeSource, pattern] of [
-  [quoteRouteSource, /LOGISTICS_REQUEST_FORM_ENABLED/],
   [quoteRouteSource, /getActiveLogisticsTariff/],
   [quoteRouteSource, /calculateAuthoritativeLogisticsPrice/],
-  [createRouteSource, /LOGISTICS_REQUEST_SUBMIT_ENABLED/],
   [createRouteSource, /assertLogisticsSameOrigin/],
   [createRouteSource, /resolveLogisticsSubmitIdentity/],
   [createRouteSource, /consumeLogisticsCreateRuntimeLimit/],
-  [requestServiceSource, /resolveLogisticsAddress/],
   [requestServiceSource, /normalizeUkrainianPhone/],
   [createServiceSource, /writer\.logisticsRequest\.create/],
   [createServiceSource, /writeAuditLog/],
@@ -283,8 +281,7 @@ for (const [runtimeSource, pattern] of [
   [formSource, /AbortController/],
   [formSource, /crypto\.randomUUID\(\)/],
   [formSource, /\/api\/logistics\/quote/],
-  [formSource, /\/api\/logistics\/requests/],
-  [featureSource, /process\.env\.LOGISTICS_REQUEST_SUBMIT_ENABLED/]
+  [formSource, /\/api\/logistics\/requests/]
 ] as const) {
   assert.match(runtimeSource, pattern);
 }
@@ -295,7 +292,7 @@ assert.doesNotMatch(
 );
 assert.doesNotMatch(
   `${createServiceSource}\n${requestServiceSource}`,
-  /telegram|\bNotification\b|confirmedPrice|finalPrice|latitude|longitude|coordinates|google\.maps|\bmapUrl\b|\brouteData\b/i
+  /confirmedPrice|finalPrice|latitude|longitude|coordinates|google\.maps|\bmapUrl\b|\brouteData\b/i
 );
 assert.match(schemaSource, /model LogisticsRequest/);
 
@@ -311,12 +308,7 @@ const samplePrepared = {
   contactPhone: validCreatePayload.contactPhone,
   pricingType: 'FIXED',
   customLocality: null,
-  tariff: {
-    id: 'synthetic-tariff',
-    code: 'BILA_TSERKVA',
-    name: 'Біла Церква',
-    price: new Prisma.Decimal('2200.00')
-  },
+  tariffCityCode: 'BILA_TSERKVA',
   destinationType: 'FARM',
   preferredDeliveryDate: new Date(Date.UTC(2099, 7, 5)),
   preferredDeliveryDateValue: '2099-08-05',
@@ -339,11 +331,6 @@ const samplePrepared = {
       cargoDescription: 'Synthetic Stage 5 cargo'
     }
   ],
-  pricing: calculateAuthoritativeLogisticsPrice({
-    baseTariff: new Prisma.Decimal('2200.00'),
-    pickupPointCount: 1,
-    destinationType: 'FARM'
-  }),
   clientComment: null
 } satisfies PreparedLogisticsRequest;
 
@@ -359,7 +346,8 @@ assert.equal(
       contactPhone: samplePrepared.contactPhone,
       pricingType: 'FIXED',
       customLocality: null,
-      tariffCityCodeSnapshot: samplePrepared.tariff.code,
+      tariffCityCodeSnapshot: samplePrepared.tariffCityCode,
+      tariffCityNameSnapshot: 'Біла Церква',
       destinationType: samplePrepared.destinationType,
       preferredDeliveryDate: samplePrepared.preferredDeliveryDate,
       preferredDeliveryDateSnapshot: samplePrepared.preferredDeliveryDate,
@@ -404,18 +392,7 @@ async function runStagingIntegration() {
 
           const guestPrepared: PreparedLogisticsRequest = {
             ...samplePrepared,
-            idempotencyKey: guestKey,
-            tariff: {
-              id: tariff.id,
-              code: 'BILA_TSERKVA',
-              name: tariff.name,
-              price: tariff.price
-            },
-            pricing: calculateAuthoritativeLogisticsPrice({
-              baseTariff: tariff.price,
-              pickupPointCount: 1,
-              destinationType: 'FARM'
-            })
+            idempotencyKey: guestKey
           };
           const guest = await createLogisticsRequestInTransaction(
             writer,
@@ -428,7 +405,7 @@ async function runStagingIntegration() {
           assert.equal(duplicate.requestNumber, guest.requestNumber);
           assert.equal(guest.status, 'NEW');
           assert.match(guest.requestNumber, /^LG-\d{6,}$/);
-          assert.equal(guest.totalPrice!.toFixed(2), '2700.00');
+          assert.equal(guest.totalPrice!.toFixed(2), '3200.00');
 
           await assert.rejects(
             () =>
@@ -450,8 +427,8 @@ async function runStagingIntegration() {
           assert.equal(createdGuest.pickupPoints.length, 1);
           assert.equal(createdGuest.baseTariffSnapshot!.toFixed(2), '2200.00');
           assert.equal(createdGuest.additionalPointsCharge!.toFixed(2), '0.00');
-          assert.equal(createdGuest.farmDeliveryCharge!.toFixed(2), '500.00');
-          assert.equal(createdGuest.totalPrice!.toFixed(2), '2700.00');
+          assert.equal(createdGuest.farmDeliveryCharge!.toFixed(2), '1000.00');
+          assert.equal(createdGuest.totalPrice!.toFixed(2), '3200.00');
           assert.equal(
             await writer.auditLog.count({
               where: {
@@ -502,12 +479,7 @@ async function runStagingIntegration() {
             },
             destinationType: 'KAIROS_BASE',
             baseAddressSnapshot: 'м. Кагарлик, вул. Миронівська, 33д',
-            farmAddress: null,
-            pricing: calculateAuthoritativeLogisticsPrice({
-              baseTariff: tariff.price,
-              pickupPointCount: 1,
-              destinationType: 'KAIROS_BASE'
-            })
+            farmAddress: null
           };
           await createLogisticsRequestInTransaction(writer, clientPrepared);
           const createdClient = await writer.logisticsRequest.findUniqueOrThrow({

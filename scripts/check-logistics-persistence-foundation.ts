@@ -32,7 +32,7 @@ function assertIncludesAll(haystack: string, values: readonly string[]) {
 
 const expectedStatuses = ['NEW', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
 const expectedDestinationTypes = ['KAIROS_BASE', 'FARM'];
-const expectedProviders = ['MOCK', 'GOOGLE'];
+const expectedProviders = ['MOCK', 'GOOGLE', 'MANUAL'];
 
 assert.deepEqual(
   prismaBlockValues(extractPrismaBlock('enum', 'LogisticsRequestStatus')),
@@ -107,7 +107,7 @@ for (const field of [
 ]) {
   assert.match(
     logisticsRequestModel,
-    new RegExp(`${field}\\s+Decimal\\s+@db\\.Decimal\\(12,\\s*2\\)`)
+    new RegExp(`${field}\\s+Decimal\\?\\s+@db\\.Decimal\\(12,\\s*2\\)`)
   );
 }
 

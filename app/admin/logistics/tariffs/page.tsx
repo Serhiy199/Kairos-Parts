@@ -165,7 +165,8 @@ function TariffForm({ tariff }: { tariff: Tariff }) {
       <input
         name="price"
         type="text"
-        inputMode="decimal"
+        inputMode="numeric"
+        pattern="[0-9]+"
         required
         maxLength={13}
         defaultValue={tariff.price}

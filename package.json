@@ -63,6 +63,7 @@
     "migrate:request-files-cloudinary": "tsx scripts/migrate-request-files-to-cloudinary.ts",
     "test:logistics-address-combobox": "tsx scripts/check-logistics-request-form.ts",
     "test:logistics-request-layout": "tsx scripts/check-logistics-request-layout.ts",
+    "test:logistics-tariff-stage1": "tsx scripts/check-logistics-tariff-stage1.ts",
     "auth:redirect-origin:check": "tsx scripts/check-production-redirect-origin.ts",
     "db:seed": "prisma db seed"
   },
