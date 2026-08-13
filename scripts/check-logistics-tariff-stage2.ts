@@ -22,7 +22,7 @@ async function main() {
     readFileSync(path.join(root, ...segments), 'utf8');
   const now = new Date('2026-08-13T12:00:00.000Z');
   const prices = [
-    1600, 1700, 1800, 2000, 2200, 2400, 2500, 2600, 2700, 2900,
+    1500, 1700, 1800, 2000, 2200, 2400, 2500, 2600, 2700, 2900,
     3100, 3000, 3200
   ] as const;
   const records = LOGISTICS_TARIFF_CITIES.map((city, index) => ({
@@ -60,7 +60,13 @@ async function main() {
     React.createElement(LogisticsRatesSection, { tariffs })
   );
   const publicRows = publicMarkup.match(/<tr/g) ?? [];
+  const normalizedPublicMarkup = publicMarkup.replace(/[\s\u00a0]+/g, ' ');
   assert.equal(publicRows.length, 15, 'Header + 13 tariffs + INDIVIDUAL expected.');
+  assert.match(normalizedPublicMarkup, /Миронівка.*1 500 грн/);
+  assert.match(normalizedPublicMarkup, /Обухів.*1 700 грн/);
+  assert.match(normalizedPublicMarkup, /Ірпінь.*2 900 грн/);
+  assert.match(normalizedPublicMarkup, /Буча.*3 100 грн/);
+  assert.doesNotMatch(normalizedPublicMarkup, /Миронівка.*1 600 грн/);
   assert.match(publicMarkup, /Ірпінь/);
   assert.match(publicMarkup, /Буча/);
   assert.doesNotMatch(publicMarkup, /Ірпінь\s*\/\s*Буча/);
@@ -91,8 +97,8 @@ async function main() {
     310_000
   );
   assert.equal(
-    formatLogisticsPrice(160_000).replace(/[\s\u00a0]+/g, ' '),
-    '1 600 грн'
+    formatLogisticsPrice(150_000).replace(/[\s\u00a0]+/g, ' '),
+    '1 500 грн'
   );
   assert.equal(
     formatLogisticsPrice(290_000).replace(/[\s\u00a0]+/g, ' '),
@@ -148,6 +154,7 @@ async function main() {
   assert.match(publicPage, /dynamic = 'force-dynamic'/);
   assert.match(requestPage, /dynamic = 'force-dynamic'/);
   assert.match(publicPage, /getActiveLogisticsTariffClientItems/);
+  assert.match(publicPage, /<LogisticsRatesSection tariffs=\{tariffs\} \/>/);
   assert.match(requestPage, /getActiveLogisticsTariffClientItems/);
   assert.match(requestPage, /initialTariffs=\{initialTariffs\}/);
   assert.match(formSource, /initialTariffs\.map/);
@@ -160,6 +167,8 @@ async function main() {
     /previewPriceMinorUnits/
   );
   assert.doesNotMatch(ratesSource, /Ірпінь\s*\/\s*Буча/);
+  assert.doesNotMatch(ratesSource, /const\s+logisticsRates\s*=/);
+  assert.doesNotMatch(ratesSource, /Миронівка[^\n]*1600/);
 
   console.log(
     'logisticsTariffStage2=PASS publicRows=14 fixedOptions=13 individual=1 dynamic=2 inactive=filtered'
