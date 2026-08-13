@@ -109,19 +109,14 @@ for (const city of LOGISTICS_TARIFF_CITIES) {
   const expectedTariff = expectedTariffs.get(city.code);
   assert.ok(expectedTariff, `Unexpected tariff city code ${city.code}.`);
   assert.equal(city.displayName, expectedTariff.displayName);
-  assert.equal(
-    city.previewPriceMinorUnits,
-    expectedTariff.minorUnits,
-    `Unexpected preview tariff for ${city.code}.`
-  );
   const migrationRow = migrationSql.match(
     new RegExp(`'${city.code}',\\s*'[^']+',\\s*([0-9]+\\.[0-9]{2}),\\s*true`)
   );
   assert.ok(migrationRow, `Missing Stage 3 tariff row for ${city.code}.`);
   assert.equal(
     Number(migrationRow[1]) * 100,
-    city.previewPriceMinorUnits,
-    `Stage 4 preview tariff must match Stage 3 migration for ${city.code}.`
+    expectedTariff.minorUnits,
+    `Test tariff fixture must match Stage 3 migration for ${city.code}.`
   );
 }
 assert.ok(expectedTariffs.has('IRPIN') && expectedTariffs.has('BUCHA'));
@@ -140,17 +135,38 @@ const cases = [
   ['KYIV_RIGHT_BANK', 3, 'FARM', 470_000]
 ] as const;
 for (const [code, count, destination, expectedTotal] of cases) {
+  const tariff = expectedTariffs.get(code);
+  assert.ok(tariff);
   assert.equal(
-    calculateLogisticsPricePreview(code, count, destination).totalMinorUnits,
+    calculateLogisticsPricePreview(
+      { code, name: tariff.displayName, priceMinorUnits: tariff.minorUnits },
+      count,
+      destination
+    ).totalMinorUnits,
     expectedTotal
   );
 }
+const kyivLeftBankTariff = expectedTariffs.get('KYIV_LEFT_BANK');
+assert.ok(kyivLeftBankTariff);
 assert.equal(
-  calculateLogisticsPricePreview('KYIV_LEFT_BANK', 1, 'KAIROS_BASE')
-    .totalMinorUnits,
+  calculateLogisticsPricePreview(
+    {
+      code: 'KYIV_LEFT_BANK',
+      name: kyivLeftBankTariff.displayName,
+      priceMinorUnits: kyivLeftBankTariff.minorUnits
+    },
+    1,
+    'KAIROS_BASE'
+  ).totalMinorUnits,
   260_000
 );
-assert.throws(() => calculateLogisticsPricePreview('MYRONIVKA', 0, 'KAIROS_BASE'));
+assert.throws(() =>
+  calculateLogisticsPricePreview(
+    { code: 'MYRONIVKA', name: 'Миронівка', priceMinorUnits: 160_000 },
+    0,
+    'KAIROS_BASE'
+  )
+);
 
 const manualAddress = 'Київська область, Миронівка, вул. Тестова, 1';
 const firstPoint = {
@@ -241,7 +257,7 @@ assert.match(
 );
 assert.match(
   pricingSource,
-  /cityCode: LogisticsTariffCityCode,[\s\S]{0,120}pickupPointCount: number/
+  /tariff: LogisticsTariffClientItem,[\s\S]{0,120}pickupPointCount: number/
 );
 assert.match(
   comboboxSource,
@@ -268,6 +284,12 @@ for (const forbiddenPattern of [
 ]) {
   assert.doesNotMatch(stage4RuntimeSource, forbiddenPattern);
 }
+
+assert.match(landingSource, /Створити заявку на перевезення/);
+assert.match(formSource, /initialTariffs\.map/);
+assert.match(formSource, /calculateLogisticsPricePreview\([\s\S]{0,100}selectedTariff/);
+assert.doesNotMatch(stage4RuntimeSource, /previewPriceMinorUnits/);
+assert.doesNotMatch(stage4RuntimeSource, /Ірпінь\s*\/\s*Буча/);
 
 console.log(
   `logisticsRequestForm=PASS cities=${LOGISTICS_TARIFF_CITIES.length} formulaCases=${cases.length} submit=enabled`

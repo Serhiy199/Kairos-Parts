@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { LogisticsRequestForm } from '@/components/public/logistics/logistics-request-form';
 import { getLogisticsRequestContactPrefill } from '@/lib/logistics/access';
 import { getKyivTodayDateOnly } from '@/lib/logistics/date-only';
+import { getActiveLogisticsTariffClientItems } from '@/lib/logistics/tariff-read-model';
 
 export const metadata: Metadata = {
   title: 'Заявка на перевезення | Kairos Logistics',
@@ -14,9 +15,13 @@ export const metadata: Metadata = {
     follow: false
   }
 };
+export const dynamic = 'force-dynamic';
 
 export default async function LogisticsRequestPage() {
-  const initialContact = await getLogisticsRequestContactPrefill();
+  const [initialContact, initialTariffs] = await Promise.all([
+    getLogisticsRequestContactPrefill(),
+    getActiveLogisticsTariffClientItems()
+  ]);
   const minPreferredDeliveryDate = getKyivTodayDateOnly();
 
   return (
@@ -47,6 +52,7 @@ export default async function LogisticsRequestPage() {
         <div className="kp-container">
           <LogisticsRequestForm
             initialContact={initialContact}
+            initialTariffs={initialTariffs}
             minPreferredDeliveryDate={minPreferredDeliveryDate}
           />
         </div>

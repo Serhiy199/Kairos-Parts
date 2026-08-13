@@ -6,36 +6,13 @@ import {
   TbTruckDelivery
 } from 'react-icons/tb';
 
+import {
+  formatLogisticsPrice,
+  type LogisticsTariffClientItem
+} from '@/lib/logistics/pricing-preview';
 import { siteContacts } from '@/lib/site-contacts';
 
 import { LogisticsOverviewPanel } from './logistics-overview-section';
-
-type LogisticsRate =
-  | {
-      location: string;
-      price: number;
-      custom?: false;
-    }
-  | {
-      location: string;
-      custom: true;
-    };
-
-const logisticsRates: LogisticsRate[] = [
-  { location: 'Миронівка', price: 1600 },
-  { location: 'Обухів', price: 1700 },
-  { location: 'Узин', price: 1800 },
-  { location: 'Васильків', price: 2000 },
-  { location: 'Біла Церква', price: 2200 },
-  { location: 'Бориспіль', price: 2400 },
-  { location: 'Київ — правий берег', price: 2500 },
-  { location: 'Київ — лівий берег', price: 2600 },
-  { location: 'Бровари', price: 2700 },
-  { location: 'Ірпінь / Буча', price: 2900 },
-  { location: 'Березань', price: 3000 },
-  { location: 'Вишгород', price: 3200 },
-  { location: 'Інші населені пункти', custom: true }
-];
 
 const includedServices = [
   'Організація відвантаження у постачальника',
@@ -44,13 +21,11 @@ const includedServices = [
   'Вартість із ПДВ'
 ];
 
-const priceFormatter = new Intl.NumberFormat('uk-UA');
-
-function formatRate(rate: Extract<LogisticsRate, { price: number }>) {
-  return `${priceFormatter.format(rate.price)} грн`;
-}
-
-export function LogisticsRatesSection() {
+export function LogisticsRatesSection({
+  tariffs
+}: {
+  tariffs: readonly LogisticsTariffClientItem[];
+}) {
   return (
     <section
       aria-labelledby="logistics-rates-title"
@@ -116,39 +91,51 @@ export function LogisticsRatesSection() {
                   </tr>
                 </thead>
                 <tbody>
-                  {logisticsRates.map((rate) => {
-                    const isCustom = 'custom' in rate && rate.custom;
-
-                    return (
-                      <tr
-                        key={rate.location}
-                        className={`border-b border-public-border last:border-b-0 ${
-                          isCustom ? 'bg-accent/[0.06]' : ''
-                        }`}
+                  {tariffs.map((tariff) => (
+                    <tr
+                      key={tariff.code}
+                      className="border-b border-public-border"
+                    >
+                      <th
+                        scope="row"
+                        className="px-4 py-3 text-[15px] font-semibold leading-6 text-public-primary sm:px-6 sm:text-base"
                       >
-                        <th
-                          scope="row"
-                          className="px-4 py-3 text-[15px] font-semibold leading-6 text-public-primary sm:px-6 sm:text-base"
-                        >
-                          <span className="flex min-w-0 items-start gap-2">
-                            <TbMapPin
-                              aria-hidden="true"
-                              focusable="false"
-                              className="mt-0.5 size-4 shrink-0 text-accent sm:size-[18px]"
-                            />
-                            <span className="min-w-0 break-words">{rate.location}</span>
+                        <span className="flex min-w-0 items-start gap-2">
+                          <TbMapPin
+                            aria-hidden="true"
+                            focusable="false"
+                            className="mt-0.5 size-4 shrink-0 text-accent sm:size-[18px]"
+                          />
+                          <span className="min-w-0 break-words">
+                            {tariff.name}
                           </span>
-                        </th>
-                        <td
-                          className={`px-3 py-3 text-right text-[15px] font-bold leading-6 sm:px-6 sm:text-base ${
-                            isCustom ? 'text-accent' : 'whitespace-nowrap text-public-primary'
-                          }`}
-                        >
-                          {isCustom ? 'Індивідуальний розрахунок' : formatRate(rate)}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        </span>
+                      </th>
+                      <td className="whitespace-nowrap px-3 py-3 text-right text-[15px] font-bold leading-6 text-public-primary sm:px-6 sm:text-base">
+                        {formatLogisticsPrice(tariff.priceMinorUnits)}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="border-b border-public-border bg-accent/[0.06] last:border-b-0">
+                    <th
+                      scope="row"
+                      className="px-4 py-3 text-[15px] font-semibold leading-6 text-public-primary sm:px-6 sm:text-base"
+                    >
+                      <span className="flex min-w-0 items-start gap-2">
+                        <TbMapPin
+                          aria-hidden="true"
+                          focusable="false"
+                          className="mt-0.5 size-4 shrink-0 text-accent sm:size-[18px]"
+                        />
+                        <span className="min-w-0 break-words">
+                          Інші населені пункти
+                        </span>
+                      </span>
+                    </th>
+                    <td className="px-3 py-3 text-right text-[15px] font-bold leading-6 text-accent sm:px-6 sm:text-base">
+                      Індивідуальний розрахунок
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>

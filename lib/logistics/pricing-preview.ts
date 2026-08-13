@@ -1,13 +1,16 @@
-import {
-  getLogisticsTariffCity,
-  type LogisticsTariffCityCode
-} from '@/lib/logistics/tariff-cities';
+import type { LogisticsTariffCityCode } from '@/lib/logistics/tariff-cities';
 import {
   LOGISTICS_ADDITIONAL_PICKUP_CHARGE_MINOR_UNITS,
   LOGISTICS_FARM_DELIVERY_CHARGE_MINOR_UNITS
 } from '@/lib/logistics/constants';
 
 export type LogisticsDestinationType = 'KAIROS_BASE' | 'FARM';
+
+export type LogisticsTariffClientItem = {
+  readonly code: LogisticsTariffCityCode;
+  readonly name: string;
+  readonly priceMinorUnits: number;
+};
 
 export const ADDITIONAL_PICKUP_CHARGE_MINOR_UNITS =
   LOGISTICS_ADDITIONAL_PICKUP_CHARGE_MINOR_UNITS;
@@ -25,7 +28,7 @@ export type LogisticsPricePreview = {
 };
 
 export function calculateLogisticsPricePreview(
-  cityCode: LogisticsTariffCityCode,
+  tariff: LogisticsTariffClientItem,
   pickupPointCount: number,
   destinationType: LogisticsDestinationType
 ): LogisticsPricePreview {
@@ -33,7 +36,6 @@ export function calculateLogisticsPricePreview(
     throw new Error('Pickup point count must be a positive integer.');
   }
 
-  const city = getLogisticsTariffCity(cityCode);
   const additionalPointCount = Math.max(0, pickupPointCount - 1);
   const additionalPointsMinorUnits =
     additionalPointCount * ADDITIONAL_PICKUP_CHARGE_MINOR_UNITS;
@@ -41,14 +43,14 @@ export function calculateLogisticsPricePreview(
     destinationType === 'FARM' ? FARM_DELIVERY_CHARGE_MINOR_UNITS : 0;
 
   return {
-    cityCode,
-    cityName: city.displayName,
-    baseTariffMinorUnits: city.previewPriceMinorUnits,
+    cityCode: tariff.code,
+    cityName: tariff.name,
+    baseTariffMinorUnits: tariff.priceMinorUnits,
     additionalPointCount,
     additionalPointsMinorUnits,
     farmDeliveryMinorUnits,
     totalMinorUnits:
-      city.previewPriceMinorUnits +
+      tariff.priceMinorUnits +
       additionalPointsMinorUnits +
       farmDeliveryMinorUnits
   };
@@ -59,10 +61,7 @@ export function formatLogisticsPrice(minorUnits: number) {
     throw new Error('Price must use nonnegative integer minor units.');
   }
 
-  return new Intl.NumberFormat('uk-UA', {
-    style: 'currency',
-    currency: 'UAH',
-    minimumFractionDigits: 0,
+  return `${new Intl.NumberFormat('uk-UA', {
     maximumFractionDigits: 0
-  }).format(minorUnits / 100);
+  }).format(minorUnits / 100)} грн`;
 }

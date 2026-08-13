@@ -11,13 +11,9 @@ import {
   createLogisticsRequest,
   type PreparedLogisticsRequest
 } from '@/lib/logistics/create-request';
-import {
-  calculateAuthoritativeLogisticsPrice,
-  serializeLogisticsMoney
-} from '@/lib/logistics/pricing';
+import { serializeLogisticsMoney } from '@/lib/logistics/pricing';
 import type { LogisticsCreateInput } from '@/lib/logistics/request-input';
 import { LogisticsRequestError } from '@/lib/logistics/request-errors';
-import { getActiveLogisticsTariff } from '@/lib/logistics/tariff-service';
 import { normalizeUkrainianPhone } from '@/lib/phone/normalize';
 import { notifyNewLogisticsRequest } from '@/lib/staff-telegram/notifications';
 import type { AuditRequestContext } from '@/lib/audit-log/contracts';
@@ -90,26 +86,15 @@ export async function prepareLogisticsRequest(input: {
       ...common,
       pricingType: 'INDIVIDUAL',
       customLocality: input.parsed.customLocality,
-      tariff: null,
-      pricing: null
+      tariffCityCode: null
     };
   }
-
-  const tariff = await getActiveLogisticsTariff(
-    input.parsed.tariffCityCode
-  );
-  const pricing = calculateAuthoritativeLogisticsPrice({
-    baseTariff: tariff.price,
-    pickupPointCount: input.parsed.pickupPoints.length,
-    destinationType: input.parsed.destinationType
-  });
 
   return {
     ...common,
     pricingType: 'FIXED',
     customLocality: null,
-    tariff,
-    pricing
+    tariffCityCode: input.parsed.tariffCityCode
   };
 }
 
@@ -130,12 +115,12 @@ export async function createPreparedLogisticsRequest(
       ...(input.pricingType === 'FIXED'
         ? {
             pricingType: 'FIXED' as const,
-            tariffCityName: input.tariff.name,
-            totalPrice: serializeLogisticsMoney(input.pricing.totalPrice)
+            tariffCityName: result.tariffCityName!,
+            totalPrice: serializeLogisticsMoney(result.totalPrice!)
           }
         : {
             pricingType: 'INDIVIDUAL' as const,
-            customLocality: input.customLocality,
+            customLocality: result.customLocality!,
             totalPrice: null
           })
     });

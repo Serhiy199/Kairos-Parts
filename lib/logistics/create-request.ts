@@ -7,11 +7,12 @@ import {
 } from '@/lib/audit-log/service';
 import type { AuditRequestContext } from '@/lib/audit-log/contracts';
 import type { LogisticsSubmitIdentity } from '@/lib/logistics/access';
-import type { LogisticsPricingBreakdown } from '@/lib/logistics/pricing';
+import { calculateAuthoritativeLogisticsPrice } from '@/lib/logistics/pricing';
 import { LogisticsRequestError } from '@/lib/logistics/request-errors';
 import type { LogisticsTariffCityCode } from '@/lib/logistics/tariff-cities';
 import { serializeDateOnly } from '@/lib/logistics/date-only';
 import { prisma } from '@/lib/prisma';
+import { getLockedActiveLogisticsTariff } from '@/lib/logistics/tariff-service';
 
 type PreparedLogisticsRequestCommon = {
   identity: LogisticsSubmitIdentity;
@@ -47,19 +48,12 @@ export type PreparedLogisticsRequest = PreparedLogisticsRequestCommon &
     | {
         pricingType: 'FIXED';
         customLocality: null;
-        tariff: {
-          id: string;
-          code: LogisticsTariffCityCode;
-          name: string;
-          price: Prisma.Decimal;
-        };
-        pricing: LogisticsPricingBreakdown;
+        tariffCityCode: LogisticsTariffCityCode;
       }
     | {
         pricingType: 'INDIVIDUAL';
         customLocality: string;
-        tariff: null;
-        pricing: null;
+        tariffCityCode: null;
       }
   );
 
@@ -77,6 +71,7 @@ const existingRequestSelect = {
   pricingType: true,
   customLocality: true,
   tariffCityCodeSnapshot: true,
+  tariffCityNameSnapshot: true,
   destinationType: true,
   preferredDeliveryDate: true,
   preferredDeliveryDateSnapshot: true,
@@ -134,8 +129,7 @@ export function logisticsIdempotencyIntentMatches(
     existing.contactName === input.contactName &&
     existing.pricingType === input.pricingType &&
     existing.customLocality === input.customLocality &&
-    existing.tariffCityCodeSnapshot ===
-      (input.pricingType === 'FIXED' ? input.tariff.code : null) &&
+    existing.tariffCityCodeSnapshot === input.tariffCityCode &&
     existing.destinationType === input.destinationType &&
     serializeDateOnly(existing.preferredDeliveryDateSnapshot) ===
       input.preferredDeliveryDateValue &&
@@ -147,11 +141,40 @@ export function logisticsIdempotencyIntentMatches(
   );
 }
 
+export async function resolveLogisticsRequestPricing(
+  writer: Prisma.TransactionClient,
+  input: PreparedLogisticsRequest
+) {
+  if (input.pricingType === 'INDIVIDUAL') {
+    return {
+      pricingType: 'INDIVIDUAL' as const,
+      tariff: null,
+      pricing: null
+    };
+  }
+
+  const tariff = await getLockedActiveLogisticsTariff(
+    input.tariffCityCode,
+    writer
+  );
+  return {
+    pricingType: 'FIXED' as const,
+    tariff,
+    pricing: calculateAuthoritativeLogisticsPrice({
+      baseTariff: tariff.price,
+      pickupPointCount: input.pickupPoints.length,
+      destinationType: input.destinationType
+    })
+  };
+}
+
 function idempotentResult(existing: NonNullable<ExistingRequest>) {
   return {
     id: existing.id,
     requestNumber: existing.requestNumber,
     pricingType: existing.pricingType,
+    customLocality: existing.customLocality,
+    tariffCityName: existing.tariffCityNameSnapshot,
     totalPrice: existing.totalPrice,
     status: existing.status,
     preferredDeliveryDate: existing.preferredDeliveryDate,
@@ -179,6 +202,8 @@ export async function createLogisticsRequestInTransaction(
     return idempotentResult(existing);
   }
 
+  const resolvedPricing = await resolveLogisticsRequestPricing(writer, input);
+
   const created = await writer.logisticsRequest.create({
     data: {
       status: 'NEW',
@@ -189,13 +214,21 @@ export async function createLogisticsRequestInTransaction(
       pricingType: input.pricingType,
       customLocality: input.customLocality,
       tariffCityId:
-        input.pricingType === 'FIXED' ? input.tariff.id : null,
+        resolvedPricing.pricingType === 'FIXED'
+          ? resolvedPricing.tariff.id
+          : null,
       tariffCityCodeSnapshot:
-        input.pricingType === 'FIXED' ? input.tariff.code : null,
+        resolvedPricing.pricingType === 'FIXED'
+          ? resolvedPricing.tariff.code
+          : null,
       tariffCityNameSnapshot:
-        input.pricingType === 'FIXED' ? input.tariff.name : null,
+        resolvedPricing.pricingType === 'FIXED'
+          ? resolvedPricing.tariff.name
+          : null,
       baseTariffSnapshot:
-        input.pricingType === 'FIXED' ? input.pricing.baseTariff : null,
+        resolvedPricing.pricingType === 'FIXED'
+          ? resolvedPricing.pricing.baseTariff
+          : null,
       destinationType: input.destinationType,
       preferredDeliveryDate: input.preferredDeliveryDate,
       preferredDeliveryDateSnapshot: input.preferredDeliveryDate,
@@ -206,15 +239,17 @@ export async function createLogisticsRequestInTransaction(
       farmNormalizedLocality: input.farmAddress?.normalizedLocality ?? null,
       pickupPointCount: input.pickupPoints.length,
       additionalPointsCharge:
-        input.pricingType === 'FIXED'
-          ? input.pricing.additionalPointsCharge
+        resolvedPricing.pricingType === 'FIXED'
+          ? resolvedPricing.pricing.additionalPointsCharge
           : null,
       farmDeliveryCharge:
-        input.pricingType === 'FIXED'
-          ? input.pricing.farmDeliveryCharge
+        resolvedPricing.pricingType === 'FIXED'
+          ? resolvedPricing.pricing.farmDeliveryCharge
           : null,
       totalPrice:
-        input.pricingType === 'FIXED' ? input.pricing.totalPrice : null,
+        resolvedPricing.pricingType === 'FIXED'
+          ? resolvedPricing.pricing.totalPrice
+          : null,
       clientComment: input.clientComment,
       idempotencyKey: input.idempotencyKey,
       pickupPoints: {
@@ -233,6 +268,8 @@ export async function createLogisticsRequestInTransaction(
       id: true,
       requestNumber: true,
       pricingType: true,
+      customLocality: true,
+      tariffCityNameSnapshot: true,
       totalPrice: true,
       status: true,
       preferredDeliveryDate: true
@@ -255,13 +292,17 @@ export async function createLogisticsRequestInTransaction(
       source: input.identity.type,
       pricingType: input.pricingType,
       tariffCityCode:
-        input.pricingType === 'FIXED' ? input.tariff.code : null,
+        resolvedPricing.pricingType === 'FIXED'
+          ? resolvedPricing.tariff.code
+          : null,
       customLocality: input.customLocality,
       pickupPointCount: input.pickupPoints.length,
       destinationType: input.destinationType,
       preferredDeliveryDate: input.preferredDeliveryDateValue,
       totalPrice:
-        input.pricingType === 'FIXED' ? input.pricing.totalPrice : null,
+        resolvedPricing.pricingType === 'FIXED'
+          ? resolvedPricing.pricing.totalPrice
+          : null,
       vatIncluded: true
     },
     allowedFields: {
@@ -285,6 +326,8 @@ export async function createLogisticsRequestInTransaction(
     id: created.id,
     requestNumber: created.requestNumber,
     pricingType: created.pricingType,
+    customLocality: created.customLocality,
+    tariffCityName: created.tariffCityNameSnapshot,
     totalPrice: created.totalPrice,
     status: created.status,
     preferredDeliveryDate: created.preferredDeliveryDate,
@@ -293,22 +336,39 @@ export async function createLogisticsRequestInTransaction(
 }
 
 export async function createLogisticsRequest(input: PreparedLogisticsRequest) {
-  try {
-    return await prisma.$transaction((writer) =>
-      createLogisticsRequestInTransaction(writer, input)
-    );
-  } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2002'
-    ) {
-      const existing = await findExistingRequest(prisma, input.idempotencyKey);
-      if (existing && logisticsIdempotencyIntentMatches(existing, input)) {
-        return idempotentResult(existing);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await prisma.$transaction(
+        (writer) => createLogisticsRequestInTransaction(writer, input),
+        {
+          maxWait: 5_000,
+          timeout: 10_000,
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+        }
+      );
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2034' &&
+        attempt === 0
+      ) {
+        continue;
       }
-      throw idempotencyConflict();
-    }
 
-    throw error;
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const existing = await findExistingRequest(prisma, input.idempotencyKey);
+        if (existing && logisticsIdempotencyIntentMatches(existing, input)) {
+          return idempotentResult(existing);
+        }
+        throw idempotencyConflict();
+      }
+
+      throw error;
+    }
   }
+
+  throw new Error('Logistics request transaction retry loop exhausted.');
 }

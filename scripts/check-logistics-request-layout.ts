@@ -113,7 +113,11 @@ assert.equal(
   false
 );
 
-const preview = calculateLogisticsPricePreview('MYRONIVKA', 3, 'FARM');
+const preview = calculateLogisticsPricePreview(
+  { code: 'MYRONIVKA', name: 'Миронівка', priceMinorUnits: 160_000 },
+  3,
+  'FARM'
+);
 assert.equal(preview.additionalPointCount, 2);
 assert.equal(
   preview.totalMinorUnits,
