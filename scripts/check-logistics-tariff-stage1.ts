@@ -10,7 +10,10 @@ import {
 } from '../lib/logistics/create-request';
 import { calculateAuthoritativeLogisticsPrice } from '../lib/logistics/pricing';
 import { LogisticsRequestError } from '../lib/logistics/request-errors';
-import { parseLogisticsTariffPrice } from '../lib/logistics/tariff-price';
+import {
+  formatLogisticsTariffPriceInput,
+  parseLogisticsTariffPrice
+} from '../lib/logistics/tariff-price';
 import { getConfiguredLogisticsTariffs } from '../lib/logistics/tariff-read-model';
 import { LOGISTICS_TARIFF_CITIES } from '../lib/logistics/tariff-cities';
 import { getActiveLogisticsTariff } from '../lib/logistics/tariff-service';
@@ -26,6 +29,20 @@ for (const value of ['1', '1600', '2900', '3100', '999999']) {
 for (const value of ['', '0', '-100', '12.5', '1600.50', '1e3', 'NaN', 'Infinity', 'text']) {
   assert.equal(parseLogisticsTariffPrice(value), null, `${value} must be rejected.`);
 }
+
+for (const value of ['1500.00', '1600.00', '2900.00']) {
+  assert.equal(formatLogisticsTariffPriceInput(new Prisma.Decimal(value)), value.slice(0, -3));
+}
+const savedTariffPrice = parseLogisticsTariffPrice('1600');
+assert.ok(savedTariffPrice);
+assert.equal(savedTariffPrice.toFixed(2), '1600.00');
+assert.equal(formatLogisticsTariffPriceInput(savedTariffPrice), '1600');
+assert.throws(() => formatLogisticsTariffPriceInput(new Prisma.Decimal('1600.50')));
+
+const adminTariffPage = source('app', 'admin', 'logistics', 'tariffs', 'page.tsx');
+assert.match(adminTariffPage, /defaultValue=\{formatLogisticsTariffPriceInput\(tariff\.price\)\}/);
+assert.match(adminTariffPage, /pattern="\[0-9\]\+"/);
+assert.match(adminTariffPage, /formatLogisticsUah\(tariff\.price\)/);
 
 assert.notEqual('IRPIN', 'BUCHA');
 assert.deepEqual(
