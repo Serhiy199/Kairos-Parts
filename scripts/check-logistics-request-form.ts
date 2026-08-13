@@ -234,9 +234,11 @@ assert.equal(
 );
 
 assert.ok(existsSync(routePath), 'Public Logistics request route must exist.');
+assert.doesNotMatch(routeSource, /LOGISTICS_REQUEST_FORM_ENABLED|notFound\(\)/);
 assert.match(routeSource, /robots:[\s\S]*index: false[\s\S]*follow: false/);
 assert.match(landingSource, /href="\/logistics\/request"/);
-assert.match(landingSource, /Створити заявку на перевезення/);
+assert.doesNotMatch(landingSource, /Онлайн-заявка готується до запуску\./);
+assert.doesNotMatch(routeSource, /LOGISTICS_REQUEST_SUBMIT_ENABLED|submitEnabled=/);
 assert.match(formSource, /type="submit"[\s\S]{0,100}disabled=\{!canSubmit\}/);
 assert.match(comboboxSource, /AbortController/);
 assert.match(comboboxSource, /400/);
@@ -247,11 +249,11 @@ assert.match(comboboxSource, /if \(value\)[\s\S]{0,100}onResolvedChange\(null\)/
 assert.match(formSource, /LogisticsTariffCityCode \| null/);
 assert.match(
   formSource,
-  /pricingType === 'INDIVIDUAL'[\s\S]{0,120}\? INDIVIDUAL_PRICING_SELECT_VALUE[\s\S]{0,120}: \(tariffCityCode \?\? ''\)/
+  /pricingType === 'INDIVIDUAL'[\s\S]{0,100}\? INDIVIDUAL_PRICING_SELECT_VALUE[\s\S]{0,100}: \(tariffCityCode \?\? ''\)/
 );
 assert.match(
   formSource,
-  /pricingType === 'FIXED'[\s\S]{0,120}\? \{ tariffCityCode \}[\s\S]{0,180}: \{[\s\S]{0,120}customLocality:/
+  /pricingType === 'FIXED'[\s\S]{0,100}\? \{ tariffCityCode \}[\s\S]{0,160}customLocality:[\s\S]{0,100}normalizeLogisticsCustomLocality/
 );
 assert.match(
   pricingSource,
@@ -282,6 +284,12 @@ for (const forbiddenPattern of [
 ]) {
   assert.doesNotMatch(stage4RuntimeSource, forbiddenPattern);
 }
+
+assert.match(landingSource, /Створити заявку на перевезення/);
+assert.match(formSource, /initialTariffs\.map/);
+assert.match(formSource, /calculateLogisticsPricePreview\([\s\S]{0,100}selectedTariff/);
+assert.doesNotMatch(stage4RuntimeSource, /previewPriceMinorUnits/);
+assert.doesNotMatch(stage4RuntimeSource, /Ірпінь\s*\/\s*Буча/);
 
 console.log(
   `logisticsRequestForm=PASS cities=${LOGISTICS_TARIFF_CITIES.length} formulaCases=${cases.length} submit=gated`
