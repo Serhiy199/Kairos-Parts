@@ -27,7 +27,8 @@ import {
   calculateLogisticsPricePreview,
   FARM_DELIVERY_CHARGE_MINOR_UNITS,
   formatLogisticsPrice,
-  type LogisticsDestinationType
+  type LogisticsDestinationType,
+  type LogisticsTariffClientItem
 } from '@/lib/logistics/pricing-preview';
 import {
   addLogisticsPickupPoint,
@@ -53,10 +54,7 @@ import {
   normalizeLogisticsCustomLocality,
   type LogisticsPricingTypeValue
 } from '@/lib/logistics/pricing-type';
-import {
-  LOGISTICS_TARIFF_CITIES,
-  type LogisticsTariffCityCode
-} from '@/lib/logistics/tariff-cities';
+import type { LogisticsTariffCityCode } from '@/lib/logistics/tariff-cities';
 import { formatPhoneIdentifierInput } from '@/lib/phone/client-format';
 import { siteContacts } from '@/lib/site-contacts';
 
@@ -65,6 +63,7 @@ type LogisticsRequestFormProps = {
     name: string;
     phone: string;
   };
+  initialTariffs: readonly LogisticsTariffClientItem[];
   minPreferredDeliveryDate: string;
 };
 
@@ -213,6 +212,7 @@ function SectionHeading({
 
 export function LogisticsRequestForm({
   initialContact,
+  initialTariffs,
   minPreferredDeliveryDate
 }: LogisticsRequestFormProps) {
   const pointCounterRef = useRef(1);
@@ -257,16 +257,21 @@ export function LogisticsRequestForm({
     null
   );
 
+  const selectedTariff = useMemo(
+    () =>
+      initialTariffs.find((tariff) => tariff.code === tariffCityCode) ?? null,
+    [initialTariffs, tariffCityCode]
+  );
   const preview = useMemo(
     () =>
-      pricingType === 'FIXED' && tariffCityCode
+      pricingType === 'FIXED' && selectedTariff
         ? calculateLogisticsPricePreview(
-            tariffCityCode,
+            selectedTariff,
             pickupPoints.length,
             destinationType
           )
         : null,
-    [destinationType, pickupPoints.length, pricingType, tariffCityCode]
+    [destinationType, pickupPoints.length, pricingType, selectedTariff]
   );
   const isReady = isLogisticsRequestDraftReady(
     {
@@ -662,9 +667,9 @@ export function LogisticsRequestForm({
               className={logisticsFieldClassName}
             >
               <option value="">Оберіть місто</option>
-              {LOGISTICS_TARIFF_CITIES.map((city) => (
-                <option key={city.code} value={city.code}>
-                  {city.displayName}
+              {initialTariffs.map((tariff) => (
+                <option key={tariff.code} value={tariff.code}>
+                  {tariff.name}
                 </option>
               ))}
               <option value={INDIVIDUAL_PRICING_SELECT_VALUE}>

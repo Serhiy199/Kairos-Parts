@@ -76,15 +76,28 @@ const pricingCases = [
   ['MYRONIVKA', 1, 'FARM', 260_000],
   ['KYIV_RIGHT_BANK', 3, 'FARM', 470_000]
 ] as const;
+const testPriceByCode = new Map([
+  ['MYRONIVKA', 160_000],
+  ['KYIV_RIGHT_BANK', 250_000]
+] as const);
+const allTestPrices = [
+  160_000, 170_000, 180_000, 200_000, 220_000, 240_000, 250_000,
+  260_000, 270_000, 290_000, 310_000, 300_000, 320_000
+] as const;
 
 assert.equal(LOGISTICS_TARIFF_CITIES.length, 13);
-for (const city of LOGISTICS_TARIFF_CITIES) {
+for (const [index, city] of LOGISTICS_TARIFF_CITIES.entries()) {
+  const priceMinorUnits = allTestPrices[index]!;
   const authoritative = calculateAuthoritativeLogisticsPrice({
-    baseTariff: decimalFromMinorUnits(city.previewPriceMinorUnits),
+    baseTariff: decimalFromMinorUnits(priceMinorUnits),
     pickupPointCount: 3,
     destinationType: 'FARM'
   });
-  const preview = calculateLogisticsPricePreview(city.code, 3, 'FARM');
+  const preview = calculateLogisticsPricePreview(
+    { code: city.code, name: city.displayName, priceMinorUnits },
+    3,
+    'FARM'
+  );
   assert.equal(
     authoritative.totalPrice.times(100).toNumber(),
     preview.totalMinorUnits,
@@ -95,8 +108,10 @@ for (const city of LOGISTICS_TARIFF_CITIES) {
 for (const [code, pointCount, destination, expectedMinorUnits] of pricingCases) {
   const city = LOGISTICS_TARIFF_CITIES.find((candidate) => candidate.code === code);
   assert.ok(city);
+  const baseMinorUnits = testPriceByCode.get(code);
+  assert.ok(baseMinorUnits);
   const pricing = calculateAuthoritativeLogisticsPrice({
-    baseTariff: decimalFromMinorUnits(city.previewPriceMinorUnits),
+    baseTariff: decimalFromMinorUnits(baseMinorUnits),
     pickupPointCount: pointCount,
     destinationType: destination
   });

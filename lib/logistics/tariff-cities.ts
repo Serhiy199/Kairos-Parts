@@ -21,87 +21,73 @@ export type LogisticsTariffCityDefinition = {
   code: LogisticsTariffCityCode;
   displayName: string;
   normalizedLocality: string;
-  previewPriceMinorUnits: number;
 };
 
 export const LOGISTICS_TARIFF_CITIES = [
   {
     code: LOGISTICS_TARIFF_CITY_CODES.MYRONIVKA,
     displayName: 'Миронівка',
-    normalizedLocality: 'Миронівка',
-    previewPriceMinorUnits: 160_000
+    normalizedLocality: 'Миронівка'
   },
   {
     code: LOGISTICS_TARIFF_CITY_CODES.OBUKHIV,
     displayName: 'Обухів',
-    normalizedLocality: 'Обухів',
-    previewPriceMinorUnits: 170_000
+    normalizedLocality: 'Обухів'
   },
   {
     code: LOGISTICS_TARIFF_CITY_CODES.UZYN,
     displayName: 'Узин',
-    normalizedLocality: 'Узин',
-    previewPriceMinorUnits: 180_000
+    normalizedLocality: 'Узин'
   },
   {
     code: LOGISTICS_TARIFF_CITY_CODES.VASYLKIV,
     displayName: 'Васильків',
-    normalizedLocality: 'Васильків',
-    previewPriceMinorUnits: 200_000
+    normalizedLocality: 'Васильків'
   },
   {
     code: LOGISTICS_TARIFF_CITY_CODES.BILA_TSERKVA,
     displayName: 'Біла Церква',
-    normalizedLocality: 'Біла Церква',
-    previewPriceMinorUnits: 220_000
+    normalizedLocality: 'Біла Церква'
   },
   {
     code: LOGISTICS_TARIFF_CITY_CODES.BORYSPIL,
     displayName: 'Бориспіль',
-    normalizedLocality: 'Бориспіль',
-    previewPriceMinorUnits: 240_000
+    normalizedLocality: 'Бориспіль'
   },
   {
     code: LOGISTICS_TARIFF_CITY_CODES.KYIV_RIGHT_BANK,
     displayName: 'Київ — правий берег',
-    normalizedLocality: 'Київ',
-    previewPriceMinorUnits: 250_000
+    normalizedLocality: 'Київ'
   },
   {
     code: LOGISTICS_TARIFF_CITY_CODES.KYIV_LEFT_BANK,
     displayName: 'Київ — лівий берег',
-    normalizedLocality: 'Київ',
-    previewPriceMinorUnits: 260_000
+    normalizedLocality: 'Київ'
   },
   {
     code: LOGISTICS_TARIFF_CITY_CODES.BROVARY,
     displayName: 'Бровари',
-    normalizedLocality: 'Бровари',
-    previewPriceMinorUnits: 270_000
+    normalizedLocality: 'Бровари'
   },
   {
     code: LOGISTICS_TARIFF_CITY_CODES.IRPIN,
     displayName: 'Ірпінь',
-    normalizedLocality: 'Ірпінь',
-    previewPriceMinorUnits: 290_000
+    normalizedLocality: 'Ірпінь'
   },
   {
     code: LOGISTICS_TARIFF_CITY_CODES.BUCHA,
     displayName: 'Буча',
-    normalizedLocality: 'Буча',
-    previewPriceMinorUnits: 290_000
+    normalizedLocality: 'Буча'
   },
   {
     code: LOGISTICS_TARIFF_CITY_CODES.BEREZAN,
     displayName: 'Березань',
-    normalizedLocality: 'Березань',
-    previewPriceMinorUnits: 300_000
+    normalizedLocality: 'Березань'
   },
   {
     code: LOGISTICS_TARIFF_CITY_CODES.VYSHHOROD,
     displayName: 'Вишгород',
-    normalizedLocality: 'Вишгород',
-    previewPriceMinorUnits: 320_000
+    normalizedLocality: 'Вишгород'
   }
 ] as const satisfies readonly LogisticsTariffCityDefinition[];
 

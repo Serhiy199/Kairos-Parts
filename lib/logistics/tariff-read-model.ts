@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
+import type { LogisticsTariffClientItem } from '@/lib/logistics/pricing-preview';
 import {
   isLogisticsTariffCityCode,
   LOGISTICS_TARIFF_CITIES,
@@ -62,6 +63,29 @@ export async function getActiveLogisticsTariffs(
 ): Promise<LogisticsTariffReadModel[]> {
   return (await getConfiguredLogisticsTariffs(reader)).filter(
     (tariff) => tariff.isActive
+  );
+}
+
+export function toLogisticsTariffClientItem(
+  tariff: LogisticsTariffReadModel
+): LogisticsTariffClientItem {
+  const priceMinorUnits = tariff.price.times(100).toNumber();
+  if (!Number.isSafeInteger(priceMinorUnits) || priceMinorUnits <= 0) {
+    throw new Error(`Invalid logistics tariff price for ${tariff.code}.`);
+  }
+
+  return {
+    code: tariff.code,
+    name: tariff.name,
+    priceMinorUnits
+  };
+}
+
+export async function getActiveLogisticsTariffClientItems(
+  reader: TariffReader = prisma
+): Promise<LogisticsTariffClientItem[]> {
+  return (await getActiveLogisticsTariffs(reader)).map(
+    toLogisticsTariffClientItem
   );
 }
 

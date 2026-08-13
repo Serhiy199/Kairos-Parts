@@ -5,11 +5,15 @@ import { TbTruckDelivery } from 'react-icons/tb';
 
 import { LogisticsFinalCta } from '@/components/public/logistics/logistics-final-cta';
 import { LogisticsRatesSection } from '@/components/public/logistics/logistics-rates-section';
+import { getActiveLogisticsTariffClientItems } from '@/lib/logistics/tariff-read-model';
 import { createPublicMetadata, PUBLIC_PAGE_SEO } from '@/lib/seo';
 
 export const metadata: Metadata = createPublicMetadata(PUBLIC_PAGE_SEO.logistics);
+export const dynamic = 'force-dynamic';
 
-export default function LogisticsPage() {
+export default async function LogisticsPage() {
+  const tariffs = await getActiveLogisticsTariffClientItems();
+
   return (
     <>
       <section
@@ -64,7 +68,7 @@ export default function LogisticsPage() {
         </div>
       </section>
 
-      <LogisticsRatesSection />
+      <LogisticsRatesSection tariffs={tariffs} />
 
       <LogisticsFinalCta />
     </>

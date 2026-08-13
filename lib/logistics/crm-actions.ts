@@ -540,6 +540,7 @@ export async function updateLogisticsTariffPrice(
     });
 
     revalidatePath('/admin/logistics/tariffs');
+    revalidatePath('/logistics');
     revalidatePath('/logistics/request');
     return outcome === 'unchanged'
       ? success('tariff-unchanged', 'Тариф уже має вказане значення.')
