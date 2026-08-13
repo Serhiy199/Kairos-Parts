@@ -10,6 +10,7 @@ import { hasDatabaseUrl } from '@/lib/env/database';
 import { updateLogisticsTariffPrice } from '@/lib/logistics/crm-actions';
 import { formatLogisticsUah } from '@/lib/logistics/crm-presentation';
 import { getLogisticsTariffs } from '@/lib/logistics/crm-queries';
+import { formatLogisticsTariffPriceInput } from '@/lib/logistics/tariff-price';
 
 export const dynamic = 'force-dynamic';
 
@@ -169,7 +170,7 @@ function TariffForm({ tariff }: { tariff: Tariff }) {
         pattern="[0-9]+"
         required
         maxLength={13}
-        defaultValue={tariff.price}
+        defaultValue={formatLogisticsTariffPriceInput(tariff.price)}
         aria-label={`Нова ціна для ${tariff.name}`}
         className="h-10 min-w-0 flex-1 rounded-md border border-border px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
       />
