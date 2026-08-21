@@ -395,8 +395,8 @@ export default function HomePage() {
         />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,5,5,0.9)_0%,rgba(5,5,5,0.7)_42%,rgba(5,5,5,0.2)_100%)]" />
         <div className="kp-container relative flex min-h-[calc(100vh-64px)] flex-col justify-center pb-12 pt-24 sm:pt-16 lg:min-h-[720px] lg:pb-14 lg:pt-20">
-          <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm">Kairos Parts — сервіс для B2B-клієнтів аграрної та транспортної техніки</p>
+          <div className="max-w-5xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm lg:whitespace-nowrap">Kairos Parts — сервіс для B2B-клієнтів аграрної та транспортної техніки</p>
             <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.04] sm:text-5xl lg:text-6xl xl:text-7xl">
               Все необхідне для ТО та обслуговування <span className="text-accent">аграрної та вантажної техніки</span>
             </h1>
@@ -407,7 +407,7 @@ export default function HomePage() {
                 </span>
               ))}
             </div>
-            <div className="mt-6 flex max-w-3xl flex-col gap-4 rounded-xl border border-accent/25 bg-primary/70 p-5 shadow-panel backdrop-blur-sm sm:flex-row sm:items-start sm:p-6">
+            <div className="mt-6 flex w-full max-w-5xl flex-col gap-4 rounded-xl border border-accent/25 bg-primary/70 p-5 shadow-panel backdrop-blur-sm sm:flex-row sm:items-start sm:p-6">
               <span className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-accent/45 bg-accent/10 text-accent" aria-hidden="true">
                 <LuBoxes className="size-6" focusable="false" />
               </span>
