@@ -394,19 +394,33 @@ export default function HomePage() {
           className="object-cover opacity-80"
         />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,5,5,0.9)_0%,rgba(5,5,5,0.7)_42%,rgba(5,5,5,0.2)_100%)]" />
-        <div className="kp-container relative flex min-h-[calc(100vh-64px)] flex-col justify-center pb-12 pt-16 lg:min-h-[720px] lg:pb-14 lg:pt-20">
-          <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm">Kairos Parts — сервіс для B2B-клієнтів аграрної та транспортної галузі</p>
+        <div className="kp-container relative flex min-h-[calc(100vh-64px)] flex-col justify-center pb-12 pt-24 sm:pt-16 lg:min-h-[720px] lg:pb-14 lg:pt-20">
+          <div className="max-w-5xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm lg:whitespace-nowrap">Kairos Parts — сервіс для B2B-клієнтів аграрної та транспортної техніки</p>
             <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.04] sm:text-5xl lg:text-6xl xl:text-7xl">
-              Підберемо запчастини для вашої техніки <span className="text-accent">за одним запитом</span>
+              Все необхідне для ТО та обслуговування <span className="text-accent">аграрної та вантажної техніки</span>
             </h1>
-            <p className="mt-5 max-w-2xl text-lg font-semibold leading-8 text-white/85">
-              Для аграрної, вантажної та спеціальної техніки
-            </p>
-            <p className="mt-3 max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
-              Надішліть заявку, список або фото — команда Kairos Parts підбере сумісні запчастини та запропонує рішення.
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-6 flex flex-wrap gap-2 sm:gap-2.5">
+              {['Оливи', 'Фільтри', 'Ремені', 'Підшипники', 'Запчастини'].map((product) => (
+                <span key={product} className="rounded-md border border-accent/50 bg-primary/55 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur-sm sm:text-sm">
+                  {product}
+                </span>
+              ))}
+            </div>
+            <div className="mt-6 flex w-full max-w-5xl flex-col gap-4 rounded-xl border border-accent/25 bg-primary/70 p-5 shadow-panel backdrop-blur-sm sm:flex-row sm:items-start sm:p-6">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-accent/45 bg-accent/10 text-accent" aria-hidden="true">
+                <LuBoxes className="size-6" focusable="false" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-lg font-bold leading-7 text-white sm:text-xl">
+                  Підготуємо комплект ТО під вашу техніку
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base sm:leading-7">
+                  Вкажіть інтервал обслуговування — наприклад, 250 м/г або 20 000 км. Ми визначимо необхідні матеріали відповідно до регламенту та сформуємо пропозицію.
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Link href="/request" className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3.5 text-center text-sm font-bold text-primary shadow-panel transition hover:bg-accent-hover">
                 <ActionIcon name="plus" />
                 Створити заявку
