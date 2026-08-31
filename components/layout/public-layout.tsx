@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { TbMapPin } from 'react-icons/tb';
 
 import { ActionIcon } from '@/components/ui/action-icons';
+import { companyLegalDetails } from '@/lib/company-details';
 import { getPublicHeaderCta } from '@/lib/public/header-auth';
 import { siteContacts } from '@/lib/site-contacts';
 
@@ -97,18 +98,31 @@ export async function PublicLayout({ children }: { children: React.ReactNode }) 
           <div>
             <p className="text-sm font-bold text-public-primary">Контакти</p>
             <address className="mt-3 grid min-w-0 gap-2 text-sm not-italic text-public-muted">
-              <a
-                href={siteContacts.phone.href}
-                aria-label={`Зателефонувати за номером ${siteContacts.phone.display}`}
-                className="inline-flex min-h-9 min-w-0 items-center gap-2 transition hover:text-public-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              >
-                <ActionIcon name="phone" className="size-4 text-accent" />
-                <span>Телефон: {siteContacts.phone.display}</span>
-              </a>
+              <div className="flex min-h-11 min-w-0 items-center gap-2">
+                <ActionIcon name="phone" className="size-4 shrink-0 text-accent" />
+                <p className="min-w-0 leading-6">
+                  <span>Телефон: </span>
+                  <a
+                    href={siteContacts.phone.href}
+                    aria-label={`Зателефонувати за номером ${siteContacts.phone.display}`}
+                    className="whitespace-nowrap transition hover:text-public-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    {siteContacts.phone.display}
+                  </a>
+                  <span aria-hidden="true">; </span>
+                  <a
+                    href={companyLegalDetails.legalPhone.href}
+                    aria-label={`Зателефонувати за номером ${companyLegalDetails.legalPhone.display}`}
+                    className="whitespace-nowrap transition hover:text-public-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    {companyLegalDetails.legalPhone.display}
+                  </a>
+                </p>
+              </div>
               <a
                 href={siteContacts.email.href}
                 aria-label={`Написати на email ${siteContacts.email.display}`}
-                className="inline-flex min-h-9 min-w-0 items-center gap-2 transition hover:text-public-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="inline-flex min-h-11 min-w-0 items-center gap-2 transition hover:text-public-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 <ActionIcon name="mail" className="size-4 text-accent" />
                 <span className="min-w-0 break-all">Email: {siteContacts.email.display}</span>
@@ -118,7 +132,7 @@ export async function PublicLayout({ children }: { children: React.ReactNode }) 
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`Відкрити адресу ${siteContacts.address.display} у Google Maps`}
-                className="inline-flex min-h-9 min-w-0 items-center gap-2 transition hover:text-public-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="inline-flex min-h-11 min-w-0 items-center gap-2 transition hover:text-public-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 <TbMapPin aria-hidden="true" className="size-4 shrink-0 text-accent" />
                 <span className="min-w-0 break-words">Адреса: {siteContacts.address.display}</span>
@@ -128,7 +142,7 @@ export async function PublicLayout({ children }: { children: React.ReactNode }) 
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`Відкрити Telegram ${siteContacts.telegram.display}`}
-                className="inline-flex min-h-9 min-w-0 items-center gap-2 transition hover:text-public-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="inline-flex min-h-11 min-w-0 items-center gap-2 transition hover:text-public-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 <ActionIcon name="telegram" className="size-4 text-accent" />
                 <span>Telegram: {siteContacts.telegram.display}</span>

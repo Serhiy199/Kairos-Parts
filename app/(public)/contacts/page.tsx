@@ -19,6 +19,9 @@ type ContactItem = {
   href?: string;
   external?: boolean;
   ariaLabel?: string;
+  additionalValue?: string;
+  additionalHref?: string;
+  additionalAriaLabel?: string;
   secondaryLabel?: string;
   secondaryValue?: string;
   secondaryDescription?: string;
@@ -34,11 +37,9 @@ const contacts: ContactItem[] = [
     icon: TbPhone,
     href: siteContacts.phone.href,
     ariaLabel: `Зателефонувати за номером ${siteContacts.phone.display}`,
-    secondaryLabel: 'ТЕЛЕФОН У РЕКВІЗИТАХ',
-    secondaryValue: companyLegalDetails.legalPhone.display,
-    secondaryDescription: 'Контактний телефон юридичної особи.',
-    secondaryHref: companyLegalDetails.legalPhone.href,
-    secondaryAriaLabel: `Зателефонувати за номером ${companyLegalDetails.legalPhone.display}`
+    additionalValue: companyLegalDetails.legalPhone.display,
+    additionalHref: companyLegalDetails.legalPhone.href,
+    additionalAriaLabel: `Зателефонувати за номером ${companyLegalDetails.legalPhone.display}`
   },
   {
     label: 'EMAIL',
@@ -160,7 +161,7 @@ export default function ContactsPage() {
                   {contacts.map((contact) => {
                     const Icon = contact.icon;
                     const valueClassName =
-                      'mt-1 inline-block text-lg font-bold leading-7 text-public-primary transition sm:text-xl';
+                      'mt-1 text-lg font-bold leading-7 text-public-primary transition sm:text-xl';
 
                     return (
                       <div key={contact.label} className="flex gap-4 py-6 first:pt-0 last:pb-0">
@@ -175,13 +176,22 @@ export default function ContactsPage() {
                               target={contact.external ? '_blank' : undefined}
                               rel={contact.external ? 'noopener noreferrer' : undefined}
                               aria-label={contact.ariaLabel}
-                              className={`${valueClassName} break-words hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent`}
+                              className={`${valueClassName} inline-flex min-h-11 items-center break-words hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent sm:min-h-0`}
                             >
                               {contact.value}
                             </a>
                           ) : (
-                            <p className={`${valueClassName} break-words`}>{contact.value}</p>
+                            <p className={`${valueClassName} inline-block break-words`}>{contact.value}</p>
                           )}
+                          {contact.additionalValue && contact.additionalHref ? (
+                            <a
+                              href={contact.additionalHref}
+                              aria-label={contact.additionalAriaLabel}
+                              className={`${valueClassName} flex min-h-11 w-fit items-center whitespace-nowrap hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent sm:min-h-0`}
+                            >
+                              {contact.additionalValue}
+                            </a>
+                          ) : null}
                           <p className="mt-2 text-sm leading-6 text-public-muted">{contact.description}</p>
                           {contact.secondaryValue ? (
                             <div className="mt-4 border-t border-public-border pt-4">
@@ -192,12 +202,12 @@ export default function ContactsPage() {
                                 <a
                                   href={contact.secondaryHref}
                                   aria-label={contact.secondaryAriaLabel}
-                                  className={`${valueClassName} break-words hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent`}
+                                  className={`${valueClassName} inline-flex min-h-11 items-center break-words hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent sm:min-h-0`}
                                 >
                                   {contact.secondaryValue}
                                 </a>
                               ) : (
-                                <p className={`${valueClassName} break-words`}>{contact.secondaryValue}</p>
+                                <p className={`${valueClassName} inline-block break-words`}>{contact.secondaryValue}</p>
                               )}
                               <p className="mt-2 text-sm leading-6 text-public-muted">
                                 {contact.secondaryDescription}
