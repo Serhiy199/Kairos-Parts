@@ -175,7 +175,7 @@ export default function ContactsPage() {
                               target={contact.external ? '_blank' : undefined}
                               rel={contact.external ? 'noopener noreferrer' : undefined}
                               aria-label={contact.ariaLabel}
-                              className={`${valueClassName} break-words hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent`}
+                              className={`${valueClassName} inline-flex min-h-11 items-center break-words hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent sm:min-h-0`}
                             >
                               {contact.value}
                             </a>
@@ -192,7 +192,7 @@ export default function ContactsPage() {
                                 <a
                                   href={contact.secondaryHref}
                                   aria-label={contact.secondaryAriaLabel}
-                                  className={`${valueClassName} break-words hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent`}
+                                  className={`${valueClassName} inline-flex min-h-11 items-center break-words hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent sm:min-h-0`}
                                 >
                                   {contact.secondaryValue}
                                 </a>

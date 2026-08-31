@@ -39,7 +39,7 @@ assert.equal(
   companyLegalDetails.legalAddress.display,
   '09201, Україна, Київська область, Обухівський район, м. Кагарлик, вул. Сергієнка, буд. 20'
 );
-assert.equal(companyLegalDetails.legalPhone.display, '+38 (067) 668-08-08');
+assert.equal(companyLegalDetails.legalPhone.display, '067 668 08 08');
 assert.equal(companyLegalDetails.legalPhone.href, 'tel:+380676680808');
 assert.equal(companyLegalDetails.email, siteContacts.email);
 assert.equal(companyLegalDetails.personalDataController, companyLegalDetails.shortName);

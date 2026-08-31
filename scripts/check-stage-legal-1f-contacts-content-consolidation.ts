@@ -17,7 +17,7 @@ const legalSection = pageSource.slice(pageSource.indexOf('aria-labelledby="legal
 
 assert.equal(siteContacts.phone.display, '(068) 008 77 08');
 assert.equal(siteContacts.phone.href, 'tel:+380680087708');
-assert.equal(companyLegalDetails.legalPhone.display, '+38 (067) 668-08-08');
+assert.equal(companyLegalDetails.legalPhone.display, '067 668 08 08');
 assert.equal(companyLegalDetails.legalPhone.href, 'tel:+380676680808');
 assert.notEqual(siteContacts.phone.href, companyLegalDetails.legalPhone.href);
 assert.equal(siteContacts.email.display, 'kairos_parts@ukr.net');
