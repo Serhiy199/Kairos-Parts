@@ -12,6 +12,7 @@ function occurrences(value: string, pattern: RegExp) {
 
 function main() {
   const webRoute = source('app/api/requests/route.ts');
+  const webService = source('lib/requests/create-request.ts');
   const telegramSession = source('lib/telegram/session.ts');
   const notifier = source('lib/staff-telegram/notifications.ts');
   const config = source('lib/staff-telegram/config.ts');
@@ -20,9 +21,11 @@ function main() {
   const logistics = source('lib/logistics/create-request.ts');
   const usedEquipment = source('app/(public)/used-equipment/actions.ts');
 
-  assert.equal(occurrences(webRoute, /await notifyNewPartsRequest\(/g), 1);
+  assert.equal(occurrences(webRoute, /await notifyNewPartsRequest\(/g), 0);
+  assert.equal(occurrences(webService, /await notifyManager\(/g), 1);
+  assert.match(webService, /dependencies\.notifyManager \?\? notifyNewPartsRequest/);
   assert.equal(occurrences(telegramSession, /await notifyNewPartsRequest\(/g), 1);
-  assert.ok(webRoute.indexOf('await notifyNewPartsRequest(') > webRoute.indexOf('await uploadRequestFilesForActor('));
+  assert.ok(webService.indexOf('await notifyManager(') > webService.indexOf('await uploadFiles('));
   assert.ok(telegramSession.indexOf('await notifyNewPartsRequest(') > telegramSession.indexOf('await prisma.telegramDraftRequest.delete('));
   assert.match(notifier, /async function notify[\s\S]*try[\s\S]*catch/);
   assert.match(config, /TELEGRAM_MANAGER_CHAT_ID/);

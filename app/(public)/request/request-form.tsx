@@ -1,15 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { ActionIcon } from '@/components/ui/action-icons';
 import { SearchableCombobox, type SearchableComboboxOption } from '@/components/ui/searchable-combobox';
 import { EQUIPMENT_TAXONOMY_REQUEST_FIELDS_ENABLED, EQUIPMENT_TEXT_FIELD_MAX_LENGTH } from '@/lib/features/equipment-taxonomy';
 import { ALLOWED_UPLOAD_EXTENSIONS, ALLOWED_UPLOAD_MIME_TYPES } from '@/lib/files/upload-policy';
+import { REQUEST_TEXT_LIMITS } from '@/lib/requests/limits';
 import type { EquipmentTaxonomyType } from '@/lib/vehicles/taxonomy';
 
 type RequestFormProps = {
+  mode: 'GUEST' | 'CLIENT';
   taxonomy: EquipmentTaxonomyType[];
   initialContact?: {
     contactName?: string;
@@ -35,7 +37,7 @@ type RequestFormProps = {
 type SubmitState =
   | { status: 'idle' }
   | { status: 'submitting' }
-  | { status: 'success'; requestNumber: string; publicStatusUrl: string }
+  | { status: 'success'; requestNumber: string; publicStatusUrl?: string }
   | { status: 'error'; message: string; errors?: string[] };
 
 type FieldErrors = {
@@ -50,6 +52,7 @@ function uniqueSortedOptions(values: string[]): SearchableComboboxOption[] {
 }
 
 export function RequestForm({
+  mode,
   taxonomy,
   initialContact,
   initialMode,
@@ -62,6 +65,7 @@ export function RequestForm({
   const [manufacturer, setManufacturer] = useState(initialRequest?.manufacturer ?? '');
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
+  const idempotencyKeyRef = useRef<string | null>(null);
 
   const equipmentTypeOptions = useMemo(() => {
     const values = taxonomy.map((type) => type.name);
@@ -190,6 +194,8 @@ export function RequestForm({
 
     const formData = new FormData(form);
     formData.set('formType', 'detailed');
+    idempotencyKeyRef.current ??= crypto.randomUUID();
+    formData.set('idempotencyKey', idempotencyKeyRef.current);
 
     try {
       const response = await fetch('/api/requests', {
@@ -221,7 +227,7 @@ export function RequestForm({
       setSubmitState({
         status: 'success',
         requestNumber: payload.requestNumber ?? '',
-        publicStatusUrl: payload.publicStatusUrl ?? '/'
+        publicStatusUrl: payload.publicStatusUrl
       });
     } catch (error) {
       console.error('Request form submit failed', error);
@@ -238,19 +244,26 @@ export function RequestForm({
       <p className="text-sm font-bold uppercase text-public-success">Заявку створено</p>
       <h2 className="mt-2 text-3xl font-bold text-public-primary">Номер заявки: {submitState.requestNumber}</h2>
       <p className="mt-4 text-sm leading-6 text-public-muted">
-          Менеджер Kairos Parts зв&apos;яжеться з вами для уточнення деталей. Збережіть посилання на статус заявки.
+          {mode === 'GUEST'
+            ? 'Заявку створено. Менеджер Kairos Parts звʼяжеться з вами для уточнення деталей.'
+            : 'Менеджер Kairos Parts звʼяжеться з вами для уточнення деталей. Збережіть посилання на статус заявки.'}
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <Link
-            href={submitState.publicStatusUrl}
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
-            <ActionIcon name="search" />
-            Переглянути статус
-          </Link>
+          {submitState.publicStatusUrl ? (
+            <Link
+              href={submitState.publicStatusUrl}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              <ActionIcon name="search" />
+              Переглянути статус
+            </Link>
+          ) : null}
           <button
             type="button"
-            onClick={() => setSubmitState({ status: 'idle' })}
+            onClick={() => {
+              idempotencyKeyRef.current = null;
+              setSubmitState({ status: 'idle' });
+            }}
           className="inline-flex items-center justify-center gap-2 rounded-md border border-public-border px-5 py-3 text-sm font-semibold text-public-primary transition hover:border-public-border-accent-hover hover:bg-public-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             <ActionIcon name="plus" />
@@ -286,6 +299,14 @@ export function RequestForm({
       <input type="hidden" name="formType" value="detailed" />
       {initialSource ? <input type="hidden" name="source" value={initialSource} /> : null}
       {initialRequest?.vehicleId ? <input type="hidden" name="vehicleId" value={initialRequest.vehicleId} /> : null}
+      {mode === 'GUEST' ? (
+        <div className="pointer-events-none absolute -left-[10000px] top-auto size-px overflow-hidden" aria-hidden="true">
+          <label>
+            Website
+            <input name="website" tabIndex={-1} autoComplete="off" />
+          </label>
+        </div>
+      ) : null}
 
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         <label className="grid gap-2 text-sm font-semibold text-public-secondary">
@@ -293,6 +314,7 @@ export function RequestForm({
           <input
             name="contactName"
             required
+            maxLength={REQUEST_TEXT_LIMITS.contactName}
             defaultValue={initialContact?.contactName}
           className="public-field h-11 rounded-md px-3 text-sm transition"
             placeholder="Іваненко Іван"
@@ -303,27 +325,30 @@ export function RequestForm({
           <input
             name="phone"
             required
+            maxLength={REQUEST_TEXT_LIMITS.phone}
             defaultValue={initialContact?.phone}
           className="public-field h-11 rounded-md px-3 text-sm transition"
             placeholder="+38 (067) 123 45 67"
           />
         </label>
         <label className="grid gap-2 text-sm font-semibold text-public-secondary md:col-span-2">
-          Компанія *
+          Компанія{mode === 'CLIENT' ? ' *' : ' (необовʼязково)'}
           <input
             name="companyName"
-            required
+            required={mode === 'CLIENT'}
+            maxLength={REQUEST_TEXT_LIMITS.companyName}
             defaultValue={initialContact?.companyName}
           className="public-field h-11 rounded-md px-3 text-sm transition"
             placeholder="ТОВ Агро-Тех"
           />
         </label>
         <label className="grid gap-2 text-sm font-semibold text-public-secondary md:col-span-2">
-          Email *
+          Email{mode === 'CLIENT' ? ' *' : ' (необовʼязково)'}
           <input
             name="email"
             type="email"
-            required
+            required={mode === 'CLIENT'}
+            maxLength={REQUEST_TEXT_LIMITS.email}
             defaultValue={initialContact?.email}
           className="public-field h-11 rounded-md px-3 text-sm transition"
             placeholder="name@company.ua"
@@ -382,6 +407,7 @@ export function RequestForm({
           <input
             name="model"
             required
+            maxLength={REQUEST_TEXT_LIMITS.model}
             defaultValue={initialRequest?.model}
           className="public-field h-11 rounded-md px-3 text-sm transition"
             placeholder="Наприклад: MAN TGX 18.440, John Deere 8430"
@@ -405,6 +431,7 @@ export function RequestForm({
           <input
             name="vinOrSerial"
             required
+            maxLength={REQUEST_TEXT_LIMITS.vinOrSerial}
             defaultValue={initialRequest?.vinOrSerial}
           className="public-field h-11 rounded-md px-3 text-sm transition"
             placeholder="VIN, серійний номер або номер шасі"
@@ -417,6 +444,7 @@ export function RequestForm({
         <textarea
           name="description"
           required
+          maxLength={REQUEST_TEXT_LIMITS.description}
           defaultValue={initialRequest?.description}
         className="public-field min-h-32 rounded-md px-3 py-3 text-sm transition"
           placeholder={"Вкажіть каталожний номер та назву запчастини, яку шукаєте.\nЯкщо позицій декілька — напишіть їх одним повідомленням."}
@@ -427,6 +455,7 @@ export function RequestForm({
         Додатковий коментар
         <textarea
           name="comment"
+          maxLength={REQUEST_TEXT_LIMITS.comment}
           defaultValue={initialRequest?.comment}
         className="public-field min-h-24 rounded-md px-3 py-3 text-sm transition"
           placeholder="Додаткові побажання, терміновість, аналоги, умови доставки."

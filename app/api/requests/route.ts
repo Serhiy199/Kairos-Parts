@@ -1,16 +1,16 @@
-import { getClientApiSession, vehicleAccessWhere } from '@/lib/client/access';
+import { auditRequestContextFromHeaders } from '@/lib/audit-log/request-context';
 import { hasDatabaseUrl } from '@/lib/env/database';
-import { EQUIPMENT_TAXONOMY_REQUEST_FIELDS_ENABLED } from '@/lib/features/equipment-taxonomy';
+import { createPartsRequest, RequestCreationError } from '@/lib/requests/create-request';
+import { resolveRequestSubmitIdentity } from '@/lib/requests/identity';
 import {
-  RequestFileUploadError,
-  requestFileInputFromFile,
-  uploadRequestFilesForActor
-} from '@/lib/files/request-file-upload-service';
-import { prisma } from '@/lib/prisma';
-import { generatePublicStatusToken } from '@/lib/requests/identifiers';
+  assertPublicRequestBodyLength,
+  assertPublicRequestOrigin,
+  consumeGuestRequestIpLimit,
+  consumeGuestRequestPhoneLimit,
+  PublicRequestSecurityError,
+  readBoundedPublicRequestFormData
+} from '@/lib/requests/request-security';
 import { parseRequestFormData } from '@/lib/requests/validation';
-import { notifyNewPartsRequest } from '@/lib/staff-telegram/notifications';
-import { validateEquipmentTaxonomySelection } from '@/lib/vehicles/taxonomy';
 
 export function GET() {
   return Response.json(
@@ -31,197 +31,95 @@ export function GET() {
 
 export const runtime = 'nodejs';
 
-function buildDescription(description: string, comment?: string) {
-  if (!comment) {
-    return description;
-  }
-
-  return `${description}\n\nКоментар клієнта:\n${comment}`;
+function securityErrorResponse(error: PublicRequestSecurityError) {
+  return Response.json(
+    { status: error.code.toLowerCase(), message: error.message },
+    {
+      status: error.statusCode,
+      headers: error.retryAfterSeconds
+        ? { 'Retry-After': String(error.retryAfterSeconds) }
+        : undefined
+    }
+  );
 }
 
 export async function POST(request: Request) {
-  const authResult = await getClientApiSession();
-
-  if (!authResult.ok && authResult.status === 'unauthorized') {
-    return Response.json(
-      {
-        status: 'unauthorized',
-        message: 'Щоб створити заявку, увійдіть у клієнтський кабінет.'
-      },
-      { status: 401 }
-    );
-  }
-
-  if (!authResult.ok && authResult.status === 'forbidden') {
-    return Response.json(
-      {
-        status: 'forbidden',
-        message: 'Створення заявки доступне тільки для клієнтського акаунта.'
-      },
-      { status: 403 }
-    );
-  }
-
-  if (!authResult.ok) {
-    return Response.json(
-      {
-        status: authResult.status,
-        message: 'Не вдалося перевірити доступ до клієнтського кабінету.'
-      },
-      { status: authResult.statusCode }
-    );
-  }
-
-  const formData = await request.formData();
-  const parsed = parseRequestFormData(formData);
-
-  if (!parsed.data) {
-    return Response.json(
-      {
-        status: 'validation_error',
-        message: 'Перевірте обовʼязкові поля заявки.',
-        errors: parsed.errors
-      },
-      { status: 400 }
-    );
-  }
-
-  if (!hasDatabaseUrl()) {
-    return Response.json(
-      {
-        status: 'database_not_configured',
-        message: 'Зараз не вдалося створити заявку через налаштування сервера. Спробуйте пізніше або напишіть нам у Telegram.',
-        errors: []
-      },
-      { status: 503 }
-    );
-  }
-
-  const clientAccess = authResult.access;
-
   try {
-    let equipmentType = parsed.data.equipmentType;
-    let manufacturerId: string | null = null;
-    let manufacturerName = parsed.data.manufacturer;
+    assertPublicRequestOrigin(request);
+    assertPublicRequestBodyLength(request);
 
-    if (EQUIPMENT_TAXONOMY_REQUEST_FIELDS_ENABLED) {
-      const taxonomy = await validateEquipmentTaxonomySelection({
-        equipmentType,
-        manufacturer: manufacturerName
-      });
-      if (!taxonomy.ok) {
-        return Response.json(
-          { status: 'validation_error', message: taxonomy.message, errors: [taxonomy.message] },
-          { status: 400 }
-        );
-      }
-
-      equipmentType = taxonomy.equipmentType.name;
-      manufacturerId = taxonomy.manufacturer.id;
-      manufacturerName = taxonomy.manufacturer.name;
-    }
-    const publicStatusToken = generatePublicStatusToken();
-    const vehicle = parsed.data.vehicleId
-      ? await prisma.vehicle.findFirst({
-          where: {
-            id: parsed.data.vehicleId,
-            ...vehicleAccessWhere(clientAccess)
-          },
-          select: { id: true }
-        })
-      : null;
-
-    const createdRequest = await prisma.request.create({
-      data: {
-        publicStatusToken,
-        source: 'CLIENT_DASHBOARD',
-        status: 'NEW',
-        clientId: clientAccess.clientProfileId,
-        companyId: clientAccess.companyId,
-        guestName: null,
-        guestPhone: null,
-        guestEmail: null,
-        companyName: parsed.data.companyName ?? parsed.data.contactName,
-        categoryId: null,
-        subcategoryId: null,
-        manufacturerId,
-        manufacturerName,
-        vehicleId: vehicle?.id,
-        equipmentType,
-        model: parsed.data.model,
-        vehicleYear: parsed.data.vehicleYear,
-        vinOrSerial: parsed.data.vinOrSerial,
-        description: buildDescription(parsed.data.description, parsed.data.comment)
-      }
-    });
-
-    let savedFiles;
-    try {
-      const fileInputs = await Promise.all(
-        parsed.data.files.map((file) => requestFileInputFromFile(file))
-      );
-      savedFiles = await uploadRequestFilesForActor({
-        actor: {
-          type: 'CLIENT',
-          userId: authResult.session.user.id,
-          clientProfileId: clientAccess.clientProfileId,
-          companyId: clientAccess.companyId
+    if (!hasDatabaseUrl()) {
+      return Response.json(
+        {
+          status: 'database_not_configured',
+          message: 'Зараз не вдалося створити заявку через налаштування сервера. Спробуйте пізніше або напишіть нам у Telegram.'
         },
-        requestId: createdRequest.id,
-        files: fileInputs
-      });
-    } catch (error) {
-      await prisma.request.delete({ where: { id: createdRequest.id } }).catch((cleanupError) => {
-        console.error('Request cleanup failed after file upload failure', {
-          requestId: createdRequest.id,
-          reason: cleanupError instanceof Error ? cleanupError.name : 'unknown'
-        });
-      });
-      if (error instanceof RequestFileUploadError) {
-        return Response.json(
-          {
-            status: error.code.toLowerCase(),
-            message: error.message
-          },
-          { status: error.code === 'REQUEST_FILE_VALIDATION_FAILED' ? 400 : 503 }
-        );
-      }
-      throw error;
+        { status: 503 }
+      );
     }
 
-    await notifyNewPartsRequest({
-      id: createdRequest.id,
-      requestNumber: createdRequest.requestNumber,
-      companyName: parsed.data.companyName || null,
-      contactName: parsed.data.contactName,
-      contactPhone: parsed.data.phone,
-      equipment: [equipmentType, manufacturerName, parsed.data.model]
-        .filter(Boolean)
-        .join(' · ') || null,
-      description: parsed.data.description,
-      source: 'CLIENT_DASHBOARD'
-    });
+    const identityResult = await resolveRequestSubmitIdentity();
+    if (!identityResult.ok) {
+      const message = identityResult.status === 'forbidden'
+        ? 'Створення заявки в цьому режимі недоступне для службового акаунта.'
+        : identityResult.status === 'client_profile_not_found'
+          ? 'Не вдалося знайти активний профіль клієнта.'
+          : 'Сесію завершено. Оновіть сторінку та повторіть.';
+      return Response.json({ status: identityResult.status, message }, { status: identityResult.statusCode });
+    }
 
-    return Response.json(
-      {
-        id: createdRequest.id,
-        requestNumber: createdRequest.requestNumber,
-        status: createdRequest.status,
-        publicStatusUrl: `/request/status/${createdRequest.publicStatusToken}`,
-        files: savedFiles.map((file) => ({
-          id: file.id,
-          fileName: file.fileName,
-          mimeType: file.mimeType,
-          size: file.size
-        }))
-      },
-      { status: 201 }
-    );
+    const { identity } = identityResult;
+    if (identity.type === 'GUEST') await consumeGuestRequestIpLimit(request);
+
+    const formData = await readBoundedPublicRequestFormData(request);
+    const parsed = parseRequestFormData(formData, { mode: identity.type });
+    if (!parsed.data) {
+      return Response.json(
+        {
+          status: 'validation_error',
+          message: 'Перевірте обовʼязкові поля заявки.',
+          errors: parsed.errors
+        },
+        { status: 400 }
+      );
+    }
+
+    if (identity.type === 'GUEST') {
+      await consumeGuestRequestPhoneLimit(parsed.data.phone);
+    }
+
+    const result = await createPartsRequest({
+      identity,
+      parsed: parsed.data,
+      requestContext: auditRequestContextFromHeaders(request.headers)
+    });
+    const response = {
+      requestNumber: result.request.requestNumber,
+      status: result.request.status,
+      duplicate: !result.createdNew,
+      ...(identity.type === 'CLIENT'
+        ? {
+            id: result.request.id,
+            publicStatusUrl: `/request/status/${result.request.publicStatusToken}`,
+            files: result.request.files
+          }
+        : {})
+    };
+    return Response.json(response, { status: result.createdNew ? 201 : 200 });
   } catch (error) {
-    console.error('Request creation failed', error);
+    if (error instanceof PublicRequestSecurityError) return securityErrorResponse(error);
+    if (error instanceof RequestCreationError) {
+      return Response.json(
+        { status: error.code.toLowerCase(), message: error.message },
+        { status: error.statusCode }
+      );
+    }
+    console.error('Request creation failed.', {
+      errorType: error instanceof Error ? error.name : 'UnknownError'
+    });
     return Response.json(
       {
-        status: 'database_error',
+        status: 'request_create_failed',
         message: 'Не вдалося створити заявку. Спробуйте ще раз або напишіть нам у Telegram.'
       },
       { status: 503 }

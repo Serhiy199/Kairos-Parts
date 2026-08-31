@@ -209,7 +209,7 @@ function main() {
     /CHANGED_AFTER_SEND:[\s\S]*Очікує рішення клієнта/
   );
   assert.match(adminPage, /Усі актуальні позиції вже входять до останньої надісланої версії/);
-  assert.match(adminPage, /disabled=\{!eligibility\.canSend\}/);
+  assert.match(adminPage, /disabled=\{!eligibility\.canSend \|\| !onlineApprovalEligible\}/);
   assert.match(adminPage, /currentUpdatedAt/);
   assert.doesNotMatch(adminPage, /currentApprovalHash[\s\S]*value=/);
   assert.match(sendService, /getResendEligibility/);

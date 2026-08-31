@@ -33,6 +33,7 @@ function main() {
   const uploadService = source('lib/files/request-file-upload-service.ts');
   const storage = source('lib/files/request-file-storage.ts');
   const requestRoute = source('app/api/requests/route.ts');
+  const requestService = source('lib/requests/create-request.ts');
   const telegram = source('lib/telegram/session.ts');
   const ocr = source('lib/ocr/service.ts');
   const ocrRuntime = source('lib/ocr/tesseract-runtime.ts');
@@ -117,7 +118,8 @@ function main() {
   assert.match(uploadService, /REQUEST_FILE_ASSET_CLEANUP_FAILED/);
   assert.doesNotMatch(uploadService, /saveRequestFileLocal|saveRequestFileBufferLocal/);
 
-  assert.match(requestRoute, /uploadRequestFilesForActor/);
+  assert.match(requestRoute, /createPartsRequest/);
+  assert.match(requestService, /uploadRequestFilesForActor/);
   assert.doesNotMatch(requestRoute, /saveRequestFileLocal/);
   assert.match(telegram, /uploadRequestFilesForActor/);
   assert.doesNotMatch(telegram, /saveRequestFileBufferLocal/);

@@ -2,7 +2,8 @@ import 'server-only';
 
 import type { Prisma, RequestFileSource } from '@prisma/client';
 
-import { auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
+import type { AuditRequestContext } from '@/lib/audit-log/contracts';
+import { auditAnonymousActor, auditUserActor, writeAuditLog } from '@/lib/audit-log/service';
 import {
   deleteRequestFileFromCloudinary,
   uploadRequestFileToCloudinary,
@@ -16,12 +17,17 @@ import {
 } from '@/lib/files/request-file-validation';
 import { prisma } from '@/lib/prisma';
 
-export type RequestFileUploadActor = {
-  type: 'CLIENT' | 'TELEGRAM';
-  userId: string;
-  clientProfileId: string;
-  companyId: string | null;
-};
+export type RequestFileUploadActor =
+  | {
+      type: 'CLIENT' | 'TELEGRAM';
+      userId: string;
+      clientProfileId: string;
+      companyId: string | null;
+    }
+  | {
+      type: 'WEBSITE_GUEST';
+      publicStatusToken: string;
+    };
 
 export class RequestFileUploadError extends Error {
   constructor(
@@ -44,11 +50,36 @@ type UploadedFile = {
   asset: CloudinaryRequestFileUpload;
 };
 
+export type RequestFileStorageAdapter = {
+  upload: typeof uploadRequestFileToCloudinary;
+  remove: (asset: CloudinaryRequestFileUpload) => Promise<unknown>;
+};
+
+const cloudinaryStorageAdapter: RequestFileStorageAdapter = {
+  upload: uploadRequestFileToCloudinary,
+  remove: (asset) => deleteRequestFileFromCloudinary({
+    publicId: asset.publicId,
+    resourceType: asset.resourceType,
+    deliveryType: asset.deliveryType,
+    version: asset.version,
+    format: asset.format
+  })
+};
+
 function requestFileSource(actor: RequestFileUploadActor): RequestFileSource {
-  return actor.type === 'TELEGRAM' ? 'TELEGRAM' : 'CLIENT_FORM';
+  if (actor.type === 'TELEGRAM') return 'TELEGRAM';
+  return actor.type === 'WEBSITE_GUEST' ? 'WEBSITE_FORM' : 'CLIENT_FORM';
 }
 
 function requestActorWhere(actor: RequestFileUploadActor): Prisma.RequestWhereInput {
+  if (actor.type === 'WEBSITE_GUEST') {
+    return {
+      source: 'WEBSITE',
+      clientId: null,
+      companyId: null,
+      publicStatusToken: actor.publicStatusToken
+    };
+  }
   if (actor.companyId) {
     return {
       OR: [
@@ -60,15 +91,12 @@ function requestActorWhere(actor: RequestFileUploadActor): Prisma.RequestWhereIn
   return { clientId: actor.clientProfileId };
 }
 
-async function cleanupUploadedFiles(uploaded: readonly UploadedFile[]) {
+async function cleanupUploadedFiles(
+  uploaded: readonly UploadedFile[],
+  storage: RequestFileStorageAdapter
+) {
   const results = await Promise.allSettled(
-    uploaded.map(({ asset }) => deleteRequestFileFromCloudinary({
-      publicId: asset.publicId,
-      resourceType: asset.resourceType,
-      deliveryType: asset.deliveryType,
-      version: asset.version,
-      format: asset.format
-    }))
+    uploaded.map(({ asset }) => storage.remove(asset))
   );
   return results.filter((result) => result.status === 'rejected').length;
 }
@@ -85,7 +113,8 @@ export async function uploadRequestFilesForActor(input: {
   actor: RequestFileUploadActor;
   requestId: string;
   files: readonly RequestFileBufferInput[];
-}) {
+  requestContext?: AuditRequestContext;
+}, storage: RequestFileStorageAdapter = cloudinaryStorageAdapter) {
   if (input.files.length === 0) return [];
 
   const request = await prisma.request.findFirst({
@@ -132,7 +161,7 @@ export async function uploadRequestFilesForActor(input: {
   const uploaded: UploadedFile[] = [];
   try {
     for (const file of validatedFiles) {
-      const asset = await uploadRequestFileToCloudinary({
+      const asset = await storage.upload({
         requestId: input.requestId,
         fileName: file.fileName,
         mimeType: file.mimeType,
@@ -144,7 +173,7 @@ export async function uploadRequestFilesForActor(input: {
       uploaded.push({ file, asset });
     }
   } catch (error) {
-    const cleanupFailures = await cleanupUploadedFiles(uploaded);
+    const cleanupFailures = await cleanupUploadedFiles(uploaded, storage);
     console.error('Request file Cloudinary upload failed', {
       requestId: input.requestId,
       uploadedCount: uploaded.length,
@@ -206,7 +235,9 @@ export async function uploadRequestFilesForActor(input: {
           }
         });
         await writeAuditLog(tx, {
-          actor: auditUserActor(input.actor.userId),
+          actor: input.actor.type === 'WEBSITE_GUEST'
+            ? auditAnonymousActor()
+            : auditUserActor(input.actor.userId),
           companyId: authorizedRequest.companyId,
           entityType: 'REQUEST_FILE',
           entityId: requestFile.id,
@@ -230,14 +261,15 @@ export async function uploadRequestFilesForActor(input: {
               'sizeBytes',
               'source'
             ]
-          }
+          },
+          requestContext: input.requestContext
         });
         created.push(requestFile);
       }
       return created;
     });
   } catch (error) {
-    const cleanupFailures = await cleanupUploadedFiles(uploaded);
+    const cleanupFailures = await cleanupUploadedFiles(uploaded, storage);
     console.error('Request file database save failed after Cloudinary upload', {
       requestId: input.requestId,
       uploadedCount: uploaded.length,

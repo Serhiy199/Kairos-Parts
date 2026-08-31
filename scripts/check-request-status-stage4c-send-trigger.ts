@@ -21,6 +21,7 @@ type FakeState = {
   request: {
     id: string;
     requestNumber: string;
+    clientId: string | null;
     companyId: string;
     status: string;
   } | null;
@@ -56,6 +57,7 @@ function baseState(status = 'IN_PROGRESS'): FakeState {
     request: {
       id: 'request-1',
       requestNumber: 'KP-1001',
+      clientId: 'client-1',
       companyId: 'company-1',
       status
     },
@@ -620,6 +622,18 @@ async function main() {
     assert.equal(result.notification.errorCode, 'TELEGRAM_NOTIFICATION_FAILED');
     assert.equal(harness.getState().activeBatch?.revision, 1);
     assert.equal(harness.getState().request?.status, 'WAITING_APPROVAL');
+  }
+
+  {
+    const state = baseState();
+    state.request!.clientId = null;
+    const harness = createHarness(state);
+    await expectCode(
+      harness.service(input()),
+      'GUEST_REQUEST_APPROVAL_UNAVAILABLE'
+    );
+    assert.equal(harness.getState().request?.status, 'IN_PROGRESS');
+    assert.equal(harness.getNotificationCalls(), 0);
   }
 
   console.log('Stage 4C send-for-approval trigger checks passed.');
