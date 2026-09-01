@@ -61,6 +61,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   AUTH_LOGOUT: 'Вихід із системи',
   AUTH_INVITATION_ACCEPTED: 'Запрошення прийнято',
   AUTH_SESSION_INVALIDATED: 'Сесії анульовано',
+  REQUEST_CREATED: 'Заявку створено',
   REQUEST_STATUS_CHANGED: 'Статус заявки змінено',
   REQUEST_MANAGER_ASSIGNED: 'Менеджера призначено',
   REQUEST_MANAGER_REASSIGNED: 'Менеджера перепризначено',

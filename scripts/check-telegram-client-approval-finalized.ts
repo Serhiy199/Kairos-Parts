@@ -11,6 +11,9 @@ function main() {
   const submission = source('lib/request-selection/client-submission.ts');
   const notifier = source('lib/staff-telegram/notifications.ts');
   const messages = source('lib/staff-telegram/messages.ts');
+  const approvalMessage = messages.slice(
+    messages.indexOf('export function buildClientApprovalFinalizedMessage')
+  );
   const transport = source('lib/staff-telegram/transport.ts');
   const config = source('lib/staff-telegram/config.ts');
   const siteUrl = source('lib/site-url.ts');
@@ -46,8 +49,8 @@ function main() {
   assert.match(messages, /Погоджено позицій: 0 із \$\{input\.totalCount\}/);
   assert.match(messages, /Клієнт не погодив жодної з підібраних позицій/);
   assert.match(messages, /Формування рахунку не потрібне/);
-  assert.doesNotMatch(messages, /Email:/);
-  assert.doesNotMatch(messages, /VIN:/);
+  assert.doesNotMatch(approvalMessage, /Email:/);
+  assert.doesNotMatch(approvalMessage, /VIN:/);
 
   assert.match(siteUrl, /NODE_ENV === 'production'[\s\S]*return PUBLIC_SITE_ORIGIN/);
   assert.match(siteUrl, /PUBLIC_SITE_ORIGIN = 'https:\/\/kairos-parts\.com\.ua'/);

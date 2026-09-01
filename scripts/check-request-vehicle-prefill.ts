@@ -25,7 +25,7 @@ const submitFlow = between(form, 'async function handleSubmit', "if (submitState
 
 assert.match(vehiclePage, /href={`\/request\?source=client&vehicleId=\$\{vehicle\.id\}`}/);
 assert.match(page, /vehicleId\?: string/);
-assert.match(page, /const vehiclePrefill = params\.vehicleId \? await prismaVehiclePrefill\(clientAccess, params\.vehicleId\) : null/);
+assert.match(page, /const vehiclePrefill = clientAccess && params\.vehicleId[\s\S]*?prismaVehiclePrefill\(clientAccess, params\.vehicleId\)[\s\S]*?: null/);
 
 assert.match(vehiclePrefill, /where: \{ id: vehicleId, AND: \[vehicleAccessWhere\(access\)\] \}/);
 assert.match(vehiclePrefill, /vehicleId: vehicle\.id/);

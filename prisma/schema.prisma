@@ -108,6 +108,7 @@ enum RequestFileStorageStatus {
 
 enum RequestFileSource {
   CLIENT_FORM
+  WEBSITE_FORM
   TELEGRAM
   LEGACY
 }
@@ -208,6 +209,7 @@ enum AuditAction {
   AUTH_INVITATION_ACCEPTED
   AUTH_SESSION_INVALIDATED
   ACCOUNT_IDENTITY_UPDATED
+  REQUEST_CREATED
   REQUEST_STATUS_CHANGED
   REQUEST_MANAGER_ASSIGNED
   REQUEST_MANAGER_REASSIGNED
@@ -615,6 +617,7 @@ model ManagerInvitation {
 model Request {
   id                       String                  @id @default(cuid())
   requestNumber            String                  @unique @default(dbgenerated("'KP-'::text || nextval('request_number_seq'::regclass)::text"))
+  idempotencyKey           String?                 @unique
   publicStatusToken        String                  @unique
   source                   RequestSource
   status                   RequestStatus           @default(NEW)

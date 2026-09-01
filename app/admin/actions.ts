@@ -572,6 +572,9 @@ export async function sendAdminRequestItemsForApproval(formData: FormData) {
       if (error.code === 'REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND') {
         return workflowResult('items-send-status-locked', false);
       }
+      if (error.code === 'GUEST_REQUEST_APPROVAL_UNAVAILABLE') {
+        return workflowResult('guest-request-approval-unavailable', false);
+      }
       if (error.code === 'FINALIZED_SELECTION_LOCKED') {
         return workflowResult('selection-finalized-locked', false);
       }

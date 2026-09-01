@@ -245,6 +245,7 @@ export default async function AdminRequestDetailPage({
 
           <RequestItemsSection
             requestId={request.id}
+            onlineApprovalEligible={request.clientId !== null}
             items={request.items}
             eligibility={selectionEligibility}
             latestSelectionBatch={request.selectionBatches[0] ?? null}
@@ -643,11 +644,13 @@ function requestSelectionMessage(
 
 function RequestItemsSection({
   requestId,
+  onlineApprovalEligible,
   items,
   eligibility,
   latestSelectionBatch
 }: {
   requestId: string;
+  onlineApprovalEligible: boolean;
   items: RequestItemView[];
   eligibility: RequestSelectionResendEligibility;
   latestSelectionBatch: {
@@ -727,7 +730,11 @@ function RequestItemsSection({
         </div>
         <div className="grid w-full min-w-0 gap-3 xl:w-auto xl:min-w-[280px] xl:max-w-[320px] xl:shrink-0">
           <span className="w-fit rounded-full bg-surface-muted px-3 py-1 text-xs font-bold text-muted">{items.length} позицій</span>
-          <p className="text-xs leading-5 text-muted">{requestSelectionMessage(items, eligibility)}</p>
+          <p className="text-xs leading-5 text-muted">
+            {onlineApprovalEligible
+              ? requestSelectionMessage(items, eligibility)
+              : 'Для онлайн-погодження заявку потрібно прив’язати до клієнта. Для гостьової заявки погодження виконується поза кабінетом.'}
+          </p>
         </div>
       </div>
 
@@ -902,7 +909,7 @@ function RequestItemsSection({
             )}
           />
           <RequestSelectionSubmitButton
-            disabled={!eligibility.canSend}
+            disabled={!eligibility.canSend || !onlineApprovalEligible}
             label={
               eligibility.activeBatchId
                 ? 'Оновити підбір для клієнта'
@@ -1361,7 +1368,7 @@ function RequestDocumentsSection({ requestId, documents }: { requestId: string; 
 
       <details className="mt-5 rounded-md border border-border bg-surface-muted p-4" open={documents.length === 0}>
         <summary className="cursor-pointer text-sm font-bold text-foreground">Додати документ</summary>
-        <form action={createAdminRequestDocument} className="mt-4 grid min-w-0 gap-4" encType="multipart/form-data">
+        <form action={createAdminRequestDocument} className="mt-4 grid min-w-0 gap-4">
           <input type="hidden" name="requestId" value={requestId} />
           <div className="grid min-w-0 gap-3 md:grid-cols-2">
             <RequestDocumentTypeSelect />

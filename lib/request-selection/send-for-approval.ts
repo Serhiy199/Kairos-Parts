@@ -59,6 +59,7 @@ export type SendRequestSelectionForApprovalErrorCode =
   | 'SOURCE_ITEM_VERSION_CONFLICT'
   | 'SOURCE_ITEM_INVALID'
   | 'REQUEST_STATUS_DOES_NOT_ALLOW_SELECTION_SEND'
+  | 'GUEST_REQUEST_APPROVAL_UNAVAILABLE'
   | 'ACTIVE_SENT_BATCH_CONFLICT'
   | 'ACTIVE_SELECTION_VERSION_CONFLICT'
   | 'NO_SELECTION_CHANGES'
@@ -281,7 +282,7 @@ export function createSendRequestSelectionForApprovalService(
       const [request, actor] = await Promise.all([
         tx.request.findUnique({
           where: { id: input.requestId },
-          select: { id: true, requestNumber: true, companyId: true, status: true }
+          select: { id: true, requestNumber: true, clientId: true, companyId: true, status: true }
         }),
         tx.user.findUnique({
           where: { id: input.actor.id },
@@ -292,6 +293,9 @@ export function createSendRequestSelectionForApprovalService(
       if (!actor) fail('ACTOR_NOT_FOUND', request.id);
       if (actor.status !== 'ACTIVE' || !allowedActorRoles.has(actor.role)) {
         fail('ACTOR_NOT_ALLOWED', request.id);
+      }
+      if (request.clientId === null) {
+        fail('GUEST_REQUEST_APPROVAL_UNAVAILABLE', request.id);
       }
       const requestedMode = input.mode;
       if (!allowedRequestStatuses.has(request.status)) {

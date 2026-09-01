@@ -24,29 +24,40 @@ export default async function RequestPage({
   const params = await searchParams;
   const session = await auth();
 
-  if (!session?.user?.id || session.user.role !== 'CLIENT') {
-    return <RequestAuthGate isStaff={session?.user?.role === 'MANAGER' || session?.user?.role === 'ADMIN'} />;
+  if (session?.user?.id && session.user.role !== 'CLIENT') {
+    return <RequestAuthGate isStaff />;
   }
 
-  const [clientProfile, clientAccess] = await Promise.all([
-    getClientProfileForSession(session.user.id),
-    getClientAccessContext(session.user.id)
-  ]);
+  const isClient = session?.user?.role === 'CLIENT' && Boolean(session.user.id);
+  const [clientProfile, clientAccess] = isClient
+    ? await Promise.all([
+        getClientProfileForSession(session.user.id),
+        getClientAccessContext(session.user.id)
+      ])
+    : [null, null];
 
-  if (!clientProfile || !clientAccess) {
+  if (isClient && (!clientProfile || !clientAccess)) {
     return <RequestAuthGate profileMissing />;
   }
 
   const maxSizeMb = getUploadMaxSizeMb();
-  const clientFullName = [clientProfile.firstName, clientProfile.lastName].filter(Boolean).join(' ');
-  const initialContact = {
-    contactName: clientProfile.contactName ?? (clientFullName || clientProfile.user.name || ''),
-    companyName: clientAccess.companyName ?? (clientProfile.clientType === 'BUSINESS' ? clientProfile.companyName ?? '' : ''),
-    phone: clientProfile.phone ?? clientProfile.user.phone ?? '',
-    email: clientProfile.email ?? clientProfile.user.email ?? ''
-  };
-  const vehiclePrefill = params.vehicleId ? await prismaVehiclePrefill(clientAccess, params.vehicleId) : null;
-  const repeatPrefill = params.repeatRequestId ? await prismaRepeatPrefill(clientAccess, params.repeatRequestId) : null;
+  const clientFullName = clientProfile
+    ? [clientProfile.firstName, clientProfile.lastName].filter(Boolean).join(' ')
+    : '';
+  const initialContact = clientProfile && clientAccess
+    ? {
+        contactName: clientProfile.contactName ?? (clientFullName || clientProfile.user.name || ''),
+        companyName: clientAccess.companyName ?? (clientProfile.clientType === 'BUSINESS' ? clientProfile.companyName ?? '' : ''),
+        phone: clientProfile.phone ?? clientProfile.user.phone ?? '',
+        email: clientProfile.email ?? clientProfile.user.email ?? ''
+      }
+    : undefined;
+  const vehiclePrefill = clientAccess && params.vehicleId
+    ? await prismaVehiclePrefill(clientAccess, params.vehicleId)
+    : null;
+  const repeatPrefill = clientAccess && params.repeatRequestId
+    ? await prismaRepeatPrefill(clientAccess, params.repeatRequestId)
+    : null;
   const initialRequest = vehiclePrefill ?? repeatPrefill ?? undefined;
   const taxonomy = EQUIPMENT_TAXONOMY_REQUEST_FIELDS_ENABLED
     ? await getActiveEquipmentTaxonomy({
@@ -71,23 +82,24 @@ export default async function RequestPage({
       <section className="bg-public-page px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_0.45fr] lg:items-start">
           <RequestForm
+            mode={isClient ? 'CLIENT' : 'GUEST'}
             taxonomy={taxonomy}
             initialContact={initialContact}
             initialMode={params.mode}
             initialRequest={initialRequest}
-            initialSource="client"
+            initialSource={isClient ? 'client' : undefined}
             maxSizeMb={maxSizeMb}
           />
           <aside className="public-card p-6">
             <p className="text-sm font-bold uppercase text-accent">Що підготувати</p>
             <div className="mt-5 grid gap-4 text-sm leading-6 text-public-muted">
-              <p>1. Імʼя контактної особи, телефон, email і назву компанії.</p>
+              <p>1. Імʼя контактної особи та телефон. Email і назву компанії можна додати за бажанням.</p>
               <p>2. Тип техніки, виробника або марку, модель і рік випуску.</p>
               <p>3. VIN або серійний номер техніки.</p>
               <p>4. Опис деталі, вузла або проблеми.</p>
               <p>5. Фото, PDF, Excel або DOC список, якщо є. Файли можна не додавати.</p>
             </div>
-            {clientAccess.mode === 'COMPANY' ? (
+            {clientAccess?.mode === 'COMPANY' ? (
               <div className="public-callout mt-6 rounded-md p-4 text-sm leading-6">
                 Заявка буде привʼязана до компанії <span className="font-bold">{clientAccess.companyName}</span> і буде доступна учасникам цієї компанії.
               </div>
