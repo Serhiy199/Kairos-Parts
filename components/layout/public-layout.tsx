@@ -14,7 +14,7 @@ const navItems = [
   { href: '/about', label: 'Про нас' },
   { href: '/how-it-works', label: 'Як це працює' },
   { href: '/logistics', label: 'Логістика' },
-  { href: '/used-equipment', label: 'БВ техніка' },
+  { href: '/used-equipment', label: 'Техніка' },
   { href: '/contacts', label: 'Контакти' }
 ];
 
