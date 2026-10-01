@@ -76,7 +76,7 @@ const FORBIDDEN_METADATA_PHRASES = [
 const EXPECTED_PAGE_HEADINGS = [
   {
     file: 'app/(public)/page.tsx',
-    fragments: ['Підберемо запчастини для вашої техніки', 'за одним запитом']
+    fragments: ['Все необхідне для технічного обслуговування', 'аграрної та вантажної техніки']
   },
   {
     file: 'app/(public)/how-it-works/page.tsx',
