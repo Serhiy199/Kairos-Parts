@@ -8,33 +8,36 @@ type Category = {
   image?: { src: string; alt: string };
 };
 
-// Add approved category photography here when available. Empty slots reserve
-// the final image area without presenting unrelated photos as product images.
 const categories: Category[] = [
   {
     title: 'Оливи',
     description: 'Моторні, гідравлічні, трансмісійні оливи, антифризи, AdBlue та інші технічні рідини. Підбір за маркою та моделлю техніки.',
-    icon: 'oil'
+    icon: 'oil',
+    image: { src: '/images/home/categories/oils.webp', alt: 'Оливи та технічні рідини для аграрної та вантажної техніки' }
   },
   {
     title: 'Фільтри',
     description: 'Масляні, паливні, повітряні, гідравлічні та салонні фільтри. Оригінальні та якісні аналоги.',
-    icon: 'filter'
+    icon: 'filter',
+    image: { src: '/images/home/categories/filters.webp', alt: 'Фільтри для аграрної та вантажної техніки' }
   },
   {
     title: 'Підшипники',
     description: 'Підшипники для сільськогосподарської, вантажної та спеціальної техніки. Ходові позиції — в наявності, рідкісні — під замовлення.',
-    icon: 'bearing'
+    icon: 'bearing',
+    image: { src: '/images/home/categories/bearings.webp', alt: 'Підшипники для сільськогосподарської та вантажної техніки' }
   },
   {
     title: 'Ремені',
     description: 'Приводні, клинові та спеціальні ремені для аграрної й вантажної техніки. Підбір за розміром, маркуванням або зразком.',
-    icon: 'belt'
+    icon: 'belt',
+    image: { src: '/images/home/categories/belts.webp', alt: 'Приводні та клинові ремені для техніки' }
   },
   {
     title: 'РВТ',
     description: 'Виготовлення та ремонт рукавів високого тиску. Підбір рукава, фітингів і швидке виготовлення під вашу техніку.',
-    icon: 'hose'
+    icon: 'hose',
+    image: { src: '/images/home/categories/rvt.webp', alt: 'Рукави високого тиску та гідравлічні фітинги' }
   }
 ];
 
@@ -74,7 +77,7 @@ function CategoryCard({ category }: { category: Category }) {
             src={category.image.src}
             alt={category.image.alt}
             fill
-            sizes="(min-width: 1280px) 240px, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+            sizes="(min-width: 1440px) 242px, (min-width: 1280px) 234px, (min-width: 1024px) calc((100vw - 80px) / 3), (min-width: 768px) calc((100vw - 56px) / 2), (min-width: 640px) calc((100vw - 48px) / 2), calc(100vw - 32px)"
             className="object-cover"
           />
         ) : null}
@@ -85,7 +88,9 @@ function CategoryCard({ category }: { category: Category }) {
         </span>
         <h3 className="mt-4 text-xl font-bold uppercase leading-tight text-public-primary">{category.title}</h3>
         <p className="mt-3 text-base leading-7 text-public-secondary xl:text-sm xl:leading-6">{category.description}</p>
-        <div aria-hidden="true" className="mt-6 h-px w-16 bg-accent" />
+        <div className="mt-auto pt-6">
+          <div aria-hidden="true" className="h-px w-16 bg-accent" />
+        </div>
       </div>
     </article>
   );
