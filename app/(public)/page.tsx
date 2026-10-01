@@ -19,40 +19,13 @@ import {
   TbWheat
 } from 'react-icons/tb';
 
+import { HomeMainCategories } from '@/components/public/home-main-categories';
 import { ActionIcon } from '@/components/ui/action-icons';
 import { createPublicMetadata, PUBLIC_PAGE_SEO } from '@/lib/seo';
 
 const telegramBotUrl = 'https://t.me/kairos_parts_bot';
 
 export const metadata: Metadata = createPublicMetadata(PUBLIC_PAGE_SEO.home);
-
-const processSteps = [
-  {
-    title: 'Створіть заявку',
-    text: 'Оберіть техніку або створіть разову заявку. Додайте артикул, список, фото чи опис.',
-    icon: 'file'
-  },
-  {
-    title: 'Менеджер опрацьовує запит',
-    text: 'Уточнюємо деталі, перевіряємо сумісність і доступні варіанти.',
-    icon: 'search'
-  },
-  {
-    title: 'Підбираємо рішення',
-    text: 'Знаходимо оригінальні запчастини та перевірені аналоги.',
-    icon: 'check'
-  },
-  {
-    title: 'Узгодження та оплата',
-    text: 'Погоджуємо склад, терміни й доставку та формуємо рахунок.',
-    icon: 'invoice'
-  },
-  {
-    title: 'Історія оновлюється автоматично',
-    text: 'Запчастини, рахунки й документи зберігаються в історії вашої техніки.',
-    icon: 'database'
-  }
-];
 
 const advantages = [
   {
@@ -180,57 +153,6 @@ const requestChannels = [
     icon: TbUser
   }
 ];
-
-function ProcessIcon({ icon }: { icon: string }) {
-  if (icon === 'database') {
-    return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <ellipse cx="12" cy="5" rx="7" ry="3" />
-        <path d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5" />
-        <path d="M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" />
-        <path d="m14 15 1.5 1.5L19 13" />
-      </svg>
-    );
-  }
-
-  if (icon === 'invoice') {
-    return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M7 3h10v18l-2-1-2 1-2-1-2 1-2-1z" />
-        <path d="M10 8h4" />
-        <path d="M10 12h5" />
-        <path d="M10 16h3" />
-      </svg>
-    );
-  }
-
-  if (icon === 'search') {
-    return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="11" cy="11" r="7" />
-        <path d="m20 20-3.5-3.5" />
-      </svg>
-    );
-  }
-
-  if (icon === 'check') {
-    return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="9" />
-        <path d="m8 12 2.5 2.5L16 9" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M7 3h7l4 4v14H7z" />
-      <path d="M14 3v5h5" />
-      <path d="M10 12h5" />
-      <path d="M10 16h7" />
-    </svg>
-  );
-}
 
 function TrustIcon({ icon }: { icon: string }) {
   const baseProps = {
@@ -397,16 +319,9 @@ export default function HomePage() {
         <div className="kp-container relative flex min-h-[calc(100vh-64px)] flex-col justify-center pb-12 pt-24 sm:pt-16 lg:min-h-[720px] lg:pb-14 lg:pt-20">
           <div className="max-w-5xl">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm lg:whitespace-nowrap">Kairos Parts — сервіс для B2B-клієнтів аграрної та транспортної техніки</p>
-            <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.04] sm:text-5xl lg:text-6xl xl:text-7xl">
-              Все необхідне для ТО та обслуговування <span className="text-accent">аграрної та вантажної техніки</span>
+            <h1 className="mt-5 max-w-3xl text-balance text-4xl font-bold leading-[1.04] sm:text-5xl lg:text-6xl xl:text-7xl">
+              Все необхідне для технічного обслуговування <span className="text-accent">аграрної та вантажної техніки</span>
             </h1>
-            <div className="mt-6 flex flex-wrap gap-2 sm:gap-2.5">
-              {['Оливи', 'Фільтри', 'Ремені', 'Підшипники', 'Запчастини'].map((product) => (
-                <span key={product} className="rounded-md border border-accent/50 bg-primary/55 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur-sm sm:text-sm">
-                  {product}
-                </span>
-              ))}
-            </div>
             <div className="mt-6 flex w-full max-w-5xl flex-col gap-4 rounded-xl border border-accent/25 bg-primary/70 p-5 shadow-panel backdrop-blur-sm sm:flex-row sm:items-start sm:p-6">
               <span className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-accent/45 bg-accent/10 text-accent" aria-hidden="true">
                 <LuBoxes className="size-6" focusable="false" />
@@ -416,7 +331,7 @@ export default function HomePage() {
                   Підготуємо комплект ТО під вашу техніку
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base sm:leading-7">
-                  Вкажіть інтервал обслуговування — наприклад, 250 м/г або 20 000 км. Ми визначимо необхідні матеріали відповідно до регламенту та сформуємо пропозицію.
+                  Надайте VIN / серійний номер техніки — ми підберемо необхідні оливи та фільтри саме для вашої машини.
                 </p>
               </div>
             </div>
@@ -435,41 +350,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="how-it-works" className="relative overflow-hidden bg-public-page py-16">
+      <section id="main-categories" aria-labelledby="main-categories-heading" className="relative overflow-hidden bg-public-page py-16">
         <HomepageSectionBackdrop />
         <div className="kp-container relative z-10">
-          <div className="max-w-3xl">
-            <p className="text-sm font-bold uppercase text-accent">Як це працює</p>
-            <h2 className="public-section-heading mt-2 text-3xl font-bold">Заявка, підбір, узгодження та доставка в одному процесі</h2>
-            <p className="public-section-copy mt-4 text-sm leading-6 sm:text-base sm:leading-7">
-              Менеджер веде заявку поетапно: від первинного опису потреби до погодження рішення та супроводу постачання.
-            </p>
-          </div>
-          <div className="relative mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            <div className="pointer-events-none absolute left-8 right-8 top-6 hidden h-px bg-gradient-to-r from-transparent via-accent/35 to-transparent xl:block" />
-            {processSteps.map((step, index) => (
-              <div key={step.title} className="public-card relative flex min-h-[300px] flex-col p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex size-12 items-center justify-center rounded-md border border-public-border-accent bg-public-page text-accent">
-                    <ProcessIcon icon={step.icon} />
-                  </div>
-                  <span className="font-display text-sm font-bold tracking-[0.16em] text-accent/80">Крок {index + 1}</span>
-                </div>
-                <div className="flex flex-1 flex-col">
-                  <h3 className="mt-5 text-xl font-bold text-public-primary">{step.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-public-muted">{step.text}</p>
-                </div>
-                <div className="mt-6 grid grid-cols-5 gap-1.5" aria-hidden="true">
-                  {processSteps.map((segment, segmentIndex) => (
-                    <span
-                      key={`${step.title}-${segment.title}`}
-                      className={`h-1.5 rounded-full ${segmentIndex <= index ? 'bg-accent' : 'bg-public-elevated'}`}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          <HomeMainCategories />
         </div>
       </section>
 
