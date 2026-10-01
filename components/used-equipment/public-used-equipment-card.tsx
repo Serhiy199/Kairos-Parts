@@ -78,6 +78,7 @@ export function PublicUsedEquipmentCard({ item }: { item: PublicUsedEquipmentLis
           usedEquipmentId={item.id}
           equipmentTitle={item.title}
           source="CATALOG_CARD"
+          categoryLabel="Техніка"
           trigger="Запит на перегляд техніки"
           triggerClassName="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-accent px-4 text-center text-sm font-bold leading-tight text-primary transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />

@@ -13,6 +13,7 @@ type UsedEquipmentInquiryDialogProps = {
   source: UsedEquipmentInquirySource;
   trigger: ReactNode;
   triggerClassName?: string;
+  categoryLabel?: string;
 };
 
 const INITIAL_STATE: UsedEquipmentInquiryFormState = {
@@ -159,7 +160,8 @@ export function UsedEquipmentInquiryDialog({
   equipmentTitle,
   source,
   trigger,
-  triggerClassName
+  triggerClassName,
+  categoryLabel = 'БВ техніка'
 }: UsedEquipmentInquiryDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [formKey, setFormKey] = useState(0);
@@ -257,7 +259,7 @@ export function UsedEquipmentInquiryDialog({
         </button>
 
         <div className="pr-10">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">БВ техніка</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">{categoryLabel}</p>
           <h2 id={titleId} className="mt-2 text-2xl font-bold text-public-primary">
             Запит на перегляд техніки
           </h2>
