@@ -26,7 +26,7 @@ function EmptyState() {
       <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-accent/10 text-accent">
         <FaTractor aria-hidden="true" className="size-7" />
       </div>
-      <h2 className="mt-4 text-2xl font-bold text-public-primary">Доступної БВ техніки поки немає</h2>
+      <h2 className="mt-4 text-2xl font-bold text-public-primary">Доступної техніки поки немає</h2>
       <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-public-muted">
         Каталог показує тільки перевірені публічні позиції. Коли менеджер опублікує техніку, вона з’явиться тут.
       </p>
@@ -74,7 +74,7 @@ export default async function UsedEquipmentPage({
       <section className="border-b border-public-border bg-primary py-14 text-white sm:py-16">
         <div className="kp-container">
           <div className="max-w-4xl">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent sm:text-sm">Майданчик БВ техніки</p>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent sm:text-sm">Майданчик техніки</p>
             <h1 className="mt-4 text-4xl font-bold leading-tight sm:text-5xl">
               Перевірена техніка від наших партнерів
             </h1>
@@ -89,7 +89,7 @@ export default async function UsedEquipmentPage({
         <div className="kp-container">
           <div className="mb-8 max-w-3xl">
             <p className="text-sm font-bold uppercase text-accent">Каталог</p>
-            <h2 className="mt-2 text-3xl font-bold text-public-primary">БВ техніка</h2>
+            <h2 className="mt-2 text-3xl font-bold text-public-primary">Техніка</h2>
             <p className="mt-2 text-sm leading-6 text-public-muted">
               У каталозі показуються тільки опубліковані позиції, доступні для перегляду клієнтами.
             </p>
